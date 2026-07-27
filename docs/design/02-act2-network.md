@@ -1750,3 +1750,445 @@ Five lines over ~40 minutes. Each is true, each describes a number the player ca
 and none of them is advice.
 
 ---
+
+## 14. OFFLINE PROGRESSION
+
+Non-negotiable (teardown §8.2: UP has none, and it is why players stalled out permanently). The rule:
+
+> **Offline must be generous enough that a two-day absence is a gift, and never so generous that
+> active play is pointless.**
+
+We achieve that not by nerfing the offline *rate* but by making offline unable to perform the
+*decisions*.
+
+### 14.1 The efficiency schedule
+
+```
+OFFLINE_CAP = 43200 s   (12 hours)                                            [K]
+
+elapsed = clamp((now - save.t)/1000, 0, OFFLINE_CAP)
+
+effective(elapsed) = piecewise integral of m(t):
+    m(t) = 1.00   for  0     ≤ t < 7200      (0–2 h)
+    m(t) = 0.75   for  7200  ≤ t < 21600     (2–6 h)
+    m(t) = 0.50   for  21600 ≤ t ≤ 43200     (6–12 h)
+
+  2 h  →  7,200 s effective  (100%)
+  6 h  → 18,000 s effective  (83%)
+ 12 h  → 28,800 s effective  (67%)
+```
+
+`New Growth` (Act III prestige) raises `OFFLINE_CAP` to 24 h and flattens the schedule to a 0.70 floor.
+
+### 14.2 What runs offline, and how
+
+Reconciliation runs the **same sim function** as the live loop, in `N` macro-steps with large `dt`,
+not a closed-form approximation. Sixty-one regions × 240 steps is 14,640 record updates — about 4 ms
+on a mid-range phone. There is no reason to approximate and every reason not to (a divergent offline
+model is the single most common source of "my save is wrong" bugs).
+
+```
+STEPS = 240
+dt    = effective(elapsed) / STEPS      // up to 120 s per step at the cap
+for (i = 0; i < STEPS; i++) simTick(dt, {stochastic: false});
+```
+
+`{stochastic:false}` replaces every dice roll with its expectation:
+- fire ignition → `fireRisk` accumulates but never ignites offline. **The forest does not burn while
+  you are away.** This is a deliberate kindness with a real cost: you come back to five regions at
+  `fireRisk = 0.98` and about ninety seconds to do something about it.
+- primordium hazards → applied as expected value: `V ← V · (1 − p_destroy·dt·(1−0.35·rob))`, so a
+  flush left out in a drought comes back diminished but never zero.
+- rival spread → deterministic at the mean rate.
+- weather → the OU walk is run with `gauss() = 0`, i.e. it relaxes to `Wbar + season(t)`. So weather
+  is *boring* offline, which is exactly right: the flush sub-game is a thing you do with your hands.
+
+### 14.3 What does NOT run offline
+
+| System | Offline behaviour | Why |
+|---|---|---|
+| **Advances** | in-flight advances complete; **no new ones start** unless `highways` (C4) is owned | expansion is a decision |
+| **Density purchases** | none unless `turgor_auto` (C3) is owned | ditto |
+| **Flush release** | none unless `sporulation_reflex` (C6) is owned, and then at 0.55× | it is the skill |
+| **Mast Years** | do not fire offline. The timer pauses. | ×6 must be earned by presence |
+| **Pulse** | never | it is the hero verb |
+| **Project purchases** | never | the projects list is the game |
+| **Signal accumulation** | **caps at `Sc` and stays there** | see below |
+
+### 14.4 Why offline is a *gift* to the Insight economy
+
+Because Signal caps at `Sc` and stops, the network is saturated for effectively the whole offline
+period, and `ripeness` therefore sits at 1.0. Offline Insight accrues at the **maximum** rate:
+
+```
+insightOffline = INS_K · sqrt(Sr_avg) · 1.00 · insightMult · effective(elapsed)
+```
+
+An eight-hour absence at mid-act (`Sr ≈ 1,200`, `insightMult 1.55`) yields
+`0.055 · 34.6 · 1.55 · 23,400 = 69,000`… which is four times the act's entire Insight budget. Too
+much. **Offline Insight is therefore capped at the equivalent of 90 minutes of saturated production:**
+
+```
+insightOffline = min( computed, INS_K · sqrt(Sr_avg) · insightMult · 5400 )
+```
+
+Twelve hours away gives you 90 minutes of perfect Insight and a full Signal pool. That is a
+substantial gift — better than 90 minutes of *actual* play, which would include ripeness resets — and
+it is bounded, so a player cannot skip a tier by leaving.
+
+Biomass, by contrast, is **not** capped beyond the efficiency schedule, because biomass is the thing
+that becomes trivially abundant and because the litter stock `L` is self-limiting: an offline
+network with no new advances and no density purchases runs down the litter it already has and then
+plateaus. The stock *is* the cap. That is much better than an arbitrary clamp and it is free.
+
+### 14.5 The return screen
+
+Not a modal. A five-line console burst, in the existing console, in the existing voice:
+
+```
+> You were gone 6 h 41 m.
+> 2.44 T decomposed. 1,410 insight.
+> Three stands are dangerously dry.
+> Old Scree Break was taken by Phellinus.
+> [ tap the map ]
+```
+
+Line 3 and line 4 are the important ones: **the summary tells you what needs a decision**, not what
+you earned. And there is no "COLLECT" button — the resources are already yours. Collect buttons are a
+dark pattern that exist to make you look at an ad, and we have no ads.
+
+---
+
+## 15. UI SPECIFICATION — portrait, one-handed
+
+### 15.1 The frame
+
+```
+┌──────────────────────────────┐  ← safe-area inset top
+│ BIOMASS  4.12 T    +6.40 G/s │  36 px  status strip, always visible
+│ SIGNAL   184k/512k  ●●●○○    │  36 px
+├──────────────────────────────┤
+│                              │
+│      ACTIVE PANEL            │  scroll region
+│      (one at a time)         │  flex: 1
+│                              │
+│                        ╭───╮ │
+│                        │ ⚡ │ │  PULSE, 64 px, fixed,
+│                        ╰───╯ │  bottom-right, 16 px inset,
+├──────────────────────────────┤  88 px above the tab bar
+│ 🌲    ◈    ✳    ⚯    ≡      │  56 px tab bar, safe-area inset bottom
+└──────────────────────────────┘
+```
+
+Five tabs, all within thumb reach: **FOREST** (map + stands) · **MIND** (signal, insight, D,
+projects) · **FLUSH** · **PACT** (contracts + mineral market) · **LOG** (console history, settings,
+save export). Tabs un-hide as they are earned — the tab bar itself is the progress bar (teardown
+principle 9), growing from 1 icon to 5 across the first twelve minutes.
+
+Nothing is behind a second click. Nothing is in a modal except the two confirmations
+(`KILL STAND`, `REABSORPTION`).
+
+### 15.2 The map canvas
+
+- Fixed 1:1 aspect, full width, collapsible to a 48 px summary strip.
+- 61 hexes, flat-top, drawn with `Path2D`, no images.
+- Fill encodes **litter remaining** as lightness; stroke encodes **claimed**; a second inner stroke
+  encodes **rival**; a small dot encodes **contract**; barrier edges are drawn as a 2 px offset break.
+- Colour: a single hue ramp (desaturated green→umber→grey) plus one amber for rivals. Colour is
+  never the *only* channel for anything — claimed is also a stroke weight, rival is also a bar on the
+  card, contract is also a glyph.
+- Redraw only on `mapDirty` or at 4 Hz for the slow breathing pulse of Signal flowing along edges
+  (an alpha oscillation on claimed edges, `0.4 + 0.15·sin(2πt/6)`). Under `prefers-reduced-motion`
+  the breathing is static.
+- Tap a hex → the STANDS list scrolls to and expands that card. The hex is a *pointer*, not the
+  interaction surface. At 360 px width a hex is ~34 px, which is below the 44 px target — so the
+  authoritative tap target is always the card.
+
+### 15.3 The stand card
+
+72 px collapsed, 210 px expanded. Full-width, tappable anywhere.
+
+```
+┌────────────────────────────────────────┐
+│ Beech Hollow          ring 2   ◇3      │
+│ loam · beech/pine     L 18.4 G  ▓▓▓▒░  │
+│ d 0.60  h 0.44  m 0.51        [◈]      │
+└────────────────────────────────────────┘
+```
+`◇3` = claimed neighbours (the connectivity signal, §4.2). `▓▓▓▒░` = litter remaining vs `L0`.
+`◈` = pinned retention override. Unsurveyed regions show `L ≈ 13–24 G` instead of an exact figure.
+
+Expanded, it adds: the retention slider, the density step button with its cost, the contract row, the
+rival bar if any, and — the only place they appear — `ADVANCE` / `SEED` / `KILL STAND`.
+
+### 15.4 Number formatting
+
+```js
+const SUF = ["","k","M","G","T","P","E","Z","Y","R","Q","aa","ab","ac", ...];
+function fmt(n, sig=3){
+  if (!isFinite(n)) return "∞";
+  if (n < 0) return "-" + fmt(-n, sig);
+  if (n < 1000) return n < 10 ? n.toFixed(2) : n < 100 ? n.toFixed(1) : Math.round(n).toString();
+  const e = Math.min(Math.floor(Math.log10(n)/3), SUF.length-1);
+  const m = n / Math.pow(1000, e);
+  return (m < 10 ? m.toFixed(2) : m < 100 ? m.toFixed(1) : m.toFixed(0)) + " " + SUF[e];
+}
+// 4.12 T   ·   6.40 G/s   ·   184 k   ·   9.20 T
+```
+
+Three significant figures, always. SI to Q (1e30), then two-letter suffixes `aa, ab, ac …` which are
+alphabetically orderable and therefore comparable at a glance — the fix for teardown §8.11
+("nobody can compare septendecillion to sexdecillion"). Act II never exceeds `T`; the rest of the
+table is for Act III.
+
+### 15.5 Accessibility
+
+Everything UP does not do (teardown §8.14):
+- `prefers-reduced-motion` honoured on: the map breathing, the blink, the act transition, all bar
+  animations. Motion is never the sole carrier of information.
+- Minimum tap target 44×44 CSS px, enforced with a lint rule in the build.
+- All state changes announced to an `aria-live="polite"` region — the console *is* the live region,
+  which means we get screen-reader support essentially for free.
+- Full keyboard navigation with visible focus rings; every action reachable by Tab and Enter.
+- No information conveyed by hue alone (see §15.2).
+- Text scales with the user's root font size; the layout is `rem`-based with `clamp()` and never
+  breaks up to 200%.
+- A `SLOW` toggle in settings that halves every timer-driven deadline (mast window 90 → 180 s,
+  pulse decisions, fire response) without changing any rate. Twitch is not the skill we are testing.
+
+### 15.6 Save
+
+```
+localStorage["hyphae.save.v3"]    // primary
+localStorage["hyphae.save.v3.bak" ]  // written every 10th save, never simultaneously
+```
+Plus **export/import as a base64 string** in the LOG tab, and a copy-to-clipboard button. UP's single
+un-exportable slot (§8.3) has eaten thousands of hours of other people's lives. Ours is three
+functions.
+
+Schema is versioned (`v`), regions are stored as **parallel typed arrays** rather than 61 objects
+(a `Float32Array` per field, `Uint8Array` for enums) — the whole board serialises to ~4 KB base64.
+
+```
+{ v:3, t:<epoch ms>, act:2,
+  res:{biomass,cumBiomass,extracted,signal,insight,spores,minerals,D,dCond,dVes,satTime},
+  mult:{E,yieldMult,signalMult,capMult,insightMult,antibiosis,advCostMult,advanceSpeed,
+        matSpeed,sporeMult,hazMult,necroMult,prestigeGrowth},
+  world:{seed, W, momentum, Pbar, windSpeed, windDir, t, masT},
+  regions:{q[],r[],terrain[],sp0[],sp1[],w0[],L0[],L[],T0[],T[],h[],d[],rho[],col[],
+           flags[],rival[],rivalStr[],barriers[],fireRisk[]},
+  flush:[{regionId,V,m,rob,fec,hyg}],
+  contracts:[{regionId,type,term,tension}],
+  proj:<bitfield of purchased ids>,
+  seen:<bitfield of triggered ids>,
+  stats:{flushes,pulses,densityBuys,seededCount,claimedCount,respecs,SrPeak,firesSeen}
+}
+```
+
+`seen` must be persisted separately from `proj`, or a project that triggered on a transient condition
+(`first rival contact`, `any h < 0.25`) disappears on reload. This is a real bug in several shipped
+incrementals and it is one bitfield to avoid.
+
+---
+
+## 16. WORKED EXAMPLE — one stand, three policies, twenty minutes
+
+Ring-3 loam/beech stand. `L0 = 3.15e10`, `T0 = 1.256e11`, `h0 = 0.62`, `decompF = 0.80`,
+`yieldF = 1.20`, `kappa = 1.00`, `ζ = 1.00`. Mid-act globals: `E = 8.7`, `yieldMult = 1.0`,
+`Σ liveInterface = 45.0`, moisture holding at 0.50.
+
+**Policy A — FEED (ρ = 0.60, d = 1.0, never kill).**
+```
+h → 1.00,  humusF = 1.00
+decomp = 6.2e-4 · 8.7 · 1.0 · 0.80 · 1.00 · 1.00 · L = 4.315e-3 · L
+L(t) : starts 3.15e10, litterfall adds 1.256e11·5.5e-9·1.00 = 691 g/s
+       steady state L* where 4.315e-3·L = 691  ⇒  L* = 1.60e5 (negligible)
+       so the pile drains: L(1200 s) = 3.15e10 · e^(-5.18) = 1.78e8
+gain over 1200 s = (3.15e10 − 1.78e8) · 0.40 · 1.20 = 1.503e10 g
+liveInterface contribution: 1.00, growing (T thickens)
+```
+
+**Policy B — TAKE (ρ = 0.10, d = 1.0, never kill).**
+```
+h → 0.10, humusF = 0.505
+decomp = 4.315e-3 · 0.505/1.00 · L = 2.179e-3 · L
+L(1200 s) = 3.15e10 · e^(-2.61) = 2.30e9
+gain = (3.15e10 − 2.30e9) · 0.90 · 1.20 = 3.15e10 g
+liveInterface: 1.00 now, but dT/dt < 0 — the stand is 5% dead in an hour, 30% in six hours
+fireRisk: accumulating whenever m < 0.26
+```
+**Policy B extracts 2.1× more in twenty minutes than Policy A.** The dial is not free in the medium
+run — §9.3's flat "net rate" table describes the *equilibrium*, and getting to a low-humus equilibrium
+involves eating the humus buffer, which is a genuine one-time windfall. This is the trap and it is
+correct that it is a trap: the short-run reward for defecting is real.
+
+**Policy C — KILL (necrotize at t=0, ρ irrelevant, d = 1.0).**
+```
+T decays at 8.5e-4/s: over 1200 s, T → 1.256e11 · e^(-1.02) = 4.53e10
+killed = 8.03e10  →  L += 7.39e10
+L(t) is now fed faster than it drains for the first ~400 s
+gain over 1200 s ≈ 6.42e10 g
+liveInterface: 1.00 → (4.53e10/1.256e11)^0.6 = 0.55 at t=1200, → 0.06 at t=3600
+Signal cost at t=3600: Σ interface 45.0 → 44.06 ⇒ Sr × (44.66/45.6)^0.85 = ×0.982
+```
+
+**Summary over 20 minutes, one stand:**
+
+| | Biomass gained | interface at t+1 h | fire risk | reclaimable | LEGACY cost |
+|---|---|---|---|---|---|
+| A FEED | 1.50e10 | 1.06 (thickening) | 0 | yes | 0 |
+| B TAKE | 3.15e10 | 0.98 | rising | yes, slowly | 0 |
+| C KILL | 6.42e10 | 0.06 | n/a | **never** | 1.71% |
+
+**2.1× and 4.3×.** Those are the multipliers the player is choosing between, sixty-one times, with the
+cost arriving forty minutes later in a different currency. That is the tragedy of the commons, stated
+as a table, and no text in the game explains it.
+
+---
+
+## 17. TUNING KNOBS AND BALANCE TARGETS
+
+Every `[K]` constant, in one place, with the direction of effect. Ship these in a single `TUNE` object
+so a designer can hot-reload them.
+
+```js
+const TUNE = {
+  // clocks
+  SIM_HZ: 20, WEATHER_HZ: 1, SLOW_HZ: 0.5, AUTOSAVE_S: 10,
+
+  // signal
+  SIG_K: 3.00,            // ↑ = faster everything cognitive
+  SIG_CAP_BASE: 260,      // ↑ = longer ripening cycles at every point in the act
+  D_COND_STEP: 0.35, D_VES_EXP: 1.85,
+  D_LADDER_SCALE: 5.0e8,  // ↑ = fewer D points
+
+  // insight
+  INS_K: 0.055, RIPE_T: 180, RIPE_DEC: 3.0, SAT_EPS: 0.5,
+
+  // decomposition
+  KAPPA: 6.20e-4,         // ↑ = the whole act is shorter
+  LAMBDA: 5.50e-9, TREE_G: 1.60e-8, TMAX_MULT: 1.35,
+  BASE_MORT: 9.0e-7, NECRO_RATE: 8.5e-4,
+  HUMUS_IN: 0.16, HUMUS_OUT_A: 2.80e-4, HUMUS_OUT_B: 9.50e-4, HUMUS_SCALE_F: 0.045,
+
+  // world size
+  LITTER_BASE: 1.15e10, STANDING_BASE: 4.60e10, RING_MULT: 0.55,
+  EXTRACT_TARGET: 5.20e12,       // ↑ = longer act, linearly
+
+  // territory
+  ADV_BASE: 1.80e6, ADV_GROWTH: 1.21, ADV_TIME: 45, DENS_COEF: 0.0035, DENS_GROWTH: 1.55,
+  CONN_K: 0.14, CONN_EXP: 1.25,
+
+  // flush
+  MAT_TIME: 240, SPORE_K: 0.045, HAZ_BASE: 0.0022,
+  OU_THETA: 0.010, OU_SIGMA: 0.028, OU_MEAN: 0.52, SEASON: 1800,
+  SEED_BASE: 1.20e4, SEED_GROWTH: 1.34, SPORE_DECAY: 0.99995,
+  MAST_PERIOD: 2100, MAST_JITTER: 400, MAST_WARN: 180, MAST_LEN: 90, MAST_MULT: 6.0,
+
+  // fire
+  FIRE_ACC: 0.0055, FIRE_DEC: 0.0090, FIRE_TRIG: 0.85, FIRE_P: 0.030,
+
+  // pulse
+  PULSE_COST_FRAC: 0.55, PULSE_CD: 120, PULSE_FALLOFF: 0.82,
+
+  // offline
+  OFFLINE_CAP: 43200, OFFLINE_TIERS: [[7200,1.0],[21600,0.75],[43200,0.50]],
+  OFFLINE_INSIGHT_CAP_S: 5400
+};
+```
+
+### Balance targets (verify against telemetry-free playtest logs)
+
+| Target | Value | Tolerance |
+|---|---|---|
+| Act II duration, median | **3 h 18 m** | ±25 min |
+| First new system after transition | 40 s | ±10 s |
+| Interval between new things, first 12 min | ≤ 100 s | hard |
+| Interval between new things, whole act | ≤ 6 min | hard |
+| Signal peak | 80% consumed | ±4% |
+| Carbon rate peak | 88% consumed | ±3% |
+| Decline phase length | 25 min | ±8 min |
+| Projects visible-but-unaffordable, at any moment | 3–7 | hard floor of 2 |
+| Projects unbought at transition | 6–8 | ≥ 4 |
+| Regions claimed at transition | 48–61 | ≥ 40 |
+| `LEGACY` spread across strategies | 0.06 – 0.62 | must exceed 0.4 range |
+| Skilled-vs-auto flush advantage | 1.8× | 1.6–2.1× |
+| Offline 8 h ÷ active 8 h (biomass) | 0.71 | 0.6–0.8 |
+
+---
+
+## 18. HOW ACT II BEATS THE TEARDOWN, ITEM BY ITEM
+
+| Teardown weakness | Act II's answer |
+|---|---|
+| §8.1 refuses to run on a phone | Portrait-first from the frame outward. Five thumb tabs, 44 px minimum, one floating hero button, the map is a *pointer* and the card is the target. |
+| §8.2 no offline progression | §14. Same sim function, 240 macro-steps, 12 h cap, 67% efficiency at cap, Insight capped at 90 min-equivalent, and a return screen that tells you what needs a decision. |
+| §8.3 one save slot, no export | Versioned key + rolling backup + base64 export/import + typed-array board at ~4 KB. |
+| §8.4 stock market has no agency | §7. You choose region, size, morph, and the moment. Skilled release beats naive by up to 66%, and the optimum moves with a weather process you can forecast. |
+| §8.5 quantum computing is an eye test | There is no reaction test anywhere in Act II. The `SLOW` toggle doubles every deadline. Pulse has a 45–120 s cooldown, not a window. |
+| §8.6 boredom/disorg punish walking away | Nothing decays while you are gone except spores (mildly, and E3 turns it off). Fires do not ignite offline. Ripeness sits at 1.0 offline. Absence is rewarded. |
+| §8.7 Act II mid-game plateau | The three-way pull between expansion shape (C), the flush interior optimum, and the kill-or-keep ordering means there is never a stretch where the only input is "press the bigger button." Mast Years every ~35 min. Peak-then-decline replaces the flat plateau entirely. |
+| §8.8 combat is a screensaver | §8. No battle screen. A continuous tug-of-war decided by purchases made minutes earlier, resolved on one amber bar, with a genuine *don't fight it yet* option (Armillaria as a free necrotroph). |
+| §8.9 unrecoverable Trust split | `reabsorption` (C8, 150 Ψ) with an escalating but always-payable cost, and the D panel says so before you spend the first point. |
+| §8.10 marketing is an undisclosed trap | No hidden dominated purchase exists. Where a purchase becomes worse late (contract `termMult`), the card shows the live delta. |
+| §8.11 long-scale number words | §15.4. Three sig figs, SI to Q, then alphabetically ordered two-letter suffixes. |
+| §8.12 wire market can't be learned | §7.2 (OU with a deterministic season, forecastable in closed form) and §10.4 (mineral price with 60-second momentum). Both have memory. Both reward a model. |
+| §8.13 endgame is 1–2 h of watching | The last 25 minutes are the *most* demanding in the act: a falling production curve, an 11-minute save-up against a visible gate, and 61 stands to order correctly. |
+| §8.14 no accessibility | §15.5. Reduced motion, ARIA-live console, keyboard, focus, no hue-only encoding, text scaling, `SLOW` mode, no strobes anywhere. |
+| §8.15 no "what should I do next" | The projects list is always exactly the set of available decisions; the return screen names what needs attention; and the console never gives advice, only facts. |
+| §8.16 third-party dependencies | Zero. No fonts, no images, no audio, no CDNs, no analytics. One HTML file. |
+
+**And the three things the teardown says to copy without modification, copied without modification:**
+
+1. **The 40-second automation** → Act II's first new system lands at 0:40 (`chemotaxis`), and the
+   opening beat ladder never leaves a gap over 100 seconds in the first twelve minutes (§3).
+2. **The trigger/cost split** → §12, verbatim, including greyed-forever visibility and DOM removal on
+   purchase.
+3. **Overflow becomes a currency** → §5, verbatim, plus the ripeness term, which is the only change
+   and which exists to make patience a *quantified* decision rather than a passive bonus.
+
+---
+
+## APPENDIX A — Implementation order
+
+For the programmer building this. Each step is independently playable, which is how you find out that
+a formula is wrong before you have built three systems on top of it.
+
+1. `TUNE`, `fmt()`, the console, the sim/render split, autosave. (Nothing on screen but a number.)
+2. Signal: `Sr`, `Sc`, the bar, `timeToFill`. Hardcode `Σ liveInterface = 1`.
+3. Insight: saturation, ripeness, the pip meter. **Verify §4.4's fill-time invariance by hand.**
+4. The projects engine + tier A. (The game is now UP's first ten minutes, in fungus.)
+5. Worldgen: 61 hexes, terrain, species, barriers, names. Render the map. No interaction.
+6. The stand card + list + discovery/survey.
+7. Decomposition, litterfall, tree growth, humus, the ρ dial. **Verify §9.2's equilibrium table.**
+8. Advance + density + `claimedCount` + connectivity `C`. Signal now comes from the world.
+9. Tier B. D ladder + allocation.
+10. Weather OU + the forecast strip. (Still no flush — just watch it and check it looks learnable.)
+11. Flush: primordia, morphs, maturity, hazards, release, spores. **Verify §7.7's `m*` table.**
+12. Spore seeding. Rivals + contest. Tier C.
+13. Pulse, all four modes, the falloff.
+14. Necrotrophy. Fire. Contracts re-homing + tension. Tier D.
+15. Offline reconciliation. **Verify §17's offline ÷ active ratio.**
+16. Tier E + the transition sequence + `LEGACY` export.
+17. Accessibility pass, `SLOW` mode, export/import, the 200% text-scale audit.
+
+## APPENDIX B — Things that are deliberately NOT in Act II
+
+Written down so nobody adds them later:
+
+- **A tech tree diagram.** The projects list is a flat, self-ordering queue. Adding a graph view would
+  let players plan around the trigger system, which is the thing that makes the game feel alive.
+- **A "kill all stands" button.** Ever.
+- **Region-level micromanagement beyond four controls** (density, ρ, contract type, advance/seed/kill).
+  Four is the ceiling for a 61-unit game on a phone.
+- **A resource that is a bigger version of another resource.** Every currency in Act II is earned by a
+  different verb: Biomass = decomposing, Signal = keeping trees alive, Insight = waiting while full,
+  Spores = timing a bet, Minerals = trading, D = milestones and jokes.
+- **Numerical damage/combat.** Rivals are pressure, not HP.
+- **A tutorial, a tooltip, a codex, or a settings gate.** Everything is on the button.
+- **Any text over twelve words on any button.**
+
+---
+
+*Act II is 61 decisions about whether a thing is fuel or a friend, made under a weather system, with a
+falling curve at the end. Everything in this document is in service of that sentence.*
