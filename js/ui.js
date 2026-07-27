@@ -543,6 +543,20 @@
 
   function setMass (n, g) { setSlot(n, C().fmtMass(g)) }
 
+  // A composite readout — `812 / 1.24 k`, `12.0 kg + 90.0` — is one mantissa with one unit. It
+  // must not go through splitNum, which would promote the last word of the phrase to the dimmer
+  // suffix slot and read as a different number.
+  function setRaw (n, mant, unit) {
+    if (n.__m.__t !== mant) {
+      n.__m.__t = mant
+      n.__m.textContent = mant
+    }
+    unit = unit || ''
+    if (n.__u.__t === unit) return
+    n.__u.__t = unit
+    n.__u.textContent = unit
+  }
+
   // R6: rates are always signed and always suffixed with `/s`. Zero renders as an em dash, because
   // a hard zero is information and a floating zero is noise.
   function setRate (n, v, unit) {
@@ -879,7 +893,9 @@
       setAttr(b, 'aria-pressed', next ? 'true' : 'false')
       onToggle(next)
     })
-    b.value = function () { return b.getAttribute('aria-pressed') === 'true' }
+    // `isOn`, not `value`: HTMLButtonElement already owns a string `value` property and would
+    // stringify a function assigned to it.
+    b.isOn = function () { return b.getAttribute('aria-pressed') === 'true' }
     b.setNote = function (s) { setText(n, s) }
     return b
   }
@@ -1489,7 +1505,7 @@
       setText(r1.lab, STR.sugar)
       var cap = A1() && A1().sugarCap ? A1().sugarCap() : 0
       var held = num(s.res.sugar)
-      setSlot(r1.val, C().fmt(held) + ' / ' + C().fmt(cap), '')
+      setRaw(r1.val, C().fmt(held) + ' / ' + C().fmt(cap), '')
       setRate(r1.rate, rateOf(v, 'sugar'), 'g/s')
       show(r1.cap, true)
       var f = cap > 0 ? held / cap : 0
@@ -1522,7 +1538,7 @@
       // When the net goes negative the line gains a countdown. That single row is Act I's
       // unsold-inventory sawtooth (01 §5A.6).
       if (ns < 0) {
-        setSlot(r3.rate, C().fmtTime(num(s.res.sugar) / Math.max(1e-9, -ns)), '')
+        setRaw(r3.rate, C().fmtTime(num(s.res.sugar) / Math.max(1e-9, -ns)), '')
         setData(r3.rate, 'sign', 'neg')
       } else {
         setSlot(r3.rate, STR.nothing, '')
@@ -1786,7 +1802,7 @@
 
       var a = A1()
       var u = a && a.utilisation ? a.utilisation() : 0
-      setSlot(utilNum, String(Math.round(fill(u) * 100)), '%')
+      setRaw(utilNum, String(Math.round(fill(u) * 100)), '%')
       utilBar.set(u, u >= T().A1.UTIL_ALARM ? 'warn' : '',
         Math.round(fill(u) * 100) + ' percent of what falls', T().A1.UTIL_ALARM)
 
@@ -2046,12 +2062,12 @@
       setText(seasonTxt, SEASON_LABEL[s.a1.season])
       setText(yearTxt, interp(STR.year, { n: s.a1.year + 1 }))
       var left = (1 - num(s.a1.seasonPhase)) * T().CLOCK.SEASON_S
-      setSlot(phaseNum, C().fmtTime(left), '')
+      setRaw(phaseNum, C().fmtTime(left), '')
       phase.set(num(s.a1.seasonPhase), '',
         SEASON_LABEL[s.a1.season] + ', ' + C().fmtTime(left) + ' left')
-      setSlot(moist, C().fmt(num(s.a1.moisture)),
-        '× ' + C().fmt(a && a.moistureMult ? a.moistureMult() : 1))
-      setSlot(warm, C().fmt(a && a.tempMult ? a.tempMult() : 1), '×')
+      setRaw(moist, C().fmt(num(s.a1.moisture)) + ' ×' +
+        C().fmt(a && a.moistureMult ? a.moistureMult() : 1), '')
+      setRaw(warm, C().fmt(a && a.tempMult ? a.tempMult() : 1), '×')
       show(evRow.el, s.a1.activeEvents.length > 0)
       if (s.a1.activeEvents.length) {
         setText(evTxt, s.a1.activeEvents.map(function (e) { return e.id }).join(' · '))
@@ -2219,7 +2235,7 @@
         volume: Math.max(0, e1.maxIntake(tree)) * (volume.value() / U.SLIDER_STEPS),
         term: C().clamp(term.value(), T().A1.TERM_MIN, e1.maxTerm(tree)),
         collateral: num(s.res.biomass) * (coll.value() / U.SLIDER_STEPS),
-        exclusive: excl.value()
+        exclusive: excl.isOn()
       }
     }
 
@@ -2232,7 +2248,7 @@
       var t = readTerms(s, tree)
       var mineralRate = e1.offer(tree, t.volume, t.term, t.collateral, t.exclusive)
       volume.setReadout(C().fmt(t.volume), 'g/s', C().fmt(t.volume) + ' grams per second')
-      term.setReadout(String(t.term), '', interp(STR.seasons, { n: t.term }))
+      term.setReadout(String(t.term), '', interp(STR.seasons, { n: t.term }))  // no suffix
       coll.setReadout(C().fmtMass(t.collateral), '', C().fmtMass(t.collateral))
       volume.setNote(C().fmt(e1.maxIntake(tree)) + ' g/s ' + STR.max)
       term.setNote(STR.max + ' ' + e1.maxTerm(tree))
@@ -2423,7 +2439,7 @@
       setText(have, interp(STR.places, { n: s.a1.patches, k: A.PATCH_MAX }))
       pv.setCount(s.a1.patches)
       if (next > A.PATCH_MAX) {
-        setSlot(cost, STR.nothing, '')
+        setRaw(cost, STR.nothing, '')
         setText(gate, '')
         show(claimBtn, false)
         prog.set(1, '', 'all six')
@@ -2431,7 +2447,7 @@
       }
       var spec = A.PATCH[next - 1]
       var needRep = A.PATCH_GATE_REP[next - 1]
-      setSlot(cost, C().fmtMass(spec.biomass) + ' + ' + C().fmt(spec.minerals), GLYPH.minerals)
+      setRaw(cost, C().fmtMass(spec.biomass) + ' + ' + C().fmt(spec.minerals), GLYPH.minerals)
       setText(gate, needRep > 0 ? interp(STR.needsStanding, { n: needRep }) : '')
       var flight = s.a1.claimInFlight
       show(claimBtn, !flight)

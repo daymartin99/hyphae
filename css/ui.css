@@ -1,8 +1,8 @@
 /* HYPHAE — the stylesheet. 06 §9.1 token block, §9.2 reset, §2 colour, §3 type, §4 layout,
    §5 components, §6 motion, §8 accessibility.
 
-   Two rules govern every line below and both are linted (06 §9.4):
-   no hex literal outside the token block, and no primitive token referenced from a component. */
+   Two rules govern every line below and both are linted (06 §9.4): no hex literal outside the
+   token block, and no primitive token referenced from a component rule. */
 
 /* ══ TOKENS · 06 §9.1 ══════════════════════════════════════════════════════ */
 
@@ -26,17 +26,15 @@
   /* ---- primitives: biolum ---- */
   --biolum-800:#0D2A24; --biolum-700:#15463A; --biolum-600:#3A8E74;
   --biolum-500:#62C39A; --biolum-400:#8CDCBB; --biolum-300:#B6EDD6;
-  /* ---- primitives: void ---- */
-  --void-900:#08080C; --void-700:#1A1A26; --void-500:#5A5878;
-  --void-300:#A8A4C6; --void-100:#D2CFE4;
-  /* ---- primitives: the two act-III neutrals that have no family slot ---- */
-  --void-sunk:#050508; --void-750:#22222F; --void-850:#121219;
-  --void-soft:#1F1F2C; --void-line:#2A2A3A; --void-strong:#3A3A4E;
-  --void-state:#7A7796; --void-tertiary:#8B87A8; --void-hyphae:#C9C6DE;
-  /* ---- primitives: light material ---- */
-  --paper-bg:#EAE6D9;   --paper-sunk:#E0DBCB; --paper-1:#F3F0E6; --paper-2:#FBF9F2;
-  --paper-press:#DFDACA;
-  --paper-soft:#DBD5C3; --paper-line:#CFC9B6; --paper-strong:#B7B09B; --paper-state:#7D775F;
+  /* ---- primitives: void (Act III only) ---- */
+  --void-900:#08080C; --void-850:#121219; --void-750:#22222F; --void-700:#1A1A26;
+  --void-sunk:#050508; --void-soft:#1F1F2C; --void-line:#2A2A3A; --void-strong:#3A3A4E;
+  --void-500:#5A5878; --void-state:#7A7796; --void-tertiary:#8B87A8;
+  --void-300:#A8A4C6; --void-100:#D2CFE4; --void-hyphae:#C9C6DE;
+  /* ---- primitives: the light material ---- */
+  --paper-bg:#EAE6D9; --paper-sunk:#E0DBCB; --paper-1:#F3F0E6; --paper-2:#FBF9F2;
+  --paper-press:#DFDACA; --paper-soft:#DBD5C3; --paper-line:#CFC9B6;
+  --paper-strong:#B7B09B; --paper-state:#7D775F;
   --ink-max:#0F1310; --ink-primary:#22261F; --ink-body:#3A382E; --ink-secondary:#4E4B40;
   --ink-tertiary:#635F52; --ink-disabled:#96917F; --ink-locked:#8A8574;
   --leaf-500:#3D6B3C; --leaf-text:#2F5730; --leaf-fill:#4E7C4C; --leaf-wash:#DCE7D8;
@@ -44,7 +42,7 @@
   --brick-500:#8E3A22; --brick-text:#7E3320; --brick-wash:#F0DCD4;
   --teal-500:#166B53; --teal-text:#10593F; --teal-fill:#2A7F63; --teal-wash:#D6E9E1;
   --paper-hyphae:#6E6858; --paper-track:#D5CFBC; --paper-canvas:#E4E0D1;
-  /* ---- scrims (the only rgba() in the file) ---- */
+  /* ---- the only rgba() in the file: two scrims and three inset highlights ---- */
   --scrim-dark:rgba(5,6,4,.72);
   --scrim-light:rgba(34,38,31,.44);
   --gloss:rgba(232,225,211,.055);
@@ -80,13 +78,12 @@
   --d-move:240ms; --d-reveal:320ms; --d-act:2600ms;
 
   /* ---- layout ---- */
-  --col-max:420px; --gutter:16px; --tabbar-h:56px; --plate-h:38%;
+  --col-max:420px; --gutter:16px; --tabbar-h:56px; --tap:44px;
   --con-row:19px; --con-rows:5; --con-pad:6px;
-  --plate-px:296px;                       /* written by ui.js in one frame; never transitioned */
-  --tap:44px;
+  --plate-px:296px;      /* written by ui.js in one frame; never transitioned */
 }
 
-/* ══ SEMANTIC BINDINGS · 06 §2.3 (dark is the designed artefact) ═══════════ */
+/* ══ SEMANTIC BINDINGS · 06 §2.3. Dark is the designed artefact. ═══════════ */
 
 :root{
   --bg:            var(--soil-900);
@@ -95,12 +92,11 @@
   --surface-2:     var(--soil-750);
   --surface-press: var(--soil-850);
   --scrim:         var(--scrim-dark);
-  --inset:         var(--gloss);
 
-  --line-soft:     var(--soil-700);
-  --line:          var(--soil-600);
-  --line-strong:   var(--soil-500);
-  --line-state:    var(--soil-300);
+  --line-soft:     var(--soil-700);   /* decorative dividers, exempt from 3:1 */
+  --line:          var(--soil-600);   /* structural */
+  --line-strong:   var(--soil-500);   /* control outlines */
+  --line-state:    var(--soil-300);   /* any border that CARRIES STATE — 4.93:1 */
 
   --text-max:      var(--spore-000);
   --text-primary:  var(--spore-050);
@@ -120,7 +116,7 @@
   --attention:     var(--amber-500);
   --attention-text:var(--amber-500);
   --attention-dim: var(--amber-600);
-  --negative:      var(--rust-500);
+  --negative:      var(--rust-500);   /* fills and borders only — never a word under 24 px */
   --negative-text: var(--rust-400);
   --negative-wash: var(--rust-800);
   --signal:        var(--biolum-500);
@@ -132,11 +128,12 @@
   --hyphae-stroke: var(--hyphae);
   --meter-track:   var(--soil-600);
   --canvas-bg:     var(--soil-950);
+  --inset:         var(--gloss);
 }
 
-/* Light · 06 §2.5. Not an inversion: a different material.
-   `auto` and "JS has not run yet" resolve through the media query; the explicit bindings below
-   it win when the player has chosen, because they come later at equal specificity. */
+/* Light · 06 §2.5. Not an inversion: a different material. `auto`, and the frame before JS has
+   written data-theme, resolve through the media query; the explicit bindings below win when the
+   player has chosen, because they come later at equal specificity. */
 @media (prefers-color-scheme: light){
   :root:not([data-theme]), :root[data-theme="auto"]{
     --bg:#EAE6D9; --bg-sunk:#E0DBCB;
@@ -197,7 +194,8 @@
   --meter-track:var(--soil-600); --canvas-bg:var(--soil-950);
 }
 
-/* The Act III cold shift · 06 §2.4. One rebinding of the neutrals; the meanings do not move.
+/* The Act III cold shift · 06 §2.4. One rebinding of the neutrals; chlorophyll, amber, rust and
+   biolum do not move. The ground goes out from under the palette while the meanings stay fixed.
    It comes last so it wins over whichever theme is bound. */
 :root[data-act="3"]{
   --bg:var(--void-900); --bg-sunk:var(--void-sunk);
@@ -209,7 +207,8 @@
   --canvas-bg:var(--void-sunk); --hyphae-stroke:var(--void-hyphae);
 }
 
-/* 06 §2.6. Six lines: secondary and tertiary text move one full step up. */
+/* 06 §2.6. Secondary and tertiary text move one full step up; the decorative hairline becomes
+   structural. Six lines. */
 @media (prefers-contrast: more){
   :root{
     --text-secondary:var(--spore-050);
@@ -251,21 +250,17 @@ canvas{ display:block; }
   background:var(--bg);
   overflow:hidden;
 }
-
 .main{
   position:relative; z-index:1;
   flex:1 1 auto; min-height:0;
   width:100%; max-width:var(--col-max); margin:0 auto;
   display:flex; flex-direction:column;
 }
+.scroll-main{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
 
-.scroll-main{
-  flex:1 1 auto; min-height:0;
-  display:flex; flex-direction:column;
-}
-
-/* The plate's height is written as a px custom property in a single frame — never transitioned,
-   because height is a layout property (06 §6.7 rule 3). The content beneath fades instead. */
+/* The plate's height is a px custom property written in a single frame — never transitioned,
+   because height is a layout property (06 §6.7 rule 3). The content beneath fades instead, and
+   the resize lands under the fade, so it is not perceived as a jump. */
 .plate{
   position:relative; flex:0 0 auto;
   height:var(--plate-px);
@@ -275,6 +270,8 @@ canvas{ display:block; }
 }
 .plate > canvas{ position:absolute; inset:0; width:100%; height:100%; }
 
+/* The panel stack grows; the hero is pushed to the bottom while the stack is short, and stays the
+   last element in the scroll once it is long. Zone A, forever. */
 .panels{ flex:1 1 auto; padding-top:var(--sp-12); }
 .tail{ flex:0 0 auto; height:calc(var(--sp-24) + env(safe-area-inset-bottom)); }
 
@@ -300,12 +297,15 @@ canvas{ display:block; }
              color:var(--text-secondary); min-width:72px; flex:0 0 auto; }
 .ledger-val{ font:var(--t-value); color:var(--text-max); min-width:8ch;
              margin-inline-start:auto; text-align:end; }
-.ledger-rate{ font:var(--t-meta); min-width:9ch; text-align:end; color:var(--text-tertiary); }
+.ledger-rate{ font:var(--t-meta); min-width:9ch; text-align:end; color:var(--text-tertiary);
+              transition:color var(--d-state) linear; }
 .ledger-rate[data-sign="pos"]{ color:var(--positive-text); }
+/* A falling rate WARNS; it does not mourn. */
 .ledger-rate[data-sign="neg"]{ color:var(--attention); }
+.ledger-rate[data-sign="zero"]{ color:var(--text-tertiary); }
 
 /* Biomass is the paperclip: the one asymmetry in the strip. Alone on screen it is the display
-   size; it steps down to hero when a second row arrives. */
+   size; it steps down to hero the instant a second row arrives. */
 .ledger-row[data-lead="solo"]{ min-height:68px; align-items:center; }
 .ledger-row[data-lead="solo"] .ledger-val{ font:var(--t-display); letter-spacing:-.022em; }
 .ledger-row[data-lead="1"]{ min-height:48px; }
@@ -316,22 +316,28 @@ canvas{ display:block; }
              transform-origin:left center; transform:scaleX(var(--v,0));
              background:var(--positive); transition:transform var(--d-fade) linear; }
 .ledger-cap[data-tone="warn"]{ background:var(--attention); }
-.ledger-sub{ display:flex; padding:0 var(--gutter) var(--sp-4);
-             font:var(--t-meta); color:var(--negative-text); justify-content:flex-end; }
+.ledger-sub{ display:flex; justify-content:flex-end; padding:0 var(--gutter) var(--sp-4);
+             font:var(--t-meta); color:var(--negative-text); }
 
+/* R4: a discrete change snaps and ramps its colour. No transform, no digit animation. */
+.ledger-val,.row-num,.field-val{ transition:color var(--d-fade) linear; }
+[data-flash="gain"]{ color:var(--text-max); transition-duration:90ms; }
+[data-flash="loss"]{ color:var(--negative-text); transition-duration:90ms; }
+
+/* The suffix is always one step dimmer than the mantissa. It costs one span. */
 .unit{ color:var(--text-tertiary); margin-inline-start:.28ch; }
 .ledger-val .unit{ color:var(--text-secondary); }
 .unit[data-fade="in"]{ animation:sufIn var(--d-fade) linear; }
 @keyframes sufIn{ from{opacity:0} to{opacity:1} }
 
 .gear{
-  position:absolute; inset-block-start:0; inset-inline-end:0;
+  position:absolute; top:0; inset-inline-end:0;
   width:var(--tap); height:var(--tap);
   display:flex; align-items:center; justify-content:center;
   color:var(--text-tertiary);
   transition:color var(--d-state) linear, background-color var(--d-state) linear;
 }
-.gear:active{ background:var(--surface-press); color:var(--text-max); }
+.gear[data-press="1"]{ background:var(--surface-press); color:var(--text-max); }
 
 /* ══ HERO · 06 §5.2 ════════════════════════════════════════════════════════ */
 
@@ -344,36 +350,40 @@ canvas{ display:block; }
   border:1px solid var(--line-strong);
   box-shadow:inset 0 1px 0 var(--gloss);
   color:var(--text-primary);
-  font:var(--t-title); letter-spacing:.12em; text-transform:uppercase;
+  text-align:center;
   transform:translateZ(0);
   transition:transform var(--d-release) var(--ease-out),
              background-color var(--d-state) linear,
              border-color var(--d-state) linear,
              color var(--d-state) linear;
 }
+.hero-lab{ font:var(--t-title); letter-spacing:.12em; text-transform:uppercase; }
+
+/* Press timing is asymmetric on purpose. Down: 70 ms, front-loaded — the button must already be
+   moving before the finger registers. Up: 220 ms, long-tailed — the release is the pleasure. */
 .hero[data-press="1"]{
   transform:scale(.972);
   background:var(--surface-press); border-color:var(--line);
   transition-duration:var(--d-press);
   transition-timing-function:var(--ease-press);
 }
-/* Disabled is a colour change and never an opacity change: opacity dims the border, the label
-   and the inset highlight by different perceptual amounts and reads as "loading". */
+/* Disabled is a colour change and never an opacity change: opacity dims the border, the label and
+   the inset highlight by different perceptual amounts and reads as "loading". */
 .hero[data-state="disabled"]{
   background:var(--surface-1); border-color:var(--line-soft);
   color:var(--text-disabled); box-shadow:none;
 }
-.hero[data-state="disabled"][data-press="1"]{ transform:none; background:var(--surface-1); }
 .hero[data-state="locked"]{
   background:var(--surface-1); border-color:var(--line);
   color:var(--text-locked); box-shadow:none;
 }
-.hero[data-state="locked"][data-press="1"]{ transform:none; }
+.hero[data-state="disabled"][data-press="1"],
+.hero[data-state="locked"][data-press="1"]{ transform:none; background:var(--surface-1); }
 .hero[data-state="new"]{ border-color:var(--positive); color:var(--text-max); }
-.hero-cost{ display:block; font:var(--t-meta); letter-spacing:0; text-transform:none;
-            color:var(--attention-dim); margin-top:var(--sp-2);
-            font-family:var(--font-mono); white-space:nowrap; }
-.hero--wide{ width:calc(100% - var(--sp-32)); max-width:none; }
+.hero-cost{ display:block; margin-top:var(--sp-2);
+            font-family:var(--font-mono); font-size:13px; white-space:nowrap;
+            color:var(--attention-dim); }
+.hero--wide{ width:100%; max-width:none; margin-inline:0; }
 .hero--danger{ background:var(--negative); border-color:var(--negative);
                color:var(--text-on-rust); }
 
@@ -392,6 +402,8 @@ canvas{ display:block; }
 }
 .fab[data-press="1"]{ transform:scale(.94); background:var(--surface-press);
                       transition-duration:var(--d-press); }
+/* The cooldown ring is a conic gradient written once per 100 ms, never per frame. A ready button
+   is bright; that is enough. No pulse, no bounce, no repeating animation. */
 .fab[data-cool]{
   background:
     conic-gradient(var(--signal) calc(var(--p,0) * 360deg), transparent 0) border-box,
@@ -416,15 +428,15 @@ canvas{ display:block; }
 .panel-empty{ padding:var(--sp-12) var(--gutter); font:var(--t-meta);
               color:var(--text-tertiary); text-align:center; }
 
-/* A reveal is one fade and one 6 px rise, into a slot at the bottom of the stack (06 §6.4). */
+/* A reveal is one fade and one 6 px rise. There is no blink: our replacement carries strictly
+   more information than UP's twelve 30 ms flashes, for very much less light (06 §6.4). */
 .reveal{ animation:reveal var(--d-reveal) var(--ease-organic) both; }
 @keyframes reveal{
   from{ opacity:0; transform:translateY(6px); }
   to  { opacity:1; transform:none; }
 }
-
 .newdot{
-  position:absolute; inset-block-start:var(--sp-8); inset-inline-end:var(--sp-8);
+  position:absolute; top:var(--sp-8); inset-inline-end:var(--sp-8);
   width:6px; height:6px; border-radius:var(--r-full); background:var(--positive);
   transition:opacity var(--d-fade) linear;
 }
@@ -433,7 +445,8 @@ canvas{ display:block; }
 /* ══ CARD · 06 §5.4 ════════════════════════════════════════════════════════ */
 
 .card{
-  position:relative; display:block; width:calc(100% - var(--sp-32));
+  position:relative; display:block;
+  width:calc(100% - var(--gutter) * 2);
   min-height:88px; margin:0 var(--gutter) var(--sp-8);
   padding:var(--sp-12) var(--gutter);
   background:var(--surface-1); border:1px solid var(--line-soft);
@@ -453,80 +466,121 @@ canvas{ display:block; }
             display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
             overflow:hidden; }
 
+/* Triggered-but-unaffordable is where cards live most of their lives, and it must look good, not
+   sad. Affordable is an event, and it happens 163 times. */
 .card[data-s="afford"]{ border-inline-start-color:var(--positive); }
 .card[data-s="afford"] .card-title{ color:var(--text-max); }
 .card[data-s="afford"] .card-cost{ color:var(--positive-text); font-weight:600; }
-.card[data-s="new"]{ border-inline-start-color:var(--positive); }
-.card[data-s="new"] .card-title{ color:var(--text-max); }
 .card[data-s="unbuyable"]{ border-inline-start-color:var(--line-soft); }
 .card[data-s="unbuyable"] .card-title{ color:var(--text-locked); }
 .card[data-s="unbuyable"] .card-cost{ color:var(--text-tertiary); }
 .card[data-s="unbuyable"][data-press="1"]{ transform:none; }
-.card[data-pinned="1"]{ border-inline-start-width:3px; }
 
 /* ══ ROW · 06 §5.5 ═════════════════════════════════════════════════════════ */
 
+/* A row is a plain block. When it is interactive its summary lines live inside one `.row-main`
+   button and the expanded region is that button's sibling, so a row never nests one control
+   inside another. */
 .row{
-  position:relative; display:block; width:calc(100% - var(--sp-32));
-  min-height:72px; margin:0 var(--gutter) var(--sp-6);
+  position:relative;
+  margin:0 var(--gutter) var(--sp-6);
   padding:var(--sp-12) var(--gutter);
   background:var(--surface-1); border:1px solid var(--line-soft);
-  border-radius:var(--r-md); text-align:start; color:inherit;
+  border-radius:var(--r-md);
   transition:transform var(--d-release) var(--ease-out),
              background-color var(--d-state) linear, border-color var(--d-fade) linear;
 }
 .row[data-press="1"]{ transform:scale(.99); background:var(--surface-press);
                       transition-duration:var(--d-press); }
-/* A hesitant press shows the player that holding does something (06 §5.5). */
+/* A hesitant press SHOWS the player that holding does something (06 §5.5). */
 .row[data-hold="1"]{ border-color:var(--line-state);
                      transition:border-color 240ms 180ms linear; }
+.row-main{ display:block; width:100%; text-align:start; color:inherit;
+           min-height:var(--tap); }
 .row-line{ display:flex; align-items:baseline; gap:var(--sp-8); min-height:19px; }
 .row-line + .row-line{ margin-top:var(--sp-4); }
 .row-name{ font:var(--t-title); color:var(--text-primary); }
 .row-sub{ font:var(--t-meta); color:var(--text-secondary); }
+.row-sub[data-tone="cost"]{ color:var(--attention-dim); }
+.row-sub[data-tone="forecast"]{ color:var(--text-locked); }
 .row-num{ margin-inline-start:auto; font:var(--t-meta); color:var(--text-primary);
           min-width:7ch; text-align:end; }
 .row-num[data-tone="pos"]{ color:var(--positive-text); }
 .row-num[data-tone="warn"]{ color:var(--attention); }
 .row-num[data-tone="neg"]{ color:var(--negative-text); }
-.row-ascii{ font-family:var(--font-mono); font-size:13px; color:var(--text-tertiary);
-            letter-spacing:-.02em; }
+.row-ascii{ font-family:var(--font-mono); font-size:13px; letter-spacing:-.02em;
+            color:var(--text-tertiary); }
+.row-arrow{ font:var(--t-meta); color:var(--text-tertiary); min-width:1.4ch; }
+.row-arrow[data-dir="up"]{ color:var(--attention); }
+.row-arrow[data-dir="down"]{ color:var(--positive-text); }
 .row-expand{ margin-top:var(--sp-12); padding-top:var(--sp-12);
              border-top:1px solid var(--line-soft); }
 .row-actions{ display:flex; gap:var(--sp-8); flex-wrap:wrap; margin-top:var(--sp-12); }
+.summary{ margin-top:var(--sp-12); }
+.pool-list,.sub-list{ display:block; }
+
+.act-btn{
+  flex:1 1 auto; min-width:88px; min-height:var(--tap);
+  border-radius:var(--r-md); background:var(--surface-2);
+  border:1px solid var(--line-strong); color:var(--text-primary);
+  font:var(--t-label); letter-spacing:.10em; text-transform:uppercase;
+  transition:transform var(--d-release) var(--ease-out),
+             background-color var(--d-state) linear, color var(--d-state) linear,
+             border-color var(--d-state) linear;
+}
+.act-btn[data-press="1"]{ transform:scale(.98); background:var(--surface-press);
+                          transition-duration:var(--d-press); }
+.act-btn[data-s="want"]{ color:var(--text-locked); border-color:var(--line-soft); }
+.act-btn[data-s="want"][data-press="1"]{ transform:none; }
+
+.side-btn{
+  min-width:var(--tap); min-height:var(--tap); padding:0 var(--sp-8);
+  border-radius:var(--r-sm); border:1px solid var(--line-strong);
+  color:var(--text-secondary);
+  font:var(--t-label); letter-spacing:.10em; text-transform:uppercase;
+  transition:background-color var(--d-state) linear, color var(--d-state) linear;
+}
+.side-btn[aria-pressed="true"]{ background:var(--surface-2); color:var(--text-max); }
+.side-btn[data-press="1"]{ background:var(--surface-press); }
 
 /* ══ METERS · 06 §5.6 ══════════════════════════════════════════════════════ */
 
 .meter{ position:relative; height:6px; border-radius:var(--r-xs);
         background:var(--meter-track); overflow:hidden; }
-/* LINEAR, always. A meter that eases lies about rate. */
+.meter--grow{ flex:1 1 auto; align-self:center; }
+/* transform: scaleX, never width. LINEAR always — an eased meter implies an acceleration the
+   simulation does not have, and players read meters as rate instruments. */
 .meter-fill{ height:100%; width:100%; transform-origin:left center;
              transform:scaleX(var(--v,0)); background:var(--positive);
              transition:transform var(--d-fade) linear; }
 .meter[data-tone="signal"] .meter-fill{ background:var(--signal); }
 .meter[data-tone="warn"]   .meter-fill{ background:var(--attention); }
 .meter[data-tone="bad"]    .meter-fill{ background:var(--negative); }
+/* The target tick is a sibling, not part of the fill. */
 .meter-tick{ position:absolute; top:0; bottom:0; width:2px; background:var(--text-max);
              inset-inline-start:calc(var(--t,0) * 100%); }
 
+/* Five pips, never more, never fewer: five is countable at a glance and a percentage is not.
+   A pip is a discrete fact, so pips fill with no transition at all. */
 .pips{ display:flex; gap:var(--sp-6); align-items:center; }
 .pip{ width:8px; height:8px; border-radius:var(--r-full);
       background:transparent; border:1px solid var(--line-strong); }
 .pip[data-on="1"]{ background:var(--positive); border-color:var(--positive); }
 .pips[data-tone="signal"] .pip[data-on="1"]{ background:var(--signal); border-color:var(--signal); }
-.pips[data-tone="warn"] .pip[data-on="1"]{ background:var(--attention); border-color:var(--attention); }
+.pips[data-tone="warn"] .pip[data-on="1"]{ background:var(--attention);
+                                           border-color:var(--attention); }
 
 .ascii{ font-family:var(--font-mono); font-size:13px; letter-spacing:-.02em;
         color:var(--text-secondary); white-space:nowrap; }
 
 /* ══ BUY-BURST · 06 §5.11 ══════════════════════════════════════════════════ */
 
-.burst{ display:flex; gap:var(--sp-8); margin-inline-start:auto; }
+.burst{ display:flex; gap:var(--sp-8); margin-inline-start:auto; align-self:center; }
 .burst > button{
-  min-width:52px; height:52px; padding:0 var(--sp-8);
+  min-width:52px; height:52px; padding:0 var(--sp-6);
   border-radius:var(--r-md); background:var(--surface-2);
   border:1px solid var(--line-strong); color:var(--text-primary);
-  font:var(--t-label); letter-spacing:.10em; text-transform:uppercase;
+  font:var(--t-label); letter-spacing:.08em; text-transform:uppercase;
   transition:transform var(--d-release) var(--ease-out),
              background-color var(--d-state) linear, color var(--d-state) linear,
              border-color var(--d-state) linear;
@@ -537,13 +591,13 @@ canvas{ display:block; }
 .burst > button[data-s="want"]{ color:var(--text-locked); border-color:var(--line-soft); }
 .burst > button[data-s="want"][data-press="1"]{ transform:none; }
 
-/* ══ SEGMENTED CONTROL / SLIDER · 06 §5.10 ═════════════════════════════════ */
+/* ══ SEGMENTED CONTROL, SLIDER, CHECKBOX · 06 §5.10 ════════════════════════ */
 
 .seg{ display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:2px;
       padding:2px; background:var(--surface-1); border:1px solid var(--line-soft);
       border-radius:var(--r-md); }
 .seg > button{ min-height:var(--tap); border-radius:var(--r-sm); background:transparent;
-               color:var(--text-secondary); font:var(--t-label); letter-spacing:.14em;
+               color:var(--text-secondary); font:var(--t-label); letter-spacing:.10em;
                text-transform:uppercase;
                transition:background-color var(--d-state) linear, color var(--d-state) linear; }
 .seg > button[aria-pressed="true"]{ background:var(--surface-2); color:var(--text-max);
@@ -554,9 +608,11 @@ canvas{ display:block; }
 .field-lab{ font:var(--t-label); letter-spacing:.14em; text-transform:uppercase;
             color:var(--text-secondary); }
 .field-val{ margin-inline-start:auto; font:var(--t-value); color:var(--text-max);
-            text-align:end; }
+            text-align:end; min-width:8ch; }
 .field-note{ font:var(--t-meta); color:var(--text-tertiary); margin-top:var(--sp-4); }
 
+/* The track is 6 px, the thumb is 28 px, and the hit target is the full 44 px height of the
+   control. The thumb has no transition: while dragging it must track the finger exactly. */
 .slider{
   -webkit-appearance:none; appearance:none;
   display:block; width:100%; height:var(--tap); margin-top:var(--sp-4);
@@ -596,7 +652,8 @@ canvas{ display:block; }
 
 .console{
   position:relative; flex:0 0 auto; z-index:60;
-  height:calc(var(--con-rows) * var(--con-row) + var(--con-pad) * 2);
+  height:calc(var(--con-rows) * var(--con-row) + var(--con-pad) * 2 +
+              env(safe-area-inset-bottom));
   padding:var(--con-pad) var(--gutter);
   padding-bottom:calc(var(--con-pad) + env(safe-area-inset-bottom));
   background:var(--bg-sunk); border-top:1px solid var(--line-soft);
@@ -604,7 +661,7 @@ canvas{ display:block; }
   color:var(--text-console); overflow:hidden;
 }
 .console-inner{ max-width:var(--col-max); margin:0 auto; }
-.console-line{ display:flex; gap:0; }
+.console-line{ display:flex; }
 .console-line:nth-last-child(1){ opacity:1;   color:var(--text-primary); }
 .console-line:nth-last-child(2){ opacity:.62; }
 .console-line:nth-last-child(3){ opacity:.44; }
@@ -614,16 +671,28 @@ canvas{ display:block; }
 .console-line[data-tone="warn"]{ color:var(--attention); }
 .console-line[data-tone="neg"]{ color:var(--negative-text); }
 .console-gutter{ flex:0 0 auto; white-space:pre; }
+/* The console is a five-ROW window, not a five-line one: a long line costs you history, not
+   legibility (BIBLE §7 C15). */
 .console-text{ flex:1 1 auto; overflow-wrap:anywhere; }
 /* One transform on one element; no per-line animation, no layout. */
 .console-line-enter{ animation:conEnter var(--d-fade) var(--ease-out) both; }
-@keyframes conEnter{ from{ transform:translateY(var(--con-row)); opacity:0; }
-                     to  { transform:none; opacity:1; } }
-.console-cur{ animation:cur 1060ms steps(1,end) infinite; }
+@keyframes conEnter{
+  from{ transform:translateY(var(--con-row)); opacity:0; }
+  to  { transform:none; opacity:1; }
+}
+/* One of exactly two infinite loops in the build. Two luminance changes per second. */
+.console-cur{
+  position:absolute; inset-inline-end:var(--gutter);
+  bottom:calc(var(--con-pad) + env(safe-area-inset-bottom));
+  color:var(--text-primary);
+  animation:cur 1060ms steps(1,end) infinite;
+}
 @keyframes cur{ 0%,50%{opacity:1} 50.01%,100%{opacity:.12} }
 
 /* ══ TAB BAR · 06 §4.4 ═════════════════════════════════════════════════════ */
 
+/* Five columns from boot; unearned slots are `visibility:hidden`, never `display:none`, so the
+   bar cannot reflow when a tab arrives. */
 .tabbar{
   flex:0 0 auto; z-index:55;
   display:grid; grid-template-columns:repeat(5,1fr);
@@ -643,16 +712,19 @@ canvas{ display:block; }
 .tab[aria-selected="true"]{ color:var(--text-max); }
 .tab[data-press="1"]{ background:var(--surface-press); color:var(--text-max); }
 .tab-lab{ font:var(--t-micro); letter-spacing:.10em; text-transform:uppercase; }
-/* A top rule, not a bottom one: a bottom indicator on a bottom bar sits under the thumb. */
+/* A TOP rule, not a bottom one: a bottom indicator on a bottom bar sits under the thumb and is
+   invisible while being touched. */
 .tab-ind{ position:absolute; top:0; left:14px; right:14px; height:2px;
           border-radius:var(--r-xs); background:var(--positive);
           transform:scaleX(0); transform-origin:center;
           transition:transform var(--d-reveal) var(--ease-out); }
 .tab[aria-selected="true"] .tab-ind{ transform:scaleX(1); }
-.tab-badge{ position:absolute; top:6px; right:calc(50% - 14px);
+/* Badges are dots, never counts: a count invites completionism, a dot says "something is here". */
+.tab-badge{ position:absolute; top:6px; inset-inline-end:calc(50% - 14px);
             width:6px; height:6px; border-radius:var(--r-full); background:var(--positive); }
 
-.tabpanel[hidden]{ display:none; }
+/* Switching tabs is a cross-fade, not a slide: the five tabs are not adjacent, they are five
+   views of one organism. */
 .tabpanel{ animation:tabFade var(--d-fade) linear both; }
 @keyframes tabFade{ from{opacity:0} to{opacity:1} }
 
@@ -677,17 +749,19 @@ canvas{ display:block; }
               padding:var(--sp-16) var(--gutter) var(--sp-8); flex:0 0 auto; }
 .sheet-body{ overflow-y:auto; overscroll-behavior:contain; flex:1 1 auto;
              padding:0 var(--gutter) var(--sp-16); }
+/* Cancel is left, Confirm is right: right is thumb-natural for the dominant hand and confirm is
+   the common case. */
 .sheet-foot{ display:flex; gap:var(--sp-12); flex:0 0 auto;
              padding:var(--sp-12) var(--gutter) calc(var(--sp-16) + env(safe-area-inset-bottom));
              border-top:1px solid var(--line-soft); }
-.sheet-foot > button{ flex:1; min-height:48px; border-radius:var(--r-md);
-                      background:var(--surface-1); border:1px solid var(--line-strong);
-                      color:var(--text-primary); font:var(--t-title);
-                      letter-spacing:.12em; text-transform:uppercase;
-                      transition:transform var(--d-release) var(--ease-out),
-                                 background-color var(--d-state) linear; }
-.sheet-foot > button[data-press="1"]{ transform:scale(.98); background:var(--surface-press);
-                                      transition-duration:var(--d-press); }
+.sheet-btn{ flex:1; min-height:48px; border-radius:var(--r-md);
+            background:var(--surface-1); border:1px solid var(--line-strong);
+            color:var(--text-primary); font:var(--t-title);
+            letter-spacing:.12em; text-transform:uppercase;
+            transition:transform var(--d-release) var(--ease-out),
+                       background-color var(--d-state) linear; }
+.sheet-btn[data-press="1"]{ transform:scale(.98); background:var(--surface-press);
+                            transition-duration:var(--d-press); }
 .sheet-row{ display:flex; align-items:center; gap:var(--sp-12);
             min-height:var(--tap); padding:var(--sp-8) 0;
             border-bottom:1px solid var(--line-soft); }
@@ -695,12 +769,13 @@ canvas{ display:block; }
 .sheet-row > .field-lab{ flex:0 0 auto; min-width:96px; }
 .sheet-row > .seg{ flex:1 1 auto; }
 .sheet-note{ font:var(--t-meta); color:var(--text-tertiary); padding:var(--sp-8) 0; }
-.sheet-code{ width:100%; min-height:88px; padding:var(--sp-8);
+.sheet-code{ width:100%; min-height:88px; padding:var(--sp-8); margin-top:var(--sp-8);
              background:var(--bg-sunk); border:1px solid var(--line);
              border-radius:var(--r-md); color:var(--text-secondary);
              font-family:var(--font-mono); font-size:13px; resize:none; }
 
-/* Destructive confirmation is a 400 ms press-and-hold. The fill is a child transform. */
+/* Destructive confirmation is a 400 ms press-and-hold: the fill is a child transform, and
+   releasing early reverses it in 160 ms. */
 .hold{ position:relative; overflow:hidden; }
 .hold-fill{ position:absolute; inset:0; background:var(--negative);
             transform:scaleX(0); transform-origin:left center;
@@ -726,7 +801,7 @@ canvas{ display:block; }
              color:var(--positive-text); font:var(--t-label); letter-spacing:.14em;
              text-transform:uppercase; }
 
-/* ══ TRANSITION STAGE · 06 §6.6 ════════════════════════════════════════════ */
+/* ══ ACT TRANSITION · 06 §6.6 ══════════════════════════════════════════════ */
 
 .shell[data-transition="1"] .panels,
 .shell[data-transition="1"] .plate,
@@ -736,9 +811,9 @@ canvas{ display:block; }
 }
 .curtain{ position:absolute; inset:0; z-index:45; display:flex; flex-direction:column;
           align-items:center; justify-content:center; gap:var(--sp-16);
-          padding:0 var(--gutter); pointer-events:none;
-          font:var(--t-display); letter-spacing:-.022em; color:var(--text-max);
-          text-align:center; }
+          padding:0 var(--gutter); pointer-events:none; }
+.curtain-line{ font:var(--t-display); letter-spacing:-.022em; color:var(--text-max);
+               text-align:center; animation:reveal var(--d-reveal) var(--ease-organic) both; }
 
 /* ══ RESPONSIVE · 06 §4.7 ══════════════════════════════════════════════════ */
 
@@ -748,33 +823,33 @@ canvas{ display:block; }
   .tabbar{ height:calc(52px + env(safe-area-inset-bottom)); }
   .tab{ min-height:52px; }
   .tab-lab{ display:none; }
+  .burst > button{ min-width:var(--tap); }
 }
 
-/* Large phone landscape and small tablet: the column pins and the canvas becomes the wall. */
+/* Large phone landscape and small tablet: the column pins to 420 px and the canvas leaves it to
+   become a full-bleed backdrop with a static vignette. Not a filter — a gradient overlay. */
 @media (min-width:640px) and (max-width:899px){
   .plate{ position:fixed; inset:0; height:auto; z-index:0; opacity:.14;
           border-bottom:0; pointer-events:none; }
   .plate::after{ content:""; position:absolute; inset:0;
                  background:radial-gradient(ellipse at center, transparent 30%, var(--bg) 82%); }
-  .plate-spacer{ display:block; height:var(--sp-16); }
+  .panels{ padding-top:var(--sp-16); }
 }
 
-/* The atrium. Two zones, one column, a vertical rail. */
+/* The atrium. Two zones: a living wall on the left, the same 420 px column on the right, and the
+   tab bar as a vertical rail. The column never grows. */
 @media (min-width:900px){
   .shell{ flex-direction:row; align-items:stretch; }
   .plate{ position:fixed; inset-block:0; inset-inline-start:0;
           inset-inline-end:calc(var(--col-max) + var(--sp-64) + 72px);
           height:auto; border-bottom:0; border-inline-end:1px solid var(--line); }
-  .plate-spacer{ display:block; height:var(--sp-16); }
-  .main{ margin-inline-start:auto; margin-inline-end:72px;
-         padding-inline:var(--sp-32); }
+  .main{ margin-inline-start:auto; margin-inline-end:72px; padding-inline:var(--sp-32); }
   .tabbar{ position:fixed; inset-block:0; inset-inline-end:0; width:72px; max-width:72px;
            height:auto; grid-template-columns:1fr; grid-auto-rows:72px;
            align-content:center; border-top:0; border-inline-start:1px solid var(--line-soft);
            padding-bottom:0; }
   .tab{ min-height:72px; }
-  .tab-ind{ top:auto; bottom:auto; inset-inline-start:0; left:0; right:auto;
-            width:2px; height:calc(100% - 28px); top:14px;
+  .tab-ind{ top:14px; bottom:14px; left:0; right:auto; width:2px; height:auto;
             transform:scaleY(0); }
   .tab[aria-selected="true"] .tab-ind{ transform:scaleY(1); }
   .console{ position:fixed; inset-block-end:0; inset-inline-end:72px;
@@ -785,20 +860,24 @@ canvas{ display:block; }
 
 /* Landscape phone: supported, not designed for. We merely refuse to break. */
 @media (max-height:480px) and (orientation:landscape){
-  :root{ --plate-px:40px; }
-  .console{ height:calc(3 * var(--con-row) + var(--con-pad) * 2); }
+  .console{ height:calc(3 * var(--con-row) + var(--con-pad) * 2 +
+                        env(safe-area-inset-bottom)); }
   .tabbar{ height:calc(48px + env(safe-area-inset-bottom)); }
   .tab{ min-height:48px; }
 }
 
-/* ══ MOTION PREFERENCES · 06 §6.7 rule 10 ══════════════════════════════════ */
+/* ══ MOTION PREFERENCES · 06 §6.7 rule 10 ══════════════════════════════════
+   Everything becomes an instantaneous state change except the three things that are carrying
+   information rather than delight: the console stack, the meter fill, and short cross-fades. */
 
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{
     animation-duration:.001ms !important; animation-iteration-count:1 !important;
     transition-duration:.001ms !important; scroll-behavior:auto !important;
   }
-  .console-line-enter,.meter-fill,.ledger-cap,[data-rm-keep]{ transition-duration:180ms !important; }
+  .console-line-enter,.meter-fill,.ledger-cap,[data-rm-keep]{
+    transition-duration:180ms !important;
+  }
   .console-cur{ animation:none; opacity:.6; }
 }
 :root[data-motion="reduce"] *,
@@ -808,11 +887,13 @@ canvas{ display:block; }
   transition-duration:.001ms !important; scroll-behavior:auto !important;
 }
 :root[data-motion="reduce"] .console-cur{ animation:none; opacity:.6; }
-/* An in-app override in the other direction, because many people turn the OS setting on for
+/* The in-app override in the other direction, because many people have the OS setting on for
    reasons that have nothing to do with a five-line console (06 §8.6). */
 :root[data-motion="full"] *,
 :root[data-motion="full"] *::before,
-:root[data-motion="full"] *::after{ animation-duration:revert; transition-duration:revert; }
+:root[data-motion="full"] *::after{
+  animation-duration:revert; transition-duration:revert;
+}
 
 /* ══ NUMERALS ══════════════════════════════════════════════════════════════
    Last in the file on purpose: `font:` is a shorthand and resets font-variant-numeric, so this

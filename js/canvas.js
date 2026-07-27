@@ -94,8 +94,6 @@
 
   var MAP = {
     RINGS: 4,                // axial radius: 1 + 6 + 12 + 18 + 24 = 61 regions
-    W_UNITS: 14,             // hex radii spanned horizontally by a flat-top map of radius 4
-    H_UNITS: 15.6,           // …and vertically
     PAD: 6,                  // px inset
     NET_ALPHA: 0.12,         // the Act I network persists behind the map at this alpha
     TERRAIN_A: [0.34, 0.16, 0.26, 0.10, 0.44, 0.06],   // Loam Sand Clay Scree Peat Burn
@@ -520,10 +518,13 @@
       bindMQ(m3, function () { refreshPalette(true); invalidate() })
       contrast = !!(m2 && m2.matches)
       if (typeof MutationObserver === 'function') {
-        // A theme or act change rewrites data-theme / data-act on <html>; both move every token
-        // the canvas draws with, and neither fires a media query.
-        new MutationObserver(function () { refreshPalette(true); invalidate() })
-          .observe(d.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-act'] })
+        // ui.js writes data-theme, data-act and data-motion on <html> when the player changes a
+        // setting. All three move what this module draws and none of them fires a media query, so
+        // the OS-level listeners above are not enough on their own.
+        new MutationObserver(function () {
+          readMotion(); refreshPalette(true); invalidate()
+        }).observe(d.documentElement,
+          { attributes: true, attributeFilter: ['data-theme', 'data-act', 'data-motion'] })
       }
       d.addEventListener('visibilitychange', function () {
         if (!d.hidden) { lastFlux = 0; frames.n = 0 }
@@ -591,7 +592,6 @@
       paths.length = 0
       pulses.length = 0
     }
-    net.drawn = 0
     mapDirty = true
     invalidate()
   }
@@ -619,8 +619,12 @@
     net.drawn = 0
   }
 
-  var dirty = true
-  function invalidate () { dirty = true; lastFlux = 0 }
+  // `repaint` is the one thing that suspends the append-only contract. It is set when the ink
+  // itself has changed under the drawing — a theme flip, a contrast change, the Act III cold
+  // shift, a resize — because those leave every already-stroked colour wrong, and nothing short of
+  // restroking the buffer can fix a bitmap. It is never set by growth; growth is always additive.
+  var repaint = true
+  function invalidate () { repaint = true; lastFlux = 0 }
 
   // ───────────────────────────────────────────────────────────────────────────
   // GROWTH — driven by the game, not by the clock (06 §7.3)
@@ -654,7 +658,6 @@
       if (k === 0 && guard > 3) break
       if (nowMs() - t0 > BUDGET.FRAME_MS) break
     }
-    if (added) dirty = true
     return added
   }
 
@@ -669,12 +672,12 @@
     sampleFrame()
     if (!surf.attached && !attach()) return
     if (!net) { ensureNet(); if (!net) return }
+    // In Act II the hex map owns this surface and restrokes the network itself, behind the hexes.
+    // Appending here as well would draw every new segment twice, at twice the alpha.
+    var st = S()
+    if (st && st.act >= 2) return
     seasonWash()
-    // The structural buffer is append-only, so a palette, contrast or
-    // reduced-motion change leaves every existing stroke in the old colours
-    // until new growth happens to arrive. invalidate() marks that case; the
-    // only correct response is to repaint the whole network from scratch.
-    if (dirty) clearNet()
+    if (repaint) { clearNet(); repaint = false }
     if (net.drawn >= net.n) return
 
     if (reduced) {
@@ -709,7 +712,6 @@
     }
     ctx.restore()
     net.drawn = net.n
-    dirty = false
     own(nowMs() - t0)
   }
 
@@ -739,7 +741,9 @@
     if (key === lastSeasonKey) return
     lastSeasonKey = key
     ageWash()
-    invalidate()
+    // Deliberately no invalidate(): the wash *is* the accumulated history, and repainting the
+    // buffer from the model would throw away every season the player has already lived through.
+    lastFlux = 0
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -768,6 +772,10 @@
   function drawFlux (tMs) {
     if (!surf.attached && !attach()) return
     if (!net) return
+    // Belt and braces on top of rAF stopping: the game never animates something nobody is looking
+    // at, and a backgrounded tab is budgeted at 0.4% of battery an hour.
+    var d = doc()
+    if (d && d.hidden) return
     if (typeof tMs !== 'number' || tMs !== tMs) tMs = nowMs()
     var s = S()
     var hz = T().fluxHz
@@ -838,8 +846,15 @@
     var live = !!(s.res && s.res.signal > 0)
     if (live && !reduced && pulses.length < cap && tSec - lastPulseSpawn > FLUX.PULSE_SPAWN_S) {
       lastPulseSpawn = tSec
-      var p = paths.length < cap ? buildPath(paths.length) : paths[pulses.length % paths.length]
-      if (p && paths.indexOf(p) < 0) paths.push(p)
+      // Routes are built once and then reused: a root→tip chain is up to 4,000 integers and there
+      // is no reason to walk the parent array again for a route the network already has.
+      var p
+      if (paths.length < cap) {
+        p = buildPath(paths.length)
+        if (p) paths.push(p)
+      } else {
+        p = paths[(pulses.length + paths.length) % paths.length]
+      }
       if (p) pulses.push({ path: p, u: 0, at: tSec })
     }
     var TAU = Math.PI * 2
@@ -946,6 +961,7 @@
   }
 
   function drawMap (regions) {
+    sampleFrame()
     if (!surf.attached && !attach()) return
     if (!regions || !regions.q) return
     if (!net) { ensureNet(); if (!net) return }
@@ -1049,6 +1065,7 @@
 
   // Sweep is exploration, width is occupancy: thirteen arc() calls, cheap enough to redraw whole.
   function drawVoid (bands) {
+    sampleFrame()
     if (!surf.attached && !attach()) return
     if (!bands || !bands.e) return
     var ctx = surf.netCtx
@@ -1238,10 +1255,14 @@
     return a[Math.min(len - 1, Math.floor(len * 0.95))]
   }
 
+  // Called at the head of whichever structural pass owns the current act, so the tier keeps
+  // tracking across an act break. Two calls inside one frame would otherwise inject a near-zero
+  // delta and pull the p95 down, so a sub-millisecond gap is treated as the same frame.
   function sampleFrame () {
     var t = nowMs()
     if (frames.last) {
       var dt = t - frames.last
+      if (dt < 1) return
       // A tab wake produces one enormous delta that is not a slow frame and must not demote.
       if (dt < PERF.FRAME_MAX_MS) {
         frames.buf[frames.w] = dt
@@ -1444,7 +1465,10 @@
     ok(setTier('nonsense') === 'MED', 'setTier: an unknown tier must be ignored')
     setTier('AUTO')
     ok(manualTier === false, 'setTier: AUTO must hand control back to the p95')
-    tier = was; manualTier = wasManual
+    // Restored through the public setter so the backing store is resized back with it; a
+    // self-test that leaves the surface at the wrong dpr is a self-test that broke the game.
+    setTier(was)
+    if (!wasManual) setTier('AUTO')
 
     // 6 · the tier table agrees with core, and the tier ladder is ordered.
     if (C()) {
