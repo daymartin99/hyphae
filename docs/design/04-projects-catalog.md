@@ -106,7 +106,10 @@ keeping your word. Signal is being alive in the right places. Insight is *waitin
 gambling on weather. Differentiation is reading. Lineage is losing children.
 
 Cost strings in the JSON are machine-parseable: terms joined by ` + `, each `<number> <glyph>`.
-`— (a decision)` means free, and is used for exactly the moments where charging would be wrong.
+`— (a decision)` means free, and is used for exactly the moments where charging would be wrong;
+`— (unbuyable)` means the button exists and can never be pressed. One cost is a formula rather than a
+literal (`a_gift_of_phosphorus`: `200*2^k ⛬`, where `k` is its own purchase count) and the parser must
+special-case it — or, better, treat every cost as a thunk and let the string be documentation.
 
 ---
 
@@ -569,6 +572,29 @@ the only genuinely moral choice in the game and the only one with no number atta
 The brief asked for at least 25. These do something other than multiply a number: they open a panel,
 add a verb, delete a verb, change a rule, invert an incentive, reveal hidden state, automate a chore,
 remove a subsystem, or charge you something you do not get back.
+
+Auditable breakdown — a project may count in more than one row:
+
+| Kind | Count | Meaning |
+|---|---|---|
+| `panel` | **15** | Opens a new panel or readout |
+| `verb` | **8** | Adds a verb the player performs by hand |
+| `rulechange` | **13** | Changes a rule of the simulation |
+| `information` | **10** | Reveals hidden state; changes what can be known, not what can be done |
+| `automation` | **6** | Retires a chore and replaces it with a higher-order decision |
+| `removes` | **7** | Deletes a subsystem, panel or verb |
+| `irreversible` | **24** | Cannot be undone by any later purchase |
+| `cost` | **10** | Takes something permanent as part of what it gives |
+| `trap` | **7** | Priced attractively, described accurately, net-negative in common builds |
+| `rearm` | **8** | Re-arms itself; can be bought again |
+| `failsafe` | **3** | Anti-dead-end device with a real price |
+| `dial` | **2** | Hands over a continuous control with no correct setting |
+| `fork` | **4** | Mutually exclusive with another project |
+| `inversion` | **1** | Flips the sign of an existing term |
+| `offline` | **2** | Changes how the game behaves while you are away |
+| `ending` | **5** | Ends the game |
+| `prestige` | **1** | Resets the game |
+| `event` | **1** | Unbuyable; appears at you |
 
 **Reflex Arc**, **Assay Plate**, **Mycelial Ledger**, **Dormancy Clause**, **The Two-Sided Book**, **Trade Memory**, **The Deer in the Gully**, **Standing Order**, **Chemotropic Sensing**, **Ghost Pipe Compact**, **Forward Contracts**, **Diel Rhythm**, **Bacterial Antagonism**, **Contract Arbitration**, **Seasonal Forecast**, **Perennial Mycelium**, **Autolysis**, **Windfall**, **Sever the Elm**, **The Hollow Beech**, **Anastomosis**, **Action Potential**, **DECIDE**, **Chemotaxis**, **Turgor**, **Primordium**, **Substrate Assay**, **Action Potential**, **Differentiation**, **Anemophily**, **Barometric Sense**, **Antibiosis**, **Septal Gating**, **Humic Retention**, **Cation Exchange**, **Necrotrophic Conversion**, **Turgor Regulation**, **Rhizomorph Highways**, **Bridging Strands**, **Sporulation Reflex**, **Reabsorption**, **Alarm Contracts**, **Hypogeous Fruiting**, **Sclerotial Bank**, **Anastomotic Grafting**, **Isotope Ledger**, **The Armillaria Accord**, **Mycelial Monoculture**, **Quiescence**, **Mast Synchrony**, **Synchronous Flush**, **Homeostatic Soil**, **The Quiet Ring**, **The Charter**, **Total Conversion**, **Photoreception**, **Seed Bank**, **Ascospore Discharge**, **Hymenium**, **Hygroscopic Trigger**, **Thermal Column**, **Corvid Vector**, **Anemochory Charts**, **The Cities**, **The Deep Biosphere**, **Planetary Saturation**, **Tropopause**, **Radiotrophy**, **Anhydrobiosis**, **Photon Pressure**, **Sporecraft**, **Maximal Fecundity**, **Dedifferentiation**, **Panspermia**, **Genetic Fidelity**, **The First Landfall**, **Chirality Audit**, **The Wide Cast**, **The Silent Majority**, **Wild Strain**, **Quarantine Protocol**, **Reconciliation**, **Hyphal Bridge**, **The Grafted Star**, **The Last Spore**, **Let the Last Body Go**, **The Long Quiet**, **The Second Forest**, **A Thousand Strangers**, **Decomposition**, **We Have Been Talking Without You**, **New Growth**.
 
