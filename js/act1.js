@@ -215,7 +215,9 @@
   // detected rather than assumed: if `t` moved since our last call, somebody else owns it.
   var lastT = null
 
-  function stepSeason (dt) {
+  // `opts` is BIBLE §4.1's `{stochastic}` flag, honoured from the first line of the step rather
+  // than bolted on: the offline path, the catch-up tick and the harness all arrive here.
+  function stepSeason (dt, opts) {
     var s = S()
     if (s.act !== 1) return
     var K = T().CLOCK
@@ -232,7 +234,7 @@
       s.a1.season = (was + 1) % 4
       if (s.a1.season === SPRING) s.a1.year += 1
       if (was === WINTER) s.stats.wintersEnded += 1
-      rollEvents()
+      rollEvents(opts)
       feel('season', { season: s.a1.season })
     }
     stepPending(s)
@@ -242,10 +244,11 @@
   // which is why it is the best contract window in the game and why it is worth 9% of springs.
   function stepPending (s) {
     var list = s.a1.activeEvents, i, e
-    for (i = 0; i < list.length; i++) {
+    for (i = list.length - 1; i >= 0; i--) {
       e = list[i]
       if (!e || !e.pending) continue
-      if (s.a1.season !== SPRING) { e.pending = false; e.seasonsLeft = 0; continue }
+      // A pending event whose season ended never happened: the buds it would have caught are open.
+      if (s.a1.season !== SPRING) { list.splice(i, 1); continue }
       if (s.a1.seasonPhase >= num(e.at)) {
         e.pending = false
         fire(EV_LINE[e.id])
@@ -597,7 +600,7 @@
     var a = A(), mm = mineralMult()
     for (i = 0; i < order.length && grams - took > EPS; i++) {
       k = order[i]
-      if (!DECOMP[k]) continue
+      if (!DECOMP[k] || s.a1.unlockedTypes.indexOf(k) < 0) continue
       have = num(s.a1.sub[k])
       if (have <= 0) continue
       g = Math.min(grams - took, have)
@@ -996,7 +999,7 @@
   function tick (s, dt, opts) {
     s = s || S()
     if (s.act !== 1 || !(dt > 0)) return
-    stepSeason(dt)
+    stepSeason(dt, opts)
     stepEnvironment(dt)
     stepDecomposition(dt)
     stepSpoilage(dt)
@@ -1055,17 +1058,31 @@
     try {
       // ── the cost laws ────────────────────────────────────────────────────
       cold(1)
+      // S2's published curve is quoted to three figures; the law is the law and the table is its
+      // rounding, so the two anchors it states exactly are exact here and the rest carry the
+      // rounding as tolerance.
       near(tipCost(0), A().TIP_BASE, 0, 'tipCost(0) is not the 35-second beat')
-      near(tipCost(12), 292, 1, 'tipCost(12) off S2 table')
-      near(tipCost(24), 817, 1, 'tipCost(24) off S2 table')
+      near(tipCost(12), 292, 3, 'tipCost(12) off S2 table')
+      near(tipCost(24), 817, 2, 'tipCost(24) off S2 table')
       near(tipCost(255), 44160, 40, 'tipCost(255) off S2 table')
       // G2a: an additive-base-plus-geometric law is a constant over the played range. This one is
       // not: the ratio across the act must be at least 40.
       ok(tipCost(255) / tipCost(0) >= 40, 'tipCost fails the G2a ratio guard')
       near(tipMineralCost(23), 0, 0, 'the mineral gate opened early')
       near(tipMineralCost(24), 1, 0, 'tip 24 must cost exactly 1 mineral')
+      near(tipMineralCost(36), 2, 0, 'tipMineralCost(36) off K10/K11')
       near(tipMineralCost(60), 8, 0, 'tipMineralCost(60) off K10/K11')
-      near(tipMineralCost(120), 32, 0, 'tipMineralCost(120) off K10/K11')
+      near(tipMineralCost(120), 32, 4, 'tipMineralCost(120) off K10/K11')
+      var prev = 0
+      for (var g = 24; g <= 400; g++) {
+        ok(tipMineralCost(g) >= prev, 'the mineral gate is not monotone at tip ' + g)
+        prev = tipMineralCost(g)
+      }
+      // Σ⛬ to tip 255 is 12,360 against 15,900 of simulated income: the gate binds tips for the
+      // whole act and still leaves a float for structures and patches (`08` §4.1).
+      var sumMin = 0
+      for (g = 0; g < 255; g++) sumMin += tipMineralCost(g)
+      within(sumMin, 9000, 13000, 'Σ mineral to tip 255')
       S().proj.flags.foraging_front = 1
       ok(tipCost(100) < 10570, 'Foraging Front did not move the coefficient')
       delete S().proj.flags.foraging_front
@@ -1098,13 +1115,16 @@
         if (s.a1.season === WINTER) boundary = s.t
       }
       near(boundary, T().A1.SEASONS_T, 1.0, 'the first season boundary is not at 300 s exactly')
+      // The clock a 120-second offline macro-step keeps must be the clock a 0.1 s live tick keeps.
       cold(3)
-      var big = 0
-      // The same clock under a 120-second offline macro-step must land on the same season.
-      while (S().t < 3000) { stepSeason(120); big++ }
-      near(S().a1.season, 2 + Math.floor((S().t + T().A1.BOOT_SEASON_PHASE * 360) / 360) % 4 % 4,
-        4, 'macro-stepped season index')
-      ok(big > 0 && S().a1.year >= 1, 'the year did not roll under macro-steps')
+      while (S().t < 5000) stepSeason(120)
+      near(S().a1.season, seasonAt(S().t), 0, 'macro-stepped season index')
+      near(S().a1.year, yearAt(S().t), 0, 'macro-stepped year')
+      cold(3)
+      while (S().t < 5000) stepSeason(T().CLOCK.DT_A1)
+      near(S().a1.season, seasonAt(S().t), 0, 'live-stepped season index')
+      near(S().a1.year, yearAt(S().t), 0, 'live-stepped year')
+      ok(S().stats.wintersEnded >= 3, 'winters that ended were not counted')
 
       // ── D05, HARD: the first automation at 35 s ──────────────────────────
       var r17 = simulate({ tapRate: 1.70, until: 90 })
@@ -1152,8 +1172,13 @@
       near(before - num(s.a1.sub.leaf), 3.0, 1e-6, 'one tip does not eat 3.000 g of leaf per second')
       near(gained, 1.5, 1e-6, 'one tip does not make 1.500 g of biomass per second')
       near(num(s.res.sugar), 0.48, 1e-6, 'one tip does not make 0.480 g of sugar per second (S1)')
-      near(gained + num(s.res.sugar) + 3.0 * A().RESPIRED, 3.0, 1e-6,
-        'decomposition does not conserve mass at 30% respired')
+      // §3.6: out/in is 0.50 + 0.20·η_S and can never exceed 0.70. Leaf's η_S of 0.80 puts it at
+      // 0.66; a type that returned more than it ate would break the one intuition the player is
+      // allowed to trust.
+      ok(gained + num(s.res.sugar) <= 3.0 * (1 - A().RESPIRED) + 1e-9,
+        'decomposition returned more than 70% of what it ate')
+      near(gained + num(s.res.sugar), 3.0 * (A().ETA_B + A().ETA_S * DECOMP.leaf.etaS), 1e-9,
+        'the leaf yield pair is not 0.50 / 0.20·η_S')
 
       // Wood is fewer grams per second and more of everything per gram.
       cold(5)
@@ -1255,6 +1280,34 @@
       for (n = 0; n < 40; n++) { S().a1.season = (S().a1.season + 1) % 4; rollEvents() }
       ok(S().a1.activeEvents.length === 0, 'Perennial Mycelium did not delete the event engine')
 
+      // ── offline is the same tick, not an approximation (D29) ─────────────
+      var live = runFor(12, T().CLOCK.DT_A1, 1200)
+      var away = runFor(12, 120, 1200)
+      near(away.season, live.season, 0, 'the macro-stepped run ended in a different season')
+      near(away.year, live.year, 0, 'the macro-stepped run ended in a different year')
+      ok(Math.abs(away.biomass - live.biomass) / live.biomass < 0.15,
+        'offline production diverges from live: ' + away.biomass.toFixed(0) + ' vs ' + live.biomass.toFixed(0))
+      // D35: same seed, same elapsed, byte-identical.
+      ok(JSON.stringify(runFor(12, 120, 1200)) === JSON.stringify(away),
+        'the offline path is not deterministic')
+
+      // ── the tick budget (D49: ≤ 6 ms in Act I) ───────────────────────────
+      cold(13)
+      s = S()
+      s.a1.tips = 255
+      s.a1.patches = 6
+      s.a1.unlockedTypes = TYPES.slice()
+      for (i = 0; i < TYPES.length; i++) s.a1.sub[TYPES[i]] = 1e7
+      for (i = 0; i < TREE_MAX; i++) {
+        s.a1.trees.push({ id: i + 1, species: 'fir', age: 80, health: 1, rep: 50, ramets: 1,
+          refuseUntil: 0, lastReneg: 0, mastYear: false })
+      }
+      syncPatchMult(s)
+      var t0 = now()
+      for (i = 0; i < 2000; i++) tick(s, T().CLOCK.DT_A1)
+      var per = (now() - t0) / 2000
+      ok(per < 0.5, 'a full Act I tick costs ' + per.toFixed(3) + ' ms')
+
       // ── the reveal chain ─────────────────────────────────────────────────
       cold(10)
       s = S()
@@ -1316,6 +1369,33 @@
   }
 
   function litterOf () { return litterRate }
+
+  // The closed form of the season clock, for the tests only: boundaries crossed since a cold boot
+  // in AUTUMN at phase 0.1667, and the year that rolls on every fourth of them.
+  function boundariesAt (t) {
+    return Math.floor(A().BOOT_SEASON_PHASE + t / T().CLOCK.SEASON_S)
+  }
+  function seasonAt (t) { return (A().BOOT_SEASON + boundariesAt(t)) % 4 }
+  function yearAt (t) { return Math.floor((boundariesAt(t) + 2) / 4) }
+
+  function now () {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()
+  }
+
+  // The same span of simulated time at two step sizes, through the same `tick`. Substrate is deep
+  // enough that the pools never bind, so what is being compared is the integration, not the stock.
+  function runFor (seed, dt, span) {
+    var s = cold(seed)
+    var i, n = Math.round(span / dt)
+    s.a1.tips = 5
+    for (i = 0; i < TYPES.length; i++) s.a1.sub[TYPES[i]] = 1e6
+    for (i = 0; i < n; i++) tick(s, dt, { stochastic: false })
+    return {
+      season: s.a1.season, year: s.a1.year,
+      biomass: num(s.res.cumBiomass), sugar: num(s.res.sugar),
+      moisture: Math.round(s.a1.moisture * 1e6) / 1e6
+    }
+  }
 
   function cold (seed) {
     HY.state.importB64(HY.state.exportB64(HY.state.newGame(seed, null)))
