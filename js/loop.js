@@ -300,6 +300,35 @@
     return n
   }
 
+  // Advancing the clock is not the same as playing: Act I yields nothing at all
+  // until the player extends something, so a pure fastForward reaches a state no
+  // real player is ever in. This drives the actual verbs at a human cadence and
+  // buys the obvious thing when it can afford it, which is what a screenshot or
+  // a balance run should be looking at.
+  function play (seconds, opts) {
+    var s = S()
+    if (!s || !(seconds > 0)) return 0
+    var o = opts || {}
+    var taps = o.tapsPerSec === undefined ? 2 : o.tapsPerSec
+    var dt = s.act === 1 ? T().CLOCK.DT_A1 : T().CLOCK.DT_A23
+    var perSec = Math.round(1 / dt)
+    var sopts = { stochastic: o.stochastic !== false, offline: false }
+    var bought = 0
+    for (var sec = 0; sec < seconds; sec++) {
+      for (var k = 0; k < taps; k++) if (HY.act1 && HY.act1.onExtend) HY.act1.onExtend()
+      for (var j = 0; j < perSec; j++) simTick(dt, sopts)
+      if (o.buy !== false && HY.act1 && HY.act1.buyTip && HY.act1.tipCost) {
+        // Reinvest greedily but leave a margin, the way a player watching the
+        // number actually behaves.
+        while (s.res.biomass >= HY.act1.tipCost() * 1.25 && bought < 5000) {
+          if (!HY.act1.buyTip()) break
+          bought++
+        }
+      }
+    }
+    return bought
+  }
+
   function selftest () {
     var names = ['core', 'state', 'log', 'projects', 'act1', 'economy1', 'ui', 'canvas', 'feel',
       'cognition', 'world', 'forest', 'flush', 'pactbook', 'bloom', 'divergence', 'finale']
@@ -326,6 +355,6 @@
     get ticks () { return tickNo }
   }
 
-  HY.debug = { fastForward: fastForward, selftest: selftest }
+  HY.debug = { fastForward: fastForward, play: play, selftest: selftest }
   HY.boot = boot
 })(window.HY = window.HY || {})

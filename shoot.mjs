@@ -46,21 +46,28 @@ const STATES = [
 const browser = await chromium.launch({ executablePath: EXE, args: ['--no-proxy-server'] })
 const errors = []
 
+for (const theme of ['dark', 'light']) {
 for (const [viewName, viewport] of [['phone', PHONE], ['desk', DESK]]) {
   for (const [name, minutes] of STATES) {
-    const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, hasTouch: true, isMobile: viewName === 'phone' })
+    const ctx = await browser.newContext({
+      viewport, deviceScaleFactor: 2, hasTouch: true,
+      isMobile: viewName === 'phone', colorScheme: theme,
+    })
     const page = await ctx.newPage()
     page.on('pageerror', (e) => errors.push(`${name}/${viewName}: ${e.message}`))
     page.on('console', (m) => { if (m.type() === 'error') errors.push(`${name}/${viewName}: console ${m.text()}`) })
     await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load' })
     await page.waitForTimeout(1200)
     if (minutes > 0) {
-      await page.evaluate((m) => window.HY?.debug?.fastForward?.(m * 60), minutes)
+      // Play it, do not merely age it: Act I produces nothing until something
+      // is extended, so fast-forwarding alone photographs an empty game.
+      await page.evaluate((m) => window.HY?.debug?.play?.(m * 60, { tapsPerSec: 2 }), minutes)
       await page.waitForTimeout(1500)
     }
-    await page.screenshot({ path: join(OUT, `hy-${name}-${viewName}.png`) })
+    await page.screenshot({ path: join(OUT, `hy-${name}-${viewName}-${theme}.png`) })
     await ctx.close()
   }
+}
 }
 
 await browser.close()
