@@ -293,6 +293,14 @@
   var walk = null        // the price walk's own rng stream; never in scope in a pricing function
   var book = { deliveredSugar: 0, deferred: 0, reserve: 0 }
 
+  // Reused rather than rebuilt: a twelve-hour reconcile calls walkCoef 240 times and five fresh
+  // arrays per call is 1,200 allocations on the one path in the game with a hard millisecond budget.
+  var coef = {
+    h: 1, momDecay: 1, rev: 0, sig: 0, cool: 1,
+    cap: [0, 0, 0, 0, 0, 0, 0], decay: [0, 0, 0, 0, 0, 0, 0], star: [0, 0, 0, 0, 0, 0, 0],
+    mod: [1, 1, 1, 1, 1, 1, 1], floorBase: [0, 0, 0, 0, 0, 0, 0]
+  }
+
   function opt (o) {
     if (!o) return ctx
     return {
@@ -431,22 +439,20 @@
   // and seven pools × eighteen sub-steps × two hundred and forty macro-steps is the difference
   // between a twelve-hour reconcile that fits in D34's budget and one that costs 800 ms.
   function walkCoef (h) {
-    var A = T().A1, i, k, tau, c = {
-      h: h,
-      momDecay: Math.pow(A.MOM_DECAY, h),
-      rev: A.MEAN_REV * h,
-      sig: A.PRICE_SIGMA * Math.sqrt(h),
-      cool: Math.pow(1 - A.COOL_RATE, h),
-      cap: [], decay: [], star: [], mod: [], floorBase: []
-    }
+    var A = T().A1, i, k, tau, c = coef
+    c.h = h
+    c.momDecay = Math.pow(A.MOM_DECAY, h)
+    c.rev = A.MEAN_REV * h
+    c.sig = A.PRICE_SIGMA * Math.sqrt(h)
+    c.cool = Math.pow(1 - A.COOL_RATE, h)
     for (i = 0; i < TYPES.length; i++) {
       k = TYPES[i]
-      c.cap.push(capOf(k))
+      c.cap[i] = capOf(k)
       tau = c.cap[i] > 0 ? c.cap[i] / compOf(k) : 1
-      c.decay.push(Math.exp(-h / tau))
-      c.star.push(tau * fallOf(k))
-      c.mod.push(eventPriceMod(k))
-      c.floorBase.push(A.COOL_FLOOR * DEADFALL[i].price)
+      c.decay[i] = Math.exp(-h / tau)
+      c.star[i] = tau * fallOf(k)
+      c.mod[i] = eventPriceMod(k)
+      c.floorBase[i] = A.COOL_FLOOR * DEADFALL[i].price
     }
     return c
   }
@@ -479,7 +485,9 @@
       sc = 1 - row.stock / cap
       if (!(sc > 0)) sc = 0
       else if (sc > 1) sc = 1
-      fair = row.base * (1 + fairK * Math.pow(sc, fairE)) * c.mod[i]
+      // A saturated pool is the common case for most of autumn and for every pool the player is
+      // not drawing on, and it is the one value of `sc` worth not paying a pow for.
+      fair = row.base * (sc === 0 ? 1 : 1 + fairK * Math.pow(sc, fairE)) * c.mod[i]
       gap = fair > 0 ? (fair - row.price) / fair : 0
       m = c.momDecay * row.mom + c.rev * gap + (stochastic ? c.sig * walkGauss() : 0)
       if (!(m > -clampM)) m = -clampM
@@ -519,30 +527,48 @@
   // WIDE_AFTER seconds — which only an offline macro-step or a long catch-up produces — is walked in
   // steps of up to MAX_H instead. Ten seconds keeps the mean-reversion term at 0.30 per step, well
   // inside the stable régime, and it is a supply process rather than anything a decision reads.
+  // Both walks pace themselves the same way, so the rule lives in one place. `owed` is the seconds
+  // banked so far; the answer is a count and a width, and whatever it could not honestly consume.
+  var pace = { n: 0, h: MK.STEP_S, rest: 0 }
+
+  function paceSteps (owed) {
+    var n = Math.floor(owed / MK.STEP_S), h = MK.STEP_S
+    if (n < 1) { pace.n = 0; pace.h = h; pace.rest = owed; return pace }
+    if (n > MK.WIDE_AFTER) {
+      h = Math.min(MK.MAX_H, owed / MK.WIDE_AFTER)
+      n = Math.floor(owed / h)
+    }
+    if (n > MK.MAX_SUBSTEPS) { n = MK.MAX_SUBSTEPS; h = owed / n }
+    pace.n = n
+    pace.h = h
+    // A backlog this module cannot honestly walk is dropped rather than carried: loop.js never
+    // hands over more than one macro-step at a time, and an unbounded accumulator would turn one
+    // pathological call into a permanently slow tick.
+    pace.rest = owed - n * h
+    if (!(pace.rest > 0) || pace.rest > MK.MAX_H) pace.rest = 0
+    return pace
+  }
+
   function stepMarket (dt, o) {
     var s = S()
     if (!s || s.act !== 1) return
     var p = opt(o)
     var n, h, i, c
     acc += dt
-    n = Math.floor(acc / MK.STEP_S)
+    paceSteps(acc)
+    n = pace.n
+    h = pace.h
     if (n < 1) return
-    h = MK.STEP_S
-    if (n > MK.WIDE_AFTER) {
-      h = Math.min(MK.MAX_H, acc / MK.WIDE_AFTER)
-      n = Math.floor(acc / h)
-    }
-    if (n > MK.MAX_SUBSTEPS) { n = MK.MAX_SUBSTEPS; h = acc / n }
-    acc -= n * h
-    // A backlog this module cannot honestly walk is dropped rather than carried: loop.js never
-    // hands over more than one macro-step at a time, and an unbounded accumulator would turn one
-    // pathological call into a permanently slow tick.
-    if (!(acc > 0) || acc > MK.MAX_H) acc = 0
+    acc = pace.rest
     c = walkCoef(h)
+    // The sparkline is a 1 Hz record and 5A.1 already says it is not saved and refills in 120 s.
+    // Feeding it ten-second offline steps would draw two hours of absence as two minutes of history.
+    var record = (h === MK.STEP_S)
+    var auto = flag(s, 'standing_order')
     for (i = 0; i < n; i++) {
       walkStep(c, p.stochastic)
-      sample()
-      if (flag(s, 'standing_order')) standingOrder(h)
+      if (record) sample()
+      if (auto) standingOrder(h)
     }
   }
 
@@ -606,7 +632,7 @@
   }
 
   function standingOrder (h) {
-    var s = S(), i, k, cfg, cap, ceil, floor, want
+    var s = S(), i, k, cfg, cap, ceil, floor, want, unit, got
     for (i = 0; i < TYPES.length; i++) {
       k = TYPES[i]
       if (!unlocked(k)) continue
@@ -614,14 +640,18 @@
       cfg = standing[k] || {}
       ceil = isFinite(cfg.ceil) ? cfg.ceil : fairValue(k)
       floor = isFinite(cfg.floor) ? cfg.floor : MK.STANDING_FLOOR * cap
-      if (unitPrice(k) * MK.STANDING_PENALTY > ceil) continue
+      unit = unitPrice(k) * MK.STANDING_PENALTY
+      if (!(unit > 0) || unit > ceil) continue
       if (num(s.a1.sub[k]) >= floor) continue
-      want = Math.min(MK.STANDING_MAX_FRAC * cap * h,
-        s.res.sugar / (unitPrice(k) * MK.STANDING_PENALTY))
+      want = Math.min(MK.STANDING_MAX_FRAC * cap * h, s.res.sugar / unit)
       if (want < MK.MIN_TRADE_G) continue
-      // The penalty is charged by pre-spending the difference, so `buy` stays the single fill path.
-      C().setStock(s.res, 'sugar', s.res.sugar - want * unitPrice(k) * (MK.STANDING_PENALTY - 1))
-      buy(k, want)
+      // The 8% is charged on what was actually filled, after the fill, so `buy` stays the one path
+      // through which a gram of substrate can ever be acquired.
+      got = buy(k, want)
+      if (got > 0) {
+        C().setStock(s.res, 'sugar',
+          s.res.sugar - got * unitPrice(k) * (MK.STANDING_PENALTY - 1))
+      }
     }
   }
 
@@ -637,23 +667,27 @@
   function stepMineralExchange (dt, o) {
     var s = S()
     if (!s || s.act !== 2) return
-    var p = opt(o), m = s.a2.mineralMkt, n, h, i, prev
+    var p = opt(o), m = s.a2.mineralMkt, n, h, i, prev, decay, relax
     if (!(m.P > 0)) { m.P = MX.P0; m.Pbar = MX.P0; m.momentum = 0 }
     mxAcc += dt
-    if (mxAcc < MK.STEP_S) return
-    n = Math.floor(mxAcc / MK.STEP_S)
-    if (n > MK.MAX_SUBSTEPS) { h = mxAcc / MK.MAX_SUBSTEPS; n = MK.MAX_SUBSTEPS } else { h = MK.STEP_S }
-    mxAcc -= n * h
-    if (mxAcc < 0) mxAcc = 0
+    paceSteps(mxAcc)
+    n = pace.n
+    h = pace.h
+    if (n < 1) return
+    mxAcc = pace.rest
+    decay = Math.pow(MX.MOM_DECAY, h)
+    relax = Math.exp(-h * MX.PBAR_RELAX)
     for (i = 0; i < n; i++) {
       prev = m.P
       m.P = C().clamp(
         m.P + MX.REVERT * h * (m.Pbar - m.P) + MX.MOM_GAIN * h * m.momentum +
           (p.stochastic ? MX.SIGMA * Math.sqrt(h) * walkGauss() : 0),
         MX.P_MIN, MX.P_MAX)
-      m.momentum = Math.pow(MX.MOM_DECAY, h) * m.momentum +
-        MX.MOM_IN * h * (m.P - prev) / Math.max(prev, 1e-9)
-      m.Pbar = MX.P0 + (m.Pbar - MX.P0) * Math.exp(-h * MX.PBAR_RELAX)
+      // No `h` on the momentum input: the published form absorbs one step's relative move at a
+      // gain of MOM_IN·h against a move that is itself h times larger, and the two cancel. Leaving
+      // the h in would make a ten-second offline step read as a ten-times-stronger trend.
+      m.momentum = decay * m.momentum + MX.MOM_IN * (m.P - prev) / Math.max(prev, 1e-9)
+      m.Pbar = MX.P0 + (m.Pbar - MX.P0) * relax
     }
   }
 
@@ -733,18 +767,24 @@
     return d
   }
 
-  // `mastYear` is the year the mast was granted; the window is that autumn and the winter that
-  // follows it. One number carries both the window and the three-year eligibility gap.
+  // `mastYear` is the year the mast was granted, or −1 for never; the window is that autumn and the
+  // winter that follows it. One number carries both the window and the three-year eligibility gap.
+  // −1 rather than 0, because the boot season is autumn of year zero and a falsy sentinel would
+  // silently swallow the first mast the game can produce.
+  function mastYearOf (tree) {
+    return typeof tree.mastYear === 'number' && isFinite(tree.mastYear) ? tree.mastYear : -1
+  }
+
   function mastActive (tree) {
-    var s = S(), A = T().A1
-    if (!num(tree.mastYear)) return false
-    var y = num(s.a1.year), se = num(s.a1.season)
-    return tree.mastYear === y && (se === A.SEASON_AUTUMN || se === A.SEASON_WINTER)
+    var s = S(), A = T().A1, my = mastYearOf(tree)
+    if (my < 0) return false
+    var se = num(s.a1.season)
+    return my === num(s.a1.year) && (se === A.SEASON_AUTUMN || se === A.SEASON_WINTER)
   }
 
   function mastEligible (tree) {
-    return !!sp(tree).masts && (!num(tree.mastYear) ||
-      num(S().a1.year) - tree.mastYear >= CT.MAST_GAP_Y)
+    var my = mastYearOf(tree)
+    return !!sp(tree).masts && (my < 0 || num(S().a1.year) - my >= CT.MAST_GAP_Y)
   }
 
   function treeContracts (treeId) {
@@ -781,7 +821,7 @@
       ramets: spec.ramets,
       refuseUntil: 0,
       lastReneg: -T().CLOCK.SEASON_S,
-      mastYear: 0,
+      mastYear: -1,
       d: 0
     }
     if (t.id >= nextTreeId) nextTreeId = t.id + 1
@@ -1322,8 +1362,9 @@
       brow.stock = Math.min(capOf('bark'), brow.stock + uni(r, EV.WINDTHROW_BARK[0], EV.WINDTHROW_BARK[1]) * pk)
       lrow.mom = C().clamp(lrow.mom + EV.WINDTHROW_MOM, -T().A1.MOM_CLAMP, T().A1.MOM_CLAMP)
       lrow.base *= EV.WINDTHROW_BASE
-      // The sub-roll that makes a windfall a bereavement. Offline it never fires: r is absent and
-      // 0.5 is above the threshold, so an absence can never cost you a counterparty.
+      // The sub-roll that makes a windfall a bereavement, and then you eat your counterparty. It
+      // never takes your last one, and offline it never fires at all: `r` is absent there and the
+      // midpoint 0.5 is above the threshold, so an absence can never cost a relationship (D32).
       if (r && r.next() < EV.WINDTHROW_KILL_P && s.a1.trees.length > 1) {
         var victim = s.a1.trees[r.int(s.a1.trees.length)]
         payload.treeId = victim.id
@@ -1439,7 +1480,7 @@
     // ── D21, part one: no dice roll exists anywhere in contract pricing.
     // Asserted against the source text of every function that can move a mineral rate, so a future
     // edit that reaches for a draw fails the build rather than the review.
-    var priced = [carbonDeficit, canopyLight, deficitAt, mastActive, mastEligible, offer,
+    var priced = [carbonDeficit, canopyLight, deficitAt, mastYearOf, mastActive, mastEligible, offer,
       maxIntake, maxTerm, accepts, counter, signContract, renegotiate, exitContract,
       deliverContracts, completeContract, defaultContract, syncStand, spawnTree, treeContracts,
       committedTo, reserveSugar, nextK, nextType, onSeasonBoundary]
@@ -1502,6 +1543,17 @@
     for (w = 0; w < 300; w++) stepMarket(1.0, { stochastic: false })
     ok(marketSnapshot(g2) === afterA, 'the deterministic walk is not reproducible')
     ok(snapA !== afterA, 'the walk did not move at all')
+
+    // The two invariants that keep the offline path both stable and affordable. The first is the
+    // Euler bound on the mean-reversion term; past 0.30 the price feedback oscillates and a
+    // twelve-hour return lands 60% off. The second says one macro-step of a full offline reconcile
+    // is always consumed in a single call, so no backlog can accumulate across the 240 of them.
+    ok(A.MEAN_REV * MK.MAX_H <= 0.30 + 1e-12,
+      'the widest market step is outside the stable régime')
+    ok(MK.MAX_H * MK.MAX_SUBSTEPS >= T().OFFLINE.CAP / T().OFFLINE.STEPS,
+      'a full offline macro-step cannot be walked in one call')
+    ok(MK.WIDE_AFTER * MK.STEP_S >= T().CLOCK.CATCHUP_MAX_DT,
+      'a live catch-up tick would widen the walk past its published 1 Hz step')
 
     // A wide offline step must land within a hair of many narrow ones: one code path, one answer.
     var g3 = fresh(0x51EED1)
@@ -1639,6 +1691,21 @@
 
     // ── Solicitations arrive on a stable hash, not a draw.
     ok(C().hash32('solicit', 3, 7) === C().hash32('solicit', 3, 7), 'solicitation stream is unstable')
+
+    // ── The mast window: the largest payday in the act, and it must be reachable in year zero,
+    // which is the year the game boots into.
+    g = fresh(0x51EED1); init(g)
+    g.a1.season = A.SEASON_AUTUMN
+    var moak = spawnTree('oak')
+    ok(mastEligible(moak), 'a fresh oak is not eligible for a mast')
+    applyEvent('mast', null)
+    ok(mastActive(moak), 'a mast granted in year zero is not active')
+    ok(!mastEligible(moak), 'an oak is immediately eligible for a second mast')
+    var dry = carbonDeficit(moak)
+    g.a1.year = CT.MAST_GAP_Y
+    ok(mastEligible(moak), 'an oak never becomes eligible again')
+    ok(!mastActive(moak), 'a mast window never closes')
+    ok(dry > carbonDeficit(moak), 'a mast year did not deepen the deficit')
 
     // ── The Act II exchange: the same walk, and an asymmetric drift you can watch.
     g = fresh(0x51EED1); init(g)
