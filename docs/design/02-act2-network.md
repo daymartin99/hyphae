@@ -664,3 +664,642 @@ Density is the first thing automated (`turgor_auto`, C3) and the automation is a
 terrain class**, not a blanket "buy everything" — see §11.4.
 
 ---
+
+## 7. THE FLUSH — the risk/allocation sub-game
+
+This is the answer to the teardown's §8.4: *"the stock market has no agency."* The player of
+Universal Paperclips cannot choose a stock, a price, an amount, or a moment to sell. In HYPHAE the
+player chooses **where**, **how much**, **what kind**, and — the one that matters — **when**.
+
+It is not a market. It is a **weather bet with an interior optimum that moves.**
+
+### 7.1 The object: a primordium
+
+You commit Biomass to a knot of tissue in a region you hold. It matures over minutes. While it
+matures it is exposed. When you release it, it disperses spores downwind. Spores are the ranged
+territory currency (§7.7) and the Act III seedbank.
+
+```js
+{
+  id, regionId,
+  V:          2.0e9,      // grams of biomass committed (the bet size)
+  m:          0.0,        // maturity; can exceed 1.0 (overripe)
+  morph: {                // rolled at creation, VISIBLE immediately
+    robustness: 0.94,     // 0.55 … 1.65   hazard divisor
+    fecundity:  1.21,     // 0.60 … 1.80   yield multiplier
+    hygro:      0.83      // 0.60 … 1.45   moisture sensitivity multiplier
+  },
+  bornAt, released: false, destroyed: false
+}
+```
+
+Morph roll: each trait `= clamp(1 + 0.34·N(0,1), lo, hi)`, three independent draws, **shown as three
+short bars on the card before you commit a single gram** — you see the morph, then decide the size of
+the bet. A garbage morph is a cheap-and-quick flush; a 1.7-fecundity morph is worth loading up and
+babysitting through a storm.
+
+Slots: **1 → 4 (`sporulation_reflex`, C6) → 6 (`mast_synchrony`, D1) → 9 (`ballistospory`, E1)**.
+
+### 7.2 The weather process
+
+A mean-reverting Ornstein–Uhlenbeck walk plus a deterministic seasonal term. Updated at 1 Hz.
+It is deliberately **autocorrelated and partly deterministic**, so it can be *learned*, which is the
+whole point (teardown §8.12: UP's `6·sin(n)` had no trend, no momentum, no memory, and therefore no
+skill).
+
+```
+θ      = 0.0100  /s        relaxation rate  (time constant 100 s)          [K]
+σ      = 0.0280  /√s       volatility                                      [K]
+Wbar   = 0.52              long-run mean moisture                          [K]
+SEASON = 1800  s           the "season" period — 30 minutes                [K]
+
+each 1 Hz weather tick (dt=1):
+  season = 0.16 · sin(2π · t / SEASON)
+  W ← clamp( W + θ·(Wbar + season − W)·dt + σ·sqrt(dt)·gauss(), 0.02, 0.98 )
+```
+
+Per-region moisture, derived (not simulated — 61 independent OU walks would be unreadable):
+
+```
+raw_i = W + moistOff(terrain_i) + 0.10 · sin(2π·t/SEASON + mPhase_i)
+m_i   = clamp( terrain_i == CLAY ? (Wbar + 0.5·(raw_i − Wbar)) : raw_i , 0.02, 0.98 )
+```
+
+Clay literally halves the region's deviation from the mean — a physical fact about clay soils and a
+mechanically real safe harbour.
+
+Wind is a second, slower OU pair:
+```
+windSpeed: θ=0.004, σ=0.011, mean 0.45, clamp [0.02, 1.0]
+windDir:   a continuous angle φ; dφ/dt = 0.0018·gauss() + 0.00035  (a slow prevailing rotation)
+           discretised to the nearest of the 6 hex directions for seeding, but drawn continuously
+```
+
+### 7.3 The forecast — the thing you buy
+
+The system knows `θ`, `Wbar`, and `season(t)` exactly. The forecast is therefore the honest
+conditional expectation of an OU process, with an honest uncertainty band:
+
+```
+E[W(t+τ) | W(t)] = μ(t+τ) + (W(t) − μ(t)) · e^(−θτ)      where μ(t) = Wbar + season(t)
+SD[W(t+τ)]       = σ · sqrt( (1 − e^(−2θτ)) / (2θ) )
+```
+
+The forecast strip draws `E ± 1.15·SD` (an 75% band) out to `forecastHorizon` seconds.
+
+| Source | Horizon | Band |
+|---|---|---|
+| start of Act II | 0 s (current value only) | — |
+| `barometry` (B4) | **120 s** | ±1.15 SD |
+| `alarm_contracts` (C10) | +90 s **in contracted regions only** | ±1.15 SD |
+| `mast_synchrony` (D1) | **300 s** | ±0.95 SD |
+| `ballistospory` (E1) | **600 s** | ±0.75 SD |
+
+Narrowing the band is the "buying the house edge" pleasure the teardown identifies in UP's
+`stockGainThreshold` — but here it buys *information*, which the player must still act on. Two
+players with the same forecast will make different, defensible calls.
+
+**Legibility on a phone:** the strip is 44 px tall, full width, with the present at x=0 and the
+horizon at x=100%. A single filled band, one centre line, one dotted line at the danger thresholds
+(0.28 and 0.86), and a small ▲ marker at each primordium's projected optimal release time. That is
+five drawing primitives and it is completely readable at arm's length.
+
+### 7.4 Maturation
+
+```
+MAT_TIME = 240 s base                                                        [K]
+
+dm/dt = (1 / MAT_TIME)
+      · moistureF(m_region)                 // §9.1, hump function peaking at m=0.5
+      · (0.55 + 0.45 · canopy_region)       // shade holds humidity
+      · (0.70 + 0.30 · d_region)            // denser mycelium feeds it faster
+      · matSpeed                            // 1.00 → 1.45 (B4) → 2.10 (D1) → 3.40 (E1)
+```
+
+At base, in a mid-canopy loam stand at ideal moisture with d=0.5: `dm/dt = 1/240 · 1.0 · 0.99 · 0.85
+= 1/285` ⇒ ~4m45s to maturity. With all upgrades and a hemlock stand: ~70 s. So the flush cycle time
+falls from ~5 minutes to ~1 minute across the act, which is exactly the pacing you want — the
+sub-game gets *faster and more frequent*, not obsolete.
+
+### 7.5 Hazards — why waiting is a bet
+
+Each sim tick, for every unreleased primordium with `m > 0.15`:
+
+```
+HAZ_BASE = 0.0022 /s                                                          [K]
+
+hazardEnv(W) = 1
+             + 3.20 · max(0, 0.28 − m_region)        // desiccation
+             + 2.60 · max(0, m_region − 0.86)        // waterlogging / bacterial rot
+             + grazePressure(t)                       // §7.6
+
+p_destroy = HAZ_BASE · m^2 · hazardEnv · morph.hygro / morph.robustness · hazMult
+```
+
+`m^2` is the crux: **exposure grows as the square of maturity while yield grows as `m^1.6`.** So
+there is always a moment past which waiting is negative EV, and that moment depends on the weather,
+which is why the forecast is worth money.
+
+On destruction: you lose `(1 − 0.35·robustness) · V`. A robust morph salvages up to 58% of the bet.
+Console gets one line, from a rotating list:
+`> Slugs found it.` / `> It dried before it opened.` / `> Rot, from the inside.` /
+`> Something with hooves.` / `> It never had a chance in that sand.`
+
+### 7.6 Graze pressure — the slow cycle
+
+A third, very slow deterministic cycle, period 900 s, so that the *background* danger level is
+learnable on a longer horizon than the weather:
+
+```
+grazePressure(t) = 0.55 · max(0, sin(2π·t/900 + 1.1))^1.6
+```
+Peaks at 0.55 for about 200 s out of every 900. It is drawn as a second thin band on the forecast
+strip. Its purpose is to create *seasons of caution* — periods where the right play is small, fast,
+frequent flushes rather than big slow ones. That variation is what stops the sub-game becoming a
+solved routine.
+
+### 7.7 Release — the payoff, and the interior optimum
+
+```
+SPORE_K = 0.045                                                               [K]
+
+spores_gained = SPORE_K
+              · V^0.78                              // sublinear in bet size
+              · m^1.60                              // superlinear in patience
+              · overripePenalty(m)
+              · dispersalF(windSpeed)
+              · morph.fecundity
+              · (0.70 + 0.30 · canopy_region)
+              · sporeMult                           // 1.00 → 2.80 (E1) → ×6 during a Mast Year
+              · firstFlushBonus                     // 3.00 for the first flush only, then 1.00
+
+overripePenalty(m) = m <= 1.25 ? 1.0
+                              : 1 − 0.55 · (m − 1.25)^1.40      // clamped at 0.15
+dispersalF(ws)     = 0.45 + 0.85 · ws
+```
+
+**The optimum.** Expected value of holding one more second at maturity `m`:
+
+```
+dEV/dm ∝ 1.60·m^0.60 · overripePenalty       (marginal yield)
+p_loss/dm  ∝ HAZ_BASE · m^2 · hazardEnv / (dm/dt)   (marginal risk of total loss)
+```
+
+Setting these equal gives an optimal release maturity `m*` that is **a function of `hazardEnv`,
+which is a function of the weather**. Worked, at base constants, `dm/dt = 1/285`:
+
+| condition | `hazardEnv` | `m*` | EV vs releasing at m=1.0 |
+|---|---|---|---|
+| ideal (m_reg ≈ 0.5, no graze) | 1.00 | **1.42** | **+66%** |
+| mild drought (m_reg = 0.20) | 1.26 | 1.29 | +47% |
+| hard drought (m_reg = 0.10) | 1.58 | 1.16 | +26% |
+| waterlogged (m_reg = 0.95) | 1.23 | 1.31 | +49% |
+| graze peak, ideal moisture | 1.55 | 1.17 | +27% |
+| graze peak + hard drought | 2.13 | 1.02 | +3% |
+
+So skilled play is worth **up to +66% per flush** over the naive "release at maturity" heuristic, and
+the correct answer changes every couple of minutes. That is a real strategy layer.
+
+The UI does **not** tell you `m*`. Once you own `barometry` it draws the ▲ marker at the *forecast-
+implied* optimum, which is an estimate that can be wrong — and a player who reads the band and
+overrides the marker beats the marker by ~9%. Three tiers of skill: naive, marker-following, band-
+reading. That is the ladder UP's stock market never had.
+
+### 7.8 Spores as a currency
+
+```
+spores decay:  spores ← spores · 0.99995^(seconds)        // half-life 3h51m
+               (decay disabled by `seedbank`, E3)
+```
+
+Sinks:
+1. **Spore seeding** (§7.9) — claim non-adjacent regions.
+2. **Contest** — dump spores into a rival-held region to add `+0.00012 · spores^0.55` to your
+   colonisation pressure there for 60 s.
+3. **Act III seedbank** — everything you hold at the transition, plus a conversion of held biomass.
+
+Decay exists so that spores are a *flow* to be spent, not a bank to be hoarded — mirroring the
+biology and keeping the flush loop urgent. It is mild enough that a two-hour absence costs ~30%,
+which is inside the offline generosity budget.
+
+### 7.9 Claiming, part 2 — spore seeding
+
+Requires `anemophily` (B3). Target must be **discovered** and **downwind** of a region you hold:
+the angle between the wind vector and the vector (holder → target) must be < 60°, i.e. within one
+hex direction of the current `windDir`. `ballistospory` (E1) removes the wind constraint entirely.
+
+```
+SEED_BASE   = 1.20e4 spores                                                   [K]
+SEED_GROWTH = 1.34                                                            [K]
+
+seedCost(i) = SEED_BASE
+            · SEED_GROWTH ^ seededCount
+            · (1 + 0.45 · ring_i)
+            · (1 + 2.20 · rivalStr_i)
+            · (windSpeed >= 0.6 ? 0.75 : 1.00)      // a strong wind is a discount
+
+on seeding: colonization_i += 0.40 · (1 − rivalStr_i)   immediately, then normal advance
+            (a seeded region continues to colonise WITHOUT an adjacent claimed region —
+             this is the only way across a barrier before C5)
+```
+
+Whole-map seeding programme ≈ 3.0e8 spores, against a lifetime production of ~4e9. So seeding is
+affordable but never free, and every seed is a decision to *not* bank toward the transition gate.
+
+**Why this makes territory interesting rather than busywork:** advance is cheap, contiguous, and
+raises `C`; seeding is expensive, ranged, and *lowers* `C` by creating disconnected nodes. So the two
+verbs pull in opposite directions on your Signal rate, and the right mix depends on where the barriers
+are, where the Scree is, and which way the wind has been blowing. There is no dominant expansion order
+and the map is different every run.
+
+### 7.10 Mast Years
+
+Unlocked by `mast_synchrony` (D1). Every `2100 ± 400` seconds, announced **180 seconds in advance**:
+
+```
+> Something is being decided across the whole forest at once.       (T−180 s)
+> MAST                                                               (T−0)
+duration 90 s.  sporeMult ×6.0.  hazMult ×1.5.  matSpeed ×2.5.
+```
+
+During a mast year the correct play is: pre-load every slot so they mature *into* the window, then
+release inside 90 seconds under elevated hazard. It is the highest-skill, highest-stakes 90 seconds in
+Act II and it recurs roughly every 35 minutes for the rest of the act.
+
+**This is the specific answer to the teardown's §6 endnote** — "once you own AutoTourney the whole
+subsystem becomes a passive faucet; the strategic content has a lifespan of maybe 40 minutes." Mast
+Years give the flush sub-game a permanently-renewing high-agency mode that automation cannot touch
+(§11.4 caps auto-release at 0.78× of skilled play, and auto-release is *disabled* during a mast
+window with a one-line warning, so the player either shows up or leaves ×6 on the table).
+
+### 7.11 Panel layout (portrait)
+
+```
+FLUSH
+────────────────────────────────────────
+ W 0.61 ↗   WIND ▶ 0.52   MAST in 14:22
+ ┌────────────────────────────────────┐
+ │▁▂▃▄▅▅▅▄▃▂▁  forecast 300 s   ▲  ▲ │   44 px
+ └────────────────────────────────────┘
+ ┌────────────────────────────────────┐
+ │ Beech Hollow      m 1.31  ▓▓▓▓▓▓▒  │
+ │ rob ▓▓▓▓▒ fec ▓▓▓▓▓▓ hyg ▓▓▒       │
+ │ 2.0 G committed        [ RELEASE ] │   88 px, RELEASE is 56 px tall, right-aligned
+ └────────────────────────────────────┘
+ ┌────────────────────────────────────┐
+ │ + NEW PRIMORDIUM                   │
+ └────────────────────────────────────┘
+```
+
+Every interactive element is ≥ 44 px and in the lower two-thirds of the screen. `RELEASE` is the only
+right-aligned button in the game, because it is the one you press in a hurry with a thumb.
+
+---
+
+## 8. RIVALS AND CONTESTED GROUND
+
+### 8.1 Why rivals exist
+
+Not for combat. UP's combat is a screensaver (teardown §8.8) and we are not building one. Rivals exist
+to do three things:
+
+1. **Make the map asymmetric** — the richest ground is held by someone.
+2. **Create a genuine "let it burn" temptation** — *Armillaria* kills trees, which converts standing
+   biomass into litter *for free*. Letting it run is sometimes correct. That is a strategic dilemma
+   with no clean answer, which is what we want.
+3. **Punish strip-mining spatially** — a region whose density you cannibalised is a region rivals
+   retake, so overextraction has a *territorial* cost as well as a cognitive one.
+
+There is no battle screen. Contest is a continuous tug-of-war resolved by investments made minutes
+earlier, and it is visible as one amber bar on a region card.
+
+### 8.2 The four strains
+
+| id | Name | `γ` growth | `agg` | Trait |
+|---|---|---|---|---|
+| 0 | ***Armillaria*** | 0.00040 | 1.30 | **Necrotroph.** Adjacent regions (yours or not) suffer `treeMortality += 1.8e-4 · R /s`. Killed biomass becomes litter at 0.92 efficiency. |
+| 1 | ***Trichoderma*** | 0.00110 | 0.85 | **Mycoparasite.** Your `d` gain in adjacent regions is ×0.75, and `d` decays at `2.5e-4·R /s` in regions adjacent to it. |
+| 2 | ***Phellinus*** | 0.00022 | 1.55 | **Entrenched.** Your pressure against it is ×0.60. Displacing it is slow and expensive. Sits on the best ground. |
+| 3 | ***Fomitopsis*** | 0.00016 | 0.70 | **Brown rot.** Weak, but when displaced it leaves `humus += 0.20`. The pleasant neighbour. |
+
+At worldgen, **9 regions in rings 2–4 are rival-held** at `R = 0.35 + 0.4·rand`, distributed one per
+strain minimum, with *Phellinus* preferentially placed on the two highest-`L0` regions in the map.
+Rivals spread to unclaimed adjacent regions:
+
+```
+every slow tick (0.5 Hz), for each rival-held region with R > 0.55:
+    for each unclaimed, unheld adjacent region j (barriers do NOT stop rivals):
+        if (random() < 0.0035 · γ_rival · 200)   // ≈ 1 spread per 4–20 min per strain
+            j.rival = this.rival ; j.rivalStr = 0.12
+```
+
+Rivals do not attack *claimed* regions directly; they grow into the empty forest ahead of you. The
+race is real and it is visible on the map as amber creeping outward while you creep outward.
+
+### 8.3 Contest resolution
+
+```
+yourPressure_i  = d_i · antibiosis · (1 + 0.25 · claimedNeighbours_i) · pulseRepel_i
+                  · (rival_i == PHELLINUS ? 0.60 : 1.00)
+theirPressure_i = rivalStr_i · agg(rival_i) · rivalAgg(terrain_i)
+
+d(colonization)/dt = (1/advanceTime_i) · ( yourPressure − theirPressure )
+d(rivalStr)/dt     = γ · rivalStr · (1 − rivalStr) · (1 − d_i)   −  0.0009 · yourPressure
+```
+
+Both bars move on the same card. If `yourPressure < theirPressure`, colonisation goes **backwards** —
+you can lose a contest, slowly and visibly, and the correct response is to invest (density, antibiosis,
+a REPEL pulse) or to walk away. Nothing is instant, nothing is a dice roll, everything is a
+consequence of a purchase you already made.
+
+`antibiosis`: 1.00 → 1.55 (B5) → 2.35 (with `laccase`, C2, which also confers antibiosis).
+
+**Retaking.** If a claimed region's `d` falls below 0.15 (which happens when you necrotize it and stop
+maintaining it, or under *Trichoderma* decay) and a rival holds an adjacent region, that rival begins
+contesting your claim: `rivalStr` seeds at 0.10 and grows normally. Losing a claimed region sets
+`claimed = false`, zeroes its interface contribution, and costs you `C`. It is recoverable, and it is
+the game telling you, spatially, that you left something to rot.
+
+### 8.4 The Armillaria dilemma, with numbers
+
+*Armillaria* at `R = 0.9` adjacent to one of your ring-3 stands (`T0 = 1.256e11`):
+
+```
+treeMortality = 1.8e-4 · 0.9 = 1.62e-4 /s
+```
+Over 600 seconds it kills `1 − e^(−0.0972) = 9.3%` of `T`, i.e. **1.17e10 g**, of which 0.92 lands in
+your litter pile: **+1.07e10 g of free litter**, worth ≈ 1.3e10 g of Biomass at `yieldF = 1.23`.
+
+The cost: `liveInterface` for that stand falls by `1 − 0.907^0.6 = 5.7%` per 10 minutes, compounding.
+
+So *Armillaria* is a machine that converts your Signal into Biomass at a fixed exchange rate, running
+whether you like it or not, and **you decide how long to leave it plugged in.** Killing it costs a
+REPEL pulse chain plus density investment; leaving it costs cognition. This is the whole act's thesis
+delivered by an NPC.
+
+There is no dialogue about it. There is an amber bar and a number going down.
+
+---
+
+## 9. CONSUMPTION PRESSURE — the tragedy, with numbers
+
+### 9.1 Decomposition
+
+Per claimed region, per second:
+
+```
+KAPPA = 6.20e-4  /s                                                            [K]
+
+moistureF(m) = 0.10 + 3.60 · m · (1 − m)          // hump, peaks 1.00 at m=0.5
+humusF(h)    = 0.45 + 0.55 · h
+
+decomp_i = KAPPA
+         · E                       // enzymePower, global, 1.00 → ~26 across the act
+         · d_i
+         · decompF_i               // species lignin, §6.5
+         · moistureF(m_i)
+         · humusF(h_i)
+         · (terrain_i == PEAT && !aerenchyma ? 0.45 : 1.00)
+         · surgeMult_i             // pulse, §11.2
+         · L_i
+
+L_i     -= decomp_i · dt
+gain_i   = decomp_i · (1 − ρ_i) · yieldF_i · yieldMult
+biomass    += gain_i · dt
+cumBiomass += gain_i · dt
+extracted  += gain_i · dt
+```
+
+Note `moistureF` is a **hump**, not a ramp: fungi want damp, not drowned. This is why Peat (moistOff
++0.34) is a problem before drainage and why a drought is a global slowdown, not just a fruiting
+hazard. Weather therefore couples to the *main* production loop, which means the forecast strip is
+useful even to a player who ignores the flush panel.
+
+`decompF` for pure birch = 1.07, pure pine = 0.65: a **1.65× spread** in rate, inverted by a 1.27×
+spread in `yieldF`. Net, birch stands are 1.35× faster in grams-out per gram-of-litter-per-second and
+carry 39% less litter per hectare. Fast and shallow.
+
+### 9.2 The living forest
+
+```
+λ  = 5.50e-9  /s        litterfall coefficient                                [K]
+g  = 1.60e-8  /s        tree growth coefficient                               [K]
+Tmax_i = 1.35 · T0_i
+
+mycoBonus_i = 1 + 0.75 · min(1, d_i) · kappa_i          // your partnership feeds the tree
+
+dT/dt = g · T_i · (0.25 + 0.75·h_i) · (1 − T_i/Tmax_i) · mycoBonus_i
+      −     T_i · ( 9.0e-7 + armillariaPressure_i + necroRate_i )
+
+litterfall_i = T_i · λ · (0.55 + 0.45·h_i)
+L_i += ( litterfall_i + mortality_i · 0.92 ) · dt
+```
+
+**The equilibrium that defines everything.** Net standing biomass change is positive iff growth
+exceeds litterfall+mortality. At `d=1, kappa=1, T=T0`:
+
+| `h` | growth term | litterfall | net `dT/dt` | verdict |
+|---|---|---|---|---|
+| 1.00 | 6.62e-9·T | 5.50e-9·T | **+1.12e-9·T** | stand thickens |
+| 0.60 | 5.09e-9·T | 4.51e-9·T | **+0.58e-9·T** | stable |
+| 0.35 | 4.13e-9·T | 3.90e-9·T | **+0.23e-9·T** | marginal |
+| 0.15 | 3.36e-9·T | 3.42e-9·T | **−0.06e-9·T** | slow decline |
+| 0.00 | 2.78e-9·T | 3.02e-9·T | **−0.24e-9·T** | dying |
+
+**Humus is the switch between a renewable stand and a mine.** Above h ≈ 0.28 a stand sustains itself
+forever; below it, the stand is on a decades-long (in-game: ~2 hour) slide to zero, and with it goes
+its Signal.
+
+### 9.3 The Retention dial — one dial, no correct setting
+
+Each region has `ρ ∈ [0, 0.80]`: the fraction of decomposed carbon you **return to the soil** instead
+of taking as Biomass. Global default plus up to **5 pinned per-region overrides** (10 with `homeostasis`,
+D5).
+
+```
+HUMUS_SCALE_i = 0.045 · L0_i
+
+hIn_i  = decomp_i · ρ_i · 0.16 / HUMUS_SCALE_i
+hOut_i = ( 2.80e-4 + 9.50e-4 · (1 − ρ_i) ) · h_i
+       · (terrain_i == BURN ? 0.40 : 1.00)              // charcoal holds soil
+dh/dt  = hIn_i − hOut_i
+```
+
+Equilibrium humus by `ρ` (at `d=1`, `L ≈ 0.5·L0`):
+
+| ρ | `h_eq` | gross kept `(1−ρ)` | `humusF(h_eq)` | **net rate** | tree trend |
+|---|---|---|---|---|---|
+| 0.00 | 0.00 | 1.00 | 0.450 | **0.450** | dying |
+| 0.15 | 0.15 | 0.85 | 0.533 | **0.453** | slow decline |
+| 0.30 | 0.36 | 0.70 | 0.648 | **0.454** | marginal |
+| 0.45 | 0.66 | 0.55 | 0.813 | **0.447** | stable |
+| 0.60 | 1.00 | 0.40 | 1.000 | **0.400** | thickening |
+| 0.75 | 1.00 | 0.25 | 1.000 | **0.250** | thickening |
+
+**Read the "net rate" column.** Between ρ = 0 and ρ = 0.45 the short-run Biomass rate is flat to
+within 1.5%. This is deliberate and it is the most important balance property in Act II:
+
+> **The Retention dial is free in the short run and decisive in the long run.**
+
+A player optimising the number in front of them will find no signal and will set it wherever. A player
+who has understood the act will set it deliberately, because ρ actually controls:
+
+- **Tree survival** ⇒ `liveInterface` ⇒ Signal ⇒ Insight ⇒ every multiplier (§4.1)
+- **Fire risk** (§9.5) — low humus + low moisture burns
+- **Reclaimability** — a region at `h = 0` can never be brought back
+- **Fruiting yield** — via canopy, which depends on `T`
+- **`LEGACY`** ⇒ Act III's genetic fidelity ⇒ the wild-strain threat (§13.4)
+
+That is a dial with no correct setting whose consequences all arrive later than the decision. It is
+the teardown's principle 10 executed with actual teeth.
+
+**UI:** a single horizontal slider, 56 px tall, full width, with three labelled detents:
+`TAKE  ·  HOLD  ·  FEED` at ρ = 0.10 / 0.35 / 0.60. Never shows the number ρ; shows the *consequence*:
+`soil: falling` / `soil: holding` / `soil: building`. Pinned regions show a small ◈ on their card.
+
+### 9.4 The stock/flow reality check — stated plainly
+
+Total forest carbon:
+```
+LITTER_BASE   = 1.15e10 g       ring-0 loam baseline litter
+STANDING_BASE = 4.60e10 g       ring-0 loam baseline standing tree biomass
+ringMult(r)   = 1 + 0.55·r      // 1.00, 1.55, 2.10, 2.65, 3.20
+Σ ringMult over 61 hexes = 160.0
+
+L0_total = 160 · 1.15e10 · ⟨terrain·species mods⟩ ≈ 1.84e12 g       ("1.84 T")
+T0_total = 160 · 4.60e10 · ⟨mods⟩                 ≈ 7.36e12 g       ("7.36 T")
+FOREST_TOTAL = 9.20e12 g
+EXTRACT_TARGET = 5.20e12 g      // the act-completion denominator                [K]
+forestConsumed = extracted / EXTRACT_TARGET
+```
+
+**80% of the forest's carbon is alive.** The renewable flow — total litterfall across all 61 stands at
+full health — is ≈ **3.3e4 g/s**, against an endgame extraction rate of ≈ **6.4e9 g/s**. That is
+**0.0005%**.
+
+Be honest about this in the design: *the renewable flow is not an alternative economy.* It cannot
+fund the act and it is not meant to. Its job is to keep a stand's trees alive — and therefore its
+Signal contribution alive — during the long periods when you are eating something else. The tragedy
+of the commons in HYPHAE is **not** "sustainable vs. extractive". It is:
+
+> **You will eat the forest. The question is the order, the rate, and what is still standing when
+> you need to think.**
+
+Litter alone (1.84e12) supplies only 35% of `EXTRACT_TARGET`. **You must kill at least
+`(5.20 − 1.84)/7.36 = 46%` of the standing forest to finish Act II.** The remaining 54% is the
+strategic space, and it maps directly onto `LEGACY`.
+
+### 9.5 Fire — the commons punishing you directly
+
+```
+each slow tick (0.5 Hz), for each region with L > 0:
+    dry = (h_i < 0.22) && (m_i < 0.26)
+    fireRisk_i += dry ? (0.0055 · (0.22 − h_i)/0.22 · terrainFire_i · (1 − 0.55·canopy_i))
+                      : −0.0090
+    fireRisk_i = clamp(fireRisk_i, 0, 1)
+    if (fireRisk_i > 0.85 && random() < 0.030) → IGNITE
+```
+`terrainFire`: Loam 1.0, Sand 1.8, Clay 0.7, Scree 1.2, Peat 2.4 (peat fires are real and terrible),
+Burn 0.3.
+
+**On ignition:**
+```
+L_i        ← 0.15 · L_i          // 85% of the litter is simply gone. Not converted. Gone.
+T_i        ← 0.30 · T_i
+d_i        ← 0.25 · d_i
+humus_i    ← 0.45                // ash
+terrain_i  ← BURN                // permanently
+species_i  ← rebalanced 60% toward Birch (pioneer succession)
+contract_i ← null
+fireRisk_i ← 0
+spread: each non-barrier neighbour with fireRisk > 0.55 ignites 1 slow-tick later
+        (disabled entirely by `firebreak`, D6)
+```
+
+Console, three lines over three seconds:
+```
+> Old Scree Break is burning.
+> Nothing is being decomposed. It is being deleted.
+> [ 4.1 T of litter lost ]
+```
+
+A mid-act fire in a ring-3 stand destroys ~4e10 g of litter — roughly **twelve minutes of total
+production at that point in the act.** It is the single most punishing event in Act II and it is
+**entirely self-inflicted**: it requires you to have driven humus below 0.22, which requires ρ near
+zero, which you chose because the short-run rate looked identical.
+
+That is the teardown's principle 5 — *make the player complicit in the mechanic they will later
+regret* — executed precisely. UP made you the wire inflation. HYPHAE makes you the drought.
+
+`firebreak` (D6, 520 Ψ + 8.0e10 g) reduces ignition probability ×0.25 and stops spread. It is
+deliberately priced so that the first fire happens *before* you can afford it.
+
+### 9.6 Necrotrophy — the turn
+
+`necrotroph` (C1, 240 Ψ + 90,000 Σ), available at `forestConsumed ≥ 0.22`.
+
+Title: **"Necrotrophic Conversion."** Description: **"Stop asking."**
+
+It unlocks a per-region action, `KILL STAND`, with a confirmation that is one word (`KILL`) and a
+consequence line that is one sentence.
+
+```
+necroRate_i = 0.00085 /s · necroMult      // necroMult 1.00 → 3.00 with `total_conversion` (D9)
+while necrotizing:
+    killed   = T_i · necroRate_i · dt
+    T_i     -= killed
+    L_i     += killed · 0.92
+    contract_i = null            // immediately and permanently
+    region.necrotized = true     // irreversible flag; T can never regrow
+```
+
+Half-life of a stand under necrotrophy: `ln2 / 0.00085 = 815 s` (13.6 min), or 272 s with D9.
+
+**The exchange rate, stated exactly.** For a ring-3 loam stand (`T0 = 1.256e11`, `L0 = 3.15e10`):
+
+| | keep it alive | kill it |
+|---|---|---|
+| Biomass delivered | litterfall only: `4.5e-9 · T = 565 g/s` forever | `+1.156e11 g` of litter over ~40 min, then nothing |
+| `liveInterface` contribution | ≈ 1.00 (at d=1, contracted, loam/beech) | → 0.00, permanently |
+| Signal cost at Σinterface = 45 | — | `(46.0^0.85 − 45.0^0.85)/45.6^0.85 = 1.87%` of **all** Signal |
+| Fruiting in that stand | full canopy | canopy → 0.15 within 20 min |
+| `LEGACY_LIFE` cost | — | `1.256e11 / 7.36e12 = 1.71%` of the act's legacy budget |
+
+Killing forty stands out of sixty-one is roughly **−52% Signal, −52% Insight rate**, in exchange for
+finishing the act about 35 minutes sooner. Both are real strategies. The game never says which is
+better, and the *ending you can reach in Act III* differs.
+
+### 9.7 The decline arc — the act's real shape
+
+Because `decomp ∝ L` and `L` is a depleting stock, and because Signal ∝ live interface which
+necrotrophy destroys, the act's production curve is **not** monotone. Modelled over a typical run:
+
+| `forestConsumed` | elapsed | `decompRate` | `Sr` | what it feels like |
+|---|---|---|---|---|
+| 0% | 0:00 | 4.0e3 g/s | 2.5 /s | quiet |
+| 8% | 0:22 | 6.1e5 | 41 | opening out |
+| 25% | 0:58 | 2.8e7 | 310 | mastery |
+| 45% | 1:34 | 4.4e8 | 1,180 | the machine hums |
+| 65% | 2:09 | 2.9e9 | 3,400 | peak breadth |
+| **80%** | **2:34** | **8.1e9** | **5,300 ← PEAK SIGNAL** | everything is enormous |
+| 88% | 2:51 | **1.05e10 ← PEAK CARBON** | 4,600 ↓ | *something is wrong* |
+| 94% | 3:04 | 8.9e9 ↓ | 2,900 ↓ | stands going dark on the map |
+| 97% | 3:12 | 6.4e9 ↓ | 1,900 ↓ | the gate is affordable, barely |
+| 100% | 3:18 | 3.1e9 ↓ | 1,100 ↓ | there is nothing left to say |
+
+**Peak Signal precedes peak Carbon by about 17 minutes, and both precede the end.** The last 25
+minutes of Act II are a managed decline in which every number you have spent three hours growing is
+visibly falling and you are spending everything down to reach a single button. No incremental game
+ends an act this way. It is the correct ending for this fiction and it is *emergent* — nothing in the
+code scripts a decline; the decline is what happens when a system eats its own substrate.
+
+**The mercy rule.** A player who necrotizes too aggressively too early can, in principle, crater their
+Signal below the level needed to afford the transition. `last_light` (E2, 1,300 Ψ, trigger
+`forestConsumed ≥ 0.88`) sets a floor:
+```
+Sr = max( Sr_computed, 0.40 · SrPeakEverSeen )
+```
+Title: **"Photoreception."** Description: **"Learn to face the sky."** It is a real project with real
+flavour that happens to be an anti-softlock device, in the tradition of *Beg for More Wire*.
+
+---
