@@ -1303,3 +1303,450 @@ Title: **"Photoreception."** Description: **"Learn to face the sky."** It is a r
 flavour that happens to be an anti-softlock device, in the tradition of *Beg for More Wire*.
 
 ---
+
+## 10. CONTRACTS — Act I's economy, carried forward
+
+Act I's mycorrhizal contracts are the strategic layer the teardown identifies as our biggest win over
+UP's agency-free stock market. They do not disappear in Act II. They are **re-homed into regions** and
+given a third term type.
+
+### 10.1 The re-homing
+
+At the Act I→II transition, each existing contract is assigned to the claimed region whose species mix
+best matches its partner species. Act I's abstract "a tree" becomes "the trees in Beech Hollow."
+
+A region can hold **one** contract. Requirements: `claimed && d ≥ 0.30 && T ≥ 0.35·T0 && !necrotized`.
+A contract is voided instantly and permanently if any requirement lapses — including by fire, by
+necrotrophy, or by a rival retaking the stand.
+
+### 10.2 Terms
+
+A contract is `{ regionId, type, sugarOut, payIn, term, tension }`.
+
+```
+sugarOut = biomass you pay, g/s = 0.0080 · T_i^0.62 · termMult
+```
+
+| type | `payIn` | scale |
+|---|---|---|
+| **MINERAL** | ⛬ minerals/s | `0.0145 · T_i^0.55 · kappa_i · (1 + 0.6·mineralMod(terrain))` |
+| **INTERFACE** | nothing directly — sets `hasContract = true` | `liveInterface × 1.50` (§4.1) |
+| **ALARM** *(new, C10)* | information | `forecastHorizon += 90 s` **in this region only** |
+
+All three cost the same sugar. So each contract is a live three-way choice — *minerals* (which buy
+density, which buys everything), *cognition* (raw Signal), or *information* (better flush timing in
+that stand). And because a region holds exactly one, and there are only ever ~15–30 contractable
+stands, the contract portfolio is a genuine allocation problem that recurs whenever a stand changes
+state.
+
+`termMult` is negotiated: **1.00 (standard) / 1.35 (rich) / 0.70 (thin)**, with `payIn` scaling by the
+same factor. Rich terms are strictly better while you have surplus biomass and strictly worse during
+the endgame squeeze when you are hoarding for the transition gate — so the correct term flips at
+around `forestConsumed ≈ 0.90`, and a player who never revisits their contracts loses ~4% of the gate
+timing. Small, real, and discoverable.
+
+### 10.3 Tension — the thing that makes them counterparties
+
+```
+tension_i ∈ [0,1],  starts 0
+each slow tick:
+   stress = 0.35·(1 − h_i) + 0.45·max(0, 1 − T_i/(0.8·T0_i)) + 0.20·(ρ_i < 0.20 ? 1 : 0)
+   tension_i += (stress − 0.30) · 0.0016
+   tension_i = clamp(tension_i, 0, 1)
+
+payIn is multiplied by (1 − 0.85·tension_i)
+if tension_i > 0.92 for 60 continuous seconds → the contract is TERMINATED by the tree
+```
+
+A tree you are starving pays you less and eventually stops. Console: `> Beech Hollow has stopped
+answering.` No penalty, no re-negotiation window, no "reputation" score. The relationship simply ends,
+and you can see, in the `stress` breakdown on the card, exactly which of the three things you did.
+
+This is what UP's stock market pretended to be: a counterparty whose behaviour is a *response to your
+behaviour*, with a legible causal chain and a real, permanent consequence.
+
+### 10.4 The mineral market (Act I's two-sided market, demoted)
+
+Act I's substrate/nutrient price dynamics persist as a one-panel exchange between **Biomass** and
+**Minerals**, with the self-inflicted-drift property from the teardown's §2.4 (UP's
+`wireBasePrice += 0.05`) — improved by giving it **memory and trend** so it can be learned:
+
+```
+mineralPrice: g of biomass per ⛬
+  base:  P ← P + 0.0022·(Pbar − P) + 0.019·momentum + 0.0090·gauss()      (1 Hz)
+  momentum ← 0.94·momentum + 0.06·(P − Pprev)/max(P,1e-9)                 // autocorrelated!
+  every BUY of n minerals:  Pbar += 0.00040 · n^0.55        ← you are the inflation
+  every SELL of n minerals: Pbar -= 0.00018 · n^0.55        ← half as much the other way
+  Pbar decays toward its initial value at 1/9000 per second when untouched
+```
+
+Momentum makes the series **trend-following on a ~60 s scale**, so "buy the dip" is an actual skill
+rather than a reflex — the fix for teardown §8.12. The asymmetric drift (0.00040 up vs 0.00018 down)
+means a heavy buyer permanently raises their own costs, exactly as in UP, but now they can *see it
+happening* on a 300-sample sparkline and choose to spread purchases out.
+
+Minerals are consumed by: density steps (§6.10), `bridging`, `firebreak`, and Act III's launch.
+
+---
+
+## 11. AUTONOMY, DELEGATION, AND THE MANUAL VERB LADDER
+
+The teardown's principle 2: *automate the first verb inside 60 seconds; charge for the next thing.*
+Applied across three hours, that means Act II must **retire every manual action it introduces** and
+replace each with something with a higher decision-to-input ratio.
+
+### 11.1 The ladder
+
+| Phase | Retired verb | Automated by | **New manual verb that replaces it** |
+|---|---|---|---|
+| 0:00 | (Act I's `EXTEND` tap) | the act transition | tap a region → **ADVANCE** |
+| 0:22 | reading region cards one by one | `substrate_assay` (A5) | **SURVEY** (120 Σ, a spending decision) |
+| 0:35 | advance one at a time | `rhizomorph` (B2), 3 slots | **choosing which 3**, a portfolio call |
+| 0:48 | — | — | **PULSE** with a chosen epicentre and mode |
+| 1:10 | buying density step by step | `turgor_auto` (C3) | **per-terrain density targets** (6 dials) |
+| 1:25 | advancing manually | `highways` (C4) | **expansion policy + veto list** |
+| 1:40 | releasing every primordium | `sporulation_reflex` (C6) | **manual override**, and Mast Years |
+| 1:55 | tuning ρ per region | `homeostasis` (D5) | **humus setpoint + 10 pinned exceptions** |
+| 2:20 | — | — | **KILL STAND** — the ordering problem |
+| 2:50 | — | — | **the endgame spend-down** |
+| never | — | — | **PULSE.** It never automates. |
+
+Every row removes taps and adds a decision. Nothing is automated before the player has performed it
+enough times to have an opinion about it, and every automation is triggered *behaviourally* (25
+density buys, 20 flushes, 10 pulses) — the teardown's trigger type 3, the one that makes the game feel
+like it is watching you.
+
+### 11.2 PULSE — the hero verb
+
+Unlocked at 8:20 by `action_potential` (45 Ψ) and present in the player's thumb for the remaining
+three hours. It is the one thing in Act II that is *tactile*.
+
+```
+pulseCost     = 0.55 · Sc                     // always 55% of capacity — always costs ripeness
+pulseCooldown = 120 s → 75 s (B7) → 45 s (D3)
+```
+
+You choose an **epicentre region** and a **mode**. Effect falls off with hex distance:
+
+```
+strength_i = 0.82 ^ hexDist(epicentre, i)      // 1.00, 0.82, 0.67, 0.55, 0.45, 0.37, 0.30, 0.25, 0.20
+```
+
+| Mode | Unlocked | Effect |
+|---|---|---|
+| **SURGE** | A6 | `surgeMult_i = 1 + 2.20·strength_i` for **30 s**. At the epicentre: ×3.20 decomposition. |
+| **REPEL** | B5 | `theirPressure ×(1 − 0.45·strength)`, `yourPressure ×(1 + 0.30·strength)` for **60 s**. |
+| **RECRUIT** | B7 | all in-progress advances: `colonization += 0.35·strength`, instantly. +1 advance slot for 60 s. |
+| **BLOOM** | D4 | all primordia: `m += 0.18·strength` instantly, and hazard-immune for **20 s**. |
+
+**Why a positional pulse is the right hero verb for a phone.** Two taps (button → map hex, or button →
+"best" chevron), both in the thumb arc, both reversible until confirmed, and the *decision* is
+genuinely hard: SURGE wants your densest, fattest litter cluster; REPEL wants your contested frontier;
+RECRUIT wants wherever you have the most advances in flight; BLOOM wants your flush cluster. Those are
+four different places on the map, and `0.82^dist` means you cannot cover two of them at once. So the
+shape of your colony — which you chose, back in §6 — determines how much value your pulses are worth.
+
+Every system in Act II points at this one button.
+
+**The ripeness interaction.** `pulseCost = 0.55·Sc` guarantees that pulsing *always* breaks saturation
+and always costs ripeness (§5.2). So there is a permanent, recurring tension between the tactile
+pleasure of pulsing and the patient accumulation of Insight. The player who pulses on every cooldown
+gets ~40% less Insight over the act. The player who never pulses gets ~25% less carbon and loses
+contested ground. **Neither extreme is correct and the balance point moves.** That is the single best
+recurring decision in Act II.
+
+### 11.3 What is deliberately never automated
+
+- **PULSE.** No project, ever, at any price.
+- **Spending Signal / Insight.** The projects list is the game.
+- **KILL STAND.** Never automatable. Sixty-one irreversible choices, each made by hand, is the act's
+  moral content and it does not get a "kill all" button.
+- **Contract term selection.** Auto-renewal exists (`standing_terms`, part of C10); auto-*choosing*
+  the type does not.
+- **Manual release during a Mast Year.** Auto-release is suspended in the window with a one-line
+  console warning; the player either shows up or forfeits ×6.
+
+### 11.4 Automation is always worse than skilled play — by a published margin
+
+| Automated | Policy | Fraction of skilled play |
+|---|---|---|
+| `sporulation_reflex` (C6) | release at fixed `m = 0.92`, ignore weather | **0.55×** |
+| + `alarm_contracts` (C10) | release at forecast-implied `m*`, contracted regions only | **0.78×** |
+| `turgor_auto` (C3) | buy to target `d` per terrain, cheapest-first | **0.93×** (it is mostly a chore) |
+| `highways` (C4) | expand under policy: `compact` / `rich` / `contested` | **0.88×** |
+| `homeostasis` (D5) | hold humus at a setpoint | **0.97×** |
+
+The rule: **automation of a chore should be ~0.95×; automation of a skill should never exceed 0.80×.**
+Density buying is a chore. Flush timing is a skill. The player is allowed to stop doing chores and is
+never allowed to stop being good at the game.
+
+---
+
+## 12. THE PROJECTS TREE — 43 unlocks
+
+Architecture is copied from Universal Paperclips without modification, because the teardown is right
+that it is the load-bearing progression system:
+
+```js
+{
+  id, title, priceTag,                  // priceTag is a HAND-WRITTEN string
+  description,                          // ≤ 12 words. Mechanical delta in parens at the end.
+  trigger:  () => bool,                 // does it EXIST yet
+  cost:     () => bool,                 // can you AFFORD it  → button.disabled = !cost()
+  uses: 1, flag: 0, element: null,
+  effect:   () => { deduct; apply; displayMessage(...); removeFromDOM(); }
+}
+```
+
+`trigger` and `cost` are separate predicates, evaluated every sim tick. A project appears **greyed the
+moment it becomes conceptually available** and lights up when purchasable. Bought projects are removed
+from the DOM entirely — no completed tab, no receipts, no history. The list is always exactly "what is
+available to me right now."
+
+**Phone modification:** past 15 simultaneously-visible projects the list gets three chips at the top —
+`ALL · AFFORDABLE · NEW` — and nothing else. No categories, no tabs, no search.
+
+Currency glyphs: **Σ** Signal · **Ψ** Insight · **g** Biomass · **◦** Spores · **⛬** Minerals · **D** Differentiation.
+
+### 12.1 Tier A — Awakening (`forestConsumed` 0 → 8%)
+
+| id | Title | priceTag | Trigger | Description | Effect |
+|---|---|---|---|---|---|
+| A1 | **Chemotaxis** | `(400 Σ)` | act II start | *"Sense the gradient."* | Unlock FOREST panel, map, STANDS list, ADVANCE |
+| A2 | **Apical Growth** | `(900 Σ)` | `claimed ≥ 2` | *"Grow only at the ends."* | `advanceSpeed ×1.45` |
+| A3 | **Turgor** | `(1,600 Σ)` | `S ≥ Sc` once | *"The pressure has nowhere to go."* | Unlock **Insight** + ripeness meter |
+| A4 | **Primordium** | `(10 Ψ)` | `insight ≥ 8` | *"A knot in the wood, deciding."* | Unlock FLUSH, 1 slot |
+| A5 | **Substrate Assay** | `(2,400 Σ)` | `discovered ≥ 4` | *"Taste before you commit. (enables SURVEY)"* | SURVEY action, 120 Σ each |
+| A6 | **Action Potential** | `(45 Ψ)` | `claimed ≥ 3` | *"Say it all at once."* | Unlock **PULSE**, SURGE mode, cd 120 s |
+| A7 | **Differentiation** | `(3,200 Σ)` | `cumBiomass ≥ 1.5e9` | *"Not every thread needs to do everything."* | Unlock D allocation; ladder begins |
+
+### 12.2 Tier B — Spread (8 → 25%)
+
+| id | Title | priceTag | Trigger | Description | Effect |
+|---|---|---|---|---|---|
+| B1 | **Manganese Peroxidase** | `(30 Ψ, 6,000 Σ)` | `extracted ≥ 4e9` | *"Rust, applied with intent."* | `E ×1.60` |
+| B2 | **Rhizomorphs** | `(55 Ψ)` | `claimed ≥ 6` | *"Cables, not threads. (3 advances at once)"* | `advanceSlots = 3`, `advCostMult ×0.82` |
+| B3 | **Anemophily** | `(40 Ψ)` | `spores ≥ 5e4` | *"Let the weather carry it."* | Spore-seed non-adjacent **downwind** regions |
+| B4 | **Barometric Sense** | `(70 Ψ, 12,000 Σ)` | `flushes ≥ 3` | *"Feel the pressure fall."* | Forecast horizon **120 s**; `matSpeed ×1.45` |
+| B5 | **Antibiosis** | `(85 Ψ)` | first rival contact | *"Chemistry is cheaper than growth."* | `antibiosis ×1.55`; unlock **REPEL** |
+| B6 | **Vesicular Storage** | `(18,000 Σ)` | `dVes ≥ 1` | *"Hold more of it, for longer."* | `capMult ×1.45` |
+| B7 | **Septal Gating** | `(110 Ψ)` | `pulses ≥ 10` | *"Open every door at the same instant."* | Pulse cd **75 s**; unlock **RECRUIT** |
+| B8 | **Humic Retention** | `(24,000 Σ)` | any `h < 0.25` | *"Give some of it back. (unlocks Retention)"* | Unlock ρ dial + 5 pinned overrides |
+
+### 12.3 Tier C — Appetite (25 → 55%)
+
+| id | Title | priceTag | Trigger | Description | Effect |
+|---|---|---|---|---|---|
+| C1 | **Necrotrophic Conversion** | `(240 Ψ, 90,000 Σ)` | `consumed ≥ 0.22` | *"Stop asking."* | Unlock **KILL STAND** |
+| C2 | **Laccase Cascade** | `(190 Ψ, 60,000 Σ)` | `B1.flag` | *"Break the ring, then the next ring."* | `E ×2.10`; `antibiosis ×1.52` |
+| C3 | **Turgor Regulation** | `(165 Ψ)` | `densityBuys ≥ 25` | *"Stop deciding this one thread at a time."* | Auto-density to per-terrain targets |
+| C4 | **Rhizomorph Highways** | `(300 Ψ, 140,000 Σ)` | `claimed ≥ 18` | *"Move mass, not just signal."* | Auto-advance under policy; `slots = 6`; `advCostMult ×0.80` |
+| C5 | **Bridging Strands** | `(260 Ψ, 4,000 ⛬)` | a barrier blocks an advance | *"Across the water, on a dead branch."* | Advance may cross barriers at ×2.40 cost |
+| C6 | **Sporulation Reflex** | `(280 Ψ)` | `flushes ≥ 20` | *"You no longer need to be told when."* | Auto-release at `m = 0.92`; `slots = 4` |
+| C7 | **Mycelial Memory** | `(420 Ψ, 200,000 Σ)` | `insight ≥ 350` | *"The network remembers where the good wood was."* | `insightMult ×1.55`; `RIPE_T → 130 s` |
+| C8 | **Reabsorption** | `(150 Ψ)` | `D ≥ 5` | *"Take it back and try again. (respec)"* | Unlock respec, `cost = ceil(120·(n+1)^1.6)` Ψ |
+| C9 | **Aerenchyma** | `(210 Ψ, 4.0e9 g)` | own a Peat region | *"Breathe through the water."* | Peat `decompF` penalty 0.45 → 0.95 |
+| C10 | **Alarm Contracts** | `(230 Ψ)` | `contracts ≥ 4` | *"They knew about the drought first."* | ALARM term type; auto-renewal; `+90 s` forecast in contracted stands |
+
+### 12.4 Tier D — Dominion (55 → 85%)
+
+| id | Title | priceTag | Trigger | Description | Effect |
+|---|---|---|---|---|---|
+| D1 | **Mast Synchrony** | `(640 Ψ, 400,000 Σ)` | `flushes ≥ 40` | *"The whole forest decides at once."* | **Mast Years** begin; `slots = 6`; forecast 300 s; `matSpeed ×2.10` |
+| D2 | **Fenton Chemistry** | `(700 Ψ, 500,000 Σ)` | `C2.flag` | *"Iron, peroxide, and no particular care."* | `E ×2.60` |
+| D3 | **Saltatory Conduction** | `(820 Ψ, 300,000 Σ)` | `dCond ≥ 6` | *"Skip the parts that do not matter."* | `signalMult ×2.20`; pulse cd **45 s** |
+| D4 | **Synchronous Flush** | `(560 Ψ)` | `D1.flag` | *"All of them, in the same minute."* | Unlock **BLOOM** pulse mode |
+| D5 | **Homeostatic Soil** | `(480 Ψ)` | `B8.flag` | *"Hold the number yourself."* | Auto-ρ to a humus setpoint; pinned overrides 5 → 10 |
+| D6 | **Firebreak Mycelium** | `(520 Ψ, 8.0e10 g)` | first ignition | *"Wet the ground ahead of it."* | Ignition ×0.25; fire no longer spreads |
+| D7 | **Deep Substrate Hyphae** | `(900 Ψ, 900,000 Σ)` | `consumed ≥ 0.65` | *"There is older wood underneath."* | `yieldMult ×1.85`; `L += 0.18·L0` on all claimed; `RIPE_T → 95 s` |
+| D8 | **The Charter** | `(750 Ψ)` | `LEGACY_LIFE ≥ 0.55 && consumed ≥ 0.60` | *"Terms, in perpetuity, with things that cannot read."* | `yieldMult ×2.40` on stands with `T > 0.5·T0`; `pathFlag = symbiont`. **Excludes D9.** |
+| D9 | **Total Conversion** | `(750 Ψ)` | `LEGACY_LIFE ≤ 0.25 && consumed ≥ 0.60` | *"There is no second forest."* | `necroMult ×3.00`; `decomp ×1.45` on necrotized stands; `pathFlag = necrotroph`. **Excludes D8.** |
+
+D8 and D9 are the act's fork. Both cost 750 Ψ, both are worth roughly the same throughput, and their
+*triggers are mutually exclusive by construction* — you cannot see both, because you cannot
+simultaneously have preserved 55% and destroyed 75% of the standing forest. A player who ends up
+between the two thresholds sees neither and gets `pathFlag = "mixed"`. That is a legitimate third
+outcome with its own Act III ending, and the game never mentions that it exists.
+
+### 12.5 Tier E — The end of the forest (85 → 100%)
+
+| id | Title | priceTag | Trigger | Description | Effect |
+|---|---|---|---|---|---|
+| E1 | **Ballistospory** | `(1,100 Ψ, 1.2M Σ)` | `consumed ≥ 0.85` | *"Fire them. Do not wait for wind."* | `sporeMult ×2.80`; seeding ignores wind; `slots = 9`; forecast 600 s; `matSpeed ×3.40`; `advanceSlots = 10` |
+| E2 | **Photoreception** | `(1,300 Ψ)` | `consumed ≥ 0.88` | *"Learn to face the sky."* | `Sr ≥ 0.40 · SrPeak` floor |
+| E3 | **Seed Bank** | `(1,000 Ψ, 3.0e11 g)` | `consumed ≥ 0.90` | *"Nothing you make now is for you."* | Spore decay off; convert biomass → spores at `1 ◦ : 3.2e3 g` |
+| E4 | **Ascospore Discharge** | `(1,600,000 Σ, 1,400 Ψ, 1.60 T g held, 4.0e8 ◦)` | `consumed ≥ 0.97` | *"Let go of the ground."* | **→ ACT III.** See §13. |
+
+### 12.6 Flavour projects — the D faucet
+
+Priced in Insight only, purely optional in the sense that nothing forces you, and completely
+non-optional in the sense that D is the scarcest resource in the act. This is UP's poetry-for-Trust
+track: *flavour is never free and mechanics are never flavourless.*
+
+| id | Title | priceTag | Trigger | Description |
+|---|---|---|---|---|
+| F1 | **Slime Mould Correspondence** | `(60 Ψ)` | `insight ≥ 55` | *"Physarum solved the rail network first. (+1 D)"* |
+| F2 | **The Wood Wide Web** | `(180 Ψ)` | `contracts ≥ 3` | *"A phrase invented by a journalist. It is not wrong. (+1 D)"* |
+| F3 | **Zombie-Ant Fungus** | `(340 Ψ)` | `claimed ≥ 20` | *"Ophiocordyceps does not need a brain to use one. (+1 D)"* |
+| F4 | **The Humongous Fungus** | `(700 Ψ)` | `claimed ≥ 34` | *"2,384 hectares, in Oregon, since before agriculture. (+2 D)"* |
+| F5 | **Lichen** | `(1,050 Ψ)` | `contracts ≥ 8` | *"Two organisms agreed to stop being two. (+2 D)"* |
+
+Note the ladder those five make: correspondence → a name → parasitism → scale → **merger**. It is a
+five-step argument about what a network is, delivered entirely in project titles, and the last one
+costs the most and gives the most, which is the joke.
+
+### 12.7 Budget check
+
+| Tier | Σ | Ψ | g | other |
+|---|---|---|---|---|
+| A | 8,500 | 55 | — | — |
+| B | 60,000 | 390 | — | — |
+| C | 490,000 | 2,445 | 4.0e9 | 4,000 ⛬ |
+| D | 2,100,000 | 5,370 (one of D8/D9) | 8.0e10 | — |
+| E | 2,800,000 | 4,800 | 3.0e11 + **1.60e12 held** | 4.0e8 ◦ |
+| F | — | 2,330 | — | — |
+| **Total** | **≈ 5.46e6** | **≈ 15,390** | **≈ 3.84e11 + gate** | |
+| **Available** | **≈ 8.0e6** | **≈ 16,000** | **≈ 5.20e12 extracted** | |
+
+Insight has under 5% slack — **you cannot buy everything on one run.** Signal has 32% slack, which is
+correct because Signal is also spent on SURVEY and because a low-Vesicle build wastes some by
+overflowing. Biomass is dominated by expansion (9.6e11), density (1.09e12) and fruiting commitments
+(~5e11), leaving ~1.7e12 available against a 1.60e12 gate: the last ten minutes are a real squeeze.
+
+---
+
+## 13. THE ACT II → ACT III TRANSITION
+
+### 13.1 The principle
+
+Teardown principle 7: **act transitions REVOKE, they do not ADD.** *Release the HypnoDrones* zeroed
+every clipper and deleted the entire economy. *Space Exploration* disassembled every factory.
+
+`ascospore` destroys the map.
+
+### 13.2 The project
+
+```
+E4  ASCOSPORE DISCHARGE
+    (1,600,000 Σ, 1,400 Ψ, 1.60 T held, 400 M spores)
+    "Let go of the ground."
+
+    trigger: forestConsumed >= 0.97
+```
+
+Five words. *Release the HypnoDrones* used four ("A new era of trust"). We are not going to beat that,
+so we are going to be shorter than usual instead and say a true thing about what is happening.
+
+The button appears at 97% and is greyed. It sits at the bottom of the projects list, visible, for
+roughly **eleven minutes** while the player scrapes together 1.60 T of biomass out of a production
+curve that is falling. During those eleven minutes the map goes dark stand by stand. That is the
+ending of Act II and it needs no cutscene.
+
+### 13.3 The effect
+
+```js
+effect: function(){
+    signal   -= 1.6e6;
+    insight  -= 1400;
+    spores   -= 4.0e8;
+
+    // 1. Compute the legacy BEFORE destroying the evidence.
+    LEGACY_HUMUS = mean(regions.map(r => r.humus));
+    LEGACY_LIFE  = sum(regions.map(r => r.T)) / sum(regions.map(r => r.T0));
+    LEGACY       = 0.55*LEGACY_HUMUS + 0.45*LEGACY_LIFE;
+
+    // 2. The body becomes the seedbank.
+    sporeBank = spores + Math.floor(biomass / 3.2e3);
+    biomass   = 0;
+    minerals  = Math.floor(minerals * 0.25);      // a little is carried in the spore coat
+
+    // 3. Revoke the entire act.
+    territoryReboot();     // all 61 regions: claimed=false, d=0, colonization=0,
+                           //                 contract=null, rival cleared, L=0, T=0
+    contractsReboot();     // every contract void. The PACT panel is destroyed.
+    flushReboot();         // every primordium destroyed. The FLUSH panel is destroyed.
+    weatherReboot();       // the OU walk stops. There is no weather above the atmosphere.
+    mapDestroy();          // the FOREST panel is destroyed.
+
+    // 4. Signal is re-sourced. It no longer comes from trees.
+    signalSource = "SPORE";       // Sr now scales with sporeBank^0.62 — Act III's problem
+    signalMult  *= 0.35;          // a hard, felt drop
+    capMult     *= 1.00;          // capacity survives: the vesicles are yours
+
+    // 5. What survives.
+    //    insight, insightMult, D (freed for reallocation), pathFlag, LEGACY, sporeBank
+    D_unallocated = D; dCond = 0; dVes = 0;       // one free reallocation onto Act III's axes
+
+    act = 3;
+    spaceFlag = 1;
+    displaySequence(ASCENT_TEXT);
+}
+```
+
+**What the player loses:** sixty-one regions, every hyphal thread, every contract, the weather, the
+wind, the map, the flush sub-game, the pulse epicentre (Act III re-homes PULSE onto a different
+geometry), all 5.2 T of biomass, and 65% of their Signal multiplier.
+
+**What the player keeps:** Insight. Differentiation. And a seedbank made of the forest.
+
+### 13.4 What it recontextualises
+
+- **The forest was never a home. It was a body.** Every stand you kept alive was a neuron you rented
+  from something that did not agree to it.
+- **`LEGACY` is the bill.** `fidelityBase = 0.72 + 0.28 · LEGACY`. In Act III, genetic fidelity is
+  what resists the wild-strain divergence. A player who strip-mined enters Act III at fidelity 0.75
+  and will spend the next hour fighting their own children. A player who left half the forest standing
+  enters at 0.87. **The game never told you the soil mattered. It told you the numbers were the same.**
+  (§9.3: they were, in the short run.)
+- **The `0.60 +` floor in the Signal formula (§4.3) is the only thing keeping you conscious** on the
+  other side. You are, for about ninety seconds of Act III, nearly mindless.
+- **Spores were the point all along.** Every flush you optimised for territory was building the thing
+  you leave in.
+
+### 13.5 The event sequence
+
+No strobe. UP's `longBlink` is 120 flashes in 4 seconds and the teardown correctly calls it a
+photosensitivity hazard. HYPHAE's transition is **slow, quiet, and downward**.
+
+```
+t=0.0   All panels except the map fade to 0.35 opacity over 900 ms.
+t=0.9   The map desaturates outward from ring 4 to ring 0, one ring per 700 ms,
+        each region's fill draining to the background colour.
+t=3.7   The core region is the last thing on screen with colour. It holds for 1.2 s.
+t=4.9   The hexes lift: each region's polygon translates upward by 4–40 px (seeded random)
+        while its alpha goes to 0 over 1,600 ms, with a 0–400 ms per-region stagger.
+        Procedural canvas only. No assets.
+t=6.5   Black. Then, one line per 1,400 ms, in the console voice:
+
+        > The last of the deadfall is gone.
+        > There is nothing beneath you.
+        > You are very light.
+
+t=11.6  The ACT III shell fades in from black over 2,000 ms.
+```
+
+Under `prefers-reduced-motion`: the whole sequence collapses to a 1,200 ms cross-fade plus the three
+console lines at the same cadence. The lines are the part that matters; the motion is decoration and
+is treated as such.
+
+Audio: none. There are no audio files anywhere in HYPHAE. UP's threnody is the right instinct and the
+wrong constraint for us — we said no external assets and we meant it. The silence is louder anyway.
+
+### 13.6 The pre-transition warning arc
+
+The player must *feel* the collapse coming for at least fifteen minutes before it is legible as a
+number. Console lines, fired once each on threshold crossings, no other effect:
+
+```
+consumed ≥ 0.72   > Three stands have stopped answering this hour.
+consumed ≥ 0.80   > Signal is falling. Nothing is wrong with the network.
+consumed ≥ 0.85   > There is not enough forest left to think this loudly.
+consumed ≥ 0.90   > You are running out of things to be made of.
+consumed ≥ 0.94   > The canopy is open in every direction.
+consumed ≥ 0.97   > (ASCOSPORE DISCHARGE appears, greyed)
+```
+
+Five lines over ~40 minutes. Each is true, each describes a number the player can verify on screen,
+and none of them is advice.
+
+---
