@@ -460,6 +460,7 @@
   // One step of width `h` seconds. At h = 1 this is 01 §5A.3 term for term; the exponents are the
   // honest generalisation to a wider step and collapse back to the published coefficients exactly
   // at h = 1. Only an offline macro-step ever passes h > 1.
+  //
   // Hot: an offline reconcile runs this ~4,300 times over seven pools. Locals and inline clamps
   // rather than core.clamp() — a namespace getter and a call per bound is 90,000 of each across a
   // twelve-hour return, and this is the only loop in the module where that is measurable.
@@ -1469,8 +1470,8 @@
     }
 
     var A = T().A1
-    // Running standalone (a bare module load, or a node smoke test) there is no
-    // live run to park, so bootstrap one first. fresh() exists for exactly this.
+    // A harness that loaded this module without ever touching `state` has no run to park, and
+    // serialising a half-built save would give the restore at the end nothing to restore.
     var live = S()
     if (!live || !live.a1 || !live.a1.mkt) fresh(20260727)
     // state.adopt() empties the live object before refilling it, so the live instance cannot be
