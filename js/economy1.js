@@ -410,8 +410,8 @@
   // The cheapest gram the player is currently allowed to buy. Stocked pools first; if the whole
   // floor is bare it still answers with a price, because G1a's failsafe compares the player's last
   // sugar against this number and an infinity there disarms the failsafe exactly when it is needed.
-  function minPrice () {
-    var s = S(), i, k, p, best = Infinity, bare = Infinity
+  function minPrice (state) {
+    var s = state || S(), i, k, p, best = Infinity, bare = Infinity
     for (i = 0; i < TYPES.length; i++) {
       k = TYPES[i]
       if (!unlocked(k)) continue

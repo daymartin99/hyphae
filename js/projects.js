@@ -88,7 +88,7 @@
   function moisture (s) { return num(s.a1.moisture) }
 
   function hyphae (s) {
-    if (HY.act1 && HY.act1.hyphae) return num(HY.act1.hyphae())
+    if (HY.act1 && HY.act1.hyphae) return num(HY.act1.hyphae(s))
     var A = T().A1
     return A.HYPHAE_PER_TIP * tips(s) + A.HYPHAE_PER_PATCH * (patches(s) - 1) + num(s.a1.hyphaeManual)
   }
@@ -105,7 +105,14 @@
   // rather than `01`'s literal 20 g: base drift of +130% by late Act I makes a fixed threshold fire
   // long after the player is already stuck.
   function minPrice (s) {
-    if (HY.economy1 && HY.economy1.minPrice) return num(HY.economy1.minPrice())
+    if (HY.economy1 && HY.economy1.minPrice) {
+      // A market with nothing purchasable has no minimum price, and that is
+      // exactly the state WINDFALL exists to rescue. num() would collapse the
+      // Infinity to 0 and make `sugar < minPrice` false, so the one project
+      // that guarantees the game cannot dead-end would never appear.
+      var v = HY.economy1.minPrice(s)
+      return (typeof v === 'number' && !isNaN(v)) ? v : Infinity
+    }
     var best = Infinity, i, k, row
     for (i = 0; i < TYPES.length; i++) {
       k = TYPES[i]
@@ -195,7 +202,7 @@
   function discovered (s) { return regionFlagCount(s, RF_DISCOVERED) }
 
   function fc (s) {
-    if (HY.forest && HY.forest.forestConsumed) return num(HY.forest.forestConsumed())
+    if (HY.forest && HY.forest.forestConsumed) return num(HY.forest.forestConsumed(s))
     return C().clamp(num(s.res.extracted) / T().A2.EXTRACT_TARGET, 0, 1)
   }
 
@@ -211,7 +218,7 @@
   // forest is entirely alive, which is the correct reading of a board that has not been touched.
   function legacyLife (s) {
     return memo('legLife', function () {
-      if (HY.forest && HY.forest.legacyLife) return num(HY.forest.legacyLife())
+      if (HY.forest && HY.forest.legacyLife) return num(HY.forest.legacyLife(s))
       var r = s.a2.regions, i, a = 0, b = 0
       for (i = 0; i < r.T.length; i++) { a += r.T[i]; b += r.T0[i] }
       return b > 0 ? C().clamp(a / b, 0, 1) : 1
@@ -228,7 +235,7 @@
     if (HY.world && HY.world.connectivity) {
       // Invert C = 1 + CONN_K·(edges/nodes)^CONN_EXP rather than keeping a second edge counter.
       var A = T().A2
-      var c = C().clamp(num(HY.world.connectivity()), A.CONN_MIN, A.CONN_MAX)
+      var c = C().clamp(num(HY.world.connectivity(s)), A.CONN_MIN, A.CONN_MAX)
       return Math.pow(Math.max(0, (c - 1) / A.CONN_K), 1 / A.CONN_EXP)
     }
     return 0
@@ -303,7 +310,7 @@
   }
 
   function planetConsumed (s) {
-    if (HY.bloom && HY.bloom.planetConsumed) return num(HY.bloom.planetConsumed())
+    if (HY.bloom && HY.bloom.planetConsumed) return num(HY.bloom.planetConsumed(s))
     if (biomesReached(s) === 0) return 0
     var X0 = T().A3.BIOME_X0, i, a = 0, b = 0
     for (i = 0; i < X0.length; i++) { a += s.a3.biomes.X[i]; b += X0[i] }
@@ -317,7 +324,7 @@
   }
 
   function effFid (s) {
-    if (HY.bloom && HY.bloom.effFid) return num(HY.bloom.effFid())
+    if (HY.bloom && HY.bloom.effFid) return num(HY.bloom.effFid(s))
     var A = T().A3
     return C().clamp(
       num(s.carry.fidelityBase) +
@@ -1674,7 +1681,7 @@
   }
 
   function utilisation (s) {
-    if (HY.act1 && HY.act1.utilisation) return num(HY.act1.utilisation())
+    if (HY.act1 && HY.act1.utilisation) return num(HY.act1.utilisation(s))
     var A = T().A1
     var supply = A.FOREST_SUPPLY_BASE * Math.pow(patches(s), A.PATCH_SUPPLY_EXP) * A.SUSTAINABLE_FRAC
     if (!(supply > 0)) return 0

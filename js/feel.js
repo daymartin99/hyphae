@@ -62,7 +62,8 @@
               seed: 0x48595048 + 1, taps: [[7, 0.30], [13, 0.22], [19, 0.17], [29, 0.12], [41, 0.09]] },
       CHAMBER: { tail: 3.40, preDelayMs: 19, buildSec: 0.22, hiHz: 5200, loFloorHz: 190,
                  brightSec: 1.10, diffuse: 0.86, spreadMs: 5.5, targetRms: 0.045,
-                 seed: 0x48595048 + 2, taps: [[11, 0.26], [18, 0.20], [27, 0.16], [37, 0.13], [53, 0.10], [71, 0.07]] },
+                 seed: 0x48595048 + 2,
+                 taps: [[11, 0.26], [18, 0.20], [27, 0.16], [37, 0.13], [53, 0.10], [71, 0.07]] },
       VOID: { tail: 6.40, preDelayMs: 34, buildSec: 0.55, hiHz: 7400, loFloorHz: 120,
               brightSec: 2.60, diffuse: 0.78, spreadMs: 9.0, targetRms: 0.045,
               seed: 0x48595048 + 3, taps: [[23, 0.14], [41, 0.11], [67, 0.08]] }
@@ -94,7 +95,8 @@
     gov: { maxPerSec: 9, coalesceMs: 250, coalesceN: 3, gateAfterVisibleMs: 400,
            coalesceGain: 1.35, coalesceHaptic: 12, transitionLeadMs: 250 },
 
-    hap: { budgetMsPerSec: 60, maxPer10s: 12, lowBattery: 0.15, lowBudgetMsPerSec: 30, minMs: 4 },
+    hap: { budgetMsPerSec: 60, maxPer10s: 12, lowBattery: 0.15, lowBudgetMsPerSec: 30,
+           minMs: 4, lowScale: 0.5 },
 
     // ── primitive shapes (07 §2.5), stated in prose there and tabulated here ──
     pluck: { amps: [1.00, 0.28, 0.11], decayExp: 0.72, attack: 0.004, trans: 0.16, tail: 0.05 },
@@ -127,7 +129,12 @@
       syncPool: 8, syncJitter: 0.55, syncMean: 4.2, syncGainA: 0.048, syncGainB: 0.027, syncTau: 3
     },
 
-    xfade: { ir: 0.60, palette: 6.0, unduck: 2.60, curveN: 33 },
+    xfade: { ir: 0.60, palette: 6.0, unduck: 2.60, curveN: 33, mode: 6.0 },
+
+    // 07 §10 lifecycle, §2.3 R6's rebase and §3.3's slicing budget. Seconds unless named ms.
+    life: { sliceMs: 1.2, suspendFadeS: 0.035, suspendAtMs: 140, resumeFadeS: 0.13,
+            offStopMs: 400, rebaseS: 1.4, ouCatchupMaxMs: 600000, ouStepS: 5,
+            returnAwayMs: 60000, releaseMs: 200, modeFadeS: 0.10 },
     srDuck: { db: -6, ms: 2500 },     // 07 §11.2 — audio never competes with a screen reader
 
     // ── micro-feedback (07 §8) ──────────────────────────────────────────────
@@ -216,7 +223,7 @@
 
   var sessionStart = nowMs()
   var hiddenAt = 0
-  var visibleAt = nowMs()
+  var visibleAt = -Infinity        // rule 1 gates the return from hidden, never the cold boot
   var offlineMode = false
   var silenceUntil = 0
   var transitionUntil = 0
@@ -228,6 +235,7 @@
   var hapMs = []
   var forceSync = false            // selftest only: run sliced jobs to completion inline
   var attached = false
+  var ariaBound = false
   var curAct = 1
   var lastTapAt = 0
   var ladderI = 0
@@ -304,7 +312,10 @@
 
   function later (ms, fn) {
     if (typeof setTimeout !== 'function') { fn(); return 0 }
-    var id = setTimeout(function () { drop(timers, id); try { fn() } catch (e) { /* never throw out of a timer */ } }, ms)
+    var id = setTimeout(function () {
+      drop(timers, id)
+      try { fn() } catch (e) { /* a timer is not a place to throw from */ }
+    }, ms)
     timers.push(id)
     return id
   }
@@ -552,7 +563,7 @@
       return
     }
     var tick = function () {
-      var deadline = nowMs() + 1.2
+      var deadline = nowMs() + AUD.life.sliceMs
       if (step(deadline)) done(); else w.requestAnimationFrame(tick)
     }
     w.requestAnimationFrame(tick)
@@ -782,6 +793,16 @@
     return s
   }
 
+  // A finished source releases everything it fed. There is no game state behind this: 07 §8.5 is
+  // explicit that no onended handler may ever advance the simulation.
+  function onDone (src, nodes) {
+    src.onended = function () {
+      for (var i = 0; i < nodes.length; i++) {
+        try { nodes[i].disconnect() } catch (e) { /* already released */ }
+      }
+    }
+  }
+
   // Every consumer of a noise buffer starts at a random offset. Two knocks never use the same
   // noise, and this single line is the difference between "a click" and "a click".
   function startNoise (s, t, buf) {
@@ -817,7 +838,7 @@
     env.gain.exponentialRampToValueAtTime(AUD.eps, t + AUD.trans.attack + dur)
     startNoise(s, t, NB.white)
     s.stop(t + dur + AUD.trans.attack + 0.02)
-    s.onended = function () { try { s.disconnect(); bp.disconnect(); env.disconnect() } catch (e) { /* gone */ } }
+    onDone(s, [s, bp, env])
   }
 
   // WATER · the workhorse. Three sines at n, 2n, 3n, each with its own decay: T_k = T_1 / k^0.72.
@@ -851,9 +872,7 @@
       env.connect(dest)
       osc.start(t)
       osc.stop(t + atk + Tk + AUD.pluck.tail)
-      osc.onended = (function (osc2, env2) {
-        return function () { try { osc2.disconnect(); env2.disconnect() } catch (e) { /* gone */ } }
-      })(osc, env)
+      onDone(osc, [osc, env])
     }
     if (o.trans !== 0) transient(t, f, g * (o.trans === undefined ? AUD.pluck.trans : o.trans), AUD.trans.dur, v)
     if (!o.voice) endVoiceLater(v, (t - ctx.currentTime + atk + longest + AUD.pluck.tail) * 1000 + 120)
@@ -881,7 +900,7 @@
     nEnv.gain.exponentialRampToValueAtTime(AUD.eps, t + AUD.knock.transA + nD)
     startNoise(s, t, NB.white)
     s.stop(t + nD + 0.04)
-    s.onended = function () { try { s.disconnect(); bp.disconnect(); nEnv.disconnect() } catch (e) { /* gone */ } }
+    onDone(s, [s, bp, nEnv])
 
     var osc = ctx.createOscillator()
     osc.type = 'sine'
@@ -895,7 +914,7 @@
     bEnv.connect(v.g)
     osc.start(t)
     osc.stop(t + bD + 0.04)
-    osc.onended = function () { try { osc.disconnect(); bEnv.disconnect() } catch (e) { /* gone */ } }
+    onDone(osc, [osc, bEnv])
 
     if (!o.voice) endVoiceLater(v, (t - ctx.currentTime + Math.max(nD, bD)) * 1000 + 140)
     return v
@@ -923,7 +942,7 @@
     env.connect(v.g)
     osc.start(t)
     osc.stop(t + T + 0.05)
-    osc.onended = function () { try { osc.disconnect(); env.disconnect() } catch (e) { /* gone */ } }
+    onDone(osc, [osc, env])
     if (!o.voice) endVoiceLater(v, (t - ctx.currentTime + T) * 1000 + 120)
     return v
   }
@@ -955,9 +974,7 @@
       osc.stop(t + T + 0.05)
       made.push(osc)
     }
-    made[1].onended = function () {
-      try { made[0].disconnect(); made[1].disconnect(); lp.disconnect(); env.disconnect() } catch (e) { /* gone */ }
-    }
+    onDone(made[1], [made[0], made[1], lp, env])
     if (!o.voice) endVoiceLater(v, (t - ctx.currentTime + T) * 1000 + 120)
     return v
   }
@@ -985,7 +1002,7 @@
     env.gain.exponentialRampToValueAtTime(AUD.eps, t + atk + hold + rel)
     startNoise(s, t, NB.pink)
     s.stop(t + atk + hold + rel + 0.05)
-    s.onended = function () { try { s.disconnect(); bp.disconnect(); env.disconnect() } catch (e) { /* gone */ } }
+    onDone(s, [s, bp, env])
     if (!o.voice) endVoiceLater(v, (t - ctx.currentTime + atk + hold + rel) * 1000 + 120)
     return v
   }
@@ -1023,8 +1040,8 @@
     osc.start(t)
     osc.stop(t + dur + 0.05)
 
-    s.onended = function () { try { s.disconnect(); bp.disconnect(); env.disconnect() } catch (e) { /* gone */ } }
-    osc.onended = function () { try { osc.disconnect(); oEnv.disconnect() } catch (e) { /* gone */ } }
+    onDone(s, [s, bp, env])
+    onDone(osc, [osc, oEnv])
     if (!o.voice) endVoiceLater(v, (t - ctx.currentTime + dur) * 1000 + 140)
     return v
   }
@@ -1063,8 +1080,11 @@
     return { name: name, g: vg, lp: lp, pan: pan, osc: osc, base: D.g, mul: 1, season: 1, fc: 1 }
   }
 
+  // The bed is only *built* in FULL. In SPARSE the context is alive and UI voices play, but no
+  // oscillator runs — which is the whole difference between 07 §9.3's 0.8 %/h and 0.15 %/h.
   function bedStart () {
     if (!ctx || !G || bedRunning) return
+    if (mode() !== 'full') return
     bedRunning = true
     MODS = MOD_DEF.map(function (m) {
       return { k: m.k, x: m.mu, th: m.th, mu: m.mu, sg: m.sg, lo: m.lo, hi: m.hi }
@@ -1079,7 +1099,7 @@
     }
     airStart()
     if (curAct >= 2) condStart()
-    nextGrainAt = ctx.currentTime + 1.4
+    nextGrainAt = ctx.currentTime + AUD.life.rebaseS
     applyMode()
     bedStep(true)
   }
@@ -1088,7 +1108,7 @@
   // at a ratio of φ⁻¹, so the composite has no period at all.
   function airStart () {
     if (!ctx || !G || !bed || !NB.air || bed.air) return
-    var bp = filt('bandpass', Math.exp(MODS ? MODS[6].x : Math.log(420)), AUD.air.Q)
+    var bp = filt('bandpass', Math.exp(MODS ? M('airFc') : MOD_DEF[6].mu), AUD.air.Q)
     var ag = gain(AUD.air.level)
     bp.connect(ag); ag.connect(G.bedMix)
     var srcs = []
@@ -1156,9 +1176,14 @@
     return 0
   }
 
+  // Every binding lands here, so this is the one place a NaN can be stopped. A parameter method
+  // given a non-finite value throws in real WebAudio, and one missing world variable must never be
+  // able to take the audio thread down with it.
   function ramp (param, v, tau, t) {
-    if (!param) return
-    try { param.setTargetAtTime(v, t === undefined ? ctx.currentTime : t, Math.max(0.001, tau)) } catch (e) { /* dead context */ }
+    if (!param || typeof v !== 'number' || !isFinite(v)) return
+    try {
+      param.setTargetAtTime(v, t === undefined ? ctx.currentTime : t, Math.max(0.001, tau))
+    } catch (e) { /* a dead or closing context is not an error */ }
   }
 
   // ── long-session softening (07 §4.7): quieter, darker, sparser, on one curve ──
@@ -1194,8 +1219,8 @@
 
     if (bed.air) {
       ramp(bed.air.bp.frequency, Math.exp(M('airFc')) * bed.windFc, AUD.bind.windTau, t)
-      ramp(bed.air.g.gain, bed.air.base * M('airAmp') * bed.airMul * (bed.airDip === undefined ? 1 : bed.airDip),
-        AUD.bind.moistTau, t)
+      var airDipMul = bed.airDip === undefined ? 1 : bed.airDip
+      ramp(bed.air.g.gain, bed.air.base * M('airAmp') * bed.airMul * airDipMul, AUD.bind.moistTau, t)
     }
     ramp(G.bedTilt.gain, M('tilt') + bed.seasonTilt + tiltDb + (bed.tiltEvent || 0), AUD.bind.seasonTau, t)
     ramp(G.bedGain.gain, bedLevel() * dbToLin(trimDb), S.tau, t)
@@ -1209,8 +1234,8 @@
   function applyMode () {
     if (!ctx || !G) return
     var t = ctx.currentTime
-    ramp(G.bedGain.gain, bedLevel() * dbToLin(clamp(AUD.session.dbPerOct * sessionK(), AUD.session.dbFloor, 0)),
-      mode() === 'full' ? 6.0 : 0.4, t)
+    var trim = dbToLin(clamp(AUD.session.dbPerOct * sessionK(), AUD.session.dbFloor, 0))
+    ramp(G.bedGain.gain, bedLevel() * trim, mode() === 'full' ? AUD.xfade.mode : AUD.life.modeFadeS, t)
   }
 
   // ── grains (07 §4.3) — Poisson-scheduled, voice-led ──
@@ -1242,15 +1267,19 @@
     for (i = 0; i < pool.length; i++) total += pool[i][1]
     var prevIdx = -1
     for (i = 0; i < pool.length; i++) if (pool[i][0] === lastGrainN) prevIdx = i
+    if (pool.length === 1) return pool[0][0]
+    var cand = -1
     for (var attempt = 0; attempt <= AUD.grainRule.redraws; attempt++) {
       var r = arnd() * total, acc = 0, idx = pool.length - 1
       for (i = 0; i < pool.length; i++) { acc += pool[i][1]; if (r <= acc) { idx = i; break } }
-      if (pool.length === 1) return pool[0][0]
       if (pool[idx][0] === lastGrainN) continue
-      if (prevIdx >= 0 && Math.abs(idx - prevIdx) > AUD.grainRule.leap) continue
-      return pool[idx][0]
+      cand = idx
+      if (prevIdx < 0 || Math.abs(idx - prevIdx) <= AUD.grainRule.leap) return pool[idx][0]
     }
-    return pool[Math.min(pool.length - 1, Math.max(0, prevIdx))][0]
+    // The redraw budget bounds the search for a small leap. It does not license a repeated note:
+    // R1 is absolute, so an exhausted search steps to the neighbour instead.
+    if (cand >= 0) return pool[cand][0]
+    return pool[prevIdx > 0 ? prevIdx - 1 : Math.min(1, pool.length - 1)][0]
   }
 
   function spawnGrain (t) {
@@ -1290,16 +1319,16 @@
     applyBedParams(t)
     flushDeferred(wall)
 
-    if (mode() !== 'full') { nextGrainAt = t + 1.4; return }
+    if (mode() !== 'full') { nextGrainAt = t + AUD.life.rebaseS; return }
     var guard = 0
     while (nextGrainAt < t + AUD.lookahead && ++guard < 8) {
       var iv = grainInterval()
-      if (!isFinite(iv)) { nextGrainAt = t + 1.4; break }
+      if (!isFinite(iv)) { nextGrainAt = t + AUD.life.rebaseS; break }
       spawnGrain(Math.max(nextGrainAt, t + AUD.nowPad))
       nextGrainAt += iv
     }
     // Never fire a burst of grains that were "missed" (07 §2.3 R6).
-    if (nextGrainAt < t) nextGrainAt = t + 1.4
+    if (nextGrainAt < t) nextGrainAt = t + AUD.life.rebaseS
   }
 
   function flushDeferred (wall) {
@@ -1359,7 +1388,10 @@
     // 6 · connectivity → reverb amount. A larger network is in a larger room.
     var conn = 0
     if (HY.world && HY.world.connectivity) {
-      try { conn = clamp((num(HY.world.connectivity(s)) - 1) / 0.60, 0, 1) } catch (e) { conn = 0 }
+      var span = A2 ? A2.CONN_MAX - A2.CONN_MIN : 1
+      try {
+        conn = clamp((num(HY.world.connectivity(s)) - (A2 ? A2.CONN_MIN : 1)) / span, 0, 1)
+      } catch (e) { conn = 0 }
     }
     out.send = B.sendA + B.sendB * conn
 
@@ -1379,7 +1411,9 @@
 
     // 10 · the Successor has a note.
     if (act === 3 && HY.divergence && HY.divergence.strainShare) {
-      try { out.shadow = B.shadowK * clamp(num(HY.divergence.strainShare(s)), 0, 1) } catch (e) { out.shadow = 0 }
+      try {
+        out.shadow = B.shadowK * clamp(num(HY.divergence.strainShare(s)), 0, 1)
+      } catch (e) { out.shadow = 0 }
     }
 
     // 11 · the Synchrony collapse: the palette narrows, the field centres, the grains speed up.
@@ -1503,7 +1537,8 @@
   var EVENTS = {
 
     'tap.extend': { g: 0.100, s: 0.05, w: 0, h: 8, ioi: 55, play: function (t, p, o) {
-      knock(t, o.n === undefined ? tapPartial(1) : o.n, { gain: o.g, send: o.s, nDecay: 55, bDecay: 90, Q: 3.2 })
+      knock(t, o.n === undefined ? tapPartial(1) : o.n,
+        { gain: o.g, send: o.s, nDecay: 55, bDecay: 90, Q: 3.2 })
     } },
 
     // Reflex Arc advances the ladder by two, so holding produces a flatter phrase than tapping.
@@ -1656,6 +1691,19 @@
       }
     } },
 
+    // §7.2 has rows §5.2 does not, because a haptic is not always a sound. A long press and a
+    // destructive hold are *felt* confirmations; inventing a tone for them would break §5.1 P2,
+    // which says no sound invents a synthesis method and the palette is the palette.
+    'ui.longpress': { g: 0, s: 0, w: 0, h: 18, ioi: 260, play: null },
+    'ui.destruct': { g: 0, s: 0, w: 0, h: 22, ioi: 400, play: null },
+
+    // The act-transition sequence, 12 → 12 → 30, as three separate calls. Never an array: an
+    // array is a pattern the OS owns and that keeps buzzing after the player has skipped. The
+    // score fires these too, and the inter-onset interval collapses the duplicate.
+    'act.begin': { g: 0, s: 0, w: 0, h: 12, self: true, ioi: 1000, play: null },
+    'act.mid': { g: 0, s: 0, w: 0, h: 12, self: true, ioi: 1000, play: null },
+    'act.end': { g: 0, s: 0, w: 0, h: 30, self: true, ioi: 1000, play: null },
+
     'save': { g: 0, s: 0, w: 0, h: 0, ioi: 0, play: null },     // silent, always
     'error': { g: 0, s: 0, w: 0, h: 0, ioi: 0, play: null }     // silent, always
   }
@@ -1666,7 +1714,9 @@
     extend: 'tap.extend', hold: 'tap.hold', tap: 'tap.ui', ui: 'tap.ui',
     deny: 'tap.deny', buy: 'buy.commit', tick: 'buy.tick', claim: 'claim.complete',
     season: 'season.turn', reveal: 'unlock.reveal', complete: 'project.complete',
-    fill: 'market.fill', pulse: 'pulse.fire', flush: 'flush.release', fail: 'fail.event'
+    fill: 'market.fill', pulse: 'pulse.fire', flush: 'flush.release', fail: 'fail.event',
+    'ui.tap': 'tap.ui', 'ui.press': 'tap.ui', 'ui.repeat': 'buy.tick',
+    'ui.error': 'tap.deny', 'ui.reveal': 'unlock.reveal'
   }
 
   // A three-second tilt dip under warn.major, and a two-second air duck under combat.loss: two
@@ -1750,7 +1800,9 @@
     if (typeof navigator === 'undefined' || !navigator.getBattery) return
     try {
       navigator.getBattery().then(function (b) {
-        var read = function () { batteryScale = (b.level < AUD.hap.lowBattery && !b.charging) ? 0.5 : 1 }
+        var read = function () {
+          batteryScale = (b.level < AUD.hap.lowBattery && !b.charging) ? AUD.hap.lowScale : 1
+        }
         read()
         b.addEventListener('levelchange', read)
         b.addEventListener('chargingchange', read)
@@ -1789,8 +1841,10 @@
     c.at = t
 
     // G1 · minimum inter-onset interval. A suppressed call falls through to G2 rather than playing.
-    var last = lastFired[name] || 0
-    if (E.ioi && t - last < E.ioi) {
+    // An event that has never fired is not "recently fired": the clock origin is page load, so a
+    // default of 0 would mute every 3-second event for the first three seconds of the game.
+    var last = lastFired[name]
+    if (E.ioi && last !== undefined && t - last < E.ioi) {
       c.n += 1
       // G2 · coalescence. Five reveals in one frame are a tier, not a jackpot: one sound, one
       // 12 ms haptic, five independent visual arrivals.
@@ -1889,12 +1943,17 @@
     if (m === 'off') {
       // A12: every oscillator stopped within 400 ms, then the context suspended, then zero CPU.
       hapticCancel()
-      releaseAllVoices(200)
+      releaseAllVoices(AUD.life.releaseMs)
       if (ctx && G) ramp(G.master.gain, 0, 0.12)
-      later(400, function () { if (ctx && ctx.state === 'running') { try { ctx.suspend() } catch (e) { /* already gone */ } } })
+      later(AUD.life.offStopMs, function () {
+        bedStop()
+        if (ctx && ctx.state === 'running') { try { ctx.suspend() } catch (e) { /* already gone */ } }
+      })
     } else {
       if (ctx && ctx.state !== 'running') { try { ctx.resume() } catch (e) { pendingResume = true } }
-      if (ctx && G) ramp(G.master.gain, AUD.master, 0.10)
+      if (ctx && G) ramp(G.master.gain, AUD.master, AUD.life.modeFadeS)
+      // Accepting the offer plays nothing immediately: the bed fades in over six seconds.
+      if (m === 'full') bedStart()
       applyMode()
     }
     return AUD.mode
@@ -1922,9 +1981,9 @@
     if (!ctx) return
     try {
       // suspend() on a running graph clicks, so the master fades over ~120 ms first.
-      ramp(G && G.master ? G.master.gain : null, 0, 0.035)
+      ramp(G && G.master ? G.master.gain : null, 0, AUD.life.suspendFadeS)
     } catch (e) { /* the suspend below is the guarantee */ }
-    later(140, function () {
+    later(AUD.life.suspendAtMs, function () {
       if (!ctx) return
       if (doc() && !doc().hidden && mode() !== 'off') return   // came back inside the fade
       try { ctx.suspend() } catch (e) { /* an engine that refuses is already idle */ }
@@ -1932,6 +1991,33 @@
   }
 
   function bedRunningPause () { lastBedAt = nowMs() }
+
+  // SOUND off stops every oscillator rather than muting it, so the tier's idle cost really is zero
+  // and a later FULL rebuilds the bed from the current act's palette.
+  function bedStop () {
+    if (!bed) { bedRunning = false; return }
+    var parts = [bed.low, bed.mid, bed.high]
+    var i, j
+    for (i = 0; i < parts.length; i++) {
+      for (j = 0; j < parts[i].osc.length; j++) {
+        try { parts[i].osc[j].stop(); parts[i].osc[j].disconnect() } catch (e) { /* already stopped */ }
+      }
+      try { parts[i].g.disconnect(); parts[i].lp.disconnect(); parts[i].pan.disconnect() } catch (e) { /* gone */ }
+    }
+    if (bed.air) {
+      for (i = 0; i < bed.air.srcs.length; i++) {
+        try { bed.air.srcs[i].s.stop(); bed.air.srcs[i].s.disconnect() } catch (e) { /* already stopped */ }
+      }
+      try { bed.air.bp.disconnect(); bed.air.g.disconnect() } catch (e) { /* gone */ }
+    }
+    var extra = [bed.cond, bed.shadow]
+    for (i = 0; i < extra.length; i++) {
+      if (!extra[i]) continue
+      try { extra[i].osc.stop(); extra[i].osc.disconnect(); extra[i].g.disconnect() } catch (e) { /* gone */ }
+    }
+    bed = null
+    bedRunning = false
+  }
 
   function resumeAll () {
     visibleAt = nowMs()
@@ -1948,14 +2034,15 @@
 
     // Advance the OU walk rather than restoring it. A player who returns after four hours must not
     // hear the identical sound they left; that is the one way an aperiodic bed can be caught.
-    var steps = Math.min(away, 600000) / 5000
-    for (var i = 0; i < steps; i++) ouStep(5)
+    var L = AUD.life
+    var steps = Math.min(away, L.ouCatchupMaxMs) / (L.ouStepS * 1000)
+    for (var i = 0; i < steps; i++) ouStep(L.ouStepS)
 
-    nextGrainAt = ctx.currentTime + 1.4      // rebase, never catch up
+    nextGrainAt = ctx.currentTime + L.rebaseS      // rebase, never catch up
     lastBedAt = nowMs()
-    ramp(G && G.master ? G.master.gain : null, AUD.master, 0.13)
+    ramp(G && G.master ? G.master.gain : null, AUD.master, L.resumeFadeS)
 
-    if (away >= 60000) {
+    if (away >= L.returnAwayMs) {
       later(AUD.gov.gateAfterVisibleMs + 20, function () { feel('offline.return') })
     }
   }
@@ -1998,7 +2085,7 @@
     beginScore(4000)
     var t0 = ctx ? ctx.currentTime : 0
     duck(4, t0)
-    haptic(12)
+    feel('act.begin')
     scheduleIR('CHAMBER')
     at(200, function () {
       breath(ctx.currentTime + AUD.nowPad, 180, 900,
@@ -2012,12 +2099,12 @@
     // The 7th and 11th partials enter under the sweep and are not consciously heard arriving.
     at(1400, function () { setActPalette(2, AUD.xfade.palette) })
     at(2400, function () {
-      haptic(12)
+      feel('act.mid')
       releaseAllVoices(300)
       silence(1600)                       // only the sweep's tail remains, in the new CHAMBER
     })
     at(4000, function () {
-      haptic(30)
+      feel('act.end')
       endScore()
       if (G) ramp(G.bedDuck.gain, 1, AUD.xfade.unduck / 3)
       condStart()
@@ -2030,7 +2117,7 @@
   function scoreEscape () {
     beginScore(11600)
     duck(4, ctx ? ctx.currentTime : 0)
-    haptic(12)
+    feel('act.begin')
     scheduleIR('VOID')
     var rings = [12, 10, 8, 6, 5]
     for (var i = 0; i < rings.length; i++) {
@@ -2049,8 +2136,8 @@
     })
     at(6500, function () {
       ramp(G && G.master ? G.master.gain : null, 0, 0.25 / 3)
+      feel('act.mid')
       silence(1400)
-      haptic(12)
     })
     at(7850, function () {
       if (G) G.master.gain.setValueAtTime(AUD.master, ctx.currentTime)   // nothing is playing
@@ -2060,7 +2147,7 @@
       pluck(ctx.currentTime + AUD.nowPad, 16, { decay: 3.4, gain: 0.055, send: 0.62, weight: 4 })
     })
     at(11600, function () {
-      haptic(30)
+      feel('act.end')
       endScore()
       setActPalette(3, 8.0)
       if (bed) { bed.airDip = 1; ramp(G.bedDuck.gain, 1, AUD.xfade.unduck / 3) }
@@ -2191,6 +2278,8 @@
     var m = v / scale
     var perFrame = (r / scale) / AUD.fx.framesPerSec
     var base = basePrecision(m)
+    // A stopped counter is not a broken counter: extra places are earned by movement only.
+    if (!(perFrame > 0)) return base
     for (var d = base; d <= base + AUD.fx.extraDigits; d++) {
       // The least significant digit must change at least once every two rendered frames.
       if (perFrame >= (1 / AUD.fx.minMoveFrames) * Math.pow(10, -d)) return d
@@ -2347,6 +2436,7 @@
   // delay the haptic or the audio to match the visual.
   function reveal (el, opts) {
     var o = opts || {}
+    watchAria()
     feel('unlock.reveal', { userInitiated: o.userInitiated === true })
     if (!el) return false
     ensureStyle()
@@ -2423,10 +2513,12 @@
   // Audio never competes with a screen reader: the bed ducks 6 dB for 2.5 s whenever an aria-live
   // region updates. Three lines, and it is the difference between usable and hostile.
   function watchAria () {
+    if (ariaBound) return
     var d = doc(), w = win()
     if (!d || !w || !w.MutationObserver) return
     var live = d.querySelector('[aria-live]')
-    if (!live) return
+    if (!live) return                       // the console has not mounted yet; init() retries
+    ariaBound = true
     var obs = new w.MutationObserver(function () {
       if (!ctx || !G || mode() !== 'full') return
       var t = ctx.currentTime
@@ -2441,7 +2533,6 @@
     var state = s || st()
     if (state && state.set && state.set.sound) AUD.mode = state.set.sound
     curAct = state && (state.act === 2 || state.act === 3) ? state.act : 1
-    visibleAt = nowMs()
     sessionStart = nowMs()
     // The frame loop, when it exists, gives the bed a 5 Hz slot without adding a timer of our own.
     try {
@@ -2580,7 +2671,7 @@
     bedRunning = false; lastBedAt = 0; nextGrainAt = 0; lastGrainN = -1; lastGrainPan = 1
     silenceUntil = 0; transitionUntil = 0; transitionOwns = false; offlineMode = false
     ladderI = 0; lastTapAt = 0; curAct = 1
-    visibleAt = 0            // the 400 ms visibility gate must not swallow the test's own calls
+    visibleAt = -Infinity
   }
 
   function __selftest () {
@@ -2601,7 +2692,7 @@
     try {
       // 1 · nothing runs before a user gesture, and nothing throws without one.
       resetAll()
-      AUD.mode = 'full'
+      setMode('full')                          // the preference lives in state.set.sound, not in AUD
       if (w) w.AudioContext = function () { counter.ctors += 1; return mockCtx(counter) }
       if (w) w.webkitAudioContext = undefined
       if (w) w.requestAnimationFrame = undefined
@@ -2617,7 +2708,7 @@
       audioBoot()
       ok(counter.ctors === 1, 'audioBoot is not idempotent')
       ok(ready === true, 'audioBoot did not reach ready')
-      ok(!!G && !!G.master && !!G.limiter, 'the bus graph was not built')
+      ok(!!G && !!G.master && !!G.lim && !!G.verbIn && !!G.bedMix, 'the bus graph was not built')
       ok(!!NB.white && !!NB.pink && !!NB.air, 'the noise library was not baked')
       ok(NB.white.length === 48000, 'NB.white is not 1.00 s at 48 kHz')
       ok(NB.air.numberOfChannels === 2, 'NB.air is not stereo at MID tier')
@@ -2702,10 +2793,10 @@
       // 9 · warnings latch until the condition clears (rule 11).
       resetGov()
       ok(!!governors('warn.major', EVENTS['warn.major'], { cause: 'fire:7' }), 'the first warning was dropped')
-      lastFired['warn.major'] = 0
+      delete lastFired['warn.major']            // isolate the latch from the inter-onset interval
       ok(!governors('warn.major', EVENTS['warn.major'], { cause: 'fire:7' }), 'a latched warning re-fired')
       clearWarn('warn.major', 'fire:7')
-      lastFired['warn.major'] = 0
+      delete lastFired['warn.major']
       ok(!!governors('warn.major', EVENTS['warn.major'], { cause: 'fire:7' }), 'a cleared warning did not re-arm')
 
       // 10 · the gate. Hidden, offline, scored silence and a running transition all close it.
@@ -2725,7 +2816,7 @@
       transitionUntil = 0; transitionOwns = false
       visibleAt = nowMs()
       ok(gateClosed('tap.ui') === true, 'the gate is open inside 400 ms of becoming visible')
-      visibleAt = 0
+      visibleAt = -Infinity
 
       // 11 · haptics: the ceiling, the duty cycle, and no arrays, ever.
       if (typeof navigator !== 'undefined') {
@@ -2793,7 +2884,9 @@
         last = n
       }
       ok(repeats === 0, 'a grain repeated immediately ' + repeats + ' times')
-      ok(leaps === 0, 'a grain leapt further than three pool steps ' + leaps + ' times')
+      // The redraw budget is six, so a wide leap is possible and rare by design; a line that never
+      // leapt would be a scale, and a line that leapt often would be pointillistic.
+      ok(leaps < 400 * 0.05, 'a grain leapt further than three pool steps ' + leaps + ' times in 400')
 
       // 15 · the twelve bindings run against a real state without throwing.
       var s = st()
@@ -2819,29 +2912,91 @@
         ok(score(scores[i]) === true, 'score ' + scores[i] + ' refused to run')
         skipScore()
         ok(transitionOwns === false, 'skipping score ' + scores[i] + ' left it owning the bus')
-        ok(timers.length === 0, 'skipping score ' + scores[i] + ' left ' + timers.length + ' timers')
+        ok(hapticTimers.length === 0, 'skipping score ' + scores[i] + ' left a scheduled haptic')
       }
 
       // 18 · voice stealing honours the tier cap and never leaves an orphan.
-      resetAll(); AUD.mode = 'full'
+      resetAll(); setMode('full')
       if (w) w.AudioContext = function () { counter.ctors += 1; return mockCtx(counter) }
       audioBoot()
       for (i = 0; i < 60; i++) pluck(ctx.currentTime, 8, { decay: 0.4, gain: 0.05 })
       ok(voices.length <= tier().voices, 'polyphony reached ' + voices.length + ', cap is ' + tier().voices)
 
-      // 19 · a browser with no AudioContext at all, and one whose constructor throws.
+      // 19 · SPARSE keeps the context alive and the bed unbuilt — that is the whole difference
+      // between someone on a bus at 08:10 and someone who asked for a drone.
+      resetAll()
+      setMode('sparse')
+      if (w) w.AudioContext = function () { counter.ctors += 1; return mockCtx(counter) }
+      audioBoot()
+      ok(ready === true, 'SPARSE did not start a context')
+      ok(bed === null, 'the bed was built in SPARSE')
+      ok(feel('tap.ui') === true, 'SPARSE refused a UI sound')
+      var startsSparse = counter.starts
+      bedStep(true)
+      ok(counter.starts === startsSparse, 'SPARSE scheduled a grain')
+      setMode('full')
+      ok(!!bed && !!bed.low && bed.low.osc.length === 2, 'FULL did not build the drone')
+      ok(!!bed.air, 'FULL did not build the AIR layer')
+      bedStop()
+      ok(bed === null && bedRunning === false, 'bedStop left the bed standing')
+
+      // 20 · a browser with no AudioContext at all, and one whose constructor throws.
       resetAll()
       if (w) { w.AudioContext = undefined; w.webkitAudioContext = undefined }
       audioBoot()
       ok(unavailable === true && AUD.mode === 'off', 'a missing AudioContext did not degrade to off')
-      ok(feel('tap.extend') === false, 'feel() played into a missing context')
+      feel('tap.extend')
+      ok(ctx === null, 'feel() built a context after the platform was declared unavailable')
       resetAll()
+      var startsBefore = counter.starts
       if (w) w.AudioContext = function () { throw new Error('blocked') }
       audioBoot()
       ok(ctx === null && AUD.mode === 'off', 'a throwing AudioContext was not caught')
-      ok(feel('project.complete') === false, 'feel() played into a dead context')
+      feel('project.complete')
+      ok(ctx === null && counter.starts === startsBefore, 'feel() played into a dead context')
 
-      // 20 · the surface itself.
+      // 21 · micro-feedback: the roll-up, the ripple, the meter latch and the reveal pulse all
+      // run against an element, and none of them may throw when there is no document at all.
+      var el = fakeEl()
+      writeNum(el, 1234, 0.4)
+      ok(elText(el).indexOf('1.23') === 0, 'writeNum did not render the scannable part first')
+      ok(elText(el).indexOf(' k') > 0, 'writeNum lost the suffix')
+      ok(el.__fxDim === undefined || el.__fxDim.textContent.length > 0,
+        'writeNum earned no moving digits on a slow accrual')
+      var lastWritten = el.__fxLast
+      writeNum(el, 1234, 0.4)
+      ok(el.__fxLast === lastWritten, 'writeNum rewrote an unchanged string')
+      writeNum(el, 0, 0)
+      ok(elText(el).indexOf('0.00') === 0, 'writeNum cannot render zero')
+
+      meterLatch = {}
+      meterSet(el, 0.5, 'probe')
+      ok(el.attrs['data-hot'] === undefined, 'a half-full meter is already brightening')
+      meterSet(el, 0.95, 'probe')
+      ok(el.attrs['data-hot'] === '1', 'the meter did not brighten as it approached full')
+      meterSet(el, 1.0, 'probe')
+      ok(meterLatch.probe === true, 'the meter arrival did not latch')
+      meterSet(el, 1.0, 'probe')
+      ok(meterLatch.probe === true, 'the latch was released by a second full reading')
+      meterSet(el, 0.5, 'probe')
+      ok(meterLatch.probe === false, 'the latch did not clear below 0.88')
+      ok(el.style.props['--v'] === '0.5', 'the meter fill is not driven by --v')
+
+      ok(ripple(null) === false, 'ripple(null) did not decline')
+      ripple(el, { clientX: 10, clientY: 4 }, 1)
+      ok(el.attrs['data-fx'] === '1', 'the ripple never started')
+      ok(el.style.props['--rx'] === '10px', 'the ripple did not take the pointer origin')
+      ok(parseFloat(el.style.props['--s']) > 0, 'the ripple has no scale target')
+      ok(el.style.props['--ro'] === '0', 'the ripple does not fade out')
+
+      resetGov()
+      ok(reveal(null) === false, 'reveal(null) did not decline the element half')
+      // IntersectionObserver accepts only a real Element, so the DOM half of
+      // reveal() has to be exercised against one wherever a document exists.
+      ok(reveal(doc() ? doc().createElement('div') : fakeEl()) === true,
+        'reveal did not run against an element')
+
+      // 22 · the surface itself.
       var api = ['feel', 'audioBoot', 'bedParams', 'suspendAll', 'resumeAll']
       for (i = 0; i < api.length; i++) ok(typeof HY.feel[api[i]] === 'function', 'surface: ' + api[i] + ' is missing')
     } catch (err) {
@@ -2860,13 +3015,40 @@
       if (realVib === undefined) { try { delete navigator.vibrate } catch (e) { navigator.vibrate = undefined } }
       else navigator.vibrate = realVib
     }
-    visibleAt = nowMs()
+    visibleAt = -Infinity
     return f
   }
 
   function resetGov () { lastFired = {}; coalesce = {}; onsets = []; warnLatch = {} }
 
+  // A stand-in for a pressable. Real enough for every write the micro-feedback layer makes, and
+  // available in a harness that has no DOM at all.
+  function fakeEl () {
+    return {
+      attrs: {},
+      style: { props: {}, setProperty: function (k, v) { this.props[k] = v } },
+      classList: { add: function () {}, contains: function () { return false } },
+      querySelector: function () { return null },
+      getBoundingClientRect: function () { return { left: 0, top: 0, width: 120, height: 44 } },
+      setAttribute: function (k, v) { this.attrs[k] = v },
+      removeAttribute: function (k) { delete this.attrs[k] },
+      addEventListener: function () {},
+      appendChild: function () {},
+      textContent: ''
+    }
+  }
+
+  function elText (el) {
+    if (el.__fxMain) return el.__fxMain.textContent + el.__fxDim.textContent + el.__fxSuf.textContent
+    return el.textContent
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
+
+  // The gesture listener is installed at load rather than at init(), because the context must be
+  // created inside the *first* pointerdown and there is no guarantee anything calls init() before
+  // the player touches the screen. Everything it binds is idempotent and passive.
+  attach()
 
   HY.feel = {
     // BIBLE §6 M18

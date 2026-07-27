@@ -1,0 +1,15 @@
+{
+  "css": ["css/ui.css"],
+  "js": [
+    "js/core.js",
+    "js/state.js",
+    "js/log.js",
+    "js/projects.js",
+    "js/act1.js",
+    "js/economy1.js",
+    "js/feel.js",
+    "js/canvas.js",
+    "js/ui.js",
+    "js/loop.js"
+  ]
+}
