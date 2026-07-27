@@ -42,22 +42,27 @@
     i32: Int32Array, u32: Uint32Array, f32: Float32Array, f64: Float64Array
   }
 
+  var TA_CODE = {
+    Int8Array: 'i8', Uint8Array: 'u8', Int16Array: 'i16', Uint16Array: 'u16',
+    Int32Array: 'i32', Uint32Array: 'u32', Float32Array: 'f32', Float64Array: 'f64'
+  }
+
+  // `isView` rejects everything that is not a view in one cheap call, so the string form is only
+  // ever built for arrays that really are typed. Brand-checked rather than `instanceof` so an array
+  // that came from a worker or the harness's sandbox is still recognised as its own type.
   function taCode (v) {
-    if (v instanceof Int8Array) return 'i8'
-    if (v instanceof Uint8Array) return 'u8'
-    if (v instanceof Int16Array) return 'i16'
-    if (v instanceof Uint16Array) return 'u16'
-    if (v instanceof Int32Array) return 'i32'
-    if (v instanceof Uint32Array) return 'u32'
-    if (v instanceof Float32Array) return 'f32'
-    if (v instanceof Float64Array) return 'f64'
-    return ''
+    if (!v || typeof v !== 'object' || !ArrayBuffer.isView(v)) return ''
+    return TA_CODE[Object.prototype.toString.call(v).slice(8, -1)] || ''
   }
 
   function isEnvelope (v) {
     return !!v && typeof v === 'object' && typeof v[SER_TYPE] === 'string' && TA_CTOR[v[SER_TYPE]]
   }
 
+  // Byte order is the platform's. Every device that can run this build is little-endian, and a
+  // DataView pass over 20 × 61 elements twice per autosave would cost more than the portability is
+  // worth; if a big-endian target ever appears it becomes a v2 migration, not a format change.
+  //
   // An all-zero array carries no payload. At Act I every one of the twenty region arrays and every
   // Act III array is zero, and at Act III the region arrays have been zeroed by ASCOSPORE — so the
   // 3 KB Act III budget (§3.1 rule 7) is met without the shape ever changing.
@@ -377,9 +382,10 @@
 
   function isNum (v) { return typeof v === 'number' && isFinite(v) }
   function isArr (v) { return Object.prototype.toString.call(v) === '[object Array]' }
+  // Brand-checked rather than prototype-checked: a save that arrives from an iframe, a worker or
+  // the harness's sandbox has a different `Object.prototype` and would fail an identity test.
   function isPlain (v) {
-    return !!v && typeof v === 'object' && !isArr(v) && !taCode(v) &&
-      (Object.getPrototypeOf(v) === Object.prototype || Object.getPrototypeOf(v) === null)
+    return !!v && typeof v === 'object' && Object.prototype.toString.call(v) === '[object Object]'
   }
 
   var SHAPE_CACHE = null
@@ -737,11 +743,12 @@
 
   function migrate (save, from) {
     var v = isNum(from) ? from : (isNum(save.v) ? save.v : 0)
-    // Deliberate fall-through: a v0 save runs every step up to CURRENT, in order.
+    if (v > CURRENT) return save     // never downgrade; load() and importB64() have already refused
+    // Deliberate fall-through: a save enters the switch at its own version and runs every step
+    // above it, in order. A new version adds one case at the bottom and touches nothing else.
     switch (v) {
       case 0:
         m0to1(save)
-        v = 1
         /* falls through */
       default:
         break
@@ -815,6 +822,11 @@
     key = slotKey(curSlot)
 
     s.wallClock = now()        // §3.1 rule 4: the only writer of wallClock is the autosave
+    // §3: the ring is trimmed on save. It is the one unbounded array in the shape, and an
+    // untrimmed one is worth more bytes than the entire Act II board.
+    if (isArr(s.log && s.log.ring) && s.log.ring.length > TUNE().LOG.RING) {
+      s.log.ring.splice(0, s.log.ring.length - TUNE().LOG.RING)
+    }
     json = JSON.stringify(serialise(s))
     lastBytes = json.length
 
@@ -826,26 +838,21 @@
     return lsSet(key, json)
   }
 
-  function load (slot) {
-    var key, raw, parsed, obj, faults
-    lastError = ''
-    if (slot === undefined) slot = curSlot
-    key = slotKey(slot)
-    raw = lsGet(key)
-    if (raw === null) { lastError = 'empty'; return null }
-
+  // Parse → migrate → validate. Returns the §3-shaped save, or null with `reason` set. Shared by
+  // the slot loader and by importB64 so a pasted save and a stored one are judged identically.
+  function parseSave (raw) {
+    var parsed, obj, faults
+    if (typeof raw !== 'string' || !raw.length) return { save: null, reason: 'empty' }
     try {
       parsed = JSON.parse(raw)
     } catch (e) {
-      lastError = 'unreadable'
-      return null
+      return { save: null, reason: 'unreadable' }
     }
-    if (!isPlain(parsed)) { lastError = 'unreadable'; return null }
+    if (!isPlain(parsed)) return { save: null, reason: 'unreadable' }
     if (isNum(parsed.v) && parsed.v > CURRENT) {
       // Refusing is the only safe answer: a newer schema may have renamed a key this build still
       // writes, and loading it would silently destroy the newer save on the next autosave.
-      lastError = 'newer: save is v' + parsed.v + ', this build reads v' + CURRENT
-      return null
+      return { save: null, reason: 'newer: save is v' + parsed.v + ', this build reads v' + CURRENT }
     }
 
     obj = deserialise(parsed)
@@ -858,12 +865,36 @@
       // than boot into a state whose types no other module expects.
       fillDefaults(obj, newGame(obj.seed, obj.meta))
       faults = assertShape(obj)
-      if (faults.length) { lastError = 'malformed: ' + faults[0]; return null }
+      if (faults.length) return { save: null, reason: 'malformed: ' + faults[0] }
     }
+    return { save: obj, reason: '' }
+  }
+
+  function load (slot) {
+    var key, got, bak
+    lastError = ''
+    if (slot === undefined) slot = curSlot
+    key = slotKey(slot)
+    got = parseSave(lsGet(key))
+
+    // The rolling backup is only worth writing if something reads it. A slot torn by a write that
+    // was interrupted mid-string is exactly the case it was written for. A save from a newer build
+    // is not: silently reverting a player to their previous session and then autosaving over the
+    // newer one is a worse outcome than refusing.
+    if (!got.save && got.reason !== 'empty' && got.reason.indexOf('newer') !== 0) {
+      bak = parseSave(lsGet(key + '.bak'))
+      if (bak.save) {
+        got = bak
+        got.reason = 'recovered: slot ' + clampSlot(slot) + ' was unreadable, its backup was not'
+      }
+    }
+
+    lastError = got.reason
+    if (!got.save) return null
 
     curSlot = clampSlot(slot)
     sinceSave = 0
-    return adopt(obj)
+    return adopt(got.save)
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -877,7 +908,7 @@
   }
 
   function importB64 (str) {
-    var text, parsed, obj, faults
+    var text, got
     lastError = ''
     if (typeof str !== 'string' || !str.replace(/\s+/g, '').length) {
       lastError = 'empty'
@@ -885,27 +916,15 @@
     }
     try {
       text = utf8Decode(b64ToBytes(str))
-      parsed = JSON.parse(text)
     } catch (e) {
       lastError = 'unreadable'
       return false
     }
-    if (!isPlain(parsed)) { lastError = 'unreadable'; return false }
-    if (isNum(parsed.v) && parsed.v > CURRENT) {
-      lastError = 'newer: save is v' + parsed.v + ', this build reads v' + CURRENT
-      return false
-    }
+    got = parseSave(text)
+    lastError = got.reason
+    if (!got.save) return false
 
-    obj = deserialise(parsed)
-    if (obj.v !== CURRENT) migrate(obj, isNum(obj.v) ? obj.v : 0)
-    faults = assertShape(obj)
-    if (faults.length) {
-      fillDefaults(obj, newGame(obj.seed, obj.meta))
-      faults = assertShape(obj)
-      if (faults.length) { lastError = 'malformed: ' + faults[0]; return false }
-    }
-
-    adopt(obj)
+    adopt(got.save)
     sinceSave = 0
     return true
   }
@@ -1118,7 +1137,9 @@
 
       // 4 · slots, the rolling .bak, and a hostile localStorage.
       var savedMem = mem, savedOK = storageOK, savedWarn = warned
-      mem = {}; storageOK = true
+      // Against the mirror only. A self-test that wrote through to localStorage would overwrite
+      // the slot of whoever ran it, which is the exact failure the slot system exists to prevent.
+      mem = {}; storageOK = false
       adopt(deserialise(parseB64(b1)))
       st().t = 100
       ok(save(1) !== undefined, 'save(1) threw')
@@ -1133,6 +1154,18 @@
       ok(st().t === 200, 'load(1) restored the wrong write')
       ok(load(2) === null && lastError === 'empty', 'load of an empty slot did not report empty')
       ok(slotKey(99) === slotKey(TUNE().SAVE.SLOTS - 1), 'slot index is not clamped')
+
+      // A slot torn mid-write falls back to its rolling backup, and says so.
+      mem[slotKey(1)] = firstWrite.slice(0, firstWrite.length >> 1)
+      ok(load(1) !== null, 'a torn slot did not fall back to its .bak: ' + lastError)
+      ok(st().t === 100, 'the .bak fallback restored the wrong write')
+      ok(lastError.indexOf('recovered') === 0, 'the .bak fallback was silent')
+      // A slot from a newer build is refused outright rather than reverted to its backup.
+      var newer = JSON.parse(firstWrite)
+      newer.v = CURRENT + 1
+      mem[slotKey(1)] = JSON.stringify(newer)
+      ok(load(1) === null && lastError.indexOf('newer') === 0,
+        'a slot newer than CURRENT was not refused')
 
       // Storage that throws on every call: play continues, exactly one warning is emitted.
       mem = {}; storageOK = true; warned = false
