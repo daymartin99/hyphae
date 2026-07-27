@@ -73,7 +73,9 @@ fails the build.
 | L3 | No second-person imperative in console prose. | leading verb from `IMPERATIVES` list |
 | L4 | No superlative or intensifier adjectives. | `BANNED_LEX` (§1.3) |
 | L5 | Act I strings contain no `[A-Z]`. | regex, `act == 1 && channel != transition` |
-| L6 | Console line ≤ 62 characters (fits 360 px at 13 px mono without ellipsis). | length |
+| L6a | Console line ≤ **78 characters** (two console rows at the design base — see §1.9). | length |
+| L6b | `channel: system` lines ≤ **39 characters** (one row). Frequent lines must not eat history. | length + channel |
+| L6c | No line exceeds **three** rows at the 320 px floor (≤ 105 chars). Nothing in the catalog does. | length |
 | L7 | No em-dash in console prose except the Successor prefix. | `/—/` |
 | L8 | No semicolons. Ever. Two sentences or one. | `/;/` |
 | L9 | No word appears in two consecutive lines of the same trigger group. | authoring-time only |
@@ -179,7 +181,47 @@ Each pair is a real string that was considered and a real string that ships.
 - Curly quotes are forbidden. Apostrophes are `'` (U+0027). The build is ASCII except for `Σ Ψ ⛬ ◦ α
   Χ ϒ λ D ⊥ ◍ ⬡ ◌ △ ✕ ×` and the one `×` in Ending A.
 
-## 1.8 The register-shift audit (a QA pass, 20 minutes)
+## 1.8 AMENDMENT to `06` §5.7 — the console wraps
+
+`06` §5.7 specifies `.console-line { white-space: nowrap; text-overflow: ellipsis }`. **That is
+wrong and this document supersedes it.** The arithmetic: at the 360 px design base the console's
+content box is 328 px, less a 12 px fixed gutter for the `>`/`·` column = 316 px. `--t-meta` is
+13 px mono at +0.002em, advance ≈ 7.83 px. **40 characters per row.** Two-thirds of the canonical
+lines already written in `01`–`03` are 45–78 characters. Under the shipped rule, the emotional peak
+of Act II reads `> There is not enough forest left to think this…`.
+
+The fix, which is three CSS properties and is also thematically correct:
+
+```css
+.console-line { white-space: normal; overflow-wrap: break-word; hyphens: none;
+                padding-left: 12px; text-indent: -12px; }   /* hanging '>' gutter */
+.console      { height: 107px; overflow: hidden;
+                display: flex; flex-direction: column; justify-content: flex-end; }
+```
+
+**The console is a five-*row* window, not a five-*line* window.** A wrapped line consumes two rows
+and pushes an older line off the top. Rows, not messages, are the unit. `consoleMsg()` trims by
+measured height, not by `children.length`:
+
+```js
+while (stack.scrollHeight > 95) stack.removeChild(stack.firstChild);   // 5 × 19
+```
+
+Arrival motion is unchanged except that the stack translates by the **new line's own height**
+(19 or 38 px), read once before the transition, instead of a constant 19.
+
+Consequences, all good:
+- Every canonical line from `01`–`03` survives intact.
+- **A long line costs you history, not legibility.** The console stops being a fixed buffer and
+  becomes one that a big thought crowds out — which is the correct behaviour for the object the
+  fiction says it is.
+- At the 320 px floor a two-row line becomes three rows and the console shows less history. Nothing
+  truncates. Nothing is unreadable. At 200% text scaling the same is true and the console is the one
+  component allowed to lose content to scaling, because it is a stream.
+
+Row budget by channel: `system` 1 row, `world` 1–2, `narrative` 2, `observation` 2, `voice` 1–2.
+
+## 1.9 The register-shift audit (a QA pass, 20 minutes)
 
 Read the console ring buffer at the end of each act with the act's register sheet next to it. Every
 line must fail the *other* two registers. If an Act I line would read correctly in Act III, it is not
@@ -221,18 +263,20 @@ holds everything else until `openingLines == 5`.
 Rendered in the five-line console at the end of that sequence, exactly:
 
 ```
-┌──────────────────────────────────────────┐
-│ . the forest floor is warm               │  .20
-│ . something under you is already dead    │  .30
-│ . it comes apart in water                │  .44
-│ . there are two thousand grams of it.…   │  .62
-│ > it is autumn. more is falling. not f▌  │  1.00
-└──────────────────────────────────────────┘
+┌────────────────────────────────────────┐
+│ . it comes apart in water              │  .30
+│ . there are two thousand grams of it.  │  .44
+│     you have used ten.                 │
+│ > it is autumn. more is falling.       │  1.00
+│     not fast enough. ▌                 │
+└────────────────────────────────────────┘
 ```
 
-Line 4 exceeds the 46-character measure and is the **only** intentional ellipsis in the console. It
-is legible in full for its 3.4 seconds as the bottom line and then truncates as it demotes, which is
-correct: the console is a memory, and memories lose their ends.
+Lines 4 and 5 are two rows each (§1.8), so by the time line 5 lands the boot line has already been
+pushed off the top. **That is intended and it is the first thing the console teaches:** it is a
+stream, not a record, and it will not wait for you. Nothing is ever truncated.
+
+The cursor sits at the end of the newest line's **last** row.
 
 ## 2.2 Why these five and not others
 
@@ -1119,7 +1163,7 @@ Expected rate in practice: **one every 4–9 minutes of idle**, zero during acti
 - Tone `amb`: rendered at `--text-secondary`, **no leading glyph and no `>` prompt.** They arrive as
   the bottom line but do not carry the cursor — the cursor stays on the last real line above them.
   A player who is looking will notice that the game is speaking without addressing them.
-- ≤ 62 characters (L6), one or two sentences.
+- ≤ 78 characters (L6a) — two console rows — and one or two sentences.
 - **Never contain a number about the player's state**, never a token, never advice, never a
   reference to any game system by its in-game name.
 - Every factual one is **true**, has a `src` in the authoring JSON, and is delivered without
@@ -1304,8 +1348,10 @@ is the id's own semantics — the caller is listed in the implementation index b
 
   {"id":"x.return","trigger":"@offlineReturn && away >= 900","text":"you were gone {away}."},
   {"id":"x.return_short","trigger":"@offlineReturn && away >= 120 && away < 900","text":"you were gone {away}."},
-  {"id":"x.return_long","trigger":"@offlineReturn && away >= 259200","text":"most of what you are was made while you were not here."},
-  {"id":"x.return_vast","trigger":"@offlineReturn && away >= 2592000","text":"Nothing waited. Nothing needed to."},
+  {"id":"x.return_long","trigger":"@offlineReturn && away >= 259200 && act == 1","text":"most of what you are was made while you were not here."},
+  {"id":"x.return_long_2","trigger":"@offlineReturn && away >= 259200 && act >= 2","text":"Most of what you are was made while you were not here."},
+  {"id":"x.return_vast","trigger":"@offlineReturn && away >= 2592000 && act == 1","text":"nothing waited. nothing needed to."},
+  {"id":"x.return_vast_2","trigger":"@offlineReturn && away >= 2592000 && act >= 2","text":"Nothing waited. Nothing needed to."},
   {"id":"x.clock_back","trigger":"@offlineReturn && away < 0","text":"the clock disagrees with itself. nothing was lost."},
   {"id":"x.ten_thousand","trigger":"taps >= 10000","text":"you have pressed this ten thousand times. it has never once refused."},
   {"id":"x.new_growth","trigger":"@newGame && growthLevel + coherenceLevel + divergenceLevel > 0","text":"you have been here before. the floor is not the same floor."},
@@ -1328,7 +1374,7 @@ is the id's own semantics — the caller is listed in the implementation index b
   {"id":"obs.16","trigger":"@idle && act >= 1","text":"roots do not find water. they grow everywhere and stop where there is none."},
   {"id":"obs.17","trigger":"@idle && act >= 2","text":"the infected ant climbs to one height, bites one vein, and faces one way."},
   {"id":"obs.18","trigger":"@idle && act >= 2","text":"every network has a shape it prefers. no network chooses it."},
-  {"id":"obs.19","trigger":"@idle && act >= 3","text":"five kilometres down there are cells that have not divided in ten thousand years."},
+  {"id":"obs.19","trigger":"@idle && act >= 3","text":"five kilometres down are cells that have not divided in ten thousand years."},
   {"id":"obs.20","trigger":"@idle && act >= 2","text":"a signal in a fungus moves half a millimetre a second and is in no hurry."},
   {"id":"obs.21","trigger":"@idle && act >= 3","text":"there is material in a drawer that has been dry since 1876 and is not dead."},
   {"id":"obs.22","trigger":"@idle && act >= 1","text":"a log takes thirty years to disappear and is never once empty."},
