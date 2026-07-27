@@ -72,7 +72,8 @@
   ]
 
   // Permitted at most once per act, and every use is argued in review (09 §1.3). The count is
-  // asserted, not the argument.
+  // asserted, not the argument. `dead` is on 09's soft list only as a metaphor — literal use is
+  // free, and every occurrence in this corpus is literal — so it is not checkable and is not here.
   var BANNED_SOFT = [
     'beautiful', 'terrible', 'strange', 'alive', 'think', 'remember', 'want', 'decide'
   ]
@@ -151,8 +152,15 @@
     pct: function (v) { return String(Math.round(Number(v) || 0)) },
     price: function (v) { return (Number(v) || 0).toFixed(CONS.PRICE_DP) },
     clock: function (v) { return C().fmtTime(v, 'clock') },
-    away: function (v) { return C().fmtTime(Math.abs(Number(v) || 0), 'away') },
-    t: function (v) { return C().fmtTime(Math.abs(Number(v) || 0), 'away') }
+    away: function (v) { return duration(v) },
+    t: function (v) { return duration(v) }
+  }
+
+  // core.fmtTime('away') always writes both components, which reads as `4 h 0 m` on the hour.
+  // A zero the player cannot act on is a number the line should not be stating (09 §1.4).
+  function duration (v) {
+    var s = C().fmtTime(Math.abs(Number(v) || 0), 'away')
+    return s.length > 4 && s.slice(-4) === ' 0 m' ? s.slice(0, -4) : s
   }
 
   var TOKEN_RE = /\{(\w+)\}/g
@@ -1175,6 +1183,12 @@
   var rowPx = CONS.ROW_PX
   var soft = null           // sequence player handle
 
+  // The opening five, by their position in 09 §2.1's order. Index 0 is unused.
+  var OPENING = []
+  ;(function () {
+    for (var i = 0; i < LINES.length; i++) if (LINES[i].opening) OPENING[LINES[i].opening] = LINES[i]
+  })()
+
   function firedHas (s, id) {
     if (!firedSet || firedLen !== s.log.fired.length) rebuildFired(s)
     return firedSet[id] === 1
@@ -1265,6 +1279,12 @@
     if (frozen) return false
     if (entry.once && firedHas(s, entry.id)) return false
 
+    // No other console line may fire before all five opening lines have (09 §2.1). They are not
+    // merely deferred behind them — they are refused, because every predicate in this module is
+    // level-triggered and will offer the same line again a second later, and a queue held open
+    // for fourteen seconds would spend its four slots on news that is already stale.
+    if (s.log.openingLines < 5 && !entry.opening) return false
+
     var i
     for (i = 0; i < queue.length; i++) if (queue[i].entry.id === entry.id) return false
 
@@ -1278,10 +1298,12 @@
     var item = { entry: entry, tokens: tokens || null, tokenFormat: tokenFormat || null, at: s.t }
 
     if (queue.length >= CONS.QUEUE_DROP) {
-      // Beyond four queued, drop the LOWEST priority entry, not the newest.
+      // Beyond four queued, drop the LOWEST priority entry, not the newest. Ties break toward the
+      // newest of the tied group (`<=`), so a burst of same-priority lines loses its tail rather
+      // than its head — otherwise the opening five would evict each other.
       var worst = -1, wp = 1e9
       for (i = 0; i < queue.length; i++) {
-        if (queue[i].entry.priority < wp) { wp = queue[i].entry.priority; worst = i }
+        if (queue[i].entry.priority <= wp) { wp = queue[i].entry.priority; worst = i }
       }
       if (wp <= entry.priority && worst >= 0) queue.splice(worst, 1)
       else return false
@@ -1312,7 +1334,9 @@
       if (s.t - queue[i].at > CONS.QUEUE_STALE) queue.splice(i, 1)
     }
 
-    if (s.t - s.log.lastLineAt < LG.HARD_GAP) return
+    // HARD_GAP is the distance between two lines. Before there is a first line there is no gap,
+    // and D02 requires the console to be holding one line on the frame the game boots.
+    if (s.log.ring.length && s.t - s.log.lastLineAt < LG.HARD_GAP) return
 
     if (pendingReturn.length) {
       var r = pendingReturn.shift()
@@ -1324,8 +1348,19 @@
 
     if (!queue.length) return
 
-    // Nothing may speak before the opening five have (09 §2.1). They are held, not dropped.
+    // Nothing may speak before the opening five have, and they are fired IN ORDER (09 §2.1). Only
+    // the next one in the sequence is eligible; the rest wait. If a predecessor is already in the
+    // fired set — a save written mid-opening, a slot reloaded — the counter walks forward over it
+    // rather than deadlocking on a line that can never arrive again.
     var opening = s.log.openingLines < 5
+    if (opening) {
+      var need = s.log.openingLines + 1
+      while (need <= 5 && OPENING[need] && firedHas(s, OPENING[need].id)) {
+        s.log.openingLines = need
+        need++
+      }
+      opening = s.log.openingLines < 5
+    }
 
     var over = burstCount(s) >= LG.BURST_CAP
     if (over) {
@@ -1337,7 +1372,7 @@
     var best = -1, bp = -1
     for (i = 0; i < queue.length; i++) {
       var e = queue[i].entry
-      if (opening && !e.opening) continue
+      if (opening && e.opening !== s.log.openingLines + 1) continue
       if (over && e.priority <= 1) continue
       if (e.priority > bp) { bp = e.priority; best = i }
     }
@@ -1827,10 +1862,16 @@
   // SELF-TEST — the L1–L10 lint of 09 §1.2, plus the register sheet of §1.1
   // ───────────────────────────────────────────────────────────────────────────
 
+  // Split after a full stop. Written without a lookbehind: the build must run from file:// on a
+  // five-year-old phone, and lookbehind is the one regex feature those engines are missing.
   function sentences (text) {
-    var parts = text.split(/(?<=\.)\s+/)
-    var out = [], i
-    for (i = 0; i < parts.length; i++) if (parts[i].length) out.push(parts[i])
+    var out = [], cur = '', i, ch
+    for (i = 0; i < text.length; i++) {
+      ch = text.charAt(i)
+      if (ch === ' ' && cur.charAt(cur.length - 1) === '.') { out.push(cur); cur = ''; continue }
+      cur += ch
+    }
+    if (cur.length) out.push(cur)
     return out
   }
 
@@ -1880,8 +1921,9 @@
       }
 
       ok(t.indexOf(';') < 0, 'L8 ' + e.id + ': semicolon')
-      ok(!/[()…"‘’“”]/.test(t),
-        '§1.7 ' + e.id + ': forbidden punctuation')
+      // Parentheses, ellipses and curly quotes (09 §1.7). Written as escapes so the characters
+      // this rule forbids do not themselves appear in the bundle.
+      ok(!/[()\u2026"\u2018\u2019\u201C\u201D]/.test(t), '§1.7 ' + e.id + ': forbidden punctuation')
 
       if (e.bin === 'fact') ok(!!e.src, 'L10 ' + e.id + ': factual claim with no src')
     }
@@ -1992,10 +2034,13 @@
     for (i = 0; i < SEQUENCES.dismantle.steps.length; i++) {
       ok(SEQUENCES.dismantle.steps[i].kind !== 'line', 'a line fires during the dismantle')
     }
-    // D65: the three act-transition strings are 5, 5 and 4 words.
-    ok(SEQUENCES.decide.words.split(/\s+/).length === 4, 'DECIDE description word count')
-    ok(SEQUENCES.ascospore.words.split(/\s+/).length === 5, 'ASCOSPORE description word count')
-    ok(SEQUENCES.escape.words.split(/\s+/).length === 7, 'ESCAPE description word count')
+    // D65: the three act-transition strings are the shortest text in the game. 09 §4's prose
+    // miscounts its own strings (it calls a four-word description five words and an eight-word one
+    // six), and BIBLE §4 makes 09 normative on strings, not on its counts — so the strings are
+    // asserted and the counts are not.
+    ok(SEQUENCES.decide.words === 'Stop tasting. Start knowing.', 'DECIDE description')
+    ok(SEQUENCES.ascospore.words === 'Let go of the ground.', 'ASCOSPORE description')
+    ok(SEQUENCES.escape.words === 'Leave nothing behind that can decide to stay.', 'ESCAPE description')
 
     // The transition's two console lines are the whole transition: the last lowercase line of the
     // game, then the first capital letter.
@@ -2035,8 +2080,7 @@
     }
     for (mk in EMPTY) {
       if (!Object.prototype.hasOwnProperty.call(EMPTY, mk)) continue
-      ok(EMPTY[mk].length <= 46 || mk === 'trees' || mk === 'stands',
-        '§6.5 empty.' + mk + ': ' + EMPTY[mk].length + ' characters')
+      ok(EMPTY[mk].length <= 46, '§6.5 empty.' + mk + ': ' + EMPTY[mk].length + ' characters')
     }
     ok(Object.keys(CONFIRM).length === 3, 'D73: there are exactly three confirmations')
     for (mk in CONFIRM) {
@@ -2084,6 +2128,7 @@
       var keepAct = live.act
       var keepStats = JSON.parse(JSON.stringify(live.stats))
       var keepRes = JSON.parse(JSON.stringify(live.res))
+      var keepA1 = JSON.parse(JSON.stringify(live.a1))
       var seen = []
       var unsub = onLine(function (l) { seen.push(l) })
 
@@ -2244,9 +2289,9 @@
         playSequence('decide', { reduced: true, onStep: function () { steps++ },
           onDone: function () { doneCalled++ } })
         ok(sequenceActive(), 'playSequence did not start')
-        ok(steps > 0, 'a sequence emitted no steps')
         ok(frozen === true, 'a sequence did not freeze the log')
         stepSequence(0.5)
+        ok(steps > 0, 'a sequence emitted no steps')
         ok(advanceSequence() === false, 'a sequence was skippable before its first line')
         stepSequence(7.5)
         ok(doneCalled === 1, 'the sequence never finished')
@@ -2259,7 +2304,12 @@
           'Something in the network is repeating itself.', 'DECIDE line 2 missing')
         ok(firedHas(live, 'a2.open'), 'the transition did not consume a2.open\'s once-flag')
 
-        // Observations: gated hard, and never during a sequence.
+        // Observations: gated hard, never closer than OBS_COOLDOWN, and never during a sequence.
+        // Everything else in the catalog is marked fired first so the only thing that CAN speak
+        // is an observation, which is what makes the channel assertion meaningful.
+        for (i = 0; i < LINES.length; i++) {
+          if (LINES[i].channel !== 'observation') markFired(live, LINES[i].id)
+        }
         init(live)
         live.act = 1
         live.t = 10000
@@ -2268,17 +2318,33 @@
         lastInputT = live.t - 1000
         seen.length = 0
         var fires = 0
+        var obsAt = []
         for (i = 0; i < 4000; i++) {
           live.t += 1
           manageLog(live)
-          if (seen.length > fires) { fires = seen.length; live.log.lastLineAt = live.t - 1000 }
+          if (seen.length > fires) {
+            fires = seen.length
+            obsAt.push(live.t)
+            live.log.lastLineAt = live.t - 1000     // the world stays quiet around the player
+          }
         }
         ok(fires > 0, 'no observation ever fired in an hour of idling')
         var obsOnly = true
         for (i = 0; i < seen.length; i++) if (seen[i].channel !== 'observation') obsOnly = false
         ok(obsOnly, 'a non-observation fired during pure idling')
-        var gaps = true
-        ok(gaps, 'observation cooldown')
+        var spacing = true
+        for (i = 1; i < obsAt.length; i++) {
+          if (obsAt[i] - obsAt[i - 1] < T().LOG.OBS_COOLDOWN) spacing = false
+        }
+        ok(spacing, 'two observations landed inside OBS_COOLDOWN')
+        // 09 §7.1 targets one every 4–9 minutes of idle. Over an hour of pure idling that is
+        // 6–15 lines; the band is wide because the draw is stochastic and the cooldown is not.
+        ok(fires >= 4 && fires <= 20, 'observation rate over an hour of idle: ' + fires)
+
+        // A player who is touching the screen is not idle.
+        seen.length = 0
+        for (i = 0; i < 600; i++) { live.t += 1; lastInputT = live.t; manageLog(live) }
+        ok(seen.length === 0, 'an observation fired while the player had their hands on the glass')
 
         // Ring buffer round-trips text and tone, and is trimmed to 200.
         ok(live.log.ring.length <= T().LOG.RING, 'ring exceeded ' + T().LOG.RING)
@@ -2292,6 +2358,7 @@
         live.act = keepAct
         live.stats = keepStats
         live.res = keepRes
+        live.a1 = keepA1
         init(live)
       }
     }
