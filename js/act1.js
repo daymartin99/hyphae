@@ -113,6 +113,7 @@
 
   var TREE_MAX = 7                                  // `01` §6.2: 3–7 simultaneous
   var REP_NEIGHBOUR = [8, 22, 38, 55, 72]           // netRep thresholds that introduce one
+  var FROST_REFUSE = ['birch', 'aspen']             // who stops talking after a hard frost
   var NEIGHBOUR_REP = { base: 15, slope: 0.45, min: 5, max: 70 }
 
   var SPECIES = {
@@ -269,8 +270,8 @@
     s.a1.moisture = C().clamp(m, a.MOIST_MIN, a.MOIST_MAX)
   }
 
-  function moistureMult () {
-    var s = S(), a = A()
+  function moistureMult (state) {
+    var s = state || S(), a = A()
     var m = C().clamp(num(s.a1.moisture), a.MOIST_MIN, a.MOIST_MAX)
     var d = m - a.MOIST_OPT
     var v = Math.exp(-(d * d) / a.MOIST_WIDTH)
@@ -280,8 +281,8 @@
     return v
   }
 
-  function tempMult () {
-    var s = S(), a = A()
+  function tempMult (state) {
+    var s = state || S(), a = A()
     var v = a.SEASON_TEMP[s.a1.season]
     if (s.mult.antifreeze && s.a1.season === WINTER) v *= a.ANTIFREEZE_WINTER
     return v * mods(s).temp
@@ -359,6 +360,7 @@
         case 'latefrost': fireLateFrost(s, r); break
       }
     }
+    stepNeighbours(s, true)
     publishMods(s)
   }
 
@@ -461,12 +463,13 @@
     fire('a1.drought')
   }
 
+  // Water is present and frozen, which is a different thing from absent. The two pioneers stop
+  // talking to anyone for a season; the conifers, who were never in a hurry, do not.
   function fireFrost (s) {
     push(s, 'frost', EV.FROST_SEASONS, { moist: EV.FROST_MOIST, temp: EV.FROST_TEMP })
-    var i, t = trees(s), sp
+    var i, t = trees(s)
     for (i = 0; i < t.length; i++) {
-      sp = SPECIES[t[i].species]
-      if (sp && sp.deciduous && !sp.conifer) t[i].refuseUntil = s.t + T().CLOCK.SEASON_S
+      if (FROST_REFUSE.indexOf(t[i].species) >= 0) t[i].refuseUntil = s.t + T().CLOCK.SEASON_S
     }
     fire('a1.hard_frost')
   }
@@ -564,21 +567,31 @@
     }
   }
 
-  // "New neighbour" (`01` §7.3) fires on reputation thresholds and on each patch claim. The count
-  // of trees ever introduced is `maxTreeId`, which is monotone and already in the save, so no
-  // extra bookkeeping field is needed and a tree that died is not silently replaced.
-  function stepNeighbours (s) {
+  // "New neighbour" (`01` §7.3), on reputation thresholds and on each patch claim. The ladder is
+  // resolved at season boundaries, with one exception: the first birch arrives the instant the
+  // understory opens, because that unlock is a panel with a counterparty in it.
+  //
+  // A tree that died is eventually replaced. That is deliberate: minerals have exactly one source
+  // in Act I, so a forest that cannot re-supply a counterparty is a dead end, and D78 does not
+  // permit one. The ladder still caps the book, and a death costs a whole season either way.
+  function stepNeighbours (s, atBoundary) {
     if (s.act !== 1) return
-    var want = (revealTrees(s) ? 1 : 0) + (s.a1.patches - 1)
+    var have = maxTreeId(s)
+    if (have === 0) {
+      if (!revealTrees(s)) return
+      spawnTree(s, 'birch', rollStream(s, 'neighbour', 1, s.a1.patches))
+      return
+    }
+    if (!atBoundary) return
+
+    var want = 1 + (s.a1.patches - 1)
     var i
     for (i = 0; i < REP_NEIGHBOUR.length; i++) if (num(s.a1.netRep) >= REP_NEIGHBOUR[i]) want += 1
-    var have = maxTreeId(s)
     while (have < want && trees(s).length < TREE_MAX) {
       have += 1
       var r = rollStream(s, 'neighbour', have, s.a1.patches)
       var pool = PATCH_POOL[Math.min(s.a1.patches, PATCH_POOL.length - 1)]
-      var species = have === 1 ? 'birch' : r.pick(pool)
-      spawnTree(s, species, r)
+      spawnTree(s, r.pick(pool), r)
     }
   }
 
@@ -586,8 +599,8 @@
   // THE TAP
   // ───────────────────────────────────────────────────────────────────────────
 
-  function totalSubstrate () {
-    var s = S(), sum = 0, i
+  function totalSubstrate (state) {
+    var s = state || S(), sum = 0, i
     for (i = 0; i < TYPES.length; i++) sum += num(s.a1.sub[TYPES[i]])
     return sum
   }
@@ -641,8 +654,11 @@
   // TIPS
   // ───────────────────────────────────────────────────────────────────────────
 
-  function tipCost (n) {
-    var s = S(), a = A()
+  // `state` is optional on the three readers projects.js delegates to, so a predicate that is being
+  // evaluated against a probe or a candidate state can pass it and get an answer about that state
+  // rather than about the live one.
+  function tipCost (n, state) {
+    var s = state || S(), a = A()
     if (n === undefined) n = s.a1.tips
     var coef = flagOn(s, 'foraging_front') ? a.TIP_COEF_FORAGING : a.TIP_COEF
     return Math.ceil(a.TIP_BASE + coef * Math.pow(Math.max(0, n), a.TIP_EXP))
@@ -650,9 +666,9 @@
 
   // The spine of the act. Below tip 24 it is exactly zero, and the four-tip warning window before
   // it is a forecast rather than a wall (`01` §4 unlock 8).
-  function tipMineralCost (n) {
+  function tipMineralCost (n, state) {
     var a = A()
-    if (n === undefined) n = S().a1.tips
+    if (n === undefined) n = (state || S()).a1.tips
     if (n < a.MIN_GATE_TIPS) return 0
     return Math.ceil(a.MIN_GATE_COEF * Math.pow(n - (a.MIN_GATE_TIPS - 1), a.MIN_GATE_EXP))
   }
@@ -673,8 +689,8 @@
     return true
   }
 
-  function hyphae () {
-    var s = S(), a = A()
+  function hyphae (state) {
+    var s = state || S(), a = A()
     return a.HYPHAE_PER_TIP * s.a1.tips +
            a.HYPHAE_PER_PATCH * (s.a1.patches - 1) +
            num(s.a1.hyphaeManual)
@@ -691,13 +707,13 @@
 
   // 1.875 g/s of budget per tip (S1). One tip on leaf is 3.000 g of litter, 1.500 g of biomass and
   // 0.480 g of sugar per second — the button face is the first of those and it is exact.
-  function throughputPerSec () {
-    var s = S()
+  function throughputPerSec (state) {
+    var s = state || S()
     if (s.act !== 1) return 0
     var v = A().TIP_THROUGHPUT * s.a1.tips *
       num(s.mult.enzymeMult) * num(s.mult.prestigeGrowth) *
       num(s.mult.structureMult) * num(s.mult.patchMult) *
-      moistureMult() * tempMult()
+      moistureMult(s) * tempMult(s)
     if (s.a1.claimInFlight) v *= A().CLAIM_THROUGHPUT
     return v > 0 ? v : 0
   }
@@ -760,8 +776,8 @@
   // CAPS AND SPOILAGE (tick step 7)
   // ───────────────────────────────────────────────────────────────────────────
 
-  function sugarCap () {
-    var s = S(), a = A()
+  function sugarCap (state) {
+    var s = state || S(), a = A()
     return a.SUGAR_CAP_BASE + a.SUGAR_CAP_SLOPE * s.a1.tips + num(s.mult.sclerotiaBonus)
   }
 
@@ -785,8 +801,8 @@
 
   // S3: `fall` scales as patches^1.8 and `cap` stays linear. Stocks scaling slower than flows is
   // what keeps the late-act market thin and twitchy.
-  function patchSupplyMult () { return Math.pow(S().a1.patches, A().PATCH_SUPPLY_EXP) }
-  function patchCapMult () { return S().a1.patches }
+  function patchSupplyMult (state) { return Math.pow((state || S()).a1.patches, A().PATCH_SUPPLY_EXP) }
+  function patchCapMult (state) { return (state || S()).a1.patches }
 
   function syncPatchMult (s) {
     s.mult.patchMult = 1 + A().PATCH_MULT_STEP * (s.a1.patches - 1)
@@ -838,26 +854,27 @@
 
   // The litter the network is asking for, in grams per second — the units the forest's supply is
   // in. When a pool empties the demand does not fall, which is exactly what the alarm must see.
-  function demandPerSec () {
-    var s = S(), order = s.a1.consumptionOrder, i, k, first = null
+  function demandPerSec (state) {
+    var s = state || S(), order = s.a1.consumptionOrder, i, k, first = null
     for (i = 0; i < order.length; i++) {
       k = order[i]
       if (!DECOMP[k] || s.a1.unlockedTypes.indexOf(k) < 0) continue
       if (first === null) first = k
-      if (num(s.a1.sub[k]) > 0) return throughputPerSec() * DECOMP[k].k * enzK(s, k)
+      if (num(s.a1.sub[k]) > 0) return throughputPerSec(s) * DECOMP[k].k * enzK(s, k)
     }
     if (first === null) return 0
-    return throughputPerSec() * DECOMP[first].k * enzK(s, first)
+    return throughputPerSec(s) * DECOMP[first].k * enzK(s, first)
   }
 
-  function forestSupply () {
-    return A().FOREST_SUPPLY_BASE * patchSupplyMult()
+  function forestSupply (state) {
+    return A().FOREST_SUPPLY_BASE * patchSupplyMult(state)
   }
 
-  function utilisation () {
-    var sustainable = forestSupply() * A().SUSTAINABLE_FRAC
+  function utilisation (state) {
+    var s = state || S()
+    var sustainable = forestSupply(s) * A().SUSTAINABLE_FRAC
     if (!(sustainable > 0)) return 0
-    return demandPerSec() / sustainable
+    return demandPerSec(s) / sustainable
   }
 
   function litterPerSec () { return litterRate }
@@ -930,7 +947,8 @@
       if (c) C().setStock(s.res, 'biomass', num(s.res.biomass) + num(c.collateral))
     }
     s.a1.contracts.length = 0
-    for (i = 0; i < s.a1.trees.length; i++) if (s.a1.trees[i]) delete s.a1.trees[i].rep
+    // Reputation is not zeroed, it is deleted: Act II's standing is a fresh, separate pair of
+    // scalars and nothing the player built here is carried into it (C16).
     s.a1.trees.length = 0
     s.a1.netRep = 0
 
@@ -1004,14 +1022,14 @@
     stepDecomposition(dt)
     stepSpoilage(dt)
     stepClaim()
-    stepNeighbours(s)
+    stepNeighbours(s, false)
   }
 
   // Everything act1 owns is a key in §3; state.js serialises all of it. Nothing here is private
   // enough to need a second copy of the save.
   function serialise () { return null }
 
-  function migrate (save, from) {
+  function migrate (save) {
     if (!save || !save.a1) return save
     var i
     if (!save.a1.weatherFallMod || save.a1.weatherFallMod.length !== TYPES.length) {
@@ -1025,7 +1043,6 @@
       if (!e.payload) e.payload = {}
       if (typeof e.seasonsLeft !== 'number') e.seasonsLeft = 1
     }
-    void from
     return save
   }
 
@@ -1193,6 +1210,51 @@
       var wood = stepDecomposition(1.0)
       near(litterOf(), 1.875 * 10 * DECOMP.stump.k, 1e-6, 'the stump throughput weight is wrong')
       ok(wood / litterOf() > 1.0, 'stumps do not out-yield leaf per gram')
+
+      // ── the tap ─────────────────────────────────────────────────────────
+      cold(5)
+      s = S()
+      ok(onExtend(), 'the first tap did nothing')
+      near(num(s.res.biomass), 1.00, 1e-9, 'a tap is not +1.00 biomass')
+      near(num(s.res.sugar), 0.32, 1e-9, 'a tap is not +0.32 sugar')
+      near(num(s.a1.sub.leaf), A().BOOT_SUB_LEAF - TAP_LITTER, 1e-9, 'a tap did not eat 2 g')
+      near(num(s.a1.hyphaeManual), A().HYPHAE_PER_TAP, 1e-12, 'S4: a tap is 0.020 m')
+      ok(s.stats.taps === 1, 'the tap was not counted')
+      for (i = 0; i < TYPES.length; i++) C().setStock(s.a1.sub, TYPES[i], 0)
+      ok(onExtend() === false, 'the tap worked on a bare floor')
+
+      // ── the mineral gate: a wall with four tips of warning ───────────────
+      cold(5)
+      s = S()
+      s.res.biomass = 1e9
+      s.a1.tips = A().MIN_WARN_TIPS
+      ok(reveals().mineralWarn && !reveals().mineralGate, 'the warning window is not four tips wide')
+      ok(buyTip(), 'a tip below the gate needed a mineral')
+      s.a1.tips = A().MIN_GATE_TIPS
+      s.res.minerals = 0
+      ok(!buyTip(), 'tip 24 was bought without a mineral')
+      s.res.minerals = 1
+      ok(buyTip(), 'tip 24 refused the mineral it was given')
+      near(num(s.res.minerals), 0, 1e-9, 'the gate did not take the mineral')
+
+      // ── carrion, the act's only fast mineral (C35) ───────────────────────
+      cold(5)
+      s = S()
+      s.a1.tips = 100
+      s.a1.season = AUTUMN
+      s.a1.moisture = A().MOIST_OPT
+      s.a1.unlockedTypes.push('carrion')
+      for (i = 0; i < TYPES.length; i++) C().setStock(s.a1.sub, TYPES[i], 0)
+      s.a1.sub.carrion = 3000
+      s.a1.consumptionOrder = ['carrion'].concat(TYPES)
+      stepDecomposition(1.0)
+      var ate = 3000 - num(s.a1.sub.carrion)
+      near(num(s.res.minerals), ate * DECOMP.carrion.mineralPerG, 1e-9, 'carrion did not pay minerals')
+      near(num(s.res.sugar), ate * A().ETA_S * DECOMP.carrion.etaS, 1e-9, 'carrion sugar yield')
+      near(num(s.stats.mineralEarned), num(s.res.minerals), 1e-12, 'mineralEarned was not credited')
+      // 0.100 g of sugar back for 0.240 of price is the −140% margin that makes every contract
+      // rate look like a compromise rather than a gift.
+      ok(A().ETA_S * DECOMP.carrion.etaS < 0.240, 'carrion stopped being sugar-negative')
 
       // ── the sugar cap and the rot that gates Sclerotia ───────────────────
       cold(6)

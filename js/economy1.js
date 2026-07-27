@@ -57,6 +57,7 @@
   ]
 
   var TYPES = ['leaf', 'needle', 'twig', 'bark', 'log', 'stump', 'carrion']
+  var U32 = 4294967296        // hash32's range; a stable hash used as a decision, never as a draw
   var IDX = {}
   for (var _i = 0; _i < TYPES.length; _i++) IDX[TYPES[_i]] = _i
 
@@ -127,6 +128,7 @@
   // Both ladders are fixed rather than drawn, so "identical starting conditions" in D21 is literal:
   // two players who make different decisions face the same forest in the same order.
   var PATCH_TREES = [['birch'], ['aspen'], ['fir'], ['hemlock', 'fir'], ['elm'], ['oak']]
+  var SPECIES_LIMIT = { fir: 2 }   // one of each, except the fir: Under the Hemlocks brings a second
   var REP_TREES = [
     { rep: 8, species: 'birch' },
     { rep: 22, species: 'aspen' },
@@ -164,10 +166,14 @@
     CANOPY_K: 0.10,           // light lost per unit of crown rank standing above you
     CANOPY_MIN: 0.55,         // floor on canopyLight
     FIRESCAR_D: 0.20,         // d reduction while distant ash is on the ground
-    FIRESCAR_MIN: 3.0,        // × mineralPerG for the same season
+    FIRESCAR_MINERAL: 3.0,    // × mineralPerG for the same season
     REP_DONE_A: 6,            // tree.rep += this + REP_DONE_B·termSeasons on completion
     REP_DONE_B: 2,
     NETREP_DONE: 1.0,
+    // 01 §6.2 gives hemlock minerals that count ×1.6 "toward structures". That needs a second
+    // mineral pool and §3 has exactly one, so the rider is not built rather than being faked with a
+    // key the state shape does not have. Hemlock's distinctive value is what remains and it is
+    // enough: the only counterparty that will sign an eight-season term at reputation 31.
     REP_FAIL: 22,             // tree.rep -= this·arbitration on default
     NETREP_FAIL: 4.0,
     REFUSE_SEASONS: 2,        // seasons a defaulted tree will not talk to you
@@ -190,8 +196,7 @@
     BEETLE_PER_SEASON: 0.10,  // continuous, while the infestation is active
     BEETLE_SEASONS: 6,
     BEECH_TERM: 12,           // the non-negotiable term `the_hollow_beech` signs
-    OXALATE_RATE: 0.35,       // ⛬/s, passive, scaled by hartigNet
-    HEMLOCK_PHOSPHORUS: 1.6   // see stepTrees: recorded, not applied — there is no second pool
+    OXALATE_RATE: 0.35        // ⛬/s, passive, scaled by hartigNet
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -305,11 +310,13 @@
   // are what make the late-act market thin and twitchy, and it is why claiming is the only real
   // answer to substrate scarcity.
   function capOf (type) {
+    if (!known(type)) return 0
     var s = S()
     return DEADFALL[IDX[type]].cap * num(s.a1.patches)
   }
 
   function fallOf (type) {
+    if (!known(type)) return 0
     var s = S(), i = IDX[type], A = T().A1
     var wf = s.a1.weatherFallMod && isFinite(s.a1.weatherFallMod[i]) ? s.a1.weatherFallMod[i] : 1
     return DEADFALL[i].fall * Math.pow(num(s.a1.patches), A.PATCH_SUPPLY_EXP) *
@@ -329,8 +336,12 @@
     return sum
   }
 
+  // Every entry point that takes a type name from outside this file goes through this first: a
+  // typo'd pool must be a no-op, not an exception inside a tick.
+  function known (type) { return Object.prototype.hasOwnProperty.call(IDX, type) }
+
   function unlocked (type) {
-    return S().a1.unlockedTypes.indexOf(type) >= 0
+    return known(type) && S().a1.unlockedTypes.indexOf(type) >= 0
   }
 
   function eventActive (id) {
@@ -349,11 +360,13 @@
   // The one place ash on the ground is worth anything. act1's decomposition reads this rather than
   // the raw table so the fire scar is felt where the player will notice it.
   function mineralPerG (type) {
+    if (!known(type)) return 0
     var m = DEADFALL[IDX[type]].minPerG
-    return eventActive('firescar') ? m * CT.FIRESCAR_MIN : m
+    return eventActive('firescar') ? m * CT.FIRESCAR_MINERAL : m
   }
 
   function fairValue (type) {
+    if (!known(type)) return 0
     var s = S(), i = IDX[type], A = T().A1
     var row = s.a1.mkt[i]
     var cap = capOf(type)
@@ -365,6 +378,7 @@
   // affordability, minPrice() and therefore the G1a failsafe and the G1b reserve — reads this and
   // not the printed price, because two projects drive a wedge between them.
   function unitPrice (type) {
+    if (!known(type)) return 0
     var s = S(), row = s.a1.mkt[IDX[type]]
     if (forwardLeft(s) > 0) return MK.FORWARD_MARK * fairValue(type)
     var p = row.price * eventPriceMod(type)
@@ -372,34 +386,36 @@
     return p
   }
 
-  function price (type) { return S().a1.mkt[IDX[type]].price }
+  function price (type) { return known(type) ? S().a1.mkt[IDX[type]].price : 0 }
 
   // forward_contracts is a trap and it is priced like one: a fixed 1.05 × fair for twelve fills,
-  // which is above the median price you would otherwise pay and feels like safety. The remaining
-  // count lives in the flag's own value — `proj.flags` already carries numeric values elsewhere
-  // (windfall_at, util_alarm_target) and §3 has no other legal home for a per-project counter.
+  // which is above the median price you would otherwise pay and feels like safety. The fills spent
+  // are counted in `proj.uses`, which is §3's per-project integer counter; the flag itself must
+  // stay the untouched purchase marker that every other module tests.
   function forwardLeft (s) {
     if (!flag(s, 'forward_contracts')) return 0
-    var v = num(s.proj.flags.forward_contracts)
-    if (v === 1) { s.proj.flags.forward_contracts = MK.FORWARD_FILLS; return MK.FORWARD_FILLS }
-    return v
+    return Math.max(0, MK.FORWARD_FILLS - num(s.proj.uses.forward_contracts))
   }
 
+  // The cheapest gram the player is currently allowed to buy. Stocked pools first; if the whole
+  // floor is bare it still answers with a price, because G1a's failsafe compares the player's last
+  // sugar against this number and an infinity there disarms the failsafe exactly when it is needed.
   function minPrice () {
-    var s = S(), i, k, p, best = Infinity
+    var s = S(), i, k, p, best = Infinity, bare = Infinity
     for (i = 0; i < TYPES.length; i++) {
       k = TYPES[i]
       if (!unlocked(k)) continue
-      if (!(s.a1.mkt[i].stock > 0)) continue
       p = unitPrice(k)
-      if (p > 0 && p < best) best = p
+      if (!(p > 0)) continue
+      if (p < bare) bare = p
+      if (s.a1.mkt[i].stock > 0 && p < best) best = p
     }
-    return best
+    return isFinite(best) ? best : bare
   }
 
   function priceHistory (type) {
     var i = IDX[type], out = [], j, n = Math.min(histFill, T().A1.HIST_LEN)
-    if (!hist) return out
+    if (!hist || !known(type)) return out
     for (j = n; j > 0; j--) out.push(hist[i][(histFill - j) % T().A1.HIST_LEN])
     return out
   }
@@ -507,7 +523,7 @@
     row.mom = C().clamp(row.mom + A.IMPACT * (grams / (0.05 * cap)), -A.MOM_CLAMP, A.MOM_CLAMP)
     row.coolT = 0
 
-    if (forwardLeft(s) > 0) s.proj.flags.forward_contracts = forwardLeft(s) - 1
+    if (forwardLeft(s) > 0) s.proj.uses.forward_contracts = num(s.proj.uses.forward_contracts) + 1
 
     s.stats.purchases += 1
     s.stats.sugarSpentOnMarket += cost
@@ -520,7 +536,7 @@
   // a commitment to digest. Gated on The Two-Sided Book, which is itself gated on having over-bought.
   function sell (type, grams) {
     var s = S(), A = T().A1
-    if (!s || s.act !== 1 || !flag(s, 'two_sided_book')) return 0
+    if (!s || s.act !== 1 || !known(type) || !flag(s, 'two_sided_book')) return 0
     var i = IDX[type], row = s.a1.mkt[i], cap = capOf(type)
     grams = Math.min(num(grams), num(s.a1.sub[type]))
     if (!(grams >= MK.MIN_TRADE_G)) return 0
@@ -757,10 +773,10 @@
     if (reason === 'windthrow') say('a1.windthrow_kill')
   }
 
-  function stepTrees (dt, o) {
+  function stepTrees (dt) {
     var s = S()
     if (!s || s.act !== 1) return
-    var A = T().A1, SEASON = T().CLOCK.SEASON_S, i, t, spec, beetle
+    var SEASON = T().CLOCK.SEASON_S, i, t, spec, beetle
 
     if (treesOpen() && s.a1.trees.length === 0) claimTrees(1)
     if (num(s.a1.patches) > lastPatches) {
@@ -802,8 +818,7 @@
     for (i = 0; i < patchCount && i < PATCH_TREES.length; i++) {
       list = PATCH_TREES[i]
       for (j = 0; j < list.length; j++) {
-        if (hasSpecies(list[j]) && list[j] !== 'fir') continue
-        if (list[j] === 'fir' && countSpecies('fir') >= 2) continue
+        if (countSpecies(list[j]) >= (SPECIES_LIMIT[list[j]] || 1)) continue
         spawnTree(list[j])
       }
     }
@@ -840,7 +855,7 @@
       dNow = carbonDeficit(t)
       dThen = deficitAt(t, live[0].startT)
       if (dNow - dThen <= CT.SOLICIT_D) continue
-      h = C().hash32('solicit', t.id, key) / 4294967296
+      h = C().hash32('solicit', t.id, key) / U32
       if (h >= CT.SOLICIT_P) continue
       solicits.push({
         id: live[0].id,
@@ -896,7 +911,10 @@
   function offer (tree, volume, termSeasons, collateral, exclusive) {
     var s = S()
     if (!tree) return 0
-    var d = num(tree.d) === 0 ? carbonDeficit(tree) : num(tree.d)
+    // Recomputed rather than read from the per-tick cache: the negotiation screen calls this while
+    // a thumb is on a slider, and a deficit that is one frame stale is a number the player would
+    // sign against.
+    var d = carbonDeficit(tree)
     var termBonus = 1 + CT.TERM_K * Math.log(1 + Math.max(0, num(termSeasons)))
     var collBonus = 1 + CT.COLL_K *
       (1 - Math.exp(-num(collateral) / Math.max(1e-9, num(volume) * CT.COLL_SCALE)))
@@ -909,7 +927,7 @@
 
   function maxIntake (tree) {
     var s = S()
-    var d = num(tree.d) === 0 ? carbonDeficit(tree) : num(tree.d)
+    var d = carbonDeficit(tree)
     return sp(tree).intake * Math.max(1, num(tree.ramets)) * C().clamp(num(tree.health), 0, 1) *
       (1 + CT.NEED_K * Math.pow(d, CT.NEED_E)) *
       (CT.INTAKE_REP_A + CT.INTAKE_REP_B * num(tree.rep)) * num(s.mult.exudatePump)
@@ -957,16 +975,17 @@
   }
 
   function signContract (treeId, volume, termSeasons, collateral, exclusive) {
-    var s = S(), A = T().A1
+    var s = S()
     var tree = treeById(treeId)
     if (!tree) return null
-    // The Hollow Beech signs one term length and it is not on the slider. Reading it twice is the
-    // whole cost of the project, and the description says so.
-    if (tree.species === 'beech' && flag(s, 'the_hollow_beech')) termSeasons = CT.BEECH_TERM
-    termSeasons = Math.round(num(termSeasons))
+    // The Hollow Beech signs one term length and it is not on the slider. Everything else about the
+    // position is still tested; only the term escapes the legal range, and nothing can renegotiate
+    // out of it afterwards. Reading it twice is the whole cost of the project.
+    var trap = tree.species === 'beech' && flag(s, 'the_hollow_beech')
+    termSeasons = trap ? CT.BEECH_TERM : Math.round(num(termSeasons))
     collateral = Math.max(0, num(collateral))
     if (collateral > s.res.biomass) collateral = s.res.biomass
-    if (termSeasons !== CT.BEECH_TERM && !accepts(tree, volume, termSeasons, exclusive)) {
+    if (!accepts(tree, volume, trap ? maxTerm(tree) : termSeasons, exclusive)) {
       say('a1.oak_refuse')
       return null
     }
@@ -994,7 +1013,6 @@
     say('a1.first_contract')
     if (tree.species === 'oak') say('a1.oak_sign')
     if (tree.species === 'elm') say('a1.elm_offer')
-    void A
     return c
   }
 
@@ -1099,13 +1117,21 @@
   // G1b's k̄. Decomposition charges tip-time as `budget -= g/(k·enzymeK)`, so the grams a second of
   // throughput actually consumes is `throughput · k · enzymeK` of whatever is next in the order.
   function nextK () {
+    var k = nextType()
+    return DEADFALL[IDX[k]].k * num(S().mult.enzymeK[k])
+  }
+
+  // What decomposition will actually eat next: the first pool in the player's own consumption order
+  // that still holds something. It is the honest basis for both the feedstock reserve and the
+  // net-sugar readout, and it moves whenever the player reorders the list.
+  function nextType () {
     var s = S(), i, k
     for (i = 0; i < s.a1.consumptionOrder.length; i++) {
       k = s.a1.consumptionOrder[i]
-      if (!Object.prototype.hasOwnProperty.call(IDX, k) || !unlocked(k)) continue
-      if (num(s.a1.sub[k]) > 0) return DEADFALL[IDX[k]].k * num(s.mult.enzymeK[k])
+      if (!unlocked(k)) continue
+      if (num(s.a1.sub[k]) > 0) return k
     }
-    return DEADFALL[IDX.leaf].k * num(s.mult.enzymeK.leaf)
+    return 'leaf'
   }
 
   function throughput () {
@@ -1145,8 +1171,9 @@
       tree = treeById(c.treeId)
       if (!tree) { c.state = 'exited'; continue }
 
-      if ((dormant && c.suspended) || (c.suspended && !p.offline)) {
-        // Suspended: delivers nothing, receives nothing, and the term waits for you.
+      // Suspension is an absence toggle, not a pause button: it only bites offline, and only once
+      // Dormancy Clause is owned. Otherwise a player could stop delivering and keep the term.
+      if (dormant && c.suspended) {
         c.endT += dt
         continue
       }
@@ -1208,10 +1235,11 @@
     return true
   }
 
-  // The HUD's one derived number, and the reason the coverage bar is the whole game.
+  // The HUD's one derived number, and the reason the coverage bar is the whole game. When it goes
+  // negative the row turns amber and gains a countdown; that line is Act I's sawtooth.
   function netSugar () {
-    var s = S()
-    var income = throughput() * nextK() * T().A1.ETA_S * num(s.mult.enzymeK.leaf)
+    var k = nextType()
+    var income = throughput() * nextK() * T().A1.ETA_S * DEADFALL[IDX[k]].etaS
     return income - committedSugarPerSec()
   }
 
@@ -1332,7 +1360,7 @@
     ctx = opt(o)
     if (!s || s.act !== 1) { stepMineralExchange(dt, ctx); return }
     stepMarket(dt, ctx)
-    stepTrees(dt, ctx)
+    stepTrees(dt)
     deliverContracts(dt, ctx)
   }
 
@@ -1363,9 +1391,10 @@
     // ── D21, part one: no dice roll exists anywhere in contract pricing.
     // Asserted against the source text of every function that can move a mineral rate, so a future
     // edit that reaches for a draw fails the build rather than the review.
-    var priced = [carbonDeficit, canopyLight, offer, maxIntake, maxTerm, accepts, counter,
-      signContract, renegotiate, exitContract, deliverContracts, completeContract, defaultContract,
-      reserveSugar, nextK]
+    var priced = [carbonDeficit, canopyLight, deficitAt, mastActive, mastEligible, offer,
+      maxIntake, maxTerm, accepts, counter, signContract, renegotiate, exitContract,
+      deliverContracts, completeContract, defaultContract, syncStand, spawnTree, treeContracts,
+      committedTo, reserveSugar, nextK, nextType, onSeasonBoundary]
     var banned = ['Math.random', 'walkGauss', '.gauss(', '.next(', '.int(', '.pick(']
     for (var pi = 0; pi < priced.length; pi++) {
       var src = Function.prototype.toString.call(priced[pi])
@@ -1462,10 +1491,13 @@
     near(r1, 0.02150, 0.0006, "01 §6.4's worked first contract")
 
     // And its worked fourth contract, which is 5.8× the first and contains no variance at all.
+    // Every one of that multiple's factors is a decision: reputation built, term extended,
+    // collateral posted, exclusivity accepted, season timed, and one project bought.
     var oak = spawnTree('oak')
     oak.rep = 62
-    oak.d = carbonDeficit(oak)
-    var r4 = offer(oak, 38, 5, 40000, true) * 1.18 / num(g.mult.hartigNet)
+    g.mult.hartigNet = 1.18
+    var r4 = offer(oak, 38, 5, 40000, true)
+    g.mult.hartigNet = 1.00
     near(r4 / 38, 0.0891, 0.004, "01 §6.4's worked fourth contract, per gram")
     ok(r4 / 38 / (r1 / 1.4) > 5.0, 'the fourth contract is not several times the first')
 
@@ -1493,18 +1525,149 @@
     C().setStock(g.a1.sub, 'leaf', 0)
     ok(reserveSugar() === 0, 'G1c: the reserve did not collapse on a bare floor')
 
+    // ── The project wedges between the printed price and the price you pay.
+    g = fresh(0x51EED1); init(g)
+    var printed = unitPrice('leaf')
+    g.proj.flags.bacterial_antagonism = 1
+    near(unitPrice('leaf') / printed, MK.ANTAGONISM, 1e-9, 'bacterial antagonism is not 22% off')
+    delete g.proj.flags.bacterial_antagonism
+    g.proj.flags.forward_contracts = 1
+    near(unitPrice('leaf'), MK.FORWARD_MARK * fairValue('leaf'), 1e-9,
+      'forward contracts did not fix the fill at 1.05 × fair')
+    C().setStock(g.res, 'sugar', 1e6)
+    for (w = 0; w < MK.FORWARD_FILLS; w++) buy('leaf', 10)
+    ok(forwardLeft(g) === 0, 'forward contracts did not run out after twelve fills')
+    ok(flag(g, 'forward_contracts'), 'forward contracts corrupted its own purchase marker')
+    ok(unitPrice('leaf') === price('leaf'), 'a spent forward contract still fixes the fill')
+
+    // Selling is gated, and it is a 28% haircut when it opens.
+    g = fresh(0x51EED1); init(g)
+    C().setStock(g.a1.sub, 'leaf', 20000)
+    ok(sell('leaf', 5000) === 0, 'selling was possible without The Two-Sided Book')
+    g.proj.flags.two_sided_book = 1
+    var sugar0 = g.res.sugar
+    var sold = sell('leaf', 5000)
+    ok(sold === 5000, 'the sell did not fill')
+    near((g.res.sugar - sugar0) / (5000 * price('leaf')), A.SPREAD, 1e-9, 'the spread is not 28%')
+
+    // ── The Hollow Beech: a term outside the legal range, and nothing can reach back into it.
+    g = fresh(0x51EED1); init(g)
+    g.a1.season = A.SEASON_WINTER
+    C().setStock(g.res, 'biomass', 1e6)
+    var beech = spawnTree('beech')
+    beech.rep = 40
+    g.proj.flags.the_hollow_beech = 1
+    var bc = signContract(beech.id, 2, 3, 0, false)
+    ok(bc && bc.termSeasons === CT.BEECH_TERM, 'the beech did not sign its own term')
+    g.t += 2 * T().CLOCK.SEASON_S
+    ok(renegotiate(bc.id) === null, 'a twelve-season term was renegotiable')
+
+    // ── Offline: D32 is HARD. Nothing is lost while away.
+    g = fresh(0x51EED1); init(g)
+    g.a1.season = A.SEASON_WINTER
+    C().setStock(g.res, 'biomass', 1e6)
+    var away = spawnTree('birch')
+    away.rep = 30
+    var ac = signContract(away.id, 3, 2, 0, false)
+    ok(ac, 'the away contract did not sign')
+    C().setStock(g.res, 'sugar', 0)
+    C().setStock(g.a1.sub, 'leaf', 0)
+    for (w = 0; w < 240; w++) { g.t += 30; deliverContracts(30, { stochastic: false, offline: true }) }
+    ok(ac.shortfall > 0, 'an unpayable term offline recorded no shortfall at all')
+    ok(g.stats.defaults === 0, 'D32: a term defaulted while the player was away')
+
+    // And Dormancy Clause is the priced alternative: zero minerals, and the term waits.
+    g = fresh(0x51EED1); init(g)
+    g.a1.season = A.SEASON_WINTER
+    C().setStock(g.res, 'biomass', 1e6); C().setStock(g.res, 'sugar', 1e5)
+    var dt2 = spawnTree('birch'); dt2.rep = 30
+    var dc = signContract(dt2.id, 3, 2, 0, false)
+    dc.suspended = true
+    g.proj.flags.dormancy_clause = 1
+    var end0 = dc.endT, min0 = g.res.minerals
+    for (w = 0; w < 60; w++) { g.t += 10; deliverContracts(10, { stochastic: false, offline: true }) }
+    near(dc.endT - end0, 600, 1e-6, 'a suspended term did not wait for the player')
+    ok(g.res.minerals === min0, 'a suspended term paid minerals')
+
+    // ── Solicitations arrive on a stable hash, not a draw.
+    ok(C().hash32('solicit', 3, 7) === C().hash32('solicit', 3, 7), 'solicitation stream is unstable')
+
+    // ── The Act II exchange: the same walk, and an asymmetric drift you can watch.
+    g = fresh(0x51EED1); init(g)
+    g.act = 2
+    C().setStock(g.res, 'biomass', 1e9)
+    var pbar0 = g.a2.mineralMkt.Pbar
+    tradeMinerals(1000)
+    ok(g.a2.mineralMkt.Pbar > pbar0, 'buying minerals did not raise their base')
+    var up = g.a2.mineralMkt.Pbar - pbar0
+    tradeMinerals(-1000)
+    var down = pbar0 + up - g.a2.mineralMkt.Pbar
+    near(down / up, MX.SELL_DRIFT / MX.BUY_DRIFT, 1e-9, 'the mineral drift is not asymmetric')
+    for (w = 0; w < 600; w++) stepMineralExchange(1.0, { stochastic: false })
+    ok(isFinite(g.a2.mineralMkt.P) && g.a2.mineralMkt.P > 0, 'the mineral price left the reals')
+
+    // ── Numeric safety across a long, adversarial run (D39, D40).
+    g = fresh(0xFA11ED); init(g)
+    g.a1.unlockedTypes = TYPES.slice()
+    g.a1.patches = A.PATCH_MAX
+    var fz = C().rng(99), ti2
+    for (w = 0; w < 4000; w++) {
+      g.t += 1
+      g.a1.seasonPhase += 1 / T().CLOCK.SEASON_S
+      while (g.a1.seasonPhase >= 1) {
+        g.a1.seasonPhase -= 1
+        g.a1.season = (g.a1.season + 1) % 4
+        if (g.a1.season === A.SEASON_SPRING) g.a1.year += 1
+      }
+      C().setStock(g.res, 'sugar', g.res.sugar + 200)
+      C().setStock(g.res, 'biomass', g.res.biomass + 2000)
+      stepMarket(1.0, { stochastic: true })
+      if (fz.next() < 0.05) applyEvent(EVENTS[fz.int(EVENTS.length)].id, fz)
+      if (fz.next() < 0.30) buy(TYPES[fz.int(TYPES.length)], fz.next() * 5e4)
+      stepTrees(1.0, { stochastic: true })
+      deliverContracts(1.0, { stochastic: true })
+      for (ti2 = 0; ti2 < TYPES.length; ti2++) {
+        var rw2 = g.a1.mkt[ti2]
+        if (!isFinite(rw2.price) || !isFinite(rw2.base) || !isFinite(rw2.mom) || !isFinite(rw2.stock)) {
+          f.push('market row ' + TYPES[ti2] + ' left the reals at t=' + g.t); w = 4000; break
+        }
+        if (rw2.stock < 0 || rw2.stock > capOf(TYPES[ti2]) + 1e-6) {
+          f.push('market row ' + TYPES[ti2] + ' stock out of range: ' + rw2.stock); w = 4000; break
+        }
+        if (rw2.price < A.PRICE_FLOOR * rw2.base * 0.999 ||
+            rw2.price > A.PRICE_CEIL * rw2.base * 1.001) {
+          f.push('market row ' + TYPES[ti2] + ' price escaped its bounds'); w = 4000; break
+        }
+        if (Math.abs(rw2.mom) > A.MOM_CLAMP + 1e-9) {
+          f.push('momentum escaped its clamp on ' + TYPES[ti2]); w = 4000; break
+        }
+      }
+    }
+    ok(C().faults.count >= 0 && isFinite(g.res.minerals) && g.res.minerals >= 0,
+      'the fuzz run produced a non-finite mineral balance')
+    ok(g.a1.trees.length <= CT.TREE_MAX, 'more counterparties than the act supports')
+
     // ── D20 vs naive play, simulated for sixty minutes from identical starting conditions.
-    var wise = runPolicy(true)
-    var naive = runPolicy(false)
-    ok(wise.sugar > 0 && naive.sugar > 0, 'a policy delivered no sugar at all')
-    var rw = wise.minerals / wise.sugar
-    var rn = naive.minerals / naive.sugar
+    // Four boot phases, pooled. A single alignment is not a measurement: a term of exactly two
+    // seasons re-signs at the same point in the calendar forever, so one start phase can hand the
+    // naive book a bud-break window on every renewal and flatter it by 50%.
+    var PHASES = [0.1667, 0.4167, 0.6667, 0.9167]
+    var wm = 0, ws = 0, nm = 0, ns = 0, ph, wise, naive
+    for (var pj = 0; pj < PHASES.length; pj++) {
+      ph = PHASES[pj]
+      wise = runPolicy(true, ph); wm += wise.minerals; ws += wise.sugar
+      naive = runPolicy(false, ph); nm += naive.minerals; ns += naive.sugar
+    }
+    ok(ws > 0 && ns > 0, 'a policy delivered no sugar at all')
+    var rw = wm / ws
+    var rn = nm / ns
     ok(rw / rn >= 3.0, 'D20 is worth only ' + (rw / rn).toFixed(2) +
       '× (' + rw.toFixed(5) + ' vs ' + rn.toFixed(5) + ' ⛬ per sugar)')
 
     // Two runs of the same policy must agree exactly: the difference is decisions, not variance.
-    var wise2 = runPolicy(true)
-    ok(wise2.minerals === wise.minerals && wise2.sugar === wise.sugar,
+    var again = runPolicy(true, PHASES[0])
+    var once = runPolicy(true, PHASES[0])
+    ok(again.minerals === once.minerals && again.sugar === once.sugar,
       'the same policy produced two different books')
 
     var back = HY.state.init(HY.state.deserialise(saved))
@@ -1522,25 +1685,40 @@
     return JSON.stringify({ rows: out, stock: s.a1.mkt[IDX.leaf].stock })
   }
 
-  // A headless sixty minutes. Both policies get the same forest, the same seed, the same tip ramp
-  // and the same sugar income, and the market runs with {stochastic:false} so both face an
-  // identical price path. Everything that differs afterwards is a decision.
-  function runPolicy (wise) {
+  // The seasonal production envelope: moistureMult · tempMult at each season's settled moisture.
+  // act1.js owns both curves; while it is absent the sixty-minute harness needs the same shape, and
+  // it defers to the real functions the moment they exist so there is never a second copy in play.
+  function seasonEnv (season) {
+    var A = T().A1
+    if (HY.act1 && HY.act1.moistureMult && HY.act1.tempMult) {
+      return HY.act1.moistureMult() * HY.act1.tempMult()
+    }
+    var m = A.SEASON_MOIST[season]
+    return Math.exp(-Math.pow(m - A.MOIST_OPT, 2) / A.MOIST_WIDTH) * A.SEASON_TEMP[season]
+  }
+
+  // A headless sixty minutes. Both policies get the same forest, the same seed, the same tip ramp,
+  // the same seasonal production envelope (1.00 in autumn, 0.239 in winter) and the same sugar cap,
+  // and the market runs with {stochastic:false} so both face an identical price path. Everything
+  // that differs afterwards is a decision.
+  function runPolicy (wise, phase0) {
     var A = T().A1, SEASON = T().CLOCK.SEASON_S
     var SIM_S = 3600, DT = 1.0
     var TIPS_0 = 3, TIPS_PER_S = 1 / 40, TIPS_MAX = 60
-    var SUG_PER_TIP = 0.480, VOL_FRAC = 0.40, COLL_PER_VOL = 2700
-    var WISE_D = 0.70, BUD_TOL = 0.03
+    var SUG_PER_TIP = 0.480, COVER = 0.75, COLL_PER_VOL = 2700
+    var NAIVE_COVER = 0.75, NAIVE_TERM = 2
+    var WISE_D = 0.70, RELOCK = 1.15, START_REP = 15
 
     var g = fresh(0xD20D21)
     init(g)
+    g.a1.seasonPhase = phase0
     C().setStock(g.res, 'sugar', 400)
     C().setStock(g.res, 'biomass', 5e5)
-    // The identical starting conditions D21 names: the same three counterparties, same reputation.
-    var birch = spawnTree('birch')
-    var aspen = spawnTree('aspen')
-    var fir = spawnTree('fir')
-    birch.rep = aspen.rep = fir.rep = 15
+    // The identical starting conditions D21 names: the same understory, in the same order, at the
+    // same reputation. The oak is standing in both forests from the first second and refuses both
+    // players until their record earns it, which is the point of it.
+    var stock = ['birch', 'aspen', 'fir', 'hemlock', 'oak'], si
+    for (si = 0; si < stock.length; si++) spawnTree(stock[si]).rep = START_REP
 
     var minerals0 = g.stats.mineralEarned
     book.deliveredSugar = 0
@@ -1554,51 +1732,61 @@
         if (g.a1.season === A.SEASON_SPRING) g.a1.year += 1
       }
       g.a1.tips = Math.min(TIPS_MAX, Math.floor(TIPS_0 + g.t * TIPS_PER_S))
-      var income = SUG_PER_TIP * g.a1.tips
+      var income = SUG_PER_TIP * g.a1.tips * seasonEnv(g.a1.season)
       C().setStock(g.res, 'sugar', g.res.sugar + income * DT)
       C().setStock(g.res, 'biomass', g.res.biomass + income * DT * 10)
+      // Sugar you do not spend does not keep, so an autumn surplus cannot simply be banked against
+      // a winter book. This is the constraint that makes over-committing a real error.
+      var scap = A.SUGAR_CAP_BASE + A.SUGAR_CAP_SLOPE * g.a1.tips
+      if (g.res.sugar > scap) {
+        C().setStock(g.res, 'sugar', g.res.sugar - (g.res.sugar - scap) * A.ROT_RATE * DT)
+      }
 
       stepMarket(DT, { stochastic: false })
       stepTrees(DT, { stochastic: false })
 
-      var live = 0, k
+      var live = 0, k, cc, ct
       for (k = 0; k < g.a1.contracts.length; k++) if (g.a1.contracts[k].state === 'active') live++
 
       if (wise) {
-        // Buy in autumn, sell into winter's deficit, chain the bud-break windows, never in summer.
-        if (!live && g.a1.season === A.SEASON_WINTER) {
-          var best = null, bestRate = 0
-          for (k = 0; k < g.a1.trees.length; k++) {
-            var tr = g.a1.trees[k]
-            if (tr.d < WISE_D) continue
-            var vol = Math.min(VOL_FRAC * income, maxIntake(tr))
-            var tm = maxTerm(tr)
-            if (!accepts(tr, vol, tm, true)) continue
-            var rate = offer(tr, vol, tm, COLL_PER_VOL * vol, true) / Math.max(vol, 1e-9)
-            if (rate > bestRate) { bestRate = rate; best = { tree: tr, vol: vol, term: tm } }
-          }
-          if (best) signContract(best.tree.id, best.vol, best.term, COLL_PER_VOL * best.vol, true)
-        } else if (live && g.a1.season === A.SEASON_SPRING) {
-          for (k = 0; k < g.a1.contracts.length; k++) {
-            var cc = g.a1.contracts[k]
-            if (cc.state !== 'active') continue
-            var ct = treeById(cc.treeId)
-            if (!ct || !SPECIES[ct.species].decid) continue
-            if (Math.abs(g.a1.seasonPhase - SPECIES[ct.species].bud) > BUD_TOL) continue
-            renegotiate(cc.id)
-          }
+        // D20, expressed entirely in numbers the tables already publish: sign only into a deep
+        // deficit, best counterparty first, take the longest term that counterparty's trust allows,
+        // post collateral to the saturation of collBonus, accept exclusivity, hold total coverage
+        // under the winter production floor, and re-lock whenever the deficit has moved far enough
+        // that the same volume is worth materially more.
+        var rank = []
+        for (k = 0; k < g.a1.trees.length; k++) {
+          var tr = g.a1.trees[k]
+          if (tr.d < WISE_D || treeContracts(tr.id).length) continue
+          rank.push({ tree: tr, rate: offer(tr, 1, maxTerm(tr), COLL_PER_VOL, true) })
+        }
+        rank.sort(function (a, b) { return b.rate - a.rate })
+        for (k = 0; k < rank.length; k++) {
+          var head = COVER * income - committedSugarPerSec()
+          var vol = Math.min(head, maxIntake(rank[k].tree))
+          if (!(vol > 0)) continue
+          var tm = maxTerm(rank[k].tree)
+          if (!accepts(rank[k].tree, vol, tm, true)) continue
+          signContract(rank[k].tree.id, vol, tm, COLL_PER_VOL * vol, true)
+        }
+        for (k = 0; k < g.a1.contracts.length; k++) {
+          cc = g.a1.contracts[k]
+          if (cc.state !== 'active') continue
+          ct = treeById(cc.treeId)
+          if (!ct) continue
+          var now = offer(ct, cc.sugarRate, Math.min(cc.termSeasons, maxTerm(ct)),
+            cc.collateral, cc.exclusive)
+          if (now > RELOCK * cc.mineralRate) renegotiate(cc.id)
         }
       } else {
-        // The naive book: sign the first tree that will take you, take the longest term on offer
-        // because the number at the bottom of the screen is bigger, post nothing, and never look
-        // at the calendar.
+        // The naive book: sign the first tree that will take you, at the slider's default term,
+        // post nothing, ask for nothing, and never look at the calendar.
         if (!live) {
           for (k = 0; k < g.a1.trees.length; k++) {
             var nt = g.a1.trees[k]
-            var nv = Math.min(VOL_FRAC * income, maxIntake(nt))
-            var ntm = maxTerm(nt)
-            if (!accepts(nt, nv, ntm, false)) continue
-            signContract(nt.id, nv, ntm, 0, false)
+            var nv = Math.min(NAIVE_COVER * income, maxIntake(nt))
+            if (!accepts(nt, nv, NAIVE_TERM, false)) continue
+            signContract(nt.id, nv, NAIVE_TERM, 0, false)
             break
           }
         }
