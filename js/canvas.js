@@ -107,9 +107,11 @@
     SIZE: 260,               // px, the Act III plate
     R0: 22,                  // px, radius of band 0
     STEP: 8.6,               // px per band: 13 bands inside 260 px with room for the stroke
-    W_MIN: 1.0, W_MAX: 9.0,  // px, arc width from log(n / NCAP)
+    W_MIN: 1.0,              // px, arc width at an empty band
+    W_MAX: 6.0,              // px: STEP − this leaves 2.6 px of sky between two saturated bands
     W_K: 2.4,                // px per decade of n/NCAP
-    GAP_A: 0.16,             // alpha of the unexplored remainder of each ring
+    TRACK_W: 1,              // px, the unexplored remainder: a track, not a reading
+    GAP_A: 0.16,             // alpha of that track
     START: -Math.PI / 2      // arcs open at twelve o'clock
   }
 
@@ -151,15 +153,17 @@
     MEM_FLOOR_GB: 2,
     PROMOTE_S: 60,           // promotion is allowed at most this often…
     AFTER_DEMOTE_S: 10,      // …and never this soon after a demotion
-    FRAME_MAX_MS: 100        // samples above this are a tab wake, not a slow frame
+    FRAME_MAX_MS: 100,       // samples above this are a tab wake, not a slow frame
+    FRAME_60_MS: 16.7        // one frame at 60 Hz; the warmup's fallback clock
   }
 
   var BUDGET = {
-    GROW_MS: 2.0,            // one full grow() step, worst case
-    DRAW_MS: 1.6,            // net + flux inside one frame
-    FRAME_MS: 8.0,           // the main thread is never held longer than this
-    OWN_P95_MS: 3.0,         // my own p95 above which I degrade myself, tier or no tier
-    OWN_WIN: 60
+    GROW_MS: 2.0,            // ms, one full grow() step, worst case
+    FRAME_MS: 8.0,           // ms, the longest this module may ever hold the main thread
+    DRAW_MS: 0.95,           // ms, the design cost of a frame's drawing at HIGH (BIBLE §6 M17)
+    OWN_P95_MS: 3.0,         // ms, three times the design cost: past here the canvas is the
+                             // reason frames are being dropped, and it degrades itself
+    OWN_WIN: 60              // draw-cost samples in the rolling window
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -406,6 +410,9 @@
   var lightTheme = false
   var contrast = false
 
+  // The stylesheet is the only authority on colour; these are the resolved dark primitives of
+  // 06 §2.2 and exist purely so a headless or pre-first-paint call has something finite to write.
+  // Every real draw calls refreshPalette() first, and the first such call always re-reads.
   var pal = { at: 0, hyphae: [232, 225, 211], bg: [7, 9, 6], signal: [98, 195, 154],
               tertiary: [122, 131, 113], spore: [239, 235, 221], negative: [162, 75, 50],
               attention: [217, 154, 43], line: [44, 51, 41], lineStrong: [58, 66, 54],
@@ -487,18 +494,30 @@
 
   function init () { attach(); return surf.attached }
 
+  // The wheel and the forecast strip are revealed mid-act, long after the plate exists, so they
+  // are looked up again on every attach and lazily by their own draw calls rather than once.
+  function refreshOptional (d) {
+    var w = d.getElementById('wheel')
+    if (w !== surf.wheelEl) { surf.wheelEl = w; surf.wheelCtx = ctxOf(w) }
+    var f = d.getElementById('forecast')
+    if (f !== surf.foreEl) { surf.foreEl = f; surf.foreCtx = ctxOf(f) }
+  }
+
   function attach () {
     var d = doc()
     if (!d) return false
     var netEl = d.getElementById('net')
     var fluxEl = d.getElementById('flux')
     if (!netEl || !fluxEl) return false
-    if (surf.netEl === netEl && surf.fluxEl === fluxEl && surf.attached) { resize(); return true }
+    if (surf.netEl === netEl && surf.fluxEl === fluxEl && surf.attached) {
+      refreshOptional(d)
+      resize()
+      return true
+    }
 
     surf.netEl = netEl; surf.netCtx = ctxOf(netEl)
     surf.fluxEl = fluxEl; surf.fluxCtx = ctxOf(fluxEl)
-    surf.wheelEl = d.getElementById('wheel'); surf.wheelCtx = ctxOf(surf.wheelEl)
-    surf.foreEl = d.getElementById('forecast'); surf.foreCtx = ctxOf(surf.foreEl)
+    refreshOptional(d)
     surf.attached = !!(surf.netCtx && surf.fluxCtx)
 
     if (!attach.bound) {
@@ -558,15 +577,13 @@
   }
 
   function sizeOne (el, ctx, dpr) {
-    if (!el || !ctx) return false
+    if (!el || !ctx) return
     var s = backingSize(el, dpr)
-    if (!s) return false
-    var changed = false
-    if (el.width !== s.bw || el.height !== s.bh) { el.width = s.bw; el.height = s.bh; changed = true }
+    if (!s) return
+    if (el.width !== s.bw || el.height !== s.bh) { el.width = s.bw; el.height = s.bh }
     // The transform is re-applied unconditionally: assigning width resets it, and ui.js may have
     // sized the element itself with a different dpr on the frame before this one.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    return changed
   }
 
   // Scaling a bitmap of hairlines looks terrible; regenerating from (seed, n) looks perfect and is
@@ -798,8 +815,10 @@
     var tSec = tMs / 1000
 
     drawTips(ctx, tSec)
-    if (s && s.act >= 2) {
-      stepPulses(ctx, tSec, s)
+    if (s && s.act >= 2) stepPulses(ctx, tSec, s)
+    // Fruiting bodies and fire are Act II objects. The a2 block survives the transition in memory
+    // until the save is next written, and drawing from it in Act III would put mushrooms in space.
+    if (s && s.act === 2) {
       drawFruiting(ctx, s)
       drawHazards(ctx, tSec, s)
     }
@@ -884,20 +903,31 @@
     }
   }
 
-  // A cap and a stipe at a chosen tip, drawn while the flush is live. The list is the canonical
-  // a2.flush block of BIBLE §3, so this needs no Act II module to be correct.
+  // A cap and a stipe drawn while the flush is live. The list is the canonical a2.flush block of
+  // BIBLE §3, so this needs no Act II module to be correct.
+  //
+  // Once the map is up the body sits on its own region, not on a hyphal tip: a fruiting body two
+  // hundred pixels from the stand it grew out of is a picture that lies.
   function drawFruiting (ctx, s) {
     var list = s.a2 && s.a2.flush
     if (!list || !list.length) return
+    var regions = s.a2.regions
     var k = Math.min(FLUX.FB_MAX, list.length)
     var TAU = Math.PI * 2
     ctx.fillStyle = rgba(pal.spore, FLUX.FB_A)
     for (var i = 0; i < k; i++) {
-      var span = Math.max(1, Math.min(FLUX.TIP_N, net.n - 1))
-      var id = C() ? C().hash32('fb', net.seed, list[i].regionId | 0, i) : i
-      var node = net.n - 1 - (id % span)
-      if (node < 0) continue
-      var x = net.x[node], y = net.y[node]
+      var rid = list[i].regionId | 0
+      var at = mapGeom && regions ? hexCentre(rid, regions) : null
+      var x, y
+      if (at) {
+        x = at.x; y = at.y + FLUX.FB_STIPE_H / 2
+      } else {
+        var span = Math.max(1, Math.min(FLUX.TIP_N, net.n - 1))
+        var id = C() ? C().hash32('fb', net.seed, rid, i) : i
+        var node = net.n - 1 - (id % span)
+        if (node < 0) continue
+        x = net.x[node]; y = net.y[node]
+      }
       ctx.fillRect(x - FLUX.FB_STIPE_W / 2, y, FLUX.FB_STIPE_W, FLUX.FB_STIPE_H)
       ctx.beginPath()
       ctx.arc(x, y, FLUX.FB_CAP_R / 2, Math.PI, TAU)
@@ -940,7 +970,13 @@
   var hexPath = null
 
   function buildMapGeom () {
-    var R = Math.min((surf.W - MAP.PAD * 2) / MAP.W_UNITS, (surf.H - MAP.PAD * 2) / MAP.H_UNITS)
+    // A flat-top axial map of radius N spans 1.5·N hex radii each side plus one radius for the
+    // corner column, and √3·N each side plus half a hex height. Derived rather than tabulated so
+    // the two cannot drift apart if the map ever changes size.
+    var N = MAP.RINGS
+    var wUnits = 3 * N + 2
+    var hUnits = Math.sqrt(3) * (2 * N + 1)
+    var R = Math.min((surf.W - MAP.PAD * 2) / wUnits, (surf.H - MAP.PAD * 2) / hUnits)
     mapGeom = { R: R, cx: surf.W / 2, cy: surf.H / 2, sq3: Math.sqrt(3) }
     hexPath = new Path2D()
     for (var k = 0; k < 6; k++) {
@@ -1083,10 +1119,15 @@
       var e = clamp01(bands.e[b])
       var occ = bands.n ? bands.n[b] / ncapOf(bands, b) : 0
       var w = VOID.W_MIN + VOID.W_K * Math.log10(1 + (occ > 0 ? occ : 0))
-      ctx.lineWidth = w > VOID.W_MAX ? VOID.W_MAX : w
+      // The unexplored remainder is a hairline track at every band, never the band's own width:
+      // an empty ring drawn eight pixels thick reads as a fleet that is not there.
+      ctx.lineWidth = VOID.TRACK_W
       ctx.strokeStyle = rgba(pal.lineStrong, VOID.GAP_A)
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
       if (e <= 0) continue
+      // Widths scale with the plate for the same reason the radii do: the sky between two bands
+      // is the reading, and it has to survive a 900 px viewport as well as a 360 px one.
+      ctx.lineWidth = (w > VOID.W_MAX ? VOID.W_MAX : w) * fit
       ctx.strokeStyle = rgba(pal.signal, 0.85)
       ctx.beginPath(); ctx.arc(cx, cy, r, VOID.START, VOID.START + Math.PI * 2 * e); ctx.stroke()
     }
@@ -1100,6 +1141,7 @@
   // described in text elsewhere on the screen; this is the same information, drawn.
   function drawWheel (phases, mass) {
     if (!surf.attached && !attach()) return
+    if (!surf.wheelCtx && doc()) { refreshOptional(doc()); if (surf.wheelCtx) resize() }
     var ctx = surf.wheelCtx || surf.fluxCtx
     if (!ctx || !phases || !phases.length) return
     var t0 = nowMs()
@@ -1156,6 +1198,7 @@
 
   function drawForecast (band) {
     if (!surf.attached && !attach()) return
+    if (!surf.foreCtx && doc()) { refreshOptional(doc()); if (surf.foreCtx) resize() }
     var ctx = surf.foreCtx
     if (!ctx || !band) return
     var t = nowMs()
@@ -1290,7 +1333,9 @@
   function retier (t) {
     if (manualTier) return
     if (memGB() <= PERF.MEM_FLOOR_GB) { setTierInternal('FLOOR', t); return }
-    if (frames.n < PERF.WARMUP && t - boot < PERF.WARMUP * 16.7) return
+    // 06 §7.8's ninety frames of warmup, with a wall-clock escape hatch so a device that is
+    // dropping frames badly enough to never reach ninety still gets demoted.
+    if (frames.n < PERF.WARMUP && t - boot < PERF.WARMUP * PERF.FRAME_60_MS) return
 
     var p = frames.p95
     var want = null
@@ -1314,8 +1359,10 @@
     // Promotion is rate-limited so a thermally throttling phone does not oscillate.
     if (t - lastPromote < PERF.PROMOTE_S * 1000) return
     if (t - lastDemote < PERF.AFTER_DEMOTE_S * 1000) return
+    // Promotion asks for the *design* cost, not merely the degrade threshold: a tier that is only
+    // just inside its own budget has nothing left to pay for the extra work promotion brings.
     var target = (p < PERF.HIGH_P95 && cores() >= PERF.HIGH_CORES) ? 'HIGH' : 'MED'
-    if (rank(target) > rank(tier) && ownCost.p95 < BUDGET.OWN_P95_MS) {
+    if (rank(target) > rank(tier) && ownCost.p95 < BUDGET.DRAW_MS) {
       setTierInternal(target, t)
       lastPromote = t
     }
@@ -1327,19 +1374,16 @@
     return TIER_ORDER[i > 0 ? i - 1 : 0]
   }
 
+  // A lower segCap never deletes hyphae the player has already earned — targetFor() clamps future
+  // growth and growNetwork() simply stops asking. Trimming the network back would make the picture
+  // lie about the size of the thing, which is the one thing this canvas exists not to do.
   function setTierInternal (name, t) {
     if (!TIERS[name] || name === tier) return
     var before = TIERS[tier].dpr
-    var wasCap = TIERS[tier].segCap
     var wasRank = rank(tier)
     tier = name
     if (rank(name) < wasRank) lastDemote = t
     if (TIERS[name].dpr !== before) resize()
-    if (TIERS[name].segCap < wasCap && net && net.n > TIERS[name].segCap) {
-      // A lower cap does not delete hyphae the player earned; it only stops new ones from being
-      // drawn. Regenerating down would make the picture lie about the network's size.
-      net.drawn = net.n
-    }
     invalidate()
   }
 
@@ -1444,6 +1488,10 @@
     // 4 · the caps hold. Nothing may exceed CAP, the frontier ring, or the attractor pool.
     var big = regenerate(0x51ACE, W, H, GROW.CAP + 500, 0)
     ok(big.n <= GROW.CAP, 'cap: the network grew past CAP (' + big.n + ')')
+    // Reaching the cap is the proof that growth never permanently stalls: if the attractor pool
+    // could be exhausted by bypassed points, this run would stop short and the plate would freeze
+    // half-grown for the rest of the act.
+    ok(big.n === GROW.CAP, 'growth: stalled at ' + big.n + ' of ' + GROW.CAP + ' nodes')
     ok(big.fCount <= GROW.FRONTIER, 'cap: the frontier ring overflowed')
     ok(big.aCount <= GROW.A0_MAX, 'cap: the attractor pool overflowed')
     var live = 0
@@ -1461,6 +1509,10 @@
     ok(targetFor(1e9) === TIERS.HIGH.segCap, 'target: HIGH did not clamp to its segCap')
     setTier('LOW')
     ok(targetFor(1e9) === TIERS.LOW.segCap, 'target: LOW did not clamp to its segCap')
+    setTier('FLOOR')
+    // Even the floor draws something. "Never nothing" is the whole contract of the static frame.
+    ok(targetFor(0) >= GROW.MIN_TARGET && TIERS.FLOOR.segCap > 0,
+      'target: FLOOR must still ask for a visible network')
     ok(setTier('MID') === 'MED', "setTier: 06's MID must alias BIBLE's MED")
     ok(setTier('nonsense') === 'MED', 'setTier: an unknown tier must be ignored')
     setTier('AUTO')

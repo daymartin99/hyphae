@@ -276,6 +276,10 @@
     })
   }
 
+  // A count is an integer and reads as one: `8`, never `8.00`. The three-significant-figure
+  // formatter is for quantities, and a tip is not a quantity.
+  function whole (n) { return String(Math.round(num(n))) }
+
   function repeat (ch, n) {
     var out = ''
     for (var i = 0; i < n; i++) out += ch
@@ -1552,6 +1556,7 @@
     // to the hero size the moment a second row arrives.
     setData(r0.el, 'lead', shown === 1 ? 'solo' : '1')
     show(v.gear, shown > 1)
+    setData(v.ledger, 'gear', shown > 1 ? '1' : '0')
   }
 
   function paintHero (v, s) {
@@ -1673,14 +1678,16 @@
     if (!s) return
     var t = nowMs()
 
-    paintLedger(view, s, view.rev || COLD)
-    syncCards(view)
-
+    // The display slot runs first so the ledger is painted against this frame's reveal flags
+    // rather than the previous frame's; a row must never arrive one frame late.
     if (t - view.lastDisplay >= U.DISPLAY_MS) {
       var dt = (t - view.lastDisplay) / 1000
       view.lastDisplay = t
       display(view, s, dt > 1 ? 1 : dt, t)
     }
+
+    paintLedger(view, s, view.rev || COLD)
+    syncCards(view)
 
     var cv = CANVAS()
     if (!cv) return
@@ -1859,7 +1866,7 @@
     })
 
     p.__sync = function (s, rev) {
-      pv.setCount(C().fmt(s.a1.tips))
+      pv.setCount(whole(s.a1.tips))
       setRate(thru, A1() ? A1().throughputPerSec() : 0, 'g/s')
       if (nowMs() < settle) return
       var a = A1()
@@ -2298,14 +2305,14 @@
       sync: function (s, tree) {
         var label = SPECIES_NAME[tree.species] || tree.species
         setText(name, label)
-        setText(age, C().fmt(num(tree.age)) + ' y')
-        setSlot(repNum, C().fmt(num(tree.rep)), 'rep')
+        setText(age, whole(tree.age) + ' y')
+        setRaw(repNum, whole(tree.rep), 'rep')
         var d = E1().carbonDeficit(tree)
         dBar.set(d, '', Math.round(d * 100) + ' percent short of carbon')
         pips.set(num(tree.rep) / T().A1.REP_MAX, '',
-          C().fmt(num(tree.rep)) + ' of ' + T().A1.REP_MAX)
+          whole(tree.rep) + ' of ' + T().A1.REP_MAX)
         r.label(label + ', deficit ' + Math.round(d * 100) + ' percent, standing ' +
-          C().fmt(num(tree.rep)))
+          whole(tree.rep))
         if (r.isExpanded()) refresh()
       }
     }
@@ -2346,7 +2353,7 @@
             openTree = openId
           })
         }, s)
-      pv.setCount(s.a1.trees.length + ' · ' + C().fmt(num(s.a1.netRep)) + ' rep')
+      pv.setCount(s.a1.trees.length + ' · ' + whole(s.a1.netRep) + ' rep')
       if (s.a1.trees.length || s.a1.contracts.length) pv.unempty()
       else pv.empty(LOG() ? LOG().EMPTY.trees : '')
     }

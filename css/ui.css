@@ -79,6 +79,7 @@
 
   /* ---- layout ---- */
   --col-max:420px; --gutter:16px; --tabbar-h:56px; --tap:44px;
+  --rail:0px;            /* the atrium's vertical tab rail; zero until the tab bar is earned */
   --con-row:19px; --con-rows:5; --con-pad:6px;
   --plate-px:296px;      /* written by ui.js in one frame; never transitioned */
 }
@@ -136,19 +137,26 @@
    player has chosen, because they come later at equal specificity. */
 @media (prefers-color-scheme: light){
   :root:not([data-theme]), :root[data-theme="auto"]{
-    --bg:#EAE6D9; --bg-sunk:#E0DBCB;
-    --surface-1:#F3F0E6; --surface-2:#FBF9F2; --surface-press:#DFDACA;
+    --bg:var(--paper-bg); --bg-sunk:var(--paper-sunk);
+    --surface-1:var(--paper-1); --surface-2:var(--paper-2); --surface-press:var(--paper-press);
     --scrim:var(--scrim-light); --inset:none;
-    --line-soft:#DBD5C3; --line:#CFC9B6; --line-strong:#B7B09B; --line-state:#7D775F;
-    --text-max:#0F1310; --text-primary:#22261F; --text-body:#3A382E;
-    --text-secondary:#4E4B40; --text-tertiary:#635F52; --text-disabled:#96917F;
-    --text-locked:#8A8574; --text-console:#3A382E;
-    --text-on-accent:#FBF9F2; --text-on-rust:#FBF9F2;
-    --positive:#3D6B3C; --positive-text:#2F5730; --positive-fill:#4E7C4C; --positive-wash:#DCE7D8;
-    --attention:#8A5E0E; --attention-text:#7A5109; --attention-dim:#9C6F1E;
-    --negative:#8E3A22; --negative-text:#7E3320; --negative-wash:#F0DCD4;
-    --signal:#166B53; --signal-text:#10593F; --signal-fill:#2A7F63; --signal-wash:#D6E9E1;
-    --focus:#166B53; --hyphae-stroke:#6E6858; --meter-track:#D5CFBC; --canvas-bg:#E4E0D1;
+    --line-soft:var(--paper-soft); --line:var(--paper-line);
+    --line-strong:var(--paper-strong); --line-state:var(--paper-state);
+    --text-max:var(--ink-max); --text-primary:var(--ink-primary); --text-body:var(--ink-body);
+    --text-secondary:var(--ink-secondary); --text-tertiary:var(--ink-tertiary);
+    --text-disabled:var(--ink-disabled); --text-locked:var(--ink-locked);
+    --text-console:var(--ink-body);
+    --text-on-accent:var(--paper-2); --text-on-rust:var(--paper-2);
+    --positive:var(--leaf-500); --positive-text:var(--leaf-text);
+    --positive-fill:var(--leaf-fill); --positive-wash:var(--leaf-wash);
+    --attention:var(--ochre-500); --attention-text:var(--ochre-text);
+    --attention-dim:var(--ochre-dim);
+    --negative:var(--brick-500); --negative-text:var(--brick-text);
+    --negative-wash:var(--brick-wash);
+    --signal:var(--teal-500); --signal-text:var(--teal-text);
+    --signal-fill:var(--teal-fill); --signal-wash:var(--teal-wash);
+    --focus:var(--teal-500); --hyphae-stroke:var(--paper-hyphae);
+    --meter-track:var(--paper-track); --canvas-bg:var(--paper-canvas);
   }
 }
 
@@ -235,7 +243,6 @@ canvas{ display:block; }
 .vh{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
      clip-path:inset(50%); white-space:nowrap; border:0; }
 .scroll{ overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
-[hidden]{ display:none !important; }
 
 /* ══ SHELL · 06 §4.1–4.3 ═══════════════════════════════════════════════════ */
 
@@ -290,15 +297,20 @@ canvas{ display:block; }
 
 .ledger-row{
   position:relative;
-  display:flex; align-items:baseline; gap:var(--sp-8);
+  /* Wraps at 200% text so a value can never be clipped: every row is min-height, never height,
+     and the numeric slots keep their reserved `ch` widths on whichever line they land (06 §1.1). */
+  display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--sp-8);
   min-height:36px; padding:0 var(--gutter);
 }
+/* The gear lives in the strip's corner, so the strip reserves its width the moment it appears —
+   which is the same moment the second row arrives and the strip re-lays out anyway. */
+.ledger[data-gear="1"] .ledger-row{ padding-inline-end:calc(var(--gutter) + var(--tap)); }
 .ledger-lab{ font:var(--t-label); letter-spacing:.14em; text-transform:uppercase;
              color:var(--text-secondary); min-width:72px; flex:0 0 auto; }
 .ledger-val{ font:var(--t-value); color:var(--text-max); min-width:8ch;
              margin-inline-start:auto; text-align:end; }
-.ledger-rate{ font:var(--t-meta); min-width:9ch; text-align:end; color:var(--text-tertiary);
-              transition:color var(--d-state) linear; }
+.ledger-rate{ font:var(--t-meta); min-width:9ch; text-align:end; margin-inline-start:auto;
+              color:var(--text-tertiary); transition:color var(--d-state) linear; }
 .ledger-rate[data-sign="pos"]{ color:var(--positive-text); }
 /* A falling rate WARNS; it does not mourn. */
 .ledger-rate[data-sign="neg"]{ color:var(--attention); }
@@ -331,7 +343,7 @@ canvas{ display:block; }
 @keyframes sufIn{ from{opacity:0} to{opacity:1} }
 
 .gear{
-  position:absolute; top:0; inset-inline-end:0;
+  position:absolute; top:0; inset-inline-end:var(--sp-4);
   width:var(--tap); height:var(--tap);
   display:flex; align-items:center; justify-content:center;
   color:var(--text-tertiary);
@@ -458,7 +470,8 @@ canvas{ display:block; }
 .card[data-press="1"]{ transform:scale(.985); background:var(--surface-press);
                        transition-duration:var(--d-press); }
 .card-top{ display:flex; align-items:baseline; gap:var(--sp-12); }
-.card-title{ font:var(--t-title); color:var(--text-primary); text-wrap:balance; }
+.card-title{ font:var(--t-title); color:var(--text-primary); text-wrap:balance;
+             min-width:0; flex:1 1 auto; }
 .card-cost{ margin-inline-start:auto; font-family:var(--font-mono); font-size:13px;
             font-weight:500; white-space:nowrap; color:var(--attention-dim); }
 .card-desc{ margin-top:var(--sp-6); font:var(--t-body); color:var(--text-body);
@@ -497,9 +510,10 @@ canvas{ display:block; }
                      transition:border-color 240ms 180ms linear; }
 .row-main{ display:block; width:100%; text-align:start; color:inherit;
            min-height:var(--tap); }
-.row-line{ display:flex; align-items:baseline; gap:var(--sp-8); min-height:19px; }
+.row-line{ display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--sp-8);
+            min-height:19px; }
 .row-line + .row-line{ margin-top:var(--sp-4); }
-.row-name{ font:var(--t-title); color:var(--text-primary); }
+.row-name{ font:var(--t-title); color:var(--text-primary); min-width:0; }
 .row-sub{ font:var(--t-meta); color:var(--text-secondary); }
 .row-sub[data-tone="cost"]{ color:var(--attention-dim); }
 .row-sub[data-tone="forecast"]{ color:var(--text-locked); }
@@ -604,7 +618,7 @@ canvas{ display:block; }
                                     box-shadow:inset 0 1px 0 var(--gloss-seg); }
 
 .field{ margin-bottom:var(--sp-16); }
-.field-top{ display:flex; align-items:baseline; gap:var(--sp-8); }
+.field-top{ display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--sp-8); }
 .field-lab{ font:var(--t-label); letter-spacing:.14em; text-transform:uppercase;
             color:var(--text-secondary); }
 .field-val{ margin-inline-start:auto; font:var(--t-value); color:var(--text-max);
@@ -840,10 +854,13 @@ canvas{ display:block; }
    tab bar as a vertical rail. The column never grows. */
 @media (min-width:900px){
   .shell{ flex-direction:row; align-items:stretch; }
+  /* The rail only exists once the tab bar has been earned; in Act I the column simply docks to
+     the edge and the wall takes everything else. */
+  .shell[data-stage="2"]{ --rail:72px; }
   .plate{ position:fixed; inset-block:0; inset-inline-start:0;
-          inset-inline-end:calc(var(--col-max) + var(--sp-64) + 72px);
+          inset-inline-end:calc(var(--col-max) + var(--sp-64) + var(--rail));
           height:auto; border-bottom:0; border-inline-end:1px solid var(--line); }
-  .main{ margin-inline-start:auto; margin-inline-end:72px; padding-inline:var(--sp-32); }
+  .main{ margin-inline-start:auto; margin-inline-end:var(--rail); padding-inline:var(--sp-32); }
   .tabbar{ position:fixed; inset-block:0; inset-inline-end:0; width:72px; max-width:72px;
            height:auto; grid-template-columns:1fr; grid-auto-rows:72px;
            align-content:center; border-top:0; border-inline-start:1px solid var(--line-soft);
@@ -852,9 +869,9 @@ canvas{ display:block; }
   .tab-ind{ top:14px; bottom:14px; left:0; right:auto; width:2px; height:auto;
             transform:scaleY(0); }
   .tab[aria-selected="true"] .tab-ind{ transform:scaleY(1); }
-  .console{ position:fixed; inset-block-end:0; inset-inline-end:72px;
+  .console{ position:fixed; inset-block-end:0; inset-inline-end:var(--rail);
             width:calc(var(--col-max) + var(--sp-64)); }
-  .fab{ inset-inline-end:calc(72px + var(--gutter)); }
+  .fab{ inset-inline-end:calc(var(--rail) + var(--gutter)); }
   .tail{ height:calc(var(--sp-24) + 120px); }
 }
 
@@ -898,6 +915,10 @@ canvas{ display:block; }
 /* ══ NUMERALS ══════════════════════════════════════════════════════════════
    Last in the file on purpose: `font:` is a shorthand and resets font-variant-numeric, so this
    rule must come after every component that sets one. */
+
+/* Two attribute-level components, placed last, so `hidden` outranks every component rule that
+   sets `display` without reaching for !important (06 §9.4 lint 8). */
+[hidden]:not(:root){ display:none; }
 
 .num,[data-num]{ font-variant-numeric:tabular-nums slashed-zero;
                  font-feature-settings:"tnum" 1,"zero" 1; }
