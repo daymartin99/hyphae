@@ -205,7 +205,9 @@
 
   var MK = {
     STEP_S: 1.0,              // s, the walk's natural step; every coefficient is calibrated here
-    MAX_SUBSTEPS: 240,        // per call; an offline macro-step widens h rather than iterating
+    WIDE_AFTER: 12,           // s of backlog before the step is allowed to widen past STEP_S
+    MAX_H: 10,                // s, widest step: MEAN_REV·h = 0.30, comfortably inside stability
+    MAX_SUBSTEPS: 240,        // per call; a hard ceiling so one bad dt cannot stall a tick
     MIN_TRADE_G: 1,           // grams below which a fill is not worth a price impact
     ANTAGONISM: 0.78,         // × the printed price on leaf and needle, with bacterial_antagonism
     FORWARD_FILLS: 12,        // fills fixed by forward_contracts
@@ -424,43 +426,76 @@
   // THE LITTER MARKET · the walk
   // ───────────────────────────────────────────────────────────────────────────
 
-  // One step of width `h` seconds. At h = 1 this is 01 §5A.3 character for character; the exponents
-  // are the honest generalisation to a wider step and reduce to the published coefficients exactly.
-  // Offline macro-steps are the only caller that ever passes h > 1.
-  function walkStep (h, stochastic) {
-    var s = S(), A = T().A1, i, row, cap, fair, gap, tau, star, k, mod
+  // Everything that depends on `h` or on the world but not on the price, gathered once per call.
+  // Neither the patch count nor the active-event list can change between the sub-steps of one call,
+  // and seven pools × eighteen sub-steps × two hundred and forty macro-steps is the difference
+  // between a twelve-hour reconcile that fits in D34's budget and one that costs 800 ms.
+  function walkCoef (h) {
+    var A = T().A1, i, k, tau, c = {
+      h: h,
+      momDecay: Math.pow(A.MOM_DECAY, h),
+      rev: A.MEAN_REV * h,
+      sig: A.PRICE_SIGMA * Math.sqrt(h),
+      cool: Math.pow(1 - A.COOL_RATE, h),
+      cap: [], decay: [], star: [], mod: [], floorBase: []
+    }
     for (i = 0; i < TYPES.length; i++) {
-      row = s.a1.mkt[i]
       k = TYPES[i]
-      cap = capOf(k)
+      c.cap.push(capOf(k))
+      tau = c.cap[i] > 0 ? c.cap[i] / compOf(k) : 1
+      c.decay.push(Math.exp(-h / tau))
+      c.star.push(tau * fallOf(k))
+      c.mod.push(eventPriceMod(k))
+      c.floorBase.push(A.COOL_FLOOR * DEADFALL[i].price)
+    }
+    return c
+  }
+
+  // One step of width `h` seconds. At h = 1 this is 01 §5A.3 term for term; the exponents are the
+  // honest generalisation to a wider step and collapse back to the published coefficients exactly
+  // at h = 1. Only an offline macro-step ever passes h > 1.
+  // Hot: an offline reconcile runs this ~4,300 times over seven pools. Locals and inline clamps
+  // rather than core.clamp() — a namespace getter and a call per bound is 90,000 of each across a
+  // twelve-hour return, and this is the only loop in the module where that is measurable.
+  function walkStep (c, stochastic) {
+    var s = S(), A = T().A1, i, row, cap, fair, gap, sc, m, p
+    var mkt = s.a1.mkt, h = c.h
+    var fairK = A.FAIR_K, fairE = A.FAIR_EXP, clampM = A.MOM_CLAMP
+    var lo = A.PRICE_FLOOR, hi = A.PRICE_CEIL, coolS = A.COOL_S
+    for (i = 0; i < TYPES.length; i++) {
+      cap = c.cap[i]
       if (!(cap > 0)) continue
+      row = mkt[i]
 
       // Supply. Solved rather than Euler-stepped: identical to 01's `stock += (fall − comp·s/cap)`
       // to six decimal places at h = 1, and unconditionally stable at the h an offline reconcile
       // uses. τ = cap/comp is 237 s for leaf and 2,917 s for stump, and that difference — a flow
       // that refills every autumn against a reserve you draw down across the act — is never stated.
-      tau = cap / compOf(k)
-      star = tau * fallOf(k)
-      row.stock = star + (row.stock - star) * Math.exp(-h / tau)
-      if (row.stock < 0) row.stock = 0
-      if (row.stock > cap) row.stock = cap
+      row.stock = c.star[i] + (row.stock - c.star[i]) * c.decay[i]
+      if (!(row.stock > 0)) row.stock = 0
+      else if (row.stock > cap) row.stock = cap
 
       // Price.
-      mod = eventPriceMod(k)
-      fair = fairValue(k)
+      sc = 1 - row.stock / cap
+      if (!(sc > 0)) sc = 0
+      else if (sc > 1) sc = 1
+      fair = row.base * (1 + fairK * Math.pow(sc, fairE)) * c.mod[i]
       gap = fair > 0 ? (fair - row.price) / fair : 0
-      row.mom = Math.pow(A.MOM_DECAY, h) * row.mom + A.MEAN_REV * h * gap +
-        (stochastic ? A.PRICE_SIGMA * Math.sqrt(h) * walkGauss() : 0)
-      row.mom = C().clamp(row.mom, -A.MOM_CLAMP, A.MOM_CLAMP)
-      row.price = C().clamp(row.price * Math.pow(1 + row.mom, h),
-        A.PRICE_FLOOR * row.base * mod, A.PRICE_CEIL * row.base * mod)
+      m = c.momDecay * row.mom + c.rev * gap + (stochastic ? c.sig * walkGauss() : 0)
+      if (!(m > -clampM)) m = -clampM
+      else if (m > clampM) m = clampM
+      row.mom = m
+      p = row.price * (h === 1 ? 1 + m : Math.pow(1 + m, h))
+      if (!(p > lo * row.base * c.mod[i])) p = lo * row.base * c.mod[i]
+      else if (p > hi * row.base * c.mod[i]) p = hi * row.base * c.mod[i]
+      row.price = p
 
       // The base only ever falls back toward 0.85× while you are not trading, and never below it.
       // The player's own appetite is the primary long-run driver of their input costs.
       row.coolT += h
-      if (row.coolT > A.COOL_S && row.base > A.COOL_FLOOR * DEADFALL[i].price) {
-        row.base *= Math.pow(1 - A.COOL_RATE, h)
-        if (row.base < A.COOL_FLOOR * DEADFALL[i].price) row.base = A.COOL_FLOOR * DEADFALL[i].price
+      if (row.coolT > coolS && row.base > c.floorBase[i]) {
+        row.base *= c.cool
+        if (row.base < c.floorBase[i]) row.base = c.floorBase[i]
       }
     }
   }
@@ -480,19 +515,32 @@
     histFill += 1
   }
 
+  // Live play always walks at exactly the 1 Hz the coefficients were fitted at; a backlog wider than
+  // WIDE_AFTER seconds — which only an offline macro-step or a long catch-up produces — is walked in
+  // steps of up to MAX_H instead. Ten seconds keeps the mean-reversion term at 0.30 per step, well
+  // inside the stable régime, and it is a supply process rather than anything a decision reads.
   function stepMarket (dt, o) {
     var s = S()
     if (!s || s.act !== 1) return
     var p = opt(o)
-    var n, h, i
+    var n, h, i, c
     acc += dt
-    if (acc < MK.STEP_S) return
     n = Math.floor(acc / MK.STEP_S)
-    if (n > MK.MAX_SUBSTEPS) { h = acc / MK.MAX_SUBSTEPS; n = MK.MAX_SUBSTEPS } else { h = MK.STEP_S }
+    if (n < 1) return
+    h = MK.STEP_S
+    if (n > MK.WIDE_AFTER) {
+      h = Math.min(MK.MAX_H, acc / MK.WIDE_AFTER)
+      n = Math.floor(acc / h)
+    }
+    if (n > MK.MAX_SUBSTEPS) { n = MK.MAX_SUBSTEPS; h = acc / n }
     acc -= n * h
-    if (acc < 0) acc = 0
+    // A backlog this module cannot honestly walk is dropped rather than carried: loop.js never
+    // hands over more than one macro-step at a time, and an unbounded accumulator would turn one
+    // pathological call into a permanently slow tick.
+    if (!(acc > 0) || acc > MK.MAX_H) acc = 0
+    c = walkCoef(h)
     for (i = 0; i < n; i++) {
-      walkStep(h, p.stochastic)
+      walkStep(c, p.stochastic)
       sample()
       if (flag(s, 'standing_order')) standingOrder(h)
     }
