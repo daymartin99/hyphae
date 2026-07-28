@@ -745,7 +745,12 @@ canvas{ display:block; }
 .seg > button[aria-pressed="true"]{ background:var(--surface-2); color:var(--text-max);
                                     box-shadow:inset 0 1px 0 var(--gloss-seg); }
 
-.field{ margin-bottom:var(--sp-16); }
+/* Every other block a panel body holds — the head, the card, the note, the two canvases — carries
+   the column gutter itself, because the body does not. The field was the one that did not, so the
+   retention dial rendered flush to both edges of a 390 px phone: the label began at x = 0, the
+   readout ended on the right edge, and the slider track ran the full bleed while the card directly
+   above it was inset by 16 px. */
+.field{ margin-bottom:var(--sp-16); padding-inline:var(--gutter); }
 .field-top{ display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--sp-8); }
 .field-lab{ font:var(--t-label); letter-spacing:.14em; text-transform:uppercase;
             color:var(--text-secondary); }

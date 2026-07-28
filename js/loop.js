@@ -326,7 +326,8 @@
     ROUTINE_S: 90,           // s of income under which a purchase is routine and never raids the bank
     RATE_TAU: 60,            // s of smoothing on the measured income rates
     FORGIVE_GROWTH: 4,      // × income growth after which abandoned goals are reconsidered
-    COND_SHARE: 0.50        // fraction of the D budget spent on rate before capacity is asked for
+    COND_SHARE: 0.50,       // fraction of the D budget spent on rate before capacity is asked for
+    VES_SLACK: 2            // surplus Vesicle points tolerated before the book is reallocated
   }
 
   // What the stand-in is saving for: the cheapest thing on screen it cannot yet
@@ -536,6 +537,7 @@
     var perSec = Math.round(1 / dt)
     var sopts = { stochastic: o.stochastic !== false, offline: false }
     var bought = 0
+    wanted = o.want === 'A' || o.want === 'B' || o.want === 'C' ? o.want : ''
     for (var sec = 0; sec < seconds; sec++) {
       for (var k = 0; k < taps; k++) if (HY.act1 && HY.act1.onExtend) HY.act1.onExtend()
       for (var j = 0; j < perSec; j++) simTick(dt, sopts)
@@ -612,10 +614,48 @@
     // reach the price at ANY allocation is a sawtooth, not a plan: measured, it climbed to 1.4e6 Σ
     // and fell to 8.0e4 every seventy minutes for the rest of the run. So ask the question first —
     // would the whole budget in Vesicle actually clear it? — and only pay if the answer is yes.
-    if (!short || !g.respec || !g.respecCost) return
+    if (!g.respec || !g.respecCost) return
     if (num(s.res.insight) < num(g.respecCost(s))) return
-    if (capAtFullVesicle(s, g) < want) return
+    // REGENOME is the third claim on Insight and the largest — the cost grows with every one taken,
+    // and by the void it is four figures. Measured, a run that had banked ENDING B's 3,600 Ψ (4,635
+    // held at minute 606, every other row green or closing) spent 2,679 of it on a reallocation in
+    // the following minute, dropped the pool from 2.85e6 Σ to 2.87e4 Σ on the same tick, and never
+    // saw either number again inside the act. An ending outranks a tidier book.
+    if (endgameSpare('insight') < num(g.respecCost(s))) return
+    if (short) {
+      if (capAtFullVesicle(s, g) < want) return
+      g.respec()
+      return
+    }
+    // The other half of the same question, and the one the stand-in never asked. Vesicle is bought
+    // for headroom the player can name — but the name expires. Act II's exit wants 1.6e6 Σ *held*,
+    // which forces the book to dVes 13, and nothing in Act III ever asks for a pool that large
+    // again: the void's prices are 2,400–18,000 Σ against an Sc that the fleet's own Λ carries into
+    // the millions. The points stayed where Act II left them, and because §9.4 fixes
+    // timeToFill = 86.7·(1+dVes)^1.85/((1+0.35·dCond)·C·signalMult), dVes 13 is a 5,188-second pool.
+    //
+    // Measured, that one stale allocation is the whole of the missing endgame: across a 780-minute
+    // run the pool saturated on no tick at all, so Insight — which accrues only while it is full —
+    // came to 0 Ψ/min against ENDING A's 2,400 Ψ, and no ending could fire at any amount of carbon.
+    // The same save with the surplus released (dVes 3, time-to-fill 277 s) saturates continuously,
+    // ripens to 1.00 and makes 93 Ψ/min. Releasing it is not a cleverer strategy than the one the
+    // policy above already states; it is that policy, applied when the price it was sized against
+    // has been paid.
+    var lean = leanestVes(s, g, want)
+    if (lean < 0 || num(s.cog.dVes) < lean + PLAY.VES_SLACK) return
+    // The reallocation is priced in Ψ and so is an act's exit. A saver holding a door has first
+    // claim on Insight, exactly as `spendInsightOnLoci` does.
+    if (saver && saver.isDoor && saver.wouldStarveDoor('psi', num(g.respecCost(s)))) return
     g.respec()
+  }
+
+  // The smallest Vesicle allocation that still clears `want` if the whole budget is behind it. −1
+  // when no allocation clears it, which is the shortage branch's problem and not this one's.
+  // Capacity does not read Conduction at all, so this is a search over one axis.
+  function leanestVes (s, g, want) {
+    var budget = num(s.res.D), v
+    for (v = 0; v <= budget; v++) if (capAt(s, g, v, budget - v) >= want) return v
+    return -1
   }
 
   // Sc under a hypothetical allocation, asked of cognition rather than re-derived here: the
@@ -648,12 +688,20 @@
     return !!g && !!g.Sc && num(g.Sc(s)) < poolWanted(s)
   }
 
-  // The largest Σ price on the board, plus one pulse. A pool that cannot reach it is a pool that
-  // makes a visible entry permanently unbuyable however long the player waits.
+  // The largest Σ price on the board. A pool that cannot reach it is a pool that makes a visible
+  // entry permanently unbuyable however long the player waits.
+  //
+  // A pulse is deliberately NOT one of those prices, though this used to ask for one. `pulseCost`
+  // is `0.55·Sc` — a fraction of the pool, not a number in Σ — so a pool can always afford a pulse
+  // the moment it is full, and asking capacity to cover one is asking it to exceed 55% of itself.
+  // Measured, that circularity was a floor under the whole Vesicle book: releasing the surplus
+  // settled at dVes 9 rather than 0 because every point removed made the pulse it was sized against
+  // cheaper by exactly as much, which held time-to-fill at 2,116 s and the pool below saturation
+  // for the whole of the void.
   function poolWanted (s) {
     var pj = HY.projects, g = HY.cognition
     if (!pj || !pj.visible || !g || !g.Sc) return 0
-    var want = g.pulseCost ? num(g.pulseCost()) : 0
+    var want = 0
     var list = pj.visible(), i, pr
     for (i = 0; i < list.length; i++) {
       pr = pj.priceOf(list[i].id) || {}
@@ -799,6 +847,26 @@
     var b = HY.bloom
     if (!b || !b.setAlloc) return
     var a = overPeak(s, b) ? A3_ALLOC.CROWDED : A3_ALLOC.GROWING
+    // Banking the whole surplus once every shell is reached looks like the right last move and is
+    // not: measured, a run playing for ENDING B ends with all thirteen bands at 100.0% consumed —
+    // the void's whole 1.04e36 Χ eaten — against 1.53e35 Χ banked, and the missing 85% is not
+    // waste, it is the fleet that did the eating. Taking replication and dispersal to zero at that
+    // point banked a larger share of a collapsing harvest: 1.48e35 Χ, worse by 3%, and ENDING A
+    // arrived thirteen minutes later. The crowded triangle stands.
+    // ENDING C's last row is `THEIRS ≥ 3 × yours`, and a fleet still replicating out of 70% of its
+    // surplus outgrows lineages that started as a rounding error on it. Ceding is a decision about
+    // the triangle before it is a decision about the button: replication goes to the floor and the
+    // surplus is banked, which is also what pays for the carbon every ending wants.
+    //
+    // Not before there is something to cede to, and not before it can be read. C's mass row is
+    // unmet from the first tick of the act — there is no Successor yet, so `wild ≥ 3 × mine` reads
+    // false — and a run that took that as "stop replicating" never grew a fleet at all: measured,
+    // it sat in the canopy at 2.56e14 Χ for the whole 780 minutes and ESCAPE VELOCITY was never
+    // payable. Gating on the Successor alone was the same mistake one stage later: SEQUENCE is an
+    // instrument priced at 8.0e28 Χ, a fleet that stops replicating stops earning carbon, and that
+    // run finished on 1.30e23 Χ with SUCCESSOR, AGE and THEIRS green and SEQUENCED the only row
+    // left. You cannot hand on what you never built, and you cannot name what you never read.
+    if (wanted === 'C' && s.a3.succ && s.a3.succ.sequenced && endgameWants('mass')) a = A3_ALLOC.CEDING
     // Disperse only once there is somewhere to disperse to; before G4 the vertex does not exist and
     // bloom folds its share into BANK anyway, so asking for it early is not a mistake, only a no-op.
     b.setAlloc(a[0], a[1], a[2], s)
@@ -808,7 +876,8 @@
   // that is past its own surplus peak and banks the carbon the endings are priced in.
   var A3_ALLOC = {
     GROWING: [0.70, 0.20, 0.10],
-    CROWDED: [0.02, 0.38, 0.60]
+    CROWDED: [0.02, 0.38, 0.60],
+    CEDING: [0.00, 0.20, 0.80]
   }
 
   // Ψ has exactly two homes in Act III: loci and the divergence economy. Loci first — every axis
@@ -824,6 +893,12 @@
     // Measured, a run held 108,657 Σ against an 80,000 Σ door and 15.27 Ψ against its Ψ leg,
     // because every point of Insight the act had produced was already in the genome.
     if (sv && sv.isDoor && sv.wouldStarveDoor('psi', num(b.nextLocusCost(s)))) return
+    // The last door of all is an ending, and it is priced in Ψ too — 2,400 for A, 3,600 for B. It
+    // never appears in the catalog, so no saver has ever guarded it, and the genome spent every
+    // point the void produced: measured, a run that made 13,490 Ψ with the genome held still ended
+    // a 780-minute run holding 309 Ψ with the genome running. An ending is not one claim on Insight
+    // among several; from the moment the void opens it is the only one.
+    if (endgameSpare('insight') < num(b.nextLocusCost(s))) return
     // A locus is not free: craftMass = 2.40e6·(1+0.085·G)^1.15, so every point makes every craft
     // heavier to keep alive. Buying them into a fleet that is already at its surplus peak is
     // buying subsistence, and the peak is exactly where the margin to pay for it is thinnest.
@@ -831,21 +906,121 @@
     // Round-robin, lowest axis first, so the genome stays broad. BIBLE M14: a perfectly specialised
     // genome produces perfectly specialised defectors with the same holes, and you cannot exploit a
     // hole you do not have.
-    var lo = 0, i
-    for (i = 1; i < loci.length; i++) if (num(loci[i]) < num(loci[lo])) lo = i
+    //
+    // Broad is right for a run with no ending in mind. It is wrong for two of the three: fidelity
+    // is `fidelityBase + 0.030·tFid − 0.038·tAnt + boughtFid`, so ENDING B's Φ ≥ 0.985 is bought on
+    // the FID axis and spent on the ANT one, and ENDING C wants the opposite — a fidelity low
+    // enough to keep producing the defectors it is about. Measured, a broad genome finished B's run
+    // at Φ 0.979 against 0.985, one ANT point short of the ending, with every other row green.
+    var lo = leastOf(loci, banned(), favoured())
+    if (lo < 0) return
     b.setLocus(lo, num(loci[lo]) + 1, s)
+  }
+
+  // The genome's eight axes, in BIBLE §3's order: BAL GER MYC SPO MEL DOR FID ANT. Only the last
+  // two are named here, because only the last two move fidelity.
+  var AXIS_FID = 6, AXIS_ANT = 7
+
+  // Φ held above ENDING B's requirement, so one reintegration cannot drop it back under. Two FID
+  // points' worth: the axis is +0.030 each and the whole band is 0.30–0.9975 wide.
+  var FID_MARGIN = 0.020
+
+  function inVoidNow () {
+    var s = S()
+    return !!s && s.act === 3 && s.phase === 'void'
+  }
+
+  // The axis this run will not spend on at all. B's Φ ≥ 0.985 is −0.038 per ANT point, so one is
+  // enough to put the ending out of reach; C is about producing defectors and FID is what stops
+  // them existing.
+  function banned () {
+    if (wanted === 'B') return AXIS_ANT
+    if (wanted === 'C') return AXIS_FID
+    return -1
+  }
+
+  // The axis this run fills first, while it is still buying something the ending named — and only
+  // while. A fixed quota was wrong in both directions: four FID points carried ENDING B's fidelity
+  // to 0.998 against a 0.985 requirement, and the three wasted points are three the harvest axes
+  // did not get, which is why that run banked 1.51e35 Χ against a 1.60e35 Χ gate. Fidelity is
+  // bought until it is bought, then the genome goes back to being broad (BIBLE M14).
+  //
+  // C's is later still. Sequencing is an instrument priced at 8.0e28 Χ, and an ANT-first genome
+  // reaches Φ 0.735 inside the first hour of the act: measured, the lineages ate the fleet that was
+  // meant to pay for the instrument, carbon stopped at 2.02e24 Χ, and SEQUENCED was the one row of
+  // four that never went green. Grow, buy the instrument, and only then become worth defecting from.
+  function favoured () {
+    // A margin, not a threshold. Fidelity is not a stock the genome alone sets: ABSORB books a
+    // permanent fidelity debt, so a book that stops buying FID the tick the row goes green watches
+    // the next reintegration take it back. Measured, a run holding every other ENDING B row —
+    // 1.56e35 Χ, 3,722 Ψ, ϒ 0.9998, no lineage, no Successor — finished at Φ 0.9759 against 0.9850,
+    // having been over it an hour earlier.
+    // And not before the void. Φ is only ever read by the ending, while Phase A is a planet that
+    // has to be eaten to 97% before ESCAPE VELOCITY exists at all — and fidelity does nothing for
+    // harvest. Measured, a book that started filling FID with the act's first locus never left the
+    // canopy: 8.61e13 Χ at minute 780 against an ESCAPE gate of 9.0e17, in a run whose sibling with
+    // the same target banked 1.52e35.
+    if (wanted === 'B') {
+      if (!inVoidNow()) return -1
+      return endgameSpare('fidelity') < FID_MARGIN ? AXIS_FID : -1
+    }
+    if (wanted === 'C') {
+      return HY.projects && HY.projects.isBought && HY.projects.isBought('sequencer') ? AXIS_ANT : -1
+    }
+    return -1
+  }
+
+  // The lowest axis the run is willing to spend on: `first` is filled ahead of everything else,
+  // `ban` is never filled at all. −1 when every axis is banned, which these rules never do.
+  function leastOf (loci, ban, first) {
+    var i, lo = -1
+    if (first >= 0) return first
+    for (i = 0; i < loci.length; i++) {
+      if (i === ban) continue
+      if (lo < 0 || num(loci[i]) < num(loci[lo])) lo = i
+    }
+    return lo
   }
 
   // The allele economy, which is the only source of the locus cap. PURGE and ABSORB both pay; a
   // strain left alone pays nothing and eats the bands it sits in.
+  //
+  // Unless the run is playing for THE INHERITANCE, in which case a strain left alone is the whole
+  // point: ENDING C wants a Successor — which forms only from two or more living lineages holding
+  // more mass than you — aged half an hour, sequenced, and finally three times your size. Killing
+  // them is how the other two endings are reached and is exactly what makes C unreachable.
   function handleStrains (s) {
     var d = HY.divergence
     if (!d || !d.strains) return
+    if (wanted === 'C') { inherit(s, d); return }
     var list = d.strains(s)
     if (!list || !list.length) return
     var id = list[0].id
-    if (d.absorb && d.absorb(id)) return
+    // ABSORB is priced in Ψ and Σ, and the ending is priced in Ψ. α bought with the ending's
+    // Insight is α that costs the run its ending, so the free verb is the only one available until
+    // the bank is clear of it.
+    var psi = d.absorbCost ? num(d.absorbCost(s).psi) : Infinity
+    if (endgameSpare('insight') >= psi && d.absorb && d.absorb(id)) return
     if (d.purge) d.purge(id)
+  }
+
+  // ENDING C's four rows, in the order they can be worked. Nothing here fights: the lineages are
+  // left to grow, the Successor is sequenced the moment the instrument exists, and replication is
+  // turned down so that what they hold can pass what you do.
+  function inherit (s, d) {
+    var succ = s.a3.succ
+    if (succ) {
+      if (!succ.sequenced && d.sequence) d.sequence('succ')
+      return
+    }
+    // Before coalescence, defend — until the instrument is bought. SEQUENCE is priced at 8.0e28 Χ
+    // and carbon is harvested by craft, so a run that stops defending on the act's first defector
+    // is handing the void to lineages while it still has an instrument to buy: measured, peak fleet
+    // 1.50e19 against a healthy act's 2.50e25, carbon stalled at 3.97e27, and SEQUENCED was the one
+    // row of C's four that never went green in 780 minutes. Feed them once you can read them.
+    if (HY.projects && HY.projects.isBought && HY.projects.isBought('sequencer')) return
+    var list = d.strains(s)
+    if (list && list.length && d.purge) d.purge(list[0].id)
   }
 
   // The last twenty minutes. ENTRAIN is never automated by any project (D77) and is the only thing
@@ -863,6 +1038,17 @@
     var w = f.wheel(s)
     if (!w || !w.live || !w.mass || !w.mass.length) return
     if (num(w.upsilon) >= num(w.ring)) return
+    // Synchrony is bought with the same seconds Insight is, and it is bought second. A pulse costs
+    // 0.55·Sc and therefore always breaks saturation; Insight accrues only while the pool is full.
+    // So while the ending's Ψ leg is still short, every pulse is a withdrawal from the condition
+    // that takes hours against one that takes minutes — ϒ climbs from its free-running 0.31 to over
+    // the ring inside about fifteen minutes of pulses and decays back in twenty, whereas 2,400 Ψ is
+    // an hour of standing still. Measured, a stand-in that pulsed on sight held ϒ at 1.00 for two
+    // hours and finished a 780-minute run on 309 Ψ, with carbon and bands long since green.
+    //
+    // This is `03` §19.4's last twenty minutes read in the only order that closes: bank the waiting
+    // currency first, then spend the pool on the phase lock, then stand still for one time-to-fill.
+    if (endgameWants('insight')) return
     // Epicentre: the heaviest band. `0.82^d` falloff means the pulse pulls hardest where it lands,
     // and landing it on the fleet's centre of mass moves the resultant instead of chasing it.
     var epi = 0, i
@@ -870,13 +1056,72 @@
     g.pulse('ENTRAIN', epi)
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // WHICH ENDING THIS RUN IS FOR
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // '' | 'A' | 'B' | 'C', set by play()'s `want` option. Empty is the honest default and the one a
+  // first run is in: walk toward whichever ending is nearest and take it when it lights.
+  //
+  // Naming one is not a cheat code — it is the only way a stand-in can express the thing D27 is
+  // about. The three endings are mutually exclusive from roughly forty minutes into the void (`03`
+  // §20) because they want opposite things of the same two verbs: B wants every lineage killed and
+  // the genome's FID axis; C wants them fed, sequenced and eventually larger than you, which needs
+  // the ANT axis and a fidelity low enough to keep producing defectors. A policy with no target
+  // does one of those by accident and can never do the other, so a bot without this option cannot
+  // reach two of the three endings however long it is run for — which is a fact about the harness,
+  // not about the game.
+  var wanted = ''
+
+  // The row the run is playing toward, with its unmet conditions. Without a target this is the
+  // game's own "nearest ending" readout.
+  function targetEnding (s) {
+    var f = HY.finale
+    if (!f || !f.endingAvailable) return null
+    if (!wanted) return f.endingAvailable(s)
+    if (!f.endings) return f.endingAvailable(s)
+    var list = f.endings(s), i
+    for (i = 0; i < list.length; i++) if (list[i].key === wanted) return list[i]
+    return null
+  }
+
+  // Whether the ending this run is walking toward is still short of a named condition. `finale`
+  // already reports exactly that, so the policy reads the game's own readout rather than keeping a
+  // second opinion about what an ending costs.
+  function endgameWants (id) {
+    var e = targetEnding()
+    if (!e || e.taken || !e.unmet) return false
+    return e.unmet.indexOf(id) >= 0
+  }
+
+  // How much of a stock the ending does not need, which is the only part of it that may be spent.
+  //
+  // A threshold is not enough here and the difference cost a measured run its ending: gating the
+  // genome on "the Ψ row is unmet" stops spending at 3,599 Ψ and resumes at 3,601, so the stand-in
+  // banked ENDING B's 3,600 Ψ at minute 541, spent 2,162 of it on loci in the same minute, and was
+  // holding 1,440 Ψ at minute 591 when the carbon row finally went green — with synchrony at 1.00
+  // and every other condition met. The ending is a price, so it is banked like one.
+  function endgameSpare (id) {
+    var e = targetEnding()
+    if (!e || e.taken || !e.conditions) return Infinity
+    var i, row
+    for (i = 0; i < e.conditions.length; i++) {
+      row = e.conditions[i]
+      if (row.id === id) return num(row.have) - num(row.want)
+    }
+    return Infinity
+  }
+
   // The run ends when an ending is available. Which one is not chosen: `endingAvailable` reports
   // the first that has cleared its conditions, and the conditions are what the run's own build
   // decided several hours earlier.
   function takeAnEnding (s) {
     var f = HY.finale
-    if (!f || !f.endingAvailable || !f.takeEnding) return
-    var e = f.endingAvailable(s)
+    if (!f || !f.takeEnding) return
+    // With a target named, only that one is taken. A run playing for C reaches A's conditions on
+    // the way past — carbon and bands are common to both — and a stand-in that presses the first
+    // lit button proves nothing about the other two endings.
+    var e = targetEnding(s)
     if (e && e.available && !e.taken) f.takeEnding(e.id)
   }
 
@@ -1023,9 +1268,36 @@
       if (!p.buyable || isOneWay(p)) continue
       if (pj.affordRatio(p) > 1) continue
       if (sv && sv.blocks(p)) continue
+      if (starvesPhase(p)) continue
       if (pj.purchase(p.id)) n++
     }
     return n
+  }
+
+  // The one Act III purchase that has to be saved for, and the only currency in the act that a
+  // purchase cannot be waited out of.
+  //
+  // Minerals are never produced in Act III (BIBLE §2.1) — every ⛬ spent there comes out of the
+  // quarter that survived ASCOSPORE and is never replaced. Three void entries want them: 2,400 for
+  // a radiation warning, 3,600 for a richness floor, and 6,000 for `circadian_entrainment`, which
+  // is the PHASE system, the wheel and the ENTRAIN verb. `visible()` is sorted cheapest-first, so a
+  // buyer working down the list spends 6,000 ⛬ on the first two and can never afford the third.
+  //
+  // Missing the third does not cost a multiplier, it costs the act: without PHASE the wheel is not
+  // live, ϒ reads its free-running 0.31 forever, and ENDING A and ENDING B are unreachable at any
+  // amount of carbon. Measured, a run met every other row of ENDING B — 1.63e35 Χ against 1.60e35,
+  // 5,724 Ψ against 3,600, Φ 0.995 against 0.985, no lineage and no Successor — and finished at
+  // ϒ 0.310, having spent its 6,000 ⛬ on the warning and the floor at minute 430.
+  var PHASE_GATE = 'circadian_entrainment'
+
+  function starvesPhase (p) {
+    var s = S(), pj = HY.projects
+    if (!s || s.act !== 3 || p.id === PHASE_GATE) return false
+    var gate = pj.byId(PHASE_GATE)
+    if (!gate || !gate.buyable || pj.isBought(PHASE_GATE)) return false
+    var need = num((pj.priceOf(PHASE_GATE) || {}).min)
+    if (!(need > 0)) return false
+    return num(s.res.minerals) - num((pj.priceOf(p.id) || {}).min) < need
   }
 
   // Buy the cheapest unlocked litter first, which is the consumption order the

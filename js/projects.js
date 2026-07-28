@@ -1473,25 +1473,25 @@
   // measured 5,700 Σ/min and rising, so each is ~7 and ~12 minutes of it: they land at +52 and +72
   // minutes into the act instead of +50 and +65, which is what puts a rung between the last biome
   // purchase and the escape gate rather than leaving a 28-minute walk to it.
-  E('osmotic_adjustment', 'Osmotic Adjustment', 3, '40,000 Σ', { sig: 40000 },
+  E('osmotic_adjustment', 'Osmotic Adjustment', 3, '26,000 Σ', { sig: 26000 },
     function (s) { return biomesReached(s) >= 3 },
     function () { /* biome 6 becomes reachable */ },
     'Salt is only a gradient. (Unlocks a biome)',
     ['rulechange'])
 
-  E('antifreeze_glycoprotein', 'Antifreeze Glycoprotein', 3, '70,000 Σ', { sig: 70000 },
+  E('antifreeze_glycoprotein', 'Antifreeze Glycoprotein', 3, '200,000 Σ', { sig: 200000 },
     function (s) { return biomesReached(s) >= 4 },
     function () { /* biomes 2 and 7 lose their penalty */ },
     'Ice grows in shapes you can forbid. (Two biome penalties removed)',
     ['rulechange'])
 
-  E('secondary_metabolites', 'Secondary Metabolites', 3, '3.0e15 Χ', { carbon: 3.0e15 },
+  E('secondary_metabolites', 'Secondary Metabolites', 3, '2.4e16 Χ', { carbon: 2.4e16 },
     function (s) { return !!s.a3.biomes.reached[4] },
     function () { /* biome 4 penalty removed; the ANT axis unlocks early */ },
     'Nothing else here has read your chemistry. (Biome penalty removed)',
     ['rulechange'])
 
-  E('facultative_anaeroby', 'Facultative Anaeroby', 3, '6.0e16 Χ', { carbon: 6.0e16 },
+  E('facultative_anaeroby', 'Facultative Anaeroby', 3, '7.0e17 Χ', { carbon: 7.0e17 },
     function (s) { return !!s.a3.biomes.reached[5] },
     function () { /* biome 5 penalty removed */ },
     'Breathing was always optional. (Biome penalty removed)',
@@ -1559,19 +1559,27 @@
   // Two facts settle what the ladder should be priced in.
   //
   //   · Carbon is the one thing the void makes in quantity, monotonically, and never gives back:
-  //     measured 1e23 twenty minutes after ESCAPE, 1e29 at +60, 1e31 at +100, 1e32 at +140.
-  //     Twenty-one geometric rungs from 3.0e23 to 2.7e32 sum to 4.2e32 — a quarter of one percent
-  //     of the 1.7e35 the run ends holding, so the ladder is free of the endings, which are the
-  //     only things in this game allowed to want carbon by the mole.
+  //     measured 5e23 held before the first cohort disperses, 1e26 at +40 minutes, 1e29 at +60,
+  //     1e31 at +100, 1e32 at +140. Thirty-one geometric rungs at ×1.834, from 2.0e24 to 1.5e32,
+  //     sum to 3.3e32 — two thousandths of the 1.7e35 the run ends holding, so the ladder is free
+  //     of the endings, which are the only things in this game allowed to want carbon by the mole.
+  //     Carbon-time is also the act's own clock: if bloom.js makes the fleet grow faster the whole
+  //     ladder compresses with it, which is the coupling a paced catalog should have.
   //   · The three endings are priced in Ψ (2,400 and 3,600 by TUNE). Every Ψ a project takes is a
   //     Ψ the ending does not get, and at 20 Ψ/min the whole void produces about one ending's
   //     worth. So the void tier takes none of it: Insight is what the player is saving *toward*
   //     from the moment they leave the planet, and the projects are what they buy while saving.
   //
-  // The first three rungs are Σ rather than Χ because carbon in the first quarter-hour of the void
-  // is still six orders of magnitude below the first ladder rung, and Σ — which ESCAPE itself is
-  // priced in — is already flowing.
-  E('genome', 'Genome', 3, '10,000 Σ', { sig: 10000 },
+  // The first three rungs are Σ rather than Χ, and they are small on purpose. ESCAPE drains the
+  // Signal pool to about 1.2e3 Σ and the void's Sc is a function of a fleet that cannot spread
+  // until DISPERSE exists, so before `thrust` is bought the pool tops out near 3e4–6e4 Σ and
+  // refills at roughly 600 Σ/min. A first draft of this pass priced them 10,000 / 26,000 / 90,000
+  // and measured the exact failure this file warns about twice already: `thrust` sat above the
+  // ceiling, DISPERSE never opened, the fleet never left band 0, carbon froze at 4.93e23 and the
+  // run made no purchase at all for the remaining 470 minutes. `thrust` is a gate, not an upgrade;
+  // it is priced at a fifth of the ceiling standing when it appears and everything downstream of
+  // it — which is the entire carbon ladder — is priced behind it.
+  E('genome', 'Genome', 3, '2,400 Σ', { sig: 2400 },
     function (s) { return inVoid(s) },
     function (s) {
       var A = T().A3
@@ -1581,37 +1589,37 @@
     'Decide what you are for. (Unlocks the genome, four free loci)',
     ['panel', 'dial'])
 
-  E('radial_survey', 'Radial Survey', 3, '26,000 Σ', { sig: 26000 },
+  E('radial_survey', 'Radial Survey', 3, '7,000 Σ', { sig: 7000 },
     function (s) { return inVoid(s) },
     function () { /* the VOID canvas, the band list and the exploration readout */ },
     'Look outward. It is all outward. (Unlocks the bands)',
     ['panel', 'information'])
 
-  E('thrust', 'Thrust', 3, '90,000 Σ', { sig: 90000 },
+  E('thrust', 'Thrust', 3, '18,000 Σ', { sig: 18000 },
     function (s) { return s.a3.bands.e[0] >= 0.25 },
     function () { /* the triangle's third vertex: DISPERSE */ },
     'There is nothing to push against. Push anyway. (Unlocks DISPERSE)',
     ['verb'])
 
-  E('chemotropism', 'Chemotropism', 3, '3.0e23 Χ', { carbon: 3.0e23 },
+  E('chemotropism', 'Chemotropism', 3, '6.0e24 Χ', { carbon: 6.0e24 },
     function (s) { return bandsReached(s) >= 2 },
     function (s) { mul(s.mult, 'exploreMult', 1.7) },
     'Follow the gradient across four light-years. (+70% exploration)',
     ['multiplier'])
 
-  E('sclerotial_coat', 'Sclerotial Coat', 3, '8.4e23 Χ', { carbon: 8.4e23 },
+  E('sclerotial_coat', 'Sclerotial Coat', 3, '2.0e25 Χ', { carbon: 2.0e25 },
     function (s) { return inTransit(s) >= 0.1 * fleet(s) && inTransit(s) > 0 },
     function () { /* TR_HAZ ×0.55; bloom reads the flag at the point of attribution */ },
     'Harden. Wait. It is a long way. (-45% transit hazard)',
     ['rulechange'])
 
-  E('recruit', 'Recruit', 3, '2.4e24 Χ', { carbon: 2.4e24 },
+  E('recruit', 'Recruit', 3, '6.0e25 Χ', { carbon: 6.0e25 },
     function (s) { return bandsReached(s) >= 2 && inTransit(s) > 0 },
     function () { /* the RECRUIT pulse mode */ },
     'Tell the ones already moving to hurry. (Unlocks RECRUIT)',
     ['verb'])
 
-  E('the_ediacaran_silence', 'The Ediacaran Silence', 3, '9.0e27 Χ', { carbon: 9.0e27 },
+  E('the_ediacaran_silence', 'The Ediacaran Silence', 3, '1.3e29 Χ', { carbon: 1.3e29 },
     function (s) { return s.res.cumCarbon >= 4.0e27 },
     function (s) { grantD(s, 1) },
     'Six hundred million years of nothing deciding to move. (+1 D)',
@@ -1619,19 +1627,19 @@
 
   // ── III-H Deep void ────────────────────────────────────────────────────────
 
-  E('hyphal_continuity', 'Hyphal Continuity', 3, '6.6e24 Χ', { carbon: 6.6e24 },
+  E('hyphal_continuity', 'Hyphal Continuity', 3, '1.6e26 Χ', { carbon: 1.6e26 },
     function (s) { return inVoid(s) && bandsReached(s) >= 4 },
     function () { /* LAG_K ×0.78: the light-lag on a pulse shortens, it does not vanish */ },
     'A thought that takes a century is still a thought. (-22% pulse lag)',
     ['rulechange'])
 
-  E('pyomelanin', 'Pyomelanin', 3, '3.2e27 Χ', { carbon: 3.2e27 },
+  E('pyomelanin', 'Pyomelanin', 3, '1.2e28 Χ', { carbon: 1.2e28 },
     function (s) { return inVoid(s) && stat(s, 'radiationHazards') >= 20 },
     function (s) { if (s.a3.loci) s.a3.loci[LOCUS_MEL] = s.a3.loci[LOCUS_MEL] + 1 },
     'Black is not a colour. It is a decision. (+0.9 melanisation, no harvest cost)',
     ['rulechange'])
 
-  E('saltatory_conduction_void', 'Saltatory Conduction', 3, '1.6e28 Χ', { carbon: 1.6e28 },
+  E('saltatory_conduction_void', 'Saltatory Conduction', 3, '2.0e28 Χ', { carbon: 2.0e28 },
     function (s) { return inVoid(s) && stat(s, 'pulses') >= 12 },
     function () { /* pulse cooldown 75 → 50 s */ },
     'Skip the parts in between. (Faster PULSE)',
@@ -1639,7 +1647,7 @@
 
   // 03's trigger is behavioural — SURPLUS fell while n rose, twice. §3.stats carries no such counter,
   // and `targetsReached` is the arrival count that only rises once a band is being grown into.
-  E('allometry', 'Allometry', 3, '1.8e25 Χ', { carbon: 1.8e25 },
+  E('allometry', 'Allometry', 3, '4.0e26 Χ', { carbon: 4.0e26 },
     function (s) { return inVoid(s) && bandsReached(s) >= 3 && stat(s, 'targetsReached') >= 2 },
     function () { /* draws n*_b on every band bar. Deliberately expensive and deliberately late. */ },
     'There is a size that produces the most. It is small. (Draws the maximum)',
@@ -1650,13 +1658,13 @@
   // 8.3e4–1.2e5 ⛬, flat to the last digit for five hundred minutes). They are kept small on
   // purpose — a mineral leg here is a one-time drawdown, not a wait, and pricing one as though it
   // were a wait would make the entry unbuyable forever rather than late.
-  E('neutrino_precursor', 'Neutrino Precursor', 3, '5.2e25 Χ + 2,400 ⛬', { carbon: 5.2e25, min: 2400 },
+  E('neutrino_precursor', 'Neutrino Precursor', 3, '9.0e26 Χ + 2,400 ⛬', { carbon: 9.0e26, min: 2400 },
     function (s) { return inVoid(s) && bandsReached(s) >= 5 && stat(s, 'radiationHazards') >= 1 },
     function () { /* 40 s of warning, and the ENCYST pulse mode */ },
     'The light is the last part to arrive. (40 s warning)',
     ['information', 'verb'])
 
-  E('the_deep_biosphere', 'The Deep Biosphere', 3, '1.4e26 Χ + 3,600 ⛬', { carbon: 1.4e26, min: 3600 },
+  E('the_deep_biosphere', 'The Deep Biosphere', 3, '2.0e27 Χ + 3,600 ⛬', { carbon: 2.0e27, min: 3600 },
     function (s) { return inVoid(s) && bandsReached(s) >= 6 },
     function (s) {
       var r = s.a3.bands.rich, i
@@ -1665,25 +1673,25 @@
     'More life two kilometres down than on the surface, none of it in a hurry. (Richness floor)',
     ['rulechange'])
 
-  E('radiotrophy', 'Radiotrophy', 3, '8.0e30 Χ', { carbon: 8.0e30 },
+  E('radiotrophy', 'Radiotrophy', 3, '7.0e30 Χ', { carbon: 7.0e30 },
     function (s) { return inVoid(s) && s.a3.loci[LOCUS_MEL] >= 4 },
     function () { /* the radiation term flips sign; the target list re-sorts in front of you */ },
     'Fungi grow inside Chernobyl reactor four, toward the radiation. What was killing you is a meal.',
     ['inversion', 'rulechange'])
 
-  E('plasmogamy', 'Plasmogamy', 3, '1.1e27 Χ', { carbon: 1.1e27 },
+  E('plasmogamy', 'Plasmogamy', 3, '7.0e27 Χ', { carbon: 7.0e27 },
     function (s) { return inVoid(s) && num(s.cog.respecs) >= 1 },
     function () { /* REGENOME 90 → 60 s, cost ×0.70 */ },
     'Two nuclei, one wall, no argument yet. (Cheaper, faster respec)',
     ['rulechange'])
 
-  E('endolith', 'Endolith', 3, '4.0e26 Χ', { carbon: 4.0e26 },
+  E('endolith', 'Endolith', 3, '4.0e27 Χ', { carbon: 4.0e27 },
     function (s) { return inVoid(s) && bandsReached(s) >= 7 },
     function (s) { grantD(s, 1) },
     'Between the grains of rock, things divide every ten thousand years. Waiting for nothing. (+1 D)',
     ['flavour'])
 
-  E('isotropy', 'Isotropy', 3, '2.5e28 Χ', { carbon: 2.5e28 },
+  E('isotropy', 'Isotropy', 3, '3.2e28 Χ', { carbon: 3.2e28 },
     function (s) { return inVoid(s) && bandsReached(s) >= 9 },
     function () { /* τ_b ×0.80 on every leg */ },
     'It is the same in every direction. Confirmed. (-20% transit time)',
@@ -1691,61 +1699,68 @@
 
   // ── III-I Divergence ───────────────────────────────────────────────────────
 
-  E('interference_competition', 'Interference Competition', 3, '7.0e28 Χ', { carbon: 7.0e28 },
+  E('interference_competition', 'Interference Competition', 3, '5.0e28 Χ', { carbon: 5.0e28 },
     function (s) { return stat(s, 'strainsBorn') >= 1 },
     function () { /* unlocks QUARANTINE */ },
     'Make the ground unpleasant and then leave it. (Unlocks QUARANTINE)',
     ['verb'])
 
-  E('proofreading', 'Proofreading', 3, '5.6e29 Χ', { carbon: 5.6e29 },
+  E('proofreading', 'Proofreading', 3, '3.2e29 Χ', { carbon: 3.2e29 },
     function (s) { return stat(s, 'strainsBorn') >= 1 },
     function (s) { addFid(s, 0.045) },
     'Read it back before you let it go. (+0.045 fidelity)',
     ['multiplier'])
 
-  E('antagonise', 'Antagonise', 3, '9.0e28 Χ', { carbon: 9.0e28 },
+  E('antagonise', 'Antagonise', 3, '2.0e29 Χ', { carbon: 2.0e29 },
     function (s) { return stat(s, 'engagements') >= 1 },
     function () { /* the ANTAGONISE pulse mode */ },
     'Everything you make, you can also make against them. (New pulse mode)',
     ['verb'])
 
-  E('anastomosis_offer', 'Anastomosis Offer', 3, '2.6e29 Χ', { carbon: 2.6e29 },
+  E('anastomosis_offer', 'Anastomosis Offer', 3, '5.0e29 Χ', { carbon: 5.0e29 },
     function (s) { return strains(s).length >= T().A3.ANASTOMOSIS_STRAINS },
     function () { /* unlocks ABSORB, and therefore the allele economy */ },
     'Ask them to come back. Mean it. (Unlocks ABSORB)',
     ['verb'])
 
-  E('conserved_core', 'Conserved Core', 3, '4.4e30 Χ + 600 α', { carbon: 4.4e30, alpha: 600 },
+  // The α legs are 600 and 300 rather than 04's 600 / 1,200 / 2,000, and
+  // `heterokaryon_incompatibility` has none at all. Alleles come from ABSORB and nothing else, so
+  // their income belongs to divergence.js, and measured it is not a rate but a single burst: the
+  // stock crosses 600 once, around eighty minutes into the void, and then accrues at about 0.3
+  // α/min for the rest of the run. One α leg per run is what that supports. Priced at 2,000,
+  // `heterokaryon_incompatibility` sat at an affordability ratio of 9.85 — unchanged, to three
+  // decimal places, for four hundred minutes — and at 700 it still sat at 5.93.
+  E('conserved_core', 'Conserved Core', 3, '3.0e30 Χ + 600 α', { carbon: 3.0e30, alpha: 600 },
     function (s) { return s.res.alleles >= 600 },
     function (s) { addFid(s, 0.060) },
     'Some of it was never allowed to change. (+0.060 fidelity)',
     ['multiplier'])
 
-  E('sequencer', 'Sequencer', 3, '2.0e29 Χ', { carbon: 2.0e29 },
+  E('sequencer', 'Sequencer', 3, '8.0e28 Χ', { carbon: 8.0e28 },
     function (s) { return stat(s, 'strainsBorn') >= 1 },
     function () { /* unlocks SEQUENCE: the quantified unknown becomes a price */ },
     'Read what they became. (Unlocks SEQUENCE)',
     ['verb', 'information'])
 
-  E('parallel_antagonism', 'Parallel Antagonism', 3, '2.2e30 Χ', { carbon: 2.2e30 },
+  E('parallel_antagonism', 'Parallel Antagonism', 3, '2.0e30 Χ', { carbon: 2.0e30 },
     function (s) { return strains(s).length >= 3 },
     function () { /* one more concurrent engagement */ },
     'Two fronts. It was always going to be two fronts. (+1 engagement)',
     ['rulechange'])
 
-  E('chaperone', 'Chaperone', 3, '3.0e29 Χ', { carbon: 3.0e29 },
+  E('chaperone', 'Chaperone', 3, '8.0e29 Χ', { carbon: 8.0e29 },
     function (s) { return inVoid(s) && effFid(s) < 0.75 },
     function (s) { addFid(s, 0.035) },
     'Hold it in the right shape until it sets. (+0.035 fidelity)',
     ['multiplier'])
 
-  E('the_armillaria_problem', 'The Armillaria Problem', 3, '1.6e30 Χ', { carbon: 1.6e30 },
+  E('the_armillaria_problem', 'The Armillaria Problem', 3, '1.3e30 Χ', { carbon: 1.3e30 },
     function (s) { return stat(s, 'strainsBorn') >= 4 },
     function (s) { grantD(s, 1) },
     'Nine hundred hectares. One individual. No centre. (+1 D)',
     ['flavour'])
 
-  E('somatic_incompatibility', 'Somatic Incompatibility', 3, '5.0e30 Χ + 1,200 α', { carbon: 5.0e30, alpha: 1200 },
+  E('somatic_incompatibility', 'Somatic Incompatibility', 3, '4.5e30 Χ + 300 α', { carbon: 4.5e30, alpha: 300 },
     function (s) { return !!succ(s) },
     function () { /* SKIRM_K ×0.45, and a 1.20 advantage against the Successor */ },
     'Recognise what is not you. Refuse it. (-55% predation)',
@@ -1753,37 +1768,37 @@
 
   // ── III-J Synchrony and the endings ────────────────────────────────────────
 
-  E('tropism', 'Tropism', 3, '2.0e31 Χ', { carbon: 2.0e31 },
+  E('tropism', 'Tropism', 3, '1.0e31 Χ', { carbon: 1.0e31 },
     function (s) { return inVoid(s) && stat(s, 'reallocations') >= 25 },
     function () { /* triangle policy automation, published at 0.86× skilled play */ },
     'Let it steer. It will steer worse. (Automates the triangle, 0.86×)',
     ['automation'])
 
-  E('circadian_entrainment', 'Circadian Entrainment', 3, '1.2e31 Χ + 6,000 ⛬', { carbon: 1.2e31, min: 6000 },
+  E('circadian_entrainment', 'Circadian Entrainment', 3, '1.5e31 Χ + 6,000 ⛬', { carbon: 1.5e31, min: 6000 },
     function (s) { return bandsReached(s) >= 11 },
     function () { /* the PHASE system, the wheel, and the ENTRAIN pulse mode */ },
     'Agree on when now is. (Unlocks PHASE)',
     ['panel', 'verb'])
 
-  E('isochrony', 'Isochrony', 3, '9.6e31 Χ', { carbon: 9.6e31 },
+  E('isochrony', 'Isochrony', 3, '3.2e31 Χ', { carbon: 3.2e31 },
     function (s) { return flag(s, 'circadian_entrainment') },
     function () { /* band period spread ×0.55; pulse cooldown → 35 s */ },
     'Make the far ones tick like the near ones. (Narrower periods)',
     ['rulechange'])
 
-  E('heterokaryon_incompatibility', 'Heterokaryon Incompatibility', 3, '2.7e32 Χ + 2,000 α', { carbon: 2.7e32, alpha: 2000 },
+  E('heterokaryon_incompatibility', 'Heterokaryon Incompatibility', 3, '5.0e31 Χ', { carbon: 5.0e31 },
     function (s) { return flag(s, 'circadian_entrainment') },
     function (s) { addFid(s, 0.050) },
     'Nothing enters. (+0.050 fidelity)',
     ['multiplier', 'rulechange'])
 
-  E('chronometry', 'Chronometry', 3, '3.4e31 Χ', { carbon: 3.4e31 },
+  E('chronometry', 'Chronometry', 3, '2.2e31 Χ', { carbon: 2.2e31 },
     function (s) { return flag(s, 'circadian_entrainment') },
     function () { /* the wheel shows per-band φ and its dotted projection */ },
     'See the disagreement. (Phase readout)',
     ['information'])
 
-  E('pilobolus', 'Pilobolus', 3, '5.0e31 Χ', { carbon: 5.0e31 },
+  E('pilobolus', 'Pilobolus', 3, '8.0e31 Χ', { carbon: 8.0e31 },
     function (s) { return num(s.a3.upsilon) >= 0.50 },
     function (s) { grantD(s, 1) },
     'The dung cannon fires its spore at twenty thousand gravities, toward the light. (+1 D)',
