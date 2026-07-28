@@ -910,7 +910,14 @@
     // The enzyme ladder of `02` §12: ×1.60 (Manganese Peroxidase, tier B) ×2.10 (Laccase Cascade)
     // ×1.85 (Monoculture) ×2.60 (Fenton, tier D) = 16.2, and E ≈ 26 with the act's last purchases.
     // Interpolated log-linearly rather than stepped, because projects arrive one at a time.
-    E_CURVE: [[0, 1], [0.04, 1.60], [0.15, 3.36], [0.40, 6.22], [0.80, 13], [0.88, 26], [1.0, 26]],
+    //
+    // The terminal value lands at fc = 0.92, not 0.88: E reaches 26 only with tier E, whose budget
+    // (`08` §4.5) is the largest in the act and is therefore the *last* thing bought — after the
+    // Photoreception floor at 0.88 and before ASCOSPORE at 0.97. Placing it at 0.88 made the
+    // production peak arrive at fc 0.862 and only 10.5 min after the Signal peak; placing it where
+    // the budget says it can be afforded puts the peak on D22's stated 0.88 and the D19 gap inside
+    // its 12–22 min corridor.
+    E_CURVE: [[0, 1], [0.04, 1.60], [0.15, 3.36], [0.40, 6.22], [0.80, 13], [0.92, 26], [1.0, 26]],
     Y_CURVE: [[0, 1], [0.30, 1.20], [0.70, 1.85], [0.85, 2.20], [1.0, 2.20]],
     // The act's one Signal multiplier is Saltatory Conduction, ×2.20. Its 820 Ψ + 300,000 Σ price
     // puts it late in tier D (55 → 85%), and where it lands is where Signal peaks — because from
@@ -1272,8 +1279,11 @@
       for (i = 0; i < 61; i++) { q.a2.regions.flags[i] |= RF_CLAIMED; q.a2.regions.d[i] = 0.7 }
       var xEarly = biomassRate(q), iEarly = totalInterface(q)
       // Now put that same board at 92% consumed and three hours older, and change nothing else.
+      // Three hours is chosen to be a whole number of weather periods: regional moisture is a
+      // sinusoid in `t` by design (BIBLE §2.2), so an arbitrary offset would measure the weather
+      // rather than the thing under test — whether a rate can see how much forest is left.
       C().setStock(q.res, 'extracted', a.EXTRACT_TARGET * 0.92)
-      q.t = 11000
+      q.t = 6 * T().CLOCK.WEATHER_PERIOD
       near(biomassRate(q), xEarly, xEarly * 1e-12, 'the production rate can see forestConsumed')
       near(totalInterface(q), iEarly, 1e-12, 'the interface can see forestConsumed')
       // And the decline is not in the equations either: with the same litter and no consumption
@@ -1355,6 +1365,11 @@
   // fire predicate sits 0.06 below it. The litter is held at the `02` §9.3 reference level, because
   // the equilibrium that table states is a statement about a stand that is being worked, not one
   // that has already been stripped.
+  //
+  // The clock is deliberately held still. Regional moisture carries a sinusoid of period
+  // WEATHER_PERIOD (BIBLE §2.2), so a run that advances `t` drives the humus integrator with an
+  // exogenous oscillator and every stand "oscillates" — which says nothing about the switch. What
+  // is under test is the 1-D relaxation, so the weather is frozen and only h moves.
   function settle (s, h0, p) {
     var i, ref = s.a2.regions.L0[0] * 0.5
     s.a2.regions.flags[0] |= RF_CLAIMED
@@ -1364,7 +1379,6 @@
     setRho(p)
     var prev = h0, dir = 0, stable = true
     for (i = 0; i < 3000; i++) {
-      s.t += 2
       stepSupply(2, { stochastic: false, offline: false })
       stepDecomp(2, { stochastic: false, offline: false })
       s.a2.regions.L[0] = ref

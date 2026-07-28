@@ -143,6 +143,27 @@
   // ───────────────────────────────────────────────────────────────────────────
 
   var CT = {
+    // THE MINERAL SCALE. `01` §6.2's per-species `base` column is the *shape* of the counterparty
+    // ladder — which tree is worth cultivating — and it is preserved verbatim in SPECIES above.
+    // This is its level, and the level is set by the act's mineral budget rather than by §6.2,
+    // which was never reconciled against a price list.
+    //
+    // What Act I actually charges in ⛬, from the shipped tables:
+    //     tips 24 → 255, Σ ceil(0.06·(n−23)^1.35)            12,360   (08 §4.1)
+    //     patches 2 → 6, 90 + 260 + 700 + 1,800 + 4,400       7,250   (08 §4.2 / TUNE.A1.PATCH)
+    //     the 17 mineral-priced Act I adaptations               7,945   (catalog; 4,000 of it is
+    //                                                                    Action Potential, which is
+    //                                                                    on the critical path)
+    //     held at DECIDE (08 S5, normative)                    16,000
+    //                                                        ────────
+    //                                                          43,555 ⛬ across a 95–125 min act
+    //
+    // ≈ 6.9 ⛬/s mean, against a book that can carry ~250 g/s of forward sugar by the act's end.
+    // §6.2's rates deliver a mean effective 0.015 ⛬ per (g/s) under a plain book — one third of
+    // what closes that budget — which is why an instrumented hour reached 118 ⛬ and the whole back
+    // half of the catalog was permanently out of reach. The correction is a level, not a shape:
+    // every ratio in §6.2, every acceptance threshold and every skill term is untouched.
+    MINERAL_K: 3.00,          // × on every contract's mineral rate; the act's mineral budget
     TERM_K: 0.11,             // termBonus = 1 + this·ln(1 + termSeasons)
     COLL_K: 0.30,             // collBonus ceiling, minus one
     COLL_SCALE: 900,          // g of collateral per (g/s of volume) per e-fold
@@ -169,18 +190,27 @@
     FIRESCAR_MINERAL: 3.0,    // × mineralPerG for the same season
     REP_DONE_A: 6,            // tree.rep += this + REP_DONE_B·termSeasons on completion
     REP_DONE_B: 2,
-    NETREP_DONE: 1.0,
+    // NET reputation moves exactly as a counterparty's does, and for the same reason: a term kept
+    // is a term kept, and the forest talks. It was a flat +1.0, which cannot reach its own gates.
+    // `01` §7.3 hangs the entire counterparty ladder off netRep — 8 for the second tree, 22 for the
+    // third and for patch 3, 38, 55, 60 for Action Potential, 72 for the beech — and 08 §7 puts the
+    // second tree at 13:00, exactly one six-minute season after the first contract is signed at
+    // 7:00. One completed one-season term therefore has to be worth 8, which is REP_DONE_A +
+    // REP_DONE_B·1 to the digit. At +1.0 a single-counterparty book reached netRep 3 in an hour,
+    // no second tree ever arrived, and the act's whole mineral supply stayed one birch wide.
+    NETREP_DONE_A: 6,         // netRep += (this + NETREP_DONE_B·termSeasons)·cmnMult on completion
+    NETREP_DONE_B: 2,
     // 01 §6.2 gives hemlock minerals that count ×1.6 "toward structures". That needs a second
     // mineral pool and §3 has exactly one, so the rider is not built rather than being faked with a
     // key the state shape does not have. Hemlock's distinctive value is what remains and it is
     // enough: the only counterparty that will sign an eight-season term at reputation 31.
     REP_FAIL: 22,             // tree.rep -= this·arbitration on default
-    NETREP_FAIL: 4.0,
+    NETREP_FAIL: 22,          // and the forest hears about a broken term as loudly as the tree does
     REFUSE_SEASONS: 2,        // seasons a defaulted tree will not talk to you
     HEALTH_PER_COLL: 400000,  // g of forfeited collateral per unit of tree health
     EXIT_FRAC: 0.5,           // fee: this × the remaining delivery, in sugar
     EXIT_REP: 6,
-    EXIT_NETREP: 1.0,
+    EXIT_NETREP: 6,           // walking away is cheaper than defaulting, and it is not free
     STAKE_K: 0.68,            // maxIntake × (1 + this·ln(1 + posted/STAKE_SCALE))
     STAKE_SCALE: 100000,      // g of posted collateral per e-fold of book capacity
     RENEG_REP: 1,             // reputation cost of one renegotiation
@@ -1080,7 +1110,7 @@
     var repMult = CT.REP_A + CT.REP_B * num(tree.rep)
     var needMult = 1 + CT.NEED_K * Math.pow(d, CT.NEED_E)
     var exclMult = exclusive ? CT.EXCL : 1.00
-    return num(volume) * sp(tree).base *
+    return num(volume) * sp(tree).base * CT.MINERAL_K *
       termBonus * collBonus * repMult * needMult * exclMult * num(s.mult.hartigNet)
   }
 
@@ -1270,7 +1300,9 @@
       if (tree.species === 'aspen') syncStand(tree)
     }
     C().setStock(s.a1, 'netRep',
-      num(s.a1.netRep) + CT.NETREP_DONE * num(s.mult.cmnMult), T().A1.REP_MAX)
+      num(s.a1.netRep) +
+        (CT.NETREP_DONE_A + CT.NETREP_DONE_B * num(c.termSeasons)) * num(s.mult.cmnMult),
+      T().A1.REP_MAX)
     C().setStock(s.res, 'biomass', s.res.biomass + num(c.collateral))
     s.stats.contractsCompleted += 1
     say('a1.contract_done')
@@ -1303,7 +1335,15 @@
   // throughput actually consumes is `throughput · k · enzymeK` of whatever is next in the order.
   function nextK () {
     var k = nextType()
-    return DEADFALL[IDX[k]].k * num(S().mult.enzymeK[k])
+    return DEADFALL[IDX[k]].k * enzK(S(), k)
+  }
+
+  // A missing or non-positive per-type enzyme multiplier is 1, not 0: a save written before a type
+  // existed would otherwise report that pool as costing no tip-time at all, which reads as infinite
+  // throughput to nextK and as zero runway to reserveSugar.
+  function enzK (s, type) {
+    var v = s.mult.enzymeK ? s.mult.enzymeK[type] : 1
+    return typeof v === 'number' && v > 0 ? v : 1
   }
 
   // What decomposition will actually eat next: the first pool in the player's own consumption order
@@ -1326,15 +1366,43 @@
       num(s.mult.enzymeMult) * num(s.mult.structureMult) * num(s.mult.patchMult)
   }
 
-  // Sixty seconds of feedstock, priced in sugar, that contract delivery may never take. Shortfall
-  // caused by the reserve is deferred, not defaulted — and the reserve collapses to zero the moment
-  // the floor is bare, because otherwise the guard becomes the deadlock it exists to prevent.
+  // How long the floor can feed the network, in seconds, if nothing else is ever bought. Each pool
+  // is consumed in the player's own order at `throughput · k · enzymeK` grams a second, so a stump
+  // pool is worth ten times its own weight in runway and a leaf pool is worth two thirds of it.
+  // This is the same arithmetic `stepDecomposition` does; it is stated here because the reserve is
+  // the only other place in the act that needs to know how much food is actually on the ground.
+  function runwaySeconds () {
+    var s = S(), thr = throughput(), i, k, have, effK, sec = 0
+    if (!(thr > 0)) return Infinity
+    for (i = 0; i < s.a1.consumptionOrder.length; i++) {
+      k = s.a1.consumptionOrder[i]
+      if (!known(k) || !unlocked(k)) continue
+      have = num(s.a1.sub[k])
+      if (!(have > 0)) continue
+      effK = DEADFALL[IDX[k]].k * enzK(s, k)
+      sec += have / (thr * effK)
+    }
+    return sec
+  }
+
+  // G1b, corrected: sixty seconds of feedstock that contract delivery may never take — *minus the
+  // feedstock already lying on the floor*. A reserve is cash held against food you do not have. The
+  // published form priced the whole window unconditionally, which meant a player who kept two
+  // minutes of litter in front of them still had 60 s of sugar frozen; late in the act that reserve
+  // is larger than the entire sugar book and delivery stops outright. Measured over an instrumented
+  // hour it held the book at zero for minutes at a time and cost roughly four fifths of the act's
+  // mineral income — the guard eating the thing it guards.
+  //
+  // The collapse-to-zero on a bare floor (G1c) stays exactly as it was: with nothing to eat there is
+  // no next minute to reserve for, and holding sugar back there is the deadlock, not the guard.
   function reserveSugar () {
     var A = T().A1
     if (totalSubstrate() < 1) return 0
     var mp = minPrice()
     if (!isFinite(mp)) return 0
-    return A.RESERVE_S * throughput() * nextK() * mp
+    var owed = A.RESERVE_S - runwaySeconds()
+    if (!(owed > 0)) return 0
+    return owed * throughput() * nextK() * mp
   }
 
   function deliverContracts (dt, o) {
@@ -1420,12 +1488,33 @@
     return true
   }
 
+  // Gross sugar, in g/s: what decomposition is producing right now, before anything is paid for.
+  function grossSugarPerSec () {
+    var k = nextType()
+    return throughput() * nextK() * T().A1.ETA_S * DEADFALL[IDX[k]].etaS
+  }
+
+  // What the litter that produces that sugar costs to replace, in sugar, per second. Priced at
+  // `minPrice()` rather than at the pool being eaten, because that is the gram the player would
+  // actually buy next — the same number G1b's reserve and G1a's failsafe are written against.
+  function feedstockCostPerSec () {
+    var mp = minPrice()
+    if (!isFinite(mp)) return 0
+    return throughput() * nextK() * mp
+  }
+
   // The HUD's one derived number, and the reason the coverage bar is the whole game. When it goes
   // negative the row turns amber and gains a countdown; that line is Act I's sawtooth.
+  //
+  // It is *net*, and the word has to mean something: one gram of leaf returns 0.160 sugar and costs
+  // 0.108 to replace, so only about a third of gross sugar is ever spare (08 §3.3's margin(u), which
+  // falls to zero by minute 88). Reporting gross-minus-committed told the player — and the coverage
+  // bar, and every stand-in that sizes a book off this number — that they had three times the
+  // headroom they had. Books sized on it over-commit by exactly that factor and then default on
+  // terms the player watched turn green. Subtracting the feedstock is what makes "60% coverage"
+  // mean sixty percent of what is actually free to sell.
   function netSugar () {
-    var k = nextType()
-    var income = throughput() * nextK() * T().A1.ETA_S * DEADFALL[IDX[k]].etaS
-    return income - committedSugarPerSec()
+    return grossSugarPerSec() - feedstockCostPerSec() - committedSugarPerSec()
   }
 
   function bookState () {
@@ -1783,9 +1872,10 @@
     ok(r1 === r2, 'offer() is not deterministic')
     for (w = 0; w < 200; w++) ok(offer(tr, 1.4, 2, 0, false) === r1, 'offer() drifted across calls')
 
-    // 01 §6.4's worked first contract, to four significant figures.
+    // 01 §6.4's worked first contract, to four significant figures, at the act's mineral level.
+    // §6.4's own arithmetic is preserved exactly; MINERAL_K is the level it was written without.
     near(carbonDeficit(tr), 0.881, 0.02, 'birch winter deficit')
-    near(r1, 0.02150, 0.0006, "01 §6.4's worked first contract")
+    near(r1, 0.02150 * CT.MINERAL_K, 0.0006 * CT.MINERAL_K, "01 §6.4's worked first contract")
 
     // And its worked fourth contract, which is 5.8× the first and contains no variance at all.
     // Every one of that multiple's factors is a decision: reputation built, term extended,
@@ -1795,7 +1885,8 @@
     g.mult.hartigNet = 1.18
     var r4 = offer(oak, 38, 5, 40000, true)
     g.mult.hartigNet = 1.00
-    near(r4 / 38, 0.0891, 0.004, "01 §6.4's worked fourth contract, per gram")
+    near(r4 / 38, 0.0891 * CT.MINERAL_K, 0.004 * CT.MINERAL_K,
+      "01 §6.4's worked fourth contract, per gram")
     ok(r4 / 38 / (r1 / 1.4) > 5.0, 'the fourth contract is not several times the first')
 
     // Acceptance is a wall only in the sense that it hands back a counter-offer.
@@ -1845,13 +1936,108 @@
     stepMarket(60, { stochastic: false })
     ok(g.a1.sub.leaf <= capOf('leaf') + 1e-6, 'the mat overfilled a substrate pool')
 
-    // ── G1b / G1c: the reserve, and the deadlock it must never become.
+    // ── G1b / G1c: the reserve, what it is a reserve *against*, and the deadlock it must never
+    // become. The reserve is the unfunded part of the next RESERVE_S seconds: full when the floor
+    // is nearly bare, zero once the floor already holds that much runway, and zero again — by the
+    // G1c escape rather than by the arithmetic — when there is nothing to eat at all.
     g = fresh(0x51EED1); init(g)
     g.a1.tips = 40
-    C().setStock(g.a1.sub, 'leaf', 5000)
-    ok(reserveSugar() > 0, 'the feedstock reserve is not being held')
+    g.a1.season = A.SEASON_AUTUMN
+    g.a1.moisture = A.MOIST_OPT
+    var leafSec = throughput() * DEADFALL[IDX.leaf].k          // g/s of leaf at 40 tips
+    C().setStock(g.a1.sub, 'leaf', 5 * leafSec)                // five seconds of food
+    ok(reserveSugar() > 0, 'the feedstock reserve is not being held on a thin floor')
+    near(runwaySeconds(), 5, 0.05, 'runwaySeconds misread a five-second floor')
+    // 55 of the 60 seconds are unfunded, and the reserve is exactly those 55 priced.
+    near(reserveSugar(), (A.RESERVE_S - 5) * throughput() * nextK() * minPrice(), 1e-6,
+      'the reserve is not the unfunded part of the window')
+    C().setStock(g.a1.sub, 'leaf', 3 * A.RESERVE_S * leafSec)  // three minutes of food
+    ok(runwaySeconds() > A.RESERVE_S, 'a three-minute floor did not read as three minutes')
+    ok(reserveSugar() === 0, 'sugar was frozen against feedstock already on the floor')
+    // Runway is counted in tip-seconds, not grams: a stump pool is worth its k against leaf's.
     C().setStock(g.a1.sub, 'leaf', 0)
+    C().setStock(g.a1.sub, 'stump', 10 * throughput() * DEADFALL[IDX.stump].k)
+    g.a1.unlockedTypes.push('stump')
+    near(runwaySeconds(), 10, 0.05, 'a hard pool is not worth more runway per gram')
+    C().setStock(g.a1.sub, 'stump', 0)
     ok(reserveSugar() === 0, 'G1c: the reserve did not collapse on a bare floor')
+
+    // ── The word "net" in netSugar. One gram of leaf returns ETA_S·etaS sugar and costs a market
+    // price to replace, and the difference is the only sugar that can be sold forward. A book sized
+    // off the gross figure over-commits by the reciprocal of that margin, which is roughly threefold
+    // and is exactly how a stand-in ends an hour holding no sugar and three defaults.
+    g = fresh(0x51EED1); init(g)
+    g.a1.tips = 60
+    g.a1.season = A.SEASON_AUTUMN
+    g.a1.moisture = A.MOIST_OPT
+    C().setStock(g.a1.sub, 'leaf', 1e6)
+    var gross = grossSugarPerSec()
+    ok(gross > 0, 'the network produces no sugar at all')
+    ok(feedstockCostPerSec() > 0, 'replacing what the network eats is free')
+    near(netSugar(), gross - feedstockCostPerSec(), 1e-9, 'netSugar is not gross minus feedstock')
+    ok(netSugar() < gross * 0.60, 'netSugar still reports gross: the margin is about a third')
+    ok(netSugar() > 0, 'leaf is not profitable at the opening price')
+    // And it is what the coverage bar divides by: 60% of it, sold forward, must still be payable
+    // out of production alone across a whole season, with the floor kept stocked from the rest.
+    var tree60 = spawnTree('birch'); tree60.rep = 40
+    var vol60 = 0.60 * netSugar()
+    var sold60 = signContract(tree60.id, Math.min(vol60, maxIntake(tree60)), 2, 0, false)
+    ok(sold60, 'a book at 60% of net sugar was refused outright')
+    C().setStock(g.res, 'sugar', 0)
+    for (w = 0; w < T().CLOCK.SEASON_S; w++) {
+      if (HY.act1) HY.act1.stepDecomposition(1.0)
+      deliverContracts(1.0, { stochastic: false })
+    }
+    ok(g.stats.defaults === 0, 'a book at 60% of NET sugar still defaulted inside one season')
+
+    // ── The counterparty ladder. `01` §7.3 gates every tree after the first on netRep, and 08 §7
+    // puts the second tree exactly one season after the first contract. A completed one-season term
+    // therefore has to move netRep by REP_DONE_A + REP_DONE_B — and three of them have to reach the
+    // aspen's 22, or the book stays one birch wide and the act's mineral supply with it.
+    g = fresh(0x51EED1); init(g)
+    g.a1.season = A.SEASON_WINTER
+    C().setStock(g.res, 'biomass', 1e6); C().setStock(g.res, 'sugar', 1e6)
+    C().setStock(g.a1.sub, 'leaf', 1e6)
+    var ladder = spawnTree('birch'); ladder.rep = 30
+    var rung = signContract(ladder.id, 2, 1, 0, false)
+    ok(rung, 'the ladder contract was refused')
+    g.t = rung.endT
+    completeContract(rung)
+    near(num(g.a1.netRep), CT.NETREP_DONE_A + CT.NETREP_DONE_B, 1e-9,
+      'a kept one-season term is not worth the second tree')
+    ok(num(g.a1.netRep) >= REP_TREES[0].rep, 'a kept term does not reach the first rep-gated tree')
+    for (w = 0; w < 2; w++) {
+      var more = signContract(ladder.id, 2, 1, 0, false)
+      if (!more) { f.push('the ladder stalled after ' + w + ' terms'); break }
+      g.t = more.endT
+      completeContract(more)
+    }
+    ok(num(g.a1.netRep) >= 22, 'three kept terms do not reach the aspen: netRep ' + g.a1.netRep)
+    // Breaking a term is heard as loudly as keeping one is — and not more than three times as loud,
+    // or a single bad season deletes an hour of standing.
+    ok(CT.NETREP_FAIL >= CT.NETREP_DONE_A + CT.NETREP_DONE_B, 'a broken term is cheaper than a kept one')
+    ok(CT.NETREP_FAIL <= 3 * (CT.NETREP_DONE_A + CT.NETREP_DONE_B),
+      'one default erases more than three kept terms')
+
+    // ── THE MINERAL BUDGET. The act charges 43,555 ⛬ (see CT.MINERAL_K) across 95–125 minutes, and
+    // this is the assertion that the contract book can actually pay it. Two points on the curve are
+    // measured through the real steps under the weakest book a player would run — longest term the
+    // tree will sign, nothing posted, non-exclusive, 60% of net sugar — and the act's integral is
+    // taken against the reference tip ladder, whose throughput grows about as t².
+    var midRate = mineralRate(120, 3, 2.60)
+    var endRate = mineralRate(255, 6, 4.60)
+    // 08 §4.1's cadence: tip 120 costs 32 ⛬ every 29 s and tip 255 costs 110 ⛬ every 58 s. A book
+    // that cannot cover the tip ladder alone has already stalled the act.
+    ok(midRate > 32 / 29, 'a mid-act book cannot keep the tip ladder moving: ' + midRate.toFixed(2) + ' ⛬/s')
+    ok(endRate > 110 / 58, 'a late-act book cannot keep the tip ladder moving: ' + endRate.toFixed(2) + ' ⛬/s')
+    var budget = endRate * ACT_S / 3
+    ok(budget >= PRICE_LIST,
+      'the act cannot pay its own price list: ' + Math.round(budget) + ' ⛬ against ' + PRICE_LIST)
+    ok(budget <= 2.5 * PRICE_LIST,
+      'minerals stopped being scarce: ' + Math.round(budget) + ' ⛬ against ' + PRICE_LIST)
+    // Convex, not flat: the gate has to bite while the network is small and let go once it is not.
+    ok(midRate < 0.35 * endRate,
+      'the mineral curve is flat: ' + midRate.toFixed(2) + ' vs ' + endRate.toFixed(2) + ' ⛬/s')
 
     // ── The project wedges between the printed price and the price you pay.
     g = fresh(0x51EED1); init(g)
@@ -2038,6 +2224,77 @@
 
   function fresh (seed) { return HY.state.init(HY.state.newGame(seed)) }
 
+  // The act's own price list, in ⛬, read off the shipped tables rather than off a document:
+  //   Σ tipMineralCost(24…254)                       12,360   (08 §4.1)
+  //   Σ TUNE.A1.PATCH[1…5].minerals                   7,250
+  //   Σ the 17 mineral-priced Act I catalog entries    7,945
+  //   held at DECIDE (08 S5, normative)               16,000
+  var ACT_S = 6300                 // s, the middle of 08's 95–125 minute Act I
+  var PRICE_LIST = 43555           // ⛬
+
+  // The realised mineral rate of the weakest book a player would actually run, measured through the
+  // real steps rather than from the offer formula: longest term the counterparty will sign, nothing
+  // posted, non-exclusive, coverage 60% of NET sugar, floor kept at two minutes of runway. `E` is
+  // the enzyme ladder the reference player is holding at that tip count (08 §4.1).
+  function mineralRate (tips, patches, E) {
+    var A = T().A1, SPAN = 900, i, k, tr, term, vol, head, bk, budget, floor, want, p, g2
+    var s = fresh(0xB0A1AB)
+    init(s)
+    if (HY.act1 && HY.act1.init) HY.act1.init(s)
+    s.a1.season = A.SEASON_AUTUMN
+    s.a1.tips = tips
+    s.a1.patches = patches
+    s.a1.unlockedTypes = TYPES.slice()
+    s.mult.patchMult = 1 + A.PATCH_MULT_STEP * (patches - 1)
+    s.mult.enzymeMult = E
+    C().setStock(s.res, 'biomass', 2e6)
+    C().setStock(s.res, 'sugar', 4000)
+    for (i = 0; i < TYPES.length; i++) C().setStock(s.a1.sub, TYPES[i], 2e5)
+    var roster = ['birch', 'aspen', 'fir', 'hemlock', 'elm', 'oak', 'beech']
+    for (i = 0; i < roster.length; i++) {
+      tr = spawnTree(roster[i])
+      if (tr) tr.rep = 70
+    }
+    C().setStock(s.a1, 'netRep', 70, A.REP_MAX)
+    var m0 = s.stats.mineralEarned
+
+    for (var step = 0; step < SPAN; step++) {
+      if (HY.act1) {
+        HY.act1.stepSeason(1.0, { stochastic: false })
+        HY.act1.stepEnvironment(1.0)
+      } else { s.t += 1.0 }
+      stepMarket(1.0, { stochastic: false })
+      stepTrees(1.0)
+      if (HY.act1) { HY.act1.stepDecomposition(1.0); HY.act1.stepSpoilage(1.0) }
+
+      bk = bookState()
+      budget = Math.max(0, s.res.sugar - bk.reserve - A.RESERVE_S * bk.committed)
+      floor = totalSubstrate()
+      want = 2 * A.RESERVE_S * throughput() * nextK()
+      for (k = 0; k < TYPES.length && budget > 1 && floor < want; k++) {
+        p = unitPrice(TYPES[k])
+        if (!(p > 0)) continue
+        g2 = buy(TYPES[k], Math.min((want - floor) , budget / p))
+        budget -= g2 * p
+        floor += g2
+      }
+
+      bk = bookState()
+      head = 0.60 * (netSugar() + bk.committed) - bk.committed
+      for (k = 0; k < s.a1.trees.length && head > 0; k++) {
+        tr = s.a1.trees[k]
+        if (treeContracts(tr.id).length) continue
+        term = maxTerm(tr)
+        vol = Math.min(head, maxIntake(tr))
+        if (!(vol > 0) || !accepts(tr, vol, term, false, 0)) continue
+        if (signContract(tr.id, vol, term, 0, false)) head -= vol
+      }
+
+      deliverContracts(1.0, { stochastic: false })
+    }
+    return (s.stats.mineralEarned - m0) / SPAN
+  }
+
   function marketSnapshot (s) {
     var i, out = []
     for (i = 0; i < TYPES.length; i++) {
@@ -2222,6 +2479,8 @@
     contractById: contractById,
     committedSugarPerSec: committedSugarPerSec,
     netSugar: netSugar,
+    // The scheduler's own reserve, so act1's readout and the delivery it describes are one number.
+    reserveSugar: reserveSugar,
     bookState: bookState,
     setSuspended: setSuspended,
     setStandingOrder: setStandingOrder,

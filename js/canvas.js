@@ -131,6 +131,13 @@
     FORE_A: 0.55,
     FORE_DASH: [4, 3],       // "predicted" is dashed, never hue alone
     MARK_W: 2, MARK_TRI: 6,
+    // 02 §7.3's remaining primitives. The envelope is the widest thing on the strip so it is the
+    // faintest; the two danger thresholds are dashed as well as coloured; the graze cycle rides
+    // along the floor where it cannot be confused with moisture.
+    BAND_A: 0.17,
+    DANGER_A: 0.42,
+    DANGER_DASH: [2, 4],
+    GRAZE_H: 9, GRAZE_A: 0.22,
     HZ: 1
   }
 
@@ -1224,6 +1231,35 @@
     function yOf (v) { return H - clamp01(v) * amp }
 
     ctx.save()
+
+    // The graze cycle (02 §7.6) is the background danger level and it is deterministic, so it is
+    // drawn across the whole window — past and future alike — hugging the floor.
+    var graze = band.graze
+    if (graze && graze.length >= total) {
+      ctx.beginPath()
+      ctx.moveTo(0, H)
+      for (var g = 0; g < total; g++) ctx.lineTo(g * step, H - clamp01(graze[g]) * FORECAST.GRAZE_H)
+      ctx.lineTo((total - 1) * step, H)
+      ctx.closePath()
+      ctx.fillStyle = rgba(pal.negative, FORECAST.GRAZE_A)
+      ctx.fill()
+    }
+
+    // The two thresholds the hazard actually reads. They are the only numbers on the strip that
+    // matter, so they are the only horizontals drawn.
+    var danger = band.danger
+    if (danger && danger.length) {
+      ctx.save()
+      ctx.lineWidth = 1
+      ctx.strokeStyle = rgba(pal.negative, FORECAST.DANGER_A)
+      if (ctx.setLineDash) ctx.setLineDash(FORECAST.DANGER_DASH)
+      for (var d = 0; d < danger.length; d++) {
+        var dy = Math.round(yOf(danger[d])) + 0.5
+        ctx.beginPath(); ctx.moveTo(0, dy); ctx.lineTo(W, dy); ctx.stroke()
+      }
+      ctx.restore()
+    }
+
     ctx.beginPath()
     ctx.moveTo(0, H)
     for (var i = 0; i < nh; i++) ctx.lineTo(i * step, yOf(hist[i]))
@@ -1247,6 +1283,21 @@
       ctx.lineWidth = 1
       ctx.strokeStyle = rgba(pal.lineStrong, 1)
       ctx.stroke()
+
+      // The uncertainty envelope. It is the whole reason the strip exists: the centre line is what
+      // the process will probably do and this is what it might do, and a player who reads the
+      // second one beats a player who reads the first.
+      var lo = band.lo, hi = band.hi
+      if (lo && hi && lo.length === nf && hi.length === nf) {
+        ctx.beginPath()
+        ctx.moveTo(xd, yOf(hist[nh - 1]))
+        for (var e = 0; e < nf; e++) ctx.lineTo((nh + e) * step, yOf(hi[e]))
+        for (e = nf - 1; e >= 0; e--) ctx.lineTo((nh + e) * step, yOf(lo[e]))
+        ctx.closePath()
+        ctx.fillStyle = rgba(pal.signal, FORECAST.BAND_A)
+        ctx.fill()
+      }
+
       // "Predicted" is dashed as well as dimmer: never a hue-only distinction.
       ctx.beginPath()
       ctx.moveTo(xd, yOf(hist[nh - 1]))

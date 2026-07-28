@@ -114,10 +114,14 @@
   // house edge" purchase, and it buys information rather than outcome.
   var BAND_K = [0, 1.15, 0.95, 0.75]
 
-  // Automation, `02` §7.11 / §11.4. AUTO_M is a fixed maturity that ignores the weather entirely,
-  // which is what makes reflex release 0.55× of skilled play: the ratio is emergent from the
-  // policy and is never applied as a multiplier anywhere.
-  var AUTO_M = 0.92
+  // Automation, `02` §7.11 / §11.4. AUTO_M is a fixed maturity that ignores the weather entirely.
+  // A reflex fires early — that is what makes it a reflex — and 0.70 is the maturity at which the
+  // resulting expected value comes out at TUNE.A2.AUTO_RELEASE (0.55) of a skilled release in the
+  // ideal weather the published table is quoted for. The ratio is EMERGENT from the policy and is
+  // never applied as a multiplier anywhere; the self-test measures it rather than assuming it.
+  // Per unit of time reflex play is much closer (0.70×) because it also cycles faster, which is
+  // why the project is still worth buying and still worth overriding.
+  var AUTO_M = 0.70
 
   // Mast Years, `02` §7.10. The yield multiple is TUNE (MAST_MULT); these two are the cost of it.
   var MAST_HAZ = 1.5
@@ -1166,13 +1170,11 @@
       var inside = 0, trials = 1200
       for (i = 0; i < trials; i++) {
         var w0 = a.OU_MEAN + (i % 7 - 3) * 0.08
-        var mu = meanAt(0) + 0, want
-        void mu
         s.a2.W = C().clamp(w0, 0.12, 0.88); s.t = 0
         var band = forecast(180)
         for (j = 0; j < 180; j++) { s.t += 1; stepWeather(1, { stochastic: true, offline: false }) }
-        want = num(s.a2.W)
-        if (want >= band.lo - 1e-9 && want <= band.hi + 1e-9) inside++
+        var landed = num(s.a2.W)
+        if (landed >= band.lo - 1e-9 && landed <= band.hi + 1e-9) inside++
       }
       within(inside / trials, 0.68, 0.86, 'the ±1.15 SD band does not cover ~75% of outcomes')
 
@@ -1266,42 +1268,76 @@
       // 1.60/m = HAZ_BASE·m²·hazardEnv/ṁ, i.e. the cube root of 1.60·ṁ/(HAZ_BASE·hazardEnv).
       var neutral = { m: 1, mode: MODE_EPIGEOUS, hyg: 1, rob: 1, regionId: 3, V: 1e6 }
       var rows = [[1.00, 1.42], [1.26, 1.29], [1.58, 1.16], [1.23, 1.31], [1.55, 1.17], [2.13, 1.02]]
-      var prev = 99
       for (i = 0; i < rows.length; i++) {
-        var env = rows[i][0]
-        var closed = Math.pow(A().YIELD_EXP * rate / (A().HAZ_BASE * env), 1 / 3)
+        var closed = Math.pow(A().YIELD_EXP * rate / (A().HAZ_BASE * rows[i][0]), 1 / 3)
         near(closed, rows[i][1], 0.08, '`02` §7.7 row ' + i + ': m* is off the published table')
-        void prev
       }
-      // And the solver must find that root, monotonically decreasing in the hazard environment.
-      s.a2.W = 0.50
-      var mStarIdeal = optimum(neutral, 0.50, 0)
-      within(mStarIdeal, 1.20, 1.50, 'the ideal-weather optimum is not in the published band')
-      var mStarDry = optimum(neutral, 0.10, 0)
-      ok(mStarDry < mStarIdeal, 'a hard drought did not move the optimum earlier')
-      var mStarWet = optimum(neutral, 0.95, 0)
-      ok(mStarWet < mStarIdeal, 'waterlogging did not move the optimum earlier')
-      ok(optimum(neutral, 0.50, 0) > 1 &&
-         Math.abs(optimum({ m: 1, mode: MODE_EPIGEOUS, hyg: 1.45, rob: 0.55, regionId: 3, V: 1e6 }, 0.50, 0) -
-                  mStarIdeal) > 0.05,
-        'the morph does not move the optimum')
 
-      // Exposure m² against yield m^1.6 is the whole design: EV must actually peak at m*.
-      var evAt = function (m) {
-        var surv = 1, mm2 = 0.02, dtx = 0.5, probe = {
-          m: mm2, mode: MODE_EPIGEOUS, hyg: 1, rob: 1, regionId: 3, V: 1e6
-        }
-        while (mm2 < m) {
+      // The published table is quoted at "no graze", and the graze cycle is deterministic, so there
+      // is a known instant at which to check it: half a graze period puts sin() through π and the
+      // one-sided term is exactly zero.
+      var quiet = GRAZE.period / 2
+      near(grazePressure(quiet), 0, 1e-12, 'the instant the published table is quoted at is not graze-free')
+
+      // The solver must find that root, and it must move earlier in every direction that raises the
+      // hazard environment — drought, waterlogging, a fragile morph.
+      s.a2.W = 0.50; s.t = quiet
+      var mStarIdeal = optimum(neutral, 0.50, quiet)
+      within(mStarIdeal, 1.20, 1.50, 'the ideal-weather optimum is not in the published band')
+      ok(optimum(neutral, 0.10, quiet) < mStarIdeal, 'a hard drought did not move the optimum earlier')
+      ok(optimum(neutral, 0.95, quiet) < mStarIdeal, 'waterlogging did not move the optimum earlier')
+      ok(optimum(neutral, 0.50, 0) < mStarIdeal, 'the graze cycle did not move the optimum earlier')
+      ok(optimum({ m: 1, mode: MODE_EPIGEOUS, hyg: 1.45, rob: 0.55, regionId: 3, V: 1e6 }, 0.50, quiet) <
+         mStarIdeal - 0.05, 'a fragile morph did not move the optimum earlier')
+
+      // Exposure m² against yield m^1.6 is the whole design. One forward integration of the
+      // maturation path carries survival with it, so every maturity on the path has an honest
+      // expected value attached and the curve can simply be searched — no first-order condition
+      // involved. If the solver above and this scan disagree, the ▲ marker points at a maturity the
+      // game does not actually pay for, which is the one bug this sub-game cannot survive.
+      var evPath = function (at) {
+        var probe = { m: 0.02, mode: MODE_EPIGEOUS, hyg: 1, rob: 1, regionId: 3, V: 1e6 }
+        var q0 = { mode: MODE_EPIGEOUS, V: 1e6, fec: 1, regionId: 3 }
+        var surv = 1, mm2 = 0.02, dtx = 0.25, path = []
+        while (mm2 < M_CAP) {
           probe.m = mm2
-          surv *= Math.exp(-hazardRate(s, probe, 0.50, 0) * dtx)
+          path.push({ m: mm2, ev: yieldAt(s, q0, mm2) * surv })
+          surv *= Math.exp(-hazardRate(s, probe, 0.50, at) * dtx)
           mm2 += matRateAt(s, probe, 0.50) * dtx
         }
-        return yieldAt(s, { mode: MODE_EPIGEOUS, V: 1e6, fec: 1, regionId: 3 }, m) * surv
+        return path
       }
-      var evStar = evAt(mStarIdeal)
-      ok(evStar > evAt(mStarIdeal - 0.30), 'EV is not rising into the optimum')
-      ok(evStar > evAt(mStarIdeal + 0.30), 'EV is not falling out of the optimum')
-      ok(evStar / evAt(1.0) > 1.20, 'skilled release beats naive by less than the published +26%')
+      var evOf = function (path, m) {
+        var best = path[0]
+        for (var z = 1; z < path.length; z++) {
+          if (Math.abs(path[z].m - m) < Math.abs(best.m - m)) best = path[z]
+        }
+        return best.ev
+      }
+      var evPeak = function (path) {
+        var best = path[0]
+        for (var z = 1; z < path.length; z++) if (path[z].ev > best.ev) best = path[z]
+        return best
+      }
+
+      var pathIdeal = evPath(quiet)
+      var peak = evPeak(pathIdeal)
+      near(peak.m, mStarIdeal, 0.03, 'the optimum solver disagrees with a brute-force scan of EV')
+      ok(peak.ev > evOf(pathIdeal, mStarIdeal - 0.30), 'EV is not rising into the optimum')
+      ok(peak.ev > evOf(pathIdeal, mStarIdeal + 0.30), 'EV is not falling out of the optimum')
+
+      // `02` §7.7's "+66%" column is the yield at the published m* against the yield at m = 1.0 —
+      // the size of the prize for holding on, before the coin is flipped.
+      var q1 = { mode: MODE_EPIGEOUS, V: 1e6, fec: 1, regionId: 3 }
+      near(yieldAt(s, q1, rows[0][1]) / yieldAt(s, q1, 1.0), 1.66, 0.03,
+        'holding to the published m* is not worth the published +66% of yield')
+      // Net of the risk taken to get there it is smaller, and it must still be worth taking.
+      within(peak.ev / evOf(pathIdeal, 1.0), 1.15, 1.30,
+        'skilled release does not beat the naive release-at-maturity heuristic')
+      // At the graze peak the edge collapses, which is what makes graze "seasons of caution".
+      var pathGraze = evPath(0)
+      ok(evPeak(pathGraze).ev / evOf(pathGraze, 1.0) <
+         peak.ev / evOf(pathIdeal, 1.0) - 0.05, 'the graze cycle does not flatten the skill edge')
 
       // ── hazards ────────────────────────────────────────────────────────────
       p.m = 0.10
@@ -1347,9 +1383,13 @@
       near(overripe(M_CAP + 0.02), OVERRIPE_FLOOR, 1e-9,
         'the maturity ceiling is not where the overripe penalty saturates')
 
-      // ── automation is worse than skilled play, by construction ─────────────
-      var skilled = evAt(mStarIdeal), reflex = evAt(AUTO_M)
-      within(reflex / skilled, 0.35, 0.80, 'reflex release is not meaningfully worse than skilled play')
+      // ── automation is worse than skilled play, by the published margin ─────
+      // TUNE.A2.AUTO_RELEASE is a claim about the game, not an input to it: nothing multiplies by
+      // it. The reflex fires at a fixed maturity and this is the ratio that falls out.
+      near(evOf(pathIdeal, AUTO_M) / peak.ev, a.AUTO_RELEASE, 0.05,
+        'reflex release is not TUNE.A2.AUTO_RELEASE of skilled play')
+      ok(evOf(pathGraze, AUTO_M) / evPeak(pathGraze).ev > a.AUTO_RELEASE,
+        'the reflex does not close the gap when the weather punishes patience')
 
       // ── UNDERGROUND ────────────────────────────────────────────────────────
       C().setStock(s.res, 'biomass', 1e9)
@@ -1414,13 +1454,13 @@
       near(num(s.res.spores), got, 1e-9, 'the converted spores did not land')
 
       // ── graze ──────────────────────────────────────────────────────────────
-      var peak = 0, high = 0
+      var gzTop = 0, high = 0
       for (i = 0; i < GRAZE.period; i++) {
         var gp = grazePressure(i)
-        peak = Math.max(peak, gp)
+        gzTop = Math.max(gzTop, gp)
         if (gp > GRAZE.amp * 0.5) high++
       }
-      near(peak, GRAZE.amp, 1e-3, 'graze pressure does not peak at 0.55')
+      near(gzTop, GRAZE.amp, 1e-3, 'graze pressure does not peak at 0.55')
       within(high, 150, 260, 'graze pressure is not high for ~200 s in 900')
       ok(grazePressure(0) >= 0, 'graze pressure went negative')
 

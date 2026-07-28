@@ -1800,6 +1800,14 @@
 
   function isRevealed (s, p) {
     if (EXCLUDED[p.id]) return false
+    // P1, applied to the board itself. An act transition takes its systems away, so an unbought
+    // entry that acts on a system which no longer exists is not an offer — it is a dead slot. And
+    // the slots are the scarce thing: measured, three declined Act I entries (`ghost_pipe_compact`,
+    // `forward_contracts`, `perennial_mycelium` — a compact, a contract rule and an event-engine
+    // trap, none of which Act II still has anything to apply to) held half of VISIBLE_CAP for the
+    // whole of Act II, with `seed_bank` parked in the reveal queue behind them. `seed_bank` is the
+    // only source of the 4.0e8 ◦ the act's own exit is priced in, so the act could not be finished.
+    if (p.act > 0 && p.act < s.act) return false
     // A save written where the reader existed can arrive in a build where it does not — a rollback,
     // or a module dropped from order.json. `seen` is permanent by §3.1 rule 2, so the gate is
     // re-tested here as well and the card simply waits again rather than offering an empty promise.
@@ -1869,6 +1877,12 @@
 
   function promote (s) {
     var cap = T().PROJ.VISIBLE_CAP
+    // A queued entry from a finished act would be promoted into a slot it can never leave, so it
+    // is dropped on the same rule that retires a revealed one.
+    for (var q = s.proj.queue.length - 1; q >= 0; q--) {
+      var e = BY_ID[s.proj.queue[q]]
+      if (!e || (e.act > 0 && e.act < s.act)) s.proj.queue.splice(q, 1)
+    }
     if (!s.proj.queue.length) return
     // Cheapest-relative-to-holdings first: a project whose affordRatio is 40 does not squat in a
     // slot for twenty minutes while something buyable waits behind it.
@@ -2566,6 +2580,10 @@
     census: census,
     byId: function (id) { return BY_ID[id] || null },
     priceOf: function (id) { return priceOf(BY_ID[id], S()) },
+    // What is held in one of the currencies a `price` object is keyed by. The mapping from a price
+    // key to a stock lives in CUR and nowhere else; anything that needs to reason about a price
+    // asks here rather than keeping a second copy of the table.
+    holding: function (key) { return CUR[key] ? num(CUR[key].get(S())) : 0 },
     __selftest: __selftest
   }
 })(typeof window !== 'undefined' ? (window.HY = window.HY || {}) : (globalThis.HY = globalThis.HY || {}))

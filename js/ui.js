@@ -80,7 +80,12 @@
     COVER_WARN: 0.75,                 // 01 §6.8: the coverage bar reddens past this
     SIGNAL_METER_AT: 0.5,             // fraction of the DECIDE gate before the bar is worth drawing
     SLIDER_STEPS: 100,
-    SOONER: -1, LATER: 1
+    SOONER: -1, LATER: 1,
+
+    // Act II panels
+    STANDS_SHOWN: 10,         // rows of the ranked STANDS list; the header carries the true count
+    FLUSH_BET_MAX: 0.25,      // fraction of held biomass the stake slider spans
+    FLUSH_BET_DEFAULT: 0.40   // of that span, so the slider opens on 10% of the book
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -171,7 +176,79 @@
     resetNote: 'this ends the run. everything but the sclerotia goes.',
     toastCopied: 'save copied',
     toastImportBad: 'import failed — checksum',
-    toastReset: 'settings reset'
+    toastReset: 'settings reset',
+
+    // ── Act II ────────────────────────────────────────────────────────────────
+    p_forest: 'the forest',
+    p_stands: 'stands',
+    p_mind: 'the mind',
+    p_diff: 'differentiation',
+    p_flush: 'the flush',
+    p_weather: 'weather',
+    p_pact: 'the pact book',
+    p_offers: 'offers',
+    p_log: 'the log',
+
+    consumed: 'consumed',
+    interface_: 'live interface',
+    connectivity: 'connectivity',
+    retention: 'retention',
+    stands: '{n} of 61',
+    advance: 'advance',
+    denser: 'denser',
+    survey: 'survey',
+    seed: 'seed',
+    kill: 'kill stand',
+    colonising: 'colonising',
+    density: 'density',
+    litter: 'litter',
+    humus: 'humus',
+    unknown: 'unsurveyed',
+    fog: 'nothing there yet',
+    dead: 'dead',
+
+    capacity: 'capacity',
+    saturated: 'saturated',
+    saturation: 'saturation',
+    gain: 'gain',
+    slots: 'slots',
+    fillsIn: 'full in {v}',
+    ripeness: 'ripeness',
+    insight: 'insight',
+    vesicles: 'vesicles',
+    unspent: '{n} unspent',
+    allocate: 'spend',
+    pulse: 'pulse',
+    ready: 'ready',
+    cooling: '{v}',
+
+    wind: 'wind',
+    graze: 'grazing',
+    mast: 'mast year',
+    maturity: 'maturity',
+    release: 'release',
+    hold: 'hold',
+    resume: 'resume',
+    riskNow: 'risk',
+    bestIn: 'best in {v}',
+    slotsUsed: '{n} of {k}',
+    spores: 'spores',
+    noPrimordia: 'nothing is fruiting. knot one, and the weather decides the rest.',
+    fruit: 'fruit',
+    slotsFull: 'every slot is knotted',
+
+    channels: 'channels',
+    accord: 'accord',
+    bookCost: 'book cost',
+    strain: 'strain',
+    bond: 'bond',
+    comply: 'comply',
+    sever: 'sever',
+    renew: 'renew',
+    stake: 'stake',
+    noPacts: 'nobody has offered you anything yet.',
+    noOffers: 'no offers on the table.',
+    termLeft: '{v} left'
   }
 
   var TYPE_NAME = {
@@ -188,7 +265,10 @@
   var ORDINAL = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th']
 
   // Currency glyphs, from BIBLE §2.1. One name, one symbol, one unit.
-  var GLYPH = { biomass: 'g', sugar: 'sug', minerals: '⛬', signal: 'Σ', insight: 'Ψ' }
+  var GLYPH = {
+    biomass: 'g', sugar: 'sug', minerals: '⛬', signal: 'Σ', insight: 'Ψ',
+    spores: '◦', accord: '⟡', diff: 'D'
+  }
 
   // 06 §4.4. Inline path data, 24 × 24, stroke=currentColor. No emoji, no icon font, no asset.
   var TAB_SLOTS = [
@@ -206,6 +286,8 @@
       d: ['M10 7.5 a4.5 4.5 0 0 0 0 9', 'M14 7.5 a4.5 4.5 0 0 1 0 9', 'M10 12 H14'] },
     { key: 'log', label: 'log', d: ['M4.5 7.5 H19.5', 'M4.5 12 H19.5', 'M4.5 16.5 H13'] }
   ]
+  // The pulse glyph: a step change travelling, not a lightning bolt.
+  var PULSE_D = ['M3 16 H8 L10.5 6 L14 18 L16.5 12 H21']
   var GEAR_D = [
     'M12 9.4 a2.6 2.6 0 1 0 .01 0 Z',
     'M12 3.6 v2', 'M12 18.4 v2', 'M3.6 12 h2', 'M18.4 12 h2',
@@ -1182,6 +1264,15 @@
     main.appendChild(scroll)
     shell.appendChild(main)
 
+    // ── the FAB: PULSE, from Act II, over everything ──
+    var fab = btn('fab')
+    fab.appendChild(glyphSvg(PULSE_D, 26))
+    fab.hidden = true
+    bindPress(fab, function () { firePulse(null) }, { onUp: true })
+    bindLongPress(fab, openPulseModes, fab)
+    v.fab = fab
+    shell.appendChild(fab)
+
     // ── the tab bar: five slots from boot, hidden until Act II ──
     var bar = el('nav', 'tabbar')
     bar.setAttribute('role', 'tablist')
@@ -1442,9 +1533,38 @@
     decide: false
   }
 
+  // BIBLE §5.3. Act I's reveal predicates live in act1.reveals() because they are readings of the
+  // Act I board; Act II's are readings of `proj.flags`, which no simulation module owns, so they
+  // are derived here. Every one is monotone: a panel that has been earned is never taken back.
+  function flagOn (s, k) { return !!(s.proj && s.proj.flags && s.proj.flags[k]) }
+
+  function a2Reveals (s) {
+    var w = HY.world
+    return {
+      substrate: false, tips: false, sugar: false, market: false, seasons: false,
+      trees: false, mineralWarn: true, mineralGate: false, decide: false,
+      projects: true,
+      // Act II opens holding one claimed region; the map is worth showing from the first frame,
+      // and `chemotaxis` is what makes it a place you can act on rather than a place you are.
+      forest: true,
+      stands: flagOn(s, 'chemotaxis'),
+      signal: true,
+      insight: flagOn(s, 'turgor'),
+      diff: flagOn(s, 'differentiation'),
+      pulse: flagOn(s, 'action_potential_ii'),
+      flush: flagOn(s, 'primordium'),
+      pact: flagOn(s, 'pact_first') || !!(HY.pactbook && HY.pactbook.isOpen && HY.pactbook.isOpen()),
+      retention: flagOn(s, 'humic_retention'),
+      necro: flagOn(s, 'necrotrophic_conversion'),
+      claimed: w && w.claimedCount ? w.claimedCount() : 1
+    }
+  }
+
   function revealFlags (s) {
+    if (!s) return COLD
+    if (s.act >= 2) { try { return a2Reveals(s) } catch (e) { return COLD } }
     var a = A1()
-    if (!a || !a.reveals || !s || s.act !== 1) return COLD
+    if (!a || !a.reveals) return COLD
     try { return a.reveals() } catch (e) { return COLD }
   }
 
@@ -1517,6 +1637,18 @@
     layout()
   }
 
+  // BIBLE §5.3, and P4: the tab bar is the progress bar. Slots are allocated at boot and earned one
+  // at a time, so the bar never reflows when one arrives.
+  function tabs (v, s, rev) {
+    if (s.act < 2) return
+    if (v.act < 2) setAct(2)
+    if (rev.forest) revealTab('forest')
+    if (rev.signal) revealTab('mind')
+    if (rev.flush) revealTab('flush')
+    if (rev.pact) revealTab('pact')
+    revealTab('log')
+  }
+
   function rotLine (r, rot) {
     if (rot > 0) {
       if (!r.sub) {
@@ -1530,7 +1662,63 @@
     if (r.sub) show(r.sub, false)
   }
 
+  // Act II's strip. Biomass stays the lead because it is still what everything is bought with;
+  // Signal takes the second row with its capacity, because saturation — not the level — is the
+  // number every decision in the act is made against.
+  function paintLedgerA2 (v, s, rev) {
+    var g = HY.cognition
+    var shown = 2
+
+    var r0 = v.ledgerRows[0]
+    show(r0.el, true)
+    setText(r0.lab, STR.biomass)
+    setMass(r0.val, num(s.res.biomass))
+    setRate(r0.rate, rateOf(v, 'biomass'), 'g/s')
+    setData(r0.el, 'lead', '1')
+
+    var r1 = v.ledgerRows[1]
+    show(r1.el, true)
+    setText(r1.lab, STR.p_signal)
+    var held = num(s.res.signal)
+    var cap = g && g.Sc ? num(g.Sc(s)) : 0
+    // Held only. `held / cap` is fifteen characters against an eight-character slot (BIBLE §2.5)
+    // and it wrapped the strip; the capacity is what the hairline under the row is *for*, and the
+    // MIND panel prints both in full.
+    setSlot(r1.val, C().fmt(held), GLYPH.signal)
+    show(r1.cap, true)
+    var f = cap > 0 ? held / cap : 0
+    r1.cap.style.setProperty('--v', fill(f).toFixed(4))
+    var sat = !!(g && g.saturated && g.saturated(s))
+    setData(r1.cap, 'tone', sat ? 'warn' : 'ok')
+    if (sat) setSlot(r1.rate, STR.saturated, '')
+    else setRate(r1.rate, rateOf(v, 'signal'), '/s')
+    if (r1.sub) show(r1.sub, false)
+
+    var r2 = v.ledgerRows[2]
+    if (rev.insight) {
+      shown += 1
+      show(r2.el, true)
+      setText(r2.lab, STR.insight)
+      setSlot(r2.val, C().fmt(num(s.res.insight)), GLYPH.insight)
+      setRate(r2.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, '/s')
+    } else {
+      show(r2.el, false)
+    }
+
+    var r3 = v.ledgerRows[3]
+    shown += 1
+    show(r3.el, true)
+    setText(r3.lab, STR.minerals)
+    setSlot(r3.val, C().fmt(num(s.res.minerals)), GLYPH.minerals)
+    setRate(r3.rate, rateOf(v, 'minerals'), '/s')
+
+    show(v.gear, true)
+    setData(v.ledger, 'gear', '1')
+    return shown
+  }
+
   function paintLedger (v, s, rev) {
+    if (s.act >= 2) return paintLedgerA2(v, s, rev)
     var shown = 1
     var r0 = v.ledgerRows[0]
     show(r0.el, true)
@@ -1606,8 +1794,89 @@
     if (s.act === 1 && A1() && A1().totalSubstrate && !(A1().totalSubstrate() > 0)) {
       state = 'disabled'
     }
+    // `06` §4.3: EXTEND does not vanish at the act break, it becomes the last row of the FOREST
+    // tab's scroll. Everywhere else in Act II it would be a button that does nothing.
+    if (s.act >= 2) {
+      show(v.hero, v.tab === 'forest')
+      state = 'disabled'
+    }
     setData(v.hero, 'state', state)
     setAttr(v.hero, 'aria-label', STR.extend)
+    paintFab(v, s)
+  }
+
+  // The FAB is PULSE and only PULSE (`06` §5.3). It is the one verb in Acts II and III that is
+  // never automated at any price, so it is the one thing that gets a permanent thumb position.
+  function paintFab (v, s) {
+    var g = HY.cognition
+    var on = s.act >= 2 && !!(v.rev && v.rev.pulse) && !!g
+    show(v.fab, on)
+    if (!on) return
+    var cd = num(s.cog.pulseCd)
+    var max = g.pulseCooldown ? num(g.pulseCooldown(s)) : 0
+    var cost = g.pulseCost ? num(g.pulseCost(s)) : 0
+    var poor = num(s.res.signal) < cost
+    if (cd > 0 && max > 0) {
+      setAttr(v.fab, 'data-cool', '1')
+      v.fab.style.setProperty('--p', (1 - cd / max).toFixed(3))
+      setAttr(v.fab, 'aria-label', STR.pulse + ', ' + C().fmtTime(cd))
+    } else {
+      v.fab.removeAttribute('data-cool')
+      setAttr(v.fab, 'aria-label', STR.pulse + ', ' +
+        (poor ? C().fmt(cost) + ' ' + GLYPH.signal : STR.ready))
+    }
+    setData(v.fab, 'poor', poor ? '1' : '0')
+  }
+
+  // The epicentre is the claimed region the pulse will do the most good in, which for every mode
+  // in Act II is the one carrying the most live interface. Choosing it here rather than making the
+  // player pick a hex keeps the verb inside one tap; the radial that picks a *mode* is the
+  // long-press, and that is the decision worth asking for.
+  function pulseEpicentre (s) {
+    var f = HY.forest
+    var r = s.a2 && s.a2.regions
+    if (!f || !f.liveInterface || !r) return num(s.cog.pulseEpicentre)
+    var best = -1, bv = -1, i
+    for (i = 0; i < r.flags.length; i++) {
+      var v2 = num(f.liveInterface(i, s))
+      if (v2 > bv) { bv = v2; best = i }
+    }
+    return best >= 0 ? best : 0
+  }
+
+  function firePulse (mode) {
+    var s = liveState()
+    var g = HY.cognition
+    if (!s || !g || !g.pulse) return false
+    var list = g.modes(s)
+    var m = mode || (list.length ? list[0] : null)
+    if (!m) return false
+    var okd = commit(function () { return g.pulse(m, pulseEpicentre(s)) })
+    if (okd) {
+      haptic(U.HAP_HOLD, 'ui.pulse')
+      s.stats.pulses = num(s.stats.pulses) + 1
+    } else {
+      haptic(U.HAP_ERROR, 'ui.error')
+    }
+    return okd
+  }
+
+  // Long-press opens the mode picker (`06` §5.3). With one mode unlocked there is nothing to pick,
+  // so the gesture agrees with the tap instead of opening an empty sheet.
+  function openPulseModes () {
+    var s = liveState()
+    var g = HY.cognition
+    if (!s || !g) return
+    var list = g.modes(s)
+    if (list.length < 2) { firePulse(null); return }
+    var sh = sheet({ id: 'pulse', title: STR.pulse })
+    list.forEach(function (m) {
+      var r = el('div', 'sheet-row')
+      r.appendChild(el('span', 'field-lab', m.toLowerCase()))
+      r.appendChild(actionButton(STR.pulse, function () { firePulse(m); sh.close() }))
+      sh.body.appendChild(r)
+    })
+    sh.open()
   }
 
   // The status strip is not a live region: a counter that changes ten times a second must never be
@@ -1699,10 +1968,16 @@
     v.rev = rev
     updateRates(v, s)
     stage(v, s, rev)
+    tabs(v, s, rev)
     v.order.forEach(function (id) {
       var p = v.panels[id]
       if (p.need(s, rev) && !p.shown) revealPanel(id)
-      if (p.shown) p.sync(s, rev)
+      if (!p.shown) return
+      var on = onTab(v, p, s)
+      show(p.view.el, on)
+      // A hidden panel costs nothing but a boolean: syncing five tabs' worth of rows at 10 Hz to
+      // paint one of them is the whole reason a phone gets warm.
+      if (on) p.sync(s, rev)
     })
     paintHero(v, s)
     if (t - v.lastAria >= U.ARIA_STRIP_MS) {
@@ -1736,8 +2011,14 @@
 
     var cv = CANVAS()
     if (!cv) return
-    if (cv.growNetwork && A1() && A1().hyphae) cv.growNetwork(A1().hyphae())
-    if (cv.drawNet) cv.drawNet()
+    // The plate is the act: threads growing in Act I, sixty-one hexes in Act II. Growing the
+    // network past the break would keep drawing a body that DECIDE deleted.
+    if (s.act >= 2) {
+      if (cv.drawMap && s.a2) cv.drawMap(s.a2.regions)
+    } else {
+      if (cv.growNetwork && A1() && A1().hyphae) cv.growNetwork(A1().hyphae())
+      if (cv.drawNet) cv.drawNet()
+    }
     // Nothing draws while the finger is moving: this is worth ~1.5 ms per frame during the one
     // moment the player is most likely to notice jank (06 §6.7 rule 8).
     if (!view.scrolling && cv.drawFlux) cv.drawFlux(t)
@@ -1749,8 +2030,11 @@
   // slot; the panel is constructed once, on its first true, and appended at the bottom.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function def (v, id, need, build) {
-    var p = { id: id, shown: false, view: null, sync: function () {} }
+  // `tab` is the slot a panel belongs to once the tab bar exists. Act I has no tab bar, so a panel
+  // with no tab is simply always on screen; in Act II a panel is on screen when its tab is the
+  // selected one, which is how five tabs share one scroller without a router.
+  function def (v, id, need, build, tab) {
+    var p = { id: id, shown: false, view: null, tab: tab || null, sync: function () {} }
     p.need = function (s, rev) {
       var yes = need(s, rev)
       if (yes && !p.view) {
@@ -1761,6 +2045,11 @@
     }
     v.panels[id] = p
     v.order.push(id)
+  }
+
+  function onTab (v, p, s) {
+    if (s.act < 2) return !p.act2
+    return p.tab === v.tab
   }
 
   // Ground becomes a decision the moment the utilisation alarm could conceivably fire, or the
@@ -2617,15 +2906,627 @@
     return pv
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ACT II PANELS
+  //
+  // Every number on screen here is read through a module's published surface — world.card,
+  // flush.card, pactbook.card, cognition.Sr — and every one of them arrives with its own label.
+  // The act is sixty-one stands, a weather process and a book of counterparties; a column of
+  // unlabelled figures would be a spreadsheet of a forest, which is the one thing it must not be.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function pct (f) { return Math.round(fill(f) * 100) + '%' }
+
+  // Maturity is canopy-driven (`02` §7.4), so the stand with the most shade over it is the one a
+  // primordium should be knotted under. There is never a reason to choose otherwise, which is why
+  // the panel chooses and the player sizes the bet instead.
+  function bestCanopy (s) {
+    var f = HY.forest
+    var r = s.a2 && s.a2.regions
+    if (!f || !f.canopy || !r) return -1
+    var best = -1, bv = -1, i
+    for (i = 0; i < r.flags.length; i++) {
+      if (!(r.flags[i] & 0x04) || (r.flags[i] & 0x10)) continue   // claimed, not necrotized
+      var c = num(f.canopy(i, s))
+      if (c > bv) { bv = c; best = i }
+    }
+    return best
+  }
+  function secs (v) { return isFinite(v) ? C().fmtTime(Math.max(0, v)) : STR.nothing }
+
+  // A labelled figure: the name on the left, the value in a monospaced slot on the right. This is
+  // the only shape a bare number is allowed to take anywhere in Act II.
+  function statLine (r, label) {
+    var l = r.line()
+    span(l, 'row-name', label)
+    var n = slot('row-num')
+    l.appendChild(n)
+    return n
+  }
+
+  // A bar carries a caption only when the figure above it does not already name what is being
+  // filled; a bar captioned with the same word as the line above it is noise, not a label.
+  function barLine (r, label) {
+    if (label) span(r.line(), 'row-sub', label)
+    var m = meter('fill', 0)
+    m.classList.add('meter--grow')
+    r.line().appendChild(m)
+    return m
+  }
+
+  // ── THE FOREST ─────────────────────────────────────────────────────────────
+
+  function buildForest (v, p) {
+    var pv = panel('forest', { title: STR.p_forest })
+
+    var r = row({})
+    var eaten = statLine(r, STR.consumed)
+    var eatenBar = barLine(r, null)
+    var held = statLine(r, STR.p_stands)
+    var iface = statLine(r, STR.interface_)
+    var conn = statLine(r, STR.connectivity)
+    pv.body.appendChild(r.el)
+
+    // The retention dial is failure detection made into a control (BIBLE §5.3): it appears the
+    // first time a stand's humus falls below the switch, and not before.
+    var dial = slider({
+      label: STR.retention,
+      steps: U.SLIDER_STEPS,
+      onInput: function (n) {
+        var f = HY.forest
+        if (f && f.setRho) f.setRho(n / U.SLIDER_STEPS * T().A2.RHO_MAX)
+      }
+    })
+    show(dial, false)
+    pv.body.appendChild(dial)
+
+    p.__sync = function (s, rev) {
+      var f = HY.forest
+      var w = HY.world
+      if (!f) return
+      var fc = f.forestConsumed ? num(f.forestConsumed(s)) : 0
+      setSlot(eaten, pct(fc), '')
+      eatenBar.set(fc, fc > 0.88 ? 'warn' : 'signal', pct(fc) + ' ' + STR.consumed)
+      var n = w && w.claimedCount ? w.claimedCount() : 0
+      setSlot(held, interp(STR.stands, { n: n }), '')
+      setSlot(iface, C().fmt(f.totalInterface ? num(f.totalInterface(s)) : 0), '')
+      setSlot(conn, (w && w.connectivity ? num(w.connectivity()) : 1).toFixed(2), '×')
+      pv.setCount(pct(fc))
+      show(dial, !!rev.retention)
+      if (rev.retention && f.globalRho) {
+        var g2 = num(f.globalRho(s)) / T().A2.RHO_MAX
+        // Seeded once, from the simulation's own value, and never written again: the thumb owns
+        // the control after that, and a 10 Hz writeback would fight the drag.
+        if (!dial.__seeded) { dial.__seeded = 1; dial.setValue(Math.round(g2 * U.SLIDER_STEPS)) }
+        dial.setReadout(pct(g2), '', STR.retention + ' ' + pct(g2))
+        // The dial's whole reason to exist is the stand nearest the humus switch, so the note is
+        // that number and not an average — an average hides exactly the stand that is failing.
+        dial.setNote(STR.humus + ' ' + (f.minHumus ? num(f.minHumus(s)).toFixed(2) : STR.nothing))
+      }
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── STANDS ─────────────────────────────────────────────────────────────────
+
+  function standRow () {
+    var r = row({ expand: true })
+    var l0 = r.line()
+    var name = span(l0, 'row-name', '')
+    var note = span(l0, 'row-sub', '')
+    var state = slot('row-num')
+    l0.appendChild(state)
+
+    var l1 = r.line()
+    var terr = span(l1, 'row-sub', '')
+
+    var colLab = span(r.line(), 'row-sub', STR.colonising)
+    var col = meter('ascii', 0)
+    colLab.parentNode.appendChild(col)
+    var dLab = span(r.line(), 'row-sub', STR.density)
+    var dens = meter('ascii', 0)
+    dLab.parentNode.appendChild(dens)
+
+    var ex = r.expander()
+    var litter = el('div', 'row-line')
+    var litterLab = span(litter, 'row-sub', STR.litter)
+    var litterVal = slot('row-num')
+    litter.appendChild(litterVal)
+    ex.appendChild(litter)
+    var humus = el('div', 'row-line')
+    span(humus, 'row-sub', STR.humus)
+    var humusVal = slot('row-num')
+    humus.appendChild(humusVal)
+    ex.appendChild(humus)
+    var acts = el('div', 'row-actions')
+    ex.appendChild(acts)
+
+    var advBtn = actionButton(STR.advance, function (b) {
+      var w = HY.world
+      if (!w || !commit(function () { return w.startAdvance(api.id) })) refuse(b)
+    })
+    var densBtn = actionButton(STR.denser, function (b) {
+      var w = HY.world
+      if (!w || !commit(function () { return w.buyDensity(api.id) })) refuse(b)
+    })
+    var killBtn = actionButton(STR.kill, function (b) {
+      var f = HY.forest
+      if (!f || !commit(function () { return f.killStand(api.id) })) refuse(b)
+    })
+    acts.appendChild(advBtn)
+    acts.appendChild(densBtn)
+    acts.appendChild(killBtn)
+    void litterLab
+
+    var api = {
+      el: r.el,
+      id: -1,
+      sync: function (s, c) {
+        api.id = c.id
+        setText(name, c.name || STR.unknown)
+        // Terrain and species are known the moment a hex is discovered; SURVEY buys the litter
+        // *band*, which is what `card.band` carries. Saying "unsurveyed" over a stand you are
+        // standing in was simply wrong.
+        setText(terr, c.terrain ? (c.terrain + ' · ' + c.species) : STR.fog)
+        setText(note, c.necrotized ? STR.dead : (c.advancing ? STR.colonising : ''))
+        // One figure per row, and it is the one the row is asking a question about: what the next
+        // step costs while there is one, and the stand's standing when there is not.
+        if (c.density) setSlot(state, C().fmtMass(c.density.cost), '')
+        else if (!c.claimed && c.advance) setSlot(state, C().fmtMass(c.advance.cost), '')
+        else setSlot(state, c.claimed ? STR.standing : STR.fog, '')
+        col.set(c.col, '', STR.colonising + ' ' + pct(c.col))
+        dens.set(c.d, '', STR.density + ' ' + pct(c.d))
+        setSlot(litterVal, C().fmtMass(c.L), '')
+        setSlot(humusVal, c.h.toFixed(2), '')
+        show(advBtn, !c.claimed && !!c.advance)
+        show(densBtn, !!c.density)
+        show(killBtn, !!c.claimed && !c.necrotized && !!(view && view.rev && view.rev.necro))
+        if (c.advance) {
+          setData(advBtn, 's', c.advance.blocked ? 'want' : 'afford')
+          setAttr(advBtn, 'aria-label',
+            STR.advance + ' ' + c.name + ', ' + C().fmtMass(c.advance.cost))
+        }
+        if (c.density) {
+          setAttr(densBtn, 'aria-label', STR.denser + ', ' + C().fmtMass(c.density.cost))
+        }
+        r.label(c.name + ', ' + (c.claimed ? STR.standing : STR.advance) + ', ' +
+          STR.density + ' ' + pct(c.d))
+      }
+    }
+    return api
+  }
+
+  function buildStands (v, p) {
+    var pv = panel('stands', { title: STR.p_stands })
+    var bag = {}
+    p.__sync = function (s) {
+      var w = HY.world
+      if (!w || !w.list) return
+      var all = w.list(s)
+      // `world.list` is already ranked the way a thumb wants it — advancing, then held, then the
+      // frontier by how much a claim would help. Sixty-one six-line rows is a spreadsheet; the top
+      // of that ranking is the decision, and the count in the header keeps the rest honest.
+      var list = all.length > U.STANDS_SHOWN ? all.slice(0, U.STANDS_SHOWN) : all
+      reconcile(pv.body, bag, list, function (c) { return c.id }, function () {
+        return standRow()
+      }, s)
+      pv.setCount(all.length)
+      if (list.length) pv.unempty()
+      else pv.empty(STR.fog)
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── THE MIND ───────────────────────────────────────────────────────────────
+
+  function buildMind (v, p) {
+    var pv = panel('mind', { title: STR.p_mind })
+
+    var r = row({})
+    var sig = statLine(r, STR.p_signal)
+    var sigBar = barLine(r, null)
+    var rateN = statLine(r, STR.gain)
+    var fills = statLine(r, STR.saturation)
+    pv.body.appendChild(r.el)
+
+    var r2 = row({})
+    var ins = statLine(r2, STR.insight)
+    var ripe = statLine(r2, STR.ripeness)
+    var ripeBar = barLine(r2, null)
+    pv.body.appendChild(r2.el)
+    show(r2.el, false)
+
+    p.__sync = function (s, rev) {
+      var g = HY.cognition
+      if (!g) return
+      var held = num(s.res.signal)
+      var cap = num(g.Sc(s))
+      var sr = num(g.Sr(s))
+      setSlot(sig, C().fmt(held) + ' / ' + C().fmt(cap), GLYPH.signal)
+      sigBar.set(cap > 0 ? held / cap : 0, g.saturated(s) ? 'warn' : 'signal',
+        C().fmt(held) + ' of ' + C().fmt(cap) + ' ' + STR.capacity)
+      setSlot(rateN, '+' + C().fmt(sr), GLYPH.signal + '/s')
+      setSlot(fills, g.saturated(s) ? STR.saturated : interp(STR.fillsIn, { v: secs(g.fillsIn(s)) }), '')
+      pv.setCount(C().fmt(held))
+
+      show(r2.el, !!rev.insight)
+      if (!rev.insight) return
+      var rp = num(g.ripeness(s))
+      setSlot(ins, C().fmt(num(s.res.insight)), GLYPH.insight)
+      setSlot(ripe, pct(rp), '')
+      // Ripeness is the whole Insight economy: it only climbs while the pool is *full*, which is a
+      // failure state everywhere else in the genre. The bar says so by filling only when saturated.
+      ripeBar.set(rp, g.saturated(s) ? 'signal' : '', STR.ripeness + ' ' + pct(rp))
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── DIFFERENTIATION ────────────────────────────────────────────────────────
+
+  function buildDiff (v, p) {
+    var pv = panel('diff', { title: STR.p_diff })
+    var r = row({})
+    var free = statLine(r, STR.p_diff)
+    var condN = statLine(r, STR.conduction)
+    var vesN = statLine(r, STR.vesicles)
+    var acts = el('div', 'row-actions')
+    var condBtn = actionButton(STR.conduction, function (b) {
+      var g = HY.cognition
+      if (!g || !g.allocate('cond', 1)) refuse(b)
+    })
+    var vesBtn = actionButton(STR.vesicles, function (b) {
+      var g = HY.cognition
+      if (!g || !g.allocate('ves', 1)) refuse(b)
+    })
+    acts.appendChild(condBtn)
+    acts.appendChild(vesBtn)
+    r.line().appendChild(acts)
+    pv.body.appendChild(r.el)
+
+    p.__sync = function (s) {
+      var g = HY.cognition
+      if (!g) return
+      var un = num(g.unallocated(s))
+      setSlot(free, interp(STR.unspent, { n: un }), GLYPH.diff)
+      setSlot(condN, String(num(s.cog.dCond)), '')
+      setSlot(vesN, String(num(s.cog.dVes)), '')
+      pv.setCount(un > 0 ? String(un) : '')
+      setData(condBtn, 's', un > 0 ? 'afford' : 'want')
+      setData(vesBtn, 's', un > 0 ? 'afford' : 'want')
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── THE FLUSH ──────────────────────────────────────────────────────────────
+
+  function buildWeather (v, p) {
+    var pv = panel('weather', { title: STR.p_weather })
+    var r = row({})
+    var wet = statLine(r, STR.moisture)
+    var wetBar = barLine(r, null)
+    var windN = statLine(r, STR.wind)
+    var grazeN = statLine(r, STR.graze)
+    var mastN = statLine(r, STR.mast)
+    pv.body.appendChild(r.el)
+
+    p.__sync = function () {
+      var fl = HY.flush
+      if (!fl || !fl.weather) return
+      var w = fl.weather()
+      setSlot(wet, w.W.toFixed(2), '')
+      wetBar.set(w.W, w.W < 0.25 ? 'warn' : '', STR.moisture + ' ' + w.W.toFixed(2))
+      setSlot(windN, w.windSpeed.toFixed(2), '')
+      setSlot(grazeN, w.graze.toFixed(2), '')
+      setSlot(mastN, w.mast ? STR.on : STR.nothing, '')
+      pv.setCount(w.W.toFixed(2))
+    }
+    p.view = pv
+    return pv
+  }
+
+  function primordiumRow () {
+    var r = row({ expand: true })
+    var l0 = r.line()
+    var name = span(l0, 'row-name', '')
+    var mode = span(l0, 'row-sub', '')
+    var yieldN = slot('row-num')
+    l0.appendChild(yieldN)
+    var mLab = span(r.line(), 'row-sub', STR.maturity)
+    var mBar = meter('ascii', 0)
+    mLab.parentNode.appendChild(mBar)
+    var ex = r.expander()
+    var riskLine = el('div', 'row-line')
+    span(riskLine, 'row-sub', STR.riskNow)
+    var riskN = slot('row-num')
+    riskLine.appendChild(riskN)
+    ex.appendChild(riskLine)
+    var bestLine = el('div', 'row-line')
+    var bestTxt = span(bestLine, 'row-sub', '')
+    ex.appendChild(bestLine)
+    var acts = el('div', 'row-actions')
+    var relBtn = actionButton(STR.release, function (b) {
+      var fl = HY.flush
+      if (!fl || !commit(function () { return fl.release(api.id) })) refuse(b)
+    })
+    var holdBtn = actionButton(STR.hold, function () {
+      var fl = HY.flush
+      if (fl && fl.hold) fl.hold(api.id, !api.held)
+    })
+    acts.appendChild(relBtn)
+    acts.appendChild(holdBtn)
+    ex.appendChild(acts)
+
+    var api = {
+      el: r.el,
+      id: -1,
+      held: false,
+      sync: function (s, c) {
+        api.id = c.id
+        api.held = !!c.held
+        setText(name, c.name)
+        setText(mode, c.held ? STR.hold : '')
+        setSlot(yieldN, C().fmt(c.now), GLYPH.spores)
+        mBar.set(c.m, c.risk > 0.02 ? 'warn' : '', STR.maturity + ' ' + pct(c.m))
+        setSlot(riskN, pct(1 - c.survive), '')
+        setText(bestTxt, interp(STR.bestIn, { v: secs(c.bestIn) }) + ' · ' +
+          C().fmt(c.best) + ' ' + GLYPH.spores)
+        setText(holdBtn, c.held ? STR.resume : STR.hold)
+        r.label(c.name + ', ' + STR.maturity + ' ' + pct(c.m) + ', ' +
+          C().fmt(c.now) + ' spores if released now')
+      }
+    }
+    return api
+  }
+
+  function buildFlush (v, p) {
+    var pv = panel('flush', { title: STR.p_flush })
+    var head = row({})
+    var slotsN = statLine(head, STR.slots)
+    var sporesN = statLine(head, STR.spores)
+
+    // Nothing fruits on its own: a primordium is a bet the player places, so the panel needs the
+    // verb or the whole sub-game is a read-out. The stake is a fraction of held biomass because
+    // that is the quantity the decision is actually about (`02` §7.1), and the stand is the one
+    // with the most canopy over it — the choice that is never wrong, leaving the *size* as the
+    // decision worth making.
+    var bet = slider({
+      label: STR.stake,
+      steps: U.SLIDER_STEPS,
+      value: Math.round(U.FLUSH_BET_DEFAULT * U.SLIDER_STEPS)
+    })
+    head.line().appendChild(bet)
+    var fruitBtn = actionButton(STR.fruit, function (b) {
+      var s = liveState()
+      var fl = HY.flush
+      if (!s || !fl) return
+      var i = bestCanopy(s)
+      var vol = num(s.res.biomass) * (bet.value() / U.SLIDER_STEPS) * U.FLUSH_BET_MAX
+      if (i < 0 || !commit(function () { return fl.newPrimordium(i, vol) })) refuse(b)
+    })
+    var actLine = head.line()
+    var betTxt = span(actLine, 'row-sub', '')
+    setData(betTxt, 'tone', 'cost')
+    var acts = el('div', 'row-actions')
+    acts.appendChild(fruitBtn)
+    actLine.appendChild(acts)
+    pv.body.appendChild(head.el)
+
+    var bag = {}
+    p.__sync = function (s) {
+      var fl = HY.flush
+      if (!fl || !fl.list) return
+      var list = fl.list()
+      var free = fl.used() < fl.slots()
+      setSlot(slotsN, interp(STR.slotsUsed, { n: fl.used(), k: fl.slots() }), '')
+      setSlot(sporesN, C().fmt(num(s.res.spores)), GLYPH.spores)
+      var vol = num(s.res.biomass) * (bet.value() / U.SLIDER_STEPS) * U.FLUSH_BET_MAX
+      bet.setReadout(C().fmtMass(vol), '', STR.stake + ' ' + C().fmtMass(vol))
+      show(fruitBtn, free)
+      setData(fruitBtn, 's', free && vol > 0 ? 'afford' : 'want')
+      setText(betTxt, free ? '' : STR.slotsFull)
+      reconcile(pv.body, bag, list, function (c) { return c.id }, function () {
+        return primordiumRow()
+      }, s)
+      pv.setCount(list.length)
+      if (list.length) pv.unempty()
+      else pv.empty(STR.noPrimordia)
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── THE PACT BOOK ──────────────────────────────────────────────────────────
+
+  function pactRow () {
+    var r = row({ expand: true })
+    var l0 = r.line()
+    var name = span(l0, 'row-name', '')
+    var guild = span(l0, 'row-sub', '')
+    var rateN = slot('row-num')
+    l0.appendChild(rateN)
+    var chLine = r.line()
+    span(chLine, 'row-sub', STR.channels)
+    var pips = meter('pips', 0)
+    chLine.appendChild(pips)
+    var sLab = span(r.line(), 'row-sub', STR.strain)
+    var strain = meter('ascii', 0)
+    sLab.parentNode.appendChild(strain)
+
+    var ex = r.expander()
+    var bondLine = el('div', 'row-line')
+    span(bondLine, 'row-sub', STR.bond)
+    var bondN = slot('row-num')
+    bondLine.appendChild(bondN)
+    ex.appendChild(bondLine)
+    var termLine = el('div', 'row-line')
+    var termTxt = span(termLine, 'row-sub', '')
+    ex.appendChild(termLine)
+    var acts = el('div', 'row-actions')
+    acts.appendChild(actionButton(STR.comply, function (b) {
+      var pb = HY.pactbook
+      if (!pb || !commit(function () { return pb.comply(api.id) })) refuse(b)
+    }))
+    acts.appendChild(actionButton(STR.renew, function (b) {
+      var pb = HY.pactbook
+      if (!pb || !commit(function () { return pb.renew(api.id) })) refuse(b)
+    }))
+    acts.appendChild(actionButton(STR.sever, function (b) {
+      var pb = HY.pactbook
+      if (!pb || !commit(function () { return pb.sever(api.id) })) refuse(b)
+    }))
+    ex.appendChild(acts)
+
+    var api = {
+      el: r.el,
+      id: -1,
+      sync: function (s, c) {
+        api.id = c.id
+        setText(name, c.name)
+        setText(guild, c.guild + (c.notice ? ' · notice' : ''))
+        setSlot(rateN, c.rateText || C().fmt(c.rate), '')
+        pips.set(c.chMax > 0 ? c.ch / c.chMax : 0, '', c.ch + ' of ' + c.chMax + ' ' + STR.channels)
+        strain.set(c.strain, c.warn ? 'warn' : '', STR.strain + ' ' + pct(c.strain))
+        setSlot(bondN, c.bond.toFixed(2), '×' + c.bondMult.toFixed(2))
+        setText(termTxt, interp(STR.termLeft, { v: secs(c.termLeft) }))
+        r.label(c.name + ', ' + c.guild + ', ' + STR.strain + ' ' + pct(c.strain))
+      }
+    }
+    return api
+  }
+
+  function offerRow () {
+    var r = row({ expand: true })
+    var l0 = r.line()
+    var name = span(l0, 'row-name', '')
+    var guild = span(l0, 'row-sub', '')
+    var stake = slot('row-num')
+    l0.appendChild(stake)
+    var l1 = r.line()
+    var terms = span(l1, 'row-sub', '')
+    var ex = r.expander()
+    var acts = el('div', 'row-actions')
+    acts.appendChild(actionButton(STR.sign, function (b) {
+      var pb = HY.pactbook
+      if (!pb || !commit(function () { return pb.sign(api.id) })) refuse(b)
+    }))
+    acts.appendChild(actionButton(STR.decline, function () {
+      var pb = HY.pactbook
+      if (pb && pb.declineOffer) pb.declineOffer(api.id)
+    }))
+    ex.appendChild(acts)
+    var api = {
+      el: r.el,
+      id: -1,
+      sync: function (s, o) {
+        api.id = o.id
+        setText(name, o.name)
+        setText(guild, o.guild)
+        setSlot(stake, C().fmtMass(o.stake), '')
+        setText(terms, o.ch + ' ' + STR.channels + ' · ' +
+          interp(STR.seasons, { n: o.termPeriods }) + ' · ' + secs(o.left))
+        setData(r.el, 's', o.affordable ? 'afford' : 'want')
+        r.label(o.aria)
+      }
+    }
+    return api
+  }
+
+  function buildPact (v, p) {
+    var pv = panel('pact', { title: STR.p_pact })
+    var head = row({})
+    var chN = statLine(head, STR.channels)
+    var accN = statLine(head, STR.accord)
+    var costN = statLine(head, STR.bookCost)
+    pv.body.appendChild(head.el)
+    var bag = {}
+    p.__sync = function (s) {
+      var pb = HY.pactbook
+      if (!pb || !pb.list) return
+      var h = pb.header()
+      if (h) {
+        setSlot(chN, h.channels + ' / ' + h.channelCap, '')
+        setSlot(accN, C().fmt(h.accord), GLYPH.accord)
+        setSlot(costN, C().fmt(h.cost), 'g/s')
+      }
+      var list = pb.list()
+      reconcile(pv.body, bag, list, function (c) { return c.id }, function () {
+        return pactRow()
+      }, s)
+      pv.setCount(list.length)
+      if (list.length) pv.unempty()
+      else pv.empty(STR.noPacts)
+    }
+    p.view = pv
+    return pv
+  }
+
+  function buildOffers (v, p) {
+    var pv = panel('offers', { title: STR.p_offers })
+    var bag = {}
+    p.__sync = function (s) {
+      var pb = HY.pactbook
+      if (!pb || !pb.offers) return
+      var list = pb.offers()
+      reconcile(pv.body, bag, list, function (o) { return o.id }, function () {
+        return offerRow()
+      }, s)
+      pv.setCount(list.length)
+      if (list.length) pv.unempty()
+      else pv.empty(STR.noOffers)
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── THE LOG ────────────────────────────────────────────────────────────────
+
+  function buildLog (v, p) {
+    var pv = panel('log', { title: STR.p_log })
+    var host = el('div', 'logring')
+    pv.body.appendChild(host)
+    var lastN = -1
+    p.__sync = function (s) {
+      var ring = s.log && s.log.ring ? s.log.ring : []
+      if (ring.length === lastN) return
+      lastN = ring.length
+      clear(host)
+      // Newest first: the console below reads bottom-up, and a player opening the tab is looking
+      // for the line that just went past, not the one from an hour ago.
+      // The ring stores one tone character and then the text; log.js owns the encoding and the
+      // console strips it the same way.
+      for (var i = ring.length - 1; i >= 0; i--) {
+        host.appendChild(el('p', 'logline', String(ring[i]).slice(1)))
+      }
+      pv.setCount(ring.length)
+    }
+    p.view = pv
+    return pv
+  }
+
   function definePanels (v) {
     def(v, 'floor', function (s, rev) { return rev.substrate }, buildFloor)
     def(v, 'tips', function (s, rev) { return rev.tips }, buildTips)
     def(v, 'market', function (s, rev) { return rev.market }, buildMarket)
     def(v, 'seasons', function (s, rev) { return rev.seasons }, buildSeasons)
     def(v, 'understory', function (s, rev) { return rev.trees }, buildUnderstory)
-    def(v, 'adaptations', function (s, rev) { return rev.projects }, buildAdaptations)
     def(v, 'patches', needPatches, buildPatches)
-    def(v, 'signal', function (s, rev) { return rev.signal }, buildSignal)
+    def(v, 'signal', function (s, rev) { return s.act === 1 && rev.signal }, buildSignal)
+    // Act II. Adaptations is the one panel that spans both acts, so it lives on the MIND tab and
+    // has no Act I tab at all.
+    def(v, 'forest', function (s, rev) { return s.act >= 2 && rev.forest }, buildForest, 'forest')
+    def(v, 'stands', function (s, rev) { return s.act >= 2 && rev.stands }, buildStands, 'forest')
+    def(v, 'mind', function (s, rev) { return s.act >= 2 && rev.signal }, buildMind, 'mind')
+    def(v, 'diff', function (s, rev) { return s.act >= 2 && rev.diff }, buildDiff, 'mind')
+    def(v, 'adaptations', function (s, rev) { return rev.projects }, buildAdaptations, 'mind')
+    def(v, 'weather', function (s, rev) { return s.act >= 2 && rev.flush }, buildWeather, 'flush')
+    def(v, 'flush', function (s, rev) { return s.act >= 2 && rev.flush }, buildFlush, 'flush')
+    def(v, 'pact', function (s, rev) { return s.act >= 2 && rev.pact }, buildPact, 'pact')
+    def(v, 'offers', function (s, rev) { return s.act >= 2 && rev.pact }, buildOffers, 'pact')
+    def(v, 'log', function (s) { return s.act >= 2 }, buildLog, 'log')
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -2991,6 +3892,53 @@
       ok(!/[A-Z]/.test(TAB_SLOTS[i].label), 'D68: tab label "' + TAB_SLOTS[i].label + '" has a capital')
     }
 
+    // ── ACT II ───────────────────────────────────────────────────────────────
+    // Every Act II panel belongs to a tab that exists, and every tab the reveal graph can earn
+    // has at least one panel behind it. A tab that opens onto nothing is worse than no tab.
+    var slotKeys = {}
+    for (i = 0; i < TAB_SLOTS.length; i++) slotKeys[TAB_SLOTS[i].key] = 0
+    view.order.forEach(function (id) {
+      var p = view.panels[id]
+      if (!p.tab) return
+      ok(Object.prototype.hasOwnProperty.call(slotKeys, p.tab),
+        'panel "' + id + '" is on tab "' + p.tab + '", which is not one of the five slots')
+      slotKeys[p.tab] += 1
+    })
+    for (var key in slotKeys) {
+      if (!Object.prototype.hasOwnProperty.call(slotKeys, key)) continue
+      ok(slotKeys[key] > 0, 'tab "' + key + '" has no panel behind it')
+    }
+
+    // The Act II reveal graph, BIBLE §5.3: FOREST from the first frame, everything else earned.
+    var a2 = STATE().newGame(0, null)
+    a2.act = 2
+    a2.phase = 'network'
+    var cold2 = a2Reveals(a2)
+    ok(cold2.forest === true, '§5.3: the FOREST panel must be there from the act break')
+    ok(cold2.signal === true, '§5.3: cognition is live from the act break')
+    ok(cold2.stands === false, '§5.3: STANDS is gated on chemotaxis')
+    ok(cold2.insight === false, '§5.3: Insight is gated on turgor')
+    ok(cold2.flush === false, '§5.3: FLUSH is gated on primordium')
+    ok(cold2.diff === false, '§5.3: D allocation is gated on differentiation')
+    ok(cold2.pulse === false, '§5.3: PULSE is gated on action_potential_ii')
+    a2.proj.flags.chemotaxis = 1
+    a2.proj.flags.turgor = 1
+    a2.proj.flags.primordium = 1
+    a2.proj.flags.differentiation = 1
+    a2.proj.flags.action_potential_ii = 1
+    a2.proj.flags.humic_retention = 1
+    var warm = a2Reveals(a2)
+    ok(warm.stands && warm.insight && warm.flush && warm.diff && warm.pulse && warm.retention,
+      '§5.3: an Act II gate did not open when its flag was set')
+
+    // A panel is on screen when its tab is selected and at no other time; the Act I panels have
+    // no tab and so cannot survive into an act that deleted what they were showing.
+    view.tab = 'forest'
+    ok(onTab(view, { tab: 'forest' }, a2), 'the selected tab does not show its own panels')
+    ok(!onTab(view, { tab: 'mind' }, a2), 'an unselected tab is painting')
+    ok(!onTab(view, { tab: null }, a2), 'an Act I panel survived DECIDE on screen')
+    ok(onTab(view, { tab: null }, { act: 1 }), 'an Act I panel is hidden during Act I')
+
     view = keepView
     toastEl = keepToast
     return f
@@ -3025,6 +3973,9 @@
     transition: transition,
     layout: layout,
     openSettings: openSettings,
+    // The reveal flags this module is painting against. A panel that has not arrived is either a
+    // gate that has not opened or a predicate that threw; without this the two look identical.
+    reveals: function () { var s = liveState(); return s ? revealFlags(s) : null },
     get mounted () { return !!view },
     __selftest: __selftest
   }

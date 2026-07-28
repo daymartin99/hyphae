@@ -166,9 +166,31 @@
   }
 
   // (0.60 + Σℓ)^0.85 — the one bracket shared by Sr and Sc, in both acts, so that it cancels.
-  function ifaceTerm (s) {
+  //
+  // Photoreception's mercy floor is applied HERE and nowhere else, and that placement is the whole
+  // of the failsafe. BIBLE §5.5 names it the Act II anti-softlock; §5.3 states its guarantee as
+  // `Sr ≥ 0.40·SrPeak`. But Signal is hard-clamped at Sc (§2.3), and Sc carries the same collapsing
+  // bracket, so a floor applied to the rate alone cannot make a pool larger — measured, a run that
+  // reached fc = 1.000 held Sc = 9.17e4 against the exit's 1.6e6 Σ price and could not leave the act
+  // at any allocation of D. Flooring the shared bracket floors both, and because the bracket is the
+  // term that cancels, the §9.4 time-to-fill identity comes through untouched.
+  function ifaceRaw (s) {
     var A = T().A2
     return Math.pow(A.IFACE_BASE + Math.max(0, interfaceSum(s)), A.IFACE_EXP)
+  }
+
+  function ifaceTerm (s) {
+    var raw = ifaceRaw(s)
+    if (s.act === 2 && flagOn(s, 'photoreception')) return Math.max(raw, photoFloor(s))
+    return raw
+  }
+
+  // The bracket at which rawSr lands exactly on 0.40·SrPeak, given everything else in the rate as
+  // it stands now. Solved rather than stored, so §5.3's guarantee is met by construction whatever
+  // the player has since done to Conduction.
+  function photoFloor (s) {
+    var rest = sigRest(s)
+    return rest > 0 ? T().A2.PHOTO_FLOOR * num(s.cog.SrPeak) / rest : 0
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -189,29 +211,27 @@
     return Infinity
   }
 
-  // The raw rate, before the Photoreception mercy floor. SrPeak is recorded from this and never
-  // from Sr(), or the floor would ratchet itself upward against its own record.
-  function rawSr (s) {
+  // Everything in the rate except the shared bracket. Sr multiplies it by the floored bracket and
+  // rawSr by the un-floored one, which is what keeps SrPeak a record of the true curve: recording
+  // the floored rate would let the floor ratchet itself upward against its own high-water mark.
+  function sigRest (s) {
     var A = T().A2
     return sigK(s) *
       connectivity(s) *
-      ifaceTerm(s) *
       (1 + A.D_COND_STEP * num(s.cog.dCond)) *
       num(s.mult.signalMult) *
       num(s.mult.prestigeGrowth)
   }
 
+  function rawSr (s) { return sigRest(s) * ifaceRaw(s) }
+
+  // The anti-softlock floor (BIBLE §5.5) is already inside ifaceTerm, where it also reaches Sc.
+  // With photoFloor solved against sigRest, this returns exactly 0.40·SrPeak when the floor binds,
+  // which is §5.3's guarantee stated literally.
   function Sr (state) {
     var s = state || S()
     if (!s) return 0
-    var r = rawSr(s)
-    // The anti-softlock floor (BIBLE §5.5). By fc ≥ 0.88 the forest that produced the Signal is
-    // mostly eaten, and the act still has an 1.6e6 Σ gate in front of it.
-    if (s.act === 2 && flagOn(s, 'photoreception')) {
-      var A = T().A2
-      r = Math.max(r, A.PHOTO_FLOOR * num(s.cog.SrPeak))
-    }
-    return r
+    return sigRest(s) * ifaceTerm(s)
   }
 
   function Sc (state) {
@@ -901,6 +921,42 @@
       stub.conn = 1.60
       ok(timeToFill(s) < base, 'connectivity did not shorten the fill time')
       stub.conn = 1
+
+      // ── the Act II anti-softlock (BIBLE §5.5) ─────────────────────────────
+      // The failsafe exists to make an 1.6e6 Σ exit gate payable after the forest that produced
+      // the Signal has been eaten. Because the pool is hard-clamped at Sc, that is a claim about
+      // CAPACITY, not about rate: assert the pool can actually hold the price.
+      s.cog.dVes = 0; s.cog.dCond = 0; s.mult.capMult = 1; s.mult.signalMult = 1
+      delete s.proj.flags.photoreception
+      stub.iface = 58                                  // a forest at its Signal peak
+      s.cog.SrPeak = rawSr(s)
+      var peakCap = Sc(s)
+      stub.iface = 0.02                                // …and the same forest at fc ≈ 1
+      var bare = Sc(s)
+      ok(bare < peakCap * 0.05, 'the collapse this failsafe answers for does not happen')
+      s.proj.flags.photoreception = 1
+      ok(Sc(s) > bare * 10, 'Photoreception did not raise the CAPACITY, only the rate — ' +
+        'Signal is clamped at Sc, so a rate-only floor cannot pay a 1.6e6 Σ gate')
+      near(Sr(s), A.PHOTO_FLOOR * s.cog.SrPeak, s.cog.SrPeak * 1e-9,
+        'the floor is not exactly §5.3\'s 0.40·SrPeak')
+      // The floored bracket must still cancel, or §9.4 is broken by the failsafe itself.
+      for (i = 0; i < cases.length; i++) {
+        s.cog.dVes = cases[i][0]; s.cog.dCond = cases[i][1]
+        s.mult.capMult = cases[i][2]; s.mult.signalMult = cases[i][3]
+        stub.conn = cases[i][4]
+        want = (A.SIG_CAP_BASE / A.SIG_K) * Math.pow(1 + cases[i][0], A.D_VES_EXP) * cases[i][2] /
+          (cases[i][4] * (1 + A.D_COND_STEP * cases[i][1]) * cases[i][3])
+        near(timeToFill(s), want, want * 1e-9,
+          'the Photoreception floor broke the §9.4 identity, case ' + i)
+      }
+      // With the floor armed, the exit price is reachable inside the D the act actually grants.
+      s.cog.dVes = 24; s.cog.dCond = 0; s.mult.capMult = 1.45; s.mult.signalMult = 1
+      stub.conn = 1
+      ok(Sc(s) >= 1.6e6, 'ASCOSPORE remains unpayable at 24 Vesicle with the failsafe armed: ' +
+        'Sc = ' + Sc(s).toExponential(3))
+      delete s.proj.flags.photoreception
+      s.cog.SrPeak = 0
+      s.cog.dVes = 0; s.cog.dCond = 0; s.mult.capMult = 1; s.mult.signalMult = 1
 
       // ── the clamp, the overflow ledger, and everSaturated ─────────────────
       HY.state.init(HY.state.newGame(12, null))

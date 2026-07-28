@@ -445,7 +445,11 @@ canvas{ display:block; }
 .fab{
   position:fixed; width:64px; height:64px; border-radius:var(--r-full);
   inset-inline-end:var(--gutter);
-  bottom:calc(88px + env(safe-area-inset-bottom)); z-index:50;
+  /* `06` §5.3 puts the FAB 88 px above the tab bar, on the assumption the bar is the last thing on
+     screen. In this shell the console sits below it, so the offset is composed from the two heights
+     that are actually there — otherwise the button lands exactly behind the tab bar. */
+  bottom:calc(var(--console-h) + var(--tabbar-h) + var(--sp-24) + env(safe-area-inset-bottom));
+  z-index:50;
   display:flex; align-items:center; justify-content:center;
   background:var(--surface-2); border:1px solid var(--line-strong);
   box-shadow:inset 0 1px 0 var(--gloss-fab);
@@ -480,6 +484,13 @@ canvas{ display:block; }
 .panel-body{ padding-top:var(--sp-8); }
 .panel-empty{ padding:var(--sp-12) var(--gutter); font:var(--t-meta);
               color:var(--text-tertiary); text-align:center; }
+
+/* The LOG tab. The console at the foot of the screen shows five rows; this is the same rows,
+   newest first, with nothing else on them. */
+.logring{ padding:0 var(--gutter); }
+.logline{ font:var(--t-meta); color:var(--text-secondary); line-height:1.5;
+          padding-block:var(--sp-4); border-bottom:1px solid var(--line-soft); }
+.logline:last-child{ border-bottom:0; }
 
 /* A reveal is one fade and one 6 px rise. There is no blink: our replacement carries strictly
    more information than UP's twelve 30 ms flashes, for very much less light (06 §6.4). */

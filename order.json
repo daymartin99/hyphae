@@ -1,5 +1,7 @@
 {
-  "css": ["css/ui.css"],
+  "css": [
+    "css/ui.css"
+  ],
   "js": [
     "js/core.js",
     "js/state.js",
@@ -10,6 +12,11 @@
     "js/cognition.js",
     "js/world.js",
     "js/forest.js",
+    "js/flush.js",
+    "js/pactbook.js",
+    "js/bloom.js",
+    "js/divergence.js",
+    "js/finale.js",
     "js/feel.js",
     "js/canvas.js",
     "js/ui.js",

@@ -601,14 +601,35 @@
   function litterPerSec () { return litterRate }
   function isStarving () { return starving }
 
-  // G1b's feedstock reserve, in sugar: 60 seconds of what the network is about to eat. economy1
-  // enforces it in the delivery scheduler; it lives here because two of its three terms do.
+  // G1b's feedstock reserve, in sugar: the part of the next 60 seconds of feedstock that is not
+  // already on the floor. economy1 enforces it in the delivery scheduler and owns the formula —
+  // there is exactly one, and the HUD must read the same number the scheduler acts on. What remains
+  // here is the standalone fallback for a build in which economy1 has not been concatenated.
   function feedstockReserve () {
+    if (HY.economy1 && HY.economy1.reserveSugar) return num(HY.economy1.reserveSugar())
     var s = S()
     if (totalSubstrate() < 1) return 0            // G1c: the reserve must never become the deadlock
     var price = minPrice(s)
     if (!isFinite(price)) return 0
-    return A().RESERVE_S * demandPerSec() * price
+    var owed = A().RESERVE_S - runwaySeconds(s)
+    return owed > 0 ? owed * demandPerSec() * price : 0
+  }
+
+  // Seconds the floor can feed the network for, consumed in the player's own order at
+  // `throughput · k · enzymeK` grams a second. Hard substrate is worth more runway per gram than
+  // soft, which is the same fact the consumption order is a decision about.
+  function runwaySeconds (state) {
+    var s = state || S(), thr = throughputPerSec(s), i, k, have, effK, sec = 0
+    if (!(thr > 0)) return Infinity
+    for (i = 0; i < s.a1.consumptionOrder.length; i++) {
+      k = s.a1.consumptionOrder[i]
+      if (!DECOMP[k] || s.a1.unlockedTypes.indexOf(k) < 0) continue
+      have = num(s.a1.sub[k])
+      if (!(have > 0)) continue
+      effK = DECOMP[k].k * enzK(s, k)
+      if (effK > 0) sec += have / (thr * effK)
+    }
+    return sec
   }
 
   function minPrice (s) {
@@ -1029,6 +1050,39 @@
       s.res.sugar = 1e6
       stepSpoilage(600)                    // a ten-minute macro-step must not rot below the cap
       ok(num(s.res.sugar) >= sugarCap() - 1e-6, 'a large dt rotted sugar below the cap')
+
+      // ── the feedstock runway, and the reserve written against it ─────────
+      // G1b holds back sugar for the next RESERVE_S seconds of food. Runway is what makes that a
+      // reserve rather than a freeze: it is counted in tip-seconds, so hard substrate is worth more
+      // of it per gram, and a floor already deeper than the window owes nothing.
+      cold(6)
+      s = S()
+      s.a1.tips = 50
+      s.a1.season = AUTUMN
+      s.a1.moisture = A().MOIST_OPT
+      for (i = 0; i < TYPES.length; i++) C().setStock(s.a1.sub, TYPES[i], 0)
+      var leafRate = throughputPerSec() * DECOMP.leaf.k
+      C().setStock(s.a1.sub, 'leaf', 12 * leafRate)
+      near(runwaySeconds(), 12, 0.02, 'runwaySeconds misread a twelve-second floor')
+      // The floor is eaten at exactly the rate the runway claims.
+      stepDecomposition(6.0)
+      near(runwaySeconds(), 6, 0.02, 'six seconds of eating did not spend six seconds of runway')
+      // Two pools of different hardness add their own seconds, not their grams.
+      C().setStock(s.a1.sub, 'leaf', 4 * leafRate)
+      s.a1.unlockedTypes.push('stump')
+      C().setStock(s.a1.sub, 'stump', 9 * throughputPerSec() * DECOMP.stump.k)
+      near(runwaySeconds(), 13, 0.02, 'runway does not sum across pools of different hardness')
+      ok(num(s.a1.sub.stump) < num(s.a1.sub.leaf),
+        'the hard pool was not the smaller one: the test would prove nothing')
+      // And the number the HUD prints is the number the delivery scheduler actually withheld this
+      // frame, not a second implementation of it that happens to agree today.
+      if (HY.economy1 && HY.economy1.deliverContracts && HY.economy1.bookState) {
+        HY.economy1.deliverContracts(0.1, { stochastic: false })
+        near(feedstockReserve(), num(HY.economy1.bookState().reserve), 1e-9,
+          'the HUD reserve and the scheduler reserve are two different numbers')
+      }
+      for (i = 0; i < TYPES.length; i++) C().setStock(s.a1.sub, TYPES[i], 0)
+      near(feedstockReserve(), 0, 0, 'G1c: the reserve did not collapse on a bare floor')
 
       // ── hyphae, patches and the claim ────────────────────────────────────
       cold(7)
