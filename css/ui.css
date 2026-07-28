@@ -80,8 +80,24 @@
   /* ---- layout ---- */
   --col-max:420px; --gutter:16px; --tabbar-h:56px; --tap:44px;
   --rail:0px;            /* the atrium's vertical tab rail; zero until the tab bar is earned */
+  --rail-w:72px;         /* what that rail measures once it has been earned */
   --con-row:19px; --con-rows:5; --con-pad:6px;
+  --console-h:calc(var(--con-rows) * var(--con-row) + var(--con-pad) * 2 +
+                   env(safe-area-inset-bottom));
   --plate-px:296px;      /* written by ui.js in one frame; never transitioned */
+  /* The plate is a window, not a wallpaper. --plate-full is the canvas box: capped, so the panel
+     stack and EXTEND keep the rest of the column. --plate-open is how much of that box the frame
+     shows, and at cold boot it shows the seed height only — a third of the phone spent on one
+     12 px hairline is a third of the phone spent on nothing. Opening the window is a crop, not a
+     resize: only ui.js resizes the canvas, and only it can tell the renderer it did. */
+  --plate-cap:30dvh; --plate-seed:17dvh;
+  --plate-full:min(var(--plate-px), var(--plate-cap));
+  --plate-open:var(--plate-full);
+  --panels-min:14dvh;    /* the list keeps this much even when 200% text squeezes the column */
+  /* The atrium's living wall, 900 px and up: a specimen panel beside the column, not a slab. It
+     earns its height on the same terms the plate does. */
+  --wall-w:min(40vw,480px); --wall-h:min(70dvh,640px); --wall-seed:min(48dvh,420px);
+  --wall-gap:var(--sp-48);
 }
 
 /* ══ SEMANTIC BINDINGS · 06 §2.3. Dark is the designed artefact. ═══════════ */
@@ -263,37 +279,60 @@ canvas{ display:block; }
   width:100%; max-width:var(--col-max); margin:0 auto;
   display:flex; flex-direction:column;
 }
-.scroll-main{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column; }
+/* The column is a frame, not a document. The plate and the ledger hold the top, the panel stack is
+   the only thing that scrolls, and EXTEND is pinned in the bottom band under the thumb — §8 D46
+   is a HARD row and EXTEND is pressed some hundreds of times, so it may never be a scroll away.
+   The frame also settles §5.1's other debt: nothing passes beneath the ledger, so no title and no
+   BUY button is ever half-read under it. */
+.scroll-main{ flex:1 1 auto; min-height:0; display:flex; flex-direction:column;
+              overflow:hidden; }
 
 /* The plate's height is a px custom property written in a single frame — never transitioned,
    because height is a layout property (06 §6.7 rule 3). The content beneath fades instead, and
    the resize lands under the fade, so it is not perceived as a jump. */
 .plate{
-  position:relative; flex:0 0 auto;
-  height:var(--plate-px);
+  position:relative; flex:0 1 auto;
+  height:var(--plate-open);
   background:var(--canvas-bg);
   border-bottom:1px solid var(--line-soft);
   overflow:hidden;
 }
-.plate > canvas{ position:absolute; inset:0; width:100%; height:100%; }
+/* One ledger row means nothing has been earned yet, which is the only moment the canvas has
+   nothing in it. The window opens when the second row arrives — the same frame the strip
+   re-lays out in anyway, so it reads as the screen filling rather than as a jump. */
+.shell:has(.ledger-row[data-lead="solo"]){
+  --plate-open:min(var(--plate-full), var(--plate-seed));
+  --wall-h:var(--wall-seed);
+}
+/* Anchored to the floor and cut off at the top, because that is where the network is rooted: the
+   crop takes from the empty sky. The box is --plate-full at every moment, so opening the window
+   moves no pixels the renderer has already drawn. */
+.plate > canvas{ position:absolute; inset-inline:0; bottom:0;
+                 width:100%; height:var(--plate-full); }
 
-/* The panel stack grows; the hero is pushed to the bottom while the stack is short, and stays the
-   last element in the scroll once it is long. Zone A, forever. */
-.panels{ flex:1 1 auto; padding-top:var(--sp-12); }
-.tail{ flex:0 0 auto; height:calc(var(--sp-24) + env(safe-area-inset-bottom)); }
+/* The panel stack takes what the frame does not and scrolls inside it; the hero sits below it
+   whether the stack is short or long. Zone A, forever. Basis zero and a floor: the list takes the
+   free space when there is any, and when 200% text leaves none it is the plate, not the list and
+   never the button, that gives ground. */
+.panels{ flex:1 1 0; min-height:var(--panels-min); padding-top:var(--sp-12);
+         overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+.tail{ flex:0 0 auto; height:calc(var(--sp-8) + env(safe-area-inset-bottom)); }
 
 /* ══ LEDGER / STATUS STRIP · 06 §5.1 ═══════════════════════════════════════ */
 
+/* Not sticky: the strip holds the top of the frame and the list scrolls below it, so it never
+   overlaps a row it would have to slice. It stays the positioning context for the gear. */
 .ledger{
-  position:sticky; top:0; z-index:40; flex:0 0 auto;
+  position:relative; z-index:40; flex:0 0 auto;
   background:var(--bg); border-bottom:1px solid var(--line-soft);
 }
+/* The frame's inner edge: a fall-off over the first rows of the list, so a row leaving the top of
+   the stack dissolves at the boundary instead of being cut by it. At rest it lands on the stack's
+   own top padding and is invisible. */
 .ledger::after{
-  content:""; position:absolute; left:0; right:0; top:100%; height:16px;
+  content:""; position:absolute; left:0; right:0; top:100%; height:var(--sp-16);
   background:linear-gradient(var(--bg), transparent); pointer-events:none;
-  opacity:0; transition:opacity var(--d-fade) linear;
 }
-.ledger[data-scrolled="1"]::after{ opacity:1; }
 
 .ledger-row{
   position:relative;
@@ -356,7 +395,9 @@ canvas{ display:block; }
 .hero{
   display:block; flex:0 0 auto;
   width:62%; min-width:200px; max-width:280px;
-  min-height:64px; margin:var(--sp-20) auto var(--sp-24);
+  /* The bottom band is 200 px on the smallest phone we support, and the console owns the last
+     100 of them; these two margins are what keeps the button inside the rest (§8 D46). */
+  min-height:64px; margin:var(--sp-16) auto var(--sp-12);
   border-radius:var(--r-lg);
   background:linear-gradient(180deg, var(--surface-2) 0%, var(--surface-1) 100%);
   border:1px solid var(--line-strong);
@@ -666,8 +707,7 @@ canvas{ display:block; }
 
 .console{
   position:relative; flex:0 0 auto; z-index:60;
-  height:calc(var(--con-rows) * var(--con-row) + var(--con-pad) * 2 +
-              env(safe-area-inset-bottom));
+  height:var(--console-h);
   padding:var(--con-pad) var(--gutter);
   padding-bottom:calc(var(--con-pad) + env(safe-area-inset-bottom));
   background:var(--bg-sunk); border-top:1px solid var(--line-soft);
@@ -748,7 +788,7 @@ canvas{ display:block; }
         opacity:0; transition:opacity var(--d-fade) linear; pointer-events:none; }
 .scrim[data-open="1"]{ opacity:1; pointer-events:auto; }
 .sheet{
-  position:fixed; left:0; right:0; bottom:0; z-index:80;
+  position:fixed; inset-inline:0; bottom:0; z-index:80;
   width:100%; max-width:var(--col-max); margin:0 auto;
   max-height:86dvh; display:flex; flex-direction:column;
   background:var(--surface-2); border-top:1px solid var(--line-strong);
@@ -845,57 +885,95 @@ canvas{ display:block; }
 @media (min-width:640px) and (max-width:899px){
   .plate{ position:fixed; inset:0; height:auto; z-index:0; opacity:.14;
           border-bottom:0; pointer-events:none; }
+  /* Out of the column, so there is nothing to crop: the canvas fills the backdrop again. */
+  .plate > canvas{ inset:0; height:auto; }
   .plate::after{ content:""; position:absolute; inset:0;
                  background:radial-gradient(ellipse at center, transparent 30%, var(--bg) 82%); }
   .panels{ padding-top:var(--sp-16); }
 }
 
-/* The atrium. Two zones: a living wall on the left, the same 420 px column on the right, and the
-   tab bar as a vertical rail. The column never grows. */
+/* The atrium. Two zones held as ONE composition and centred as one: a specimen wall, the same
+   420 px column beside it, and the tab bar as a vertical rail on the column's outer edge. The
+   column never grows, and the composition never drifts to an edge — a phone shape pinned to the
+   right of a wide display reads as an accident, and the empty half reads as a fault.
+   Every fixed part is positioned against the shell instead of the viewport, so the composition
+   stays centred inside the 1680 px cap on very wide displays. */
 @media (min-width:900px){
-  .shell{ flex-direction:row; align-items:stretch; }
-  /* The rail only exists once the tab bar has been earned; in Act I the column simply docks to
-     the edge and the wall takes everything else. */
-  .shell[data-stage="2"]{ --rail:72px; }
-  .plate{ position:fixed; inset-block:0; inset-inline-start:0;
-          inset-inline-end:calc(var(--col-max) + var(--sp-64) + var(--rail));
-          height:auto; border-bottom:0; border-inline-end:1px solid var(--line); }
-  .main{ margin-inline-start:auto; margin-inline-end:var(--rail); padding-inline:var(--sp-32); }
-  .tabbar{ position:fixed; inset-block:0; inset-inline-end:0; width:72px; max-width:72px;
-           height:auto; grid-template-columns:1fr; grid-auto-rows:72px;
+  .shell{
+    flex-direction:row; align-items:stretch; justify-content:center;
+    --stage-edge:calc((100% - var(--wall-w) - var(--wall-gap) - var(--col-max) - var(--rail)) / 2);
+  }
+  /* The rail only exists once the tab bar has been earned; in Act I the composition is two
+     zones wide and simply sits closer to centre. */
+  .shell[data-stage="2"]{ --rail:var(--rail-w); }
+  /* Static, so the wall resolves against the shell rather than the column. The act curtain,
+     the only other absolute child of the column, then covers the whole atrium — which is what
+     an act break should do at this width anyway. */
+  .main{ position:static; flex:0 0 auto; width:var(--col-max);
+         margin-inline-start:calc(var(--wall-w) + var(--wall-gap));
+         margin-inline-end:var(--rail);
+         padding-inline:var(--sp-32); padding-bottom:var(--console-h); }
+  /* A framed specimen, centred against the column, not a full-bleed slab: the network is a small
+     bright thing and a 900 px black rectangle is the worst frame we could give it. */
+  .plate{ position:absolute; inset-inline-start:var(--stage-edge); width:var(--wall-w);
+          top:50%; height:min(var(--wall-h), calc(100% - var(--sp-64)));
+          transform:translateY(-50%);
+          border:1px solid var(--line); border-radius:var(--r-lg); }
+  .plate > canvas{ inset:0; height:auto; }
+  .tabbar{ position:absolute; inset-block:0; inset-inline-end:var(--stage-edge);
+           width:var(--rail-w); max-width:var(--rail-w);
+           height:auto; grid-template-columns:1fr; grid-auto-rows:var(--rail-w);
            align-content:center; border-top:0; border-inline-start:1px solid var(--line-soft);
            padding-bottom:0; }
-  .tab{ min-height:72px; }
+  .tab{ min-height:var(--rail-w); }
   .tab-ind{ top:14px; bottom:14px; left:0; right:auto; width:2px; height:auto;
             transform:scaleY(0); }
   .tab[aria-selected="true"] .tab-ind{ transform:scaleY(1); }
-  .console{ position:fixed; inset-block-end:0; inset-inline-end:var(--rail);
-            width:calc(var(--col-max) + var(--sp-64)); }
-  .fab{ inset-inline-end:calc(var(--rail) + var(--gutter)); }
-  .tail{ height:calc(var(--sp-24) + 120px); }
+  .console{ position:absolute; inset-block-end:0;
+            inset-inline-end:calc(var(--stage-edge) + var(--rail)); width:var(--col-max); }
+  .fab{ position:absolute;
+        inset-inline-end:calc(var(--stage-edge) + var(--rail) + var(--gutter)); }
+  /* Everything that rises out of the column rises out of the column, not out of the middle of
+     the display: a sheet centred on the viewport would open over the wall it has nothing to do
+     with. */
+  .sheet{ position:absolute; inset-inline-start:auto;
+          inset-inline-end:calc(var(--stage-edge) + var(--rail)); margin-inline:0; }
+  .toast{ position:absolute; inset-inline-start:auto;
+          inset-inline-end:calc(var(--stage-edge) + var(--rail) + var(--gutter));
+          margin-inline:0; }
 }
 
-/* Landscape phone: supported, not designed for. We merely refuse to break. */
+/* Landscape phone: supported, not designed for. We merely refuse to break. The console gives up
+   two rows through the token, so every height derived from it follows. */
 @media (max-height:480px) and (orientation:landscape){
-  .console{ height:calc(3 * var(--con-row) + var(--con-pad) * 2 +
-                        env(safe-area-inset-bottom)); }
+  :root{ --con-rows:3; }
   .tabbar{ height:calc(48px + env(safe-area-inset-bottom)); }
   .tab{ min-height:48px; }
 }
 
 /* ══ MOTION PREFERENCES · 06 §6.7 rule 10 ══════════════════════════════════
    Everything becomes an instantaneous state change except the three things that are carrying
-   information rather than delight: the console stack, the meter fill, and short cross-fades. */
+   information rather than delight: the console stack, the meter fill, and short cross-fades.
+   The OS hint is the default and the in-app choice is the answer to it, in both directions: a
+   player who set the system flag for reasons that have nothing to do with a five-line console can
+   ask for the motion back (06 §8.6). That override cannot be written as a later rule — these are
+   !important declarations and nothing an author writes can un-say one — so the media query asks
+   whether the player has already answered before it speaks at all. */
 
 @media (prefers-reduced-motion: reduce){
-  *,*::before,*::after{
+  :root:not([data-motion="full"]) *,
+  :root:not([data-motion="full"]) *::before,
+  :root:not([data-motion="full"]) *::after{
     animation-duration:.001ms !important; animation-iteration-count:1 !important;
     transition-duration:.001ms !important; scroll-behavior:auto !important;
   }
-  .console-line-enter,.meter-fill,.ledger-cap,[data-rm-keep]{
+  :root:not([data-motion="full"]) .console-line-enter,
+  :root:not([data-motion="full"]) .meter-fill,
+  :root:not([data-motion="full"]) .ledger-cap,
+  :root:not([data-motion="full"]) [data-rm-keep]{
     transition-duration:180ms !important;
   }
-  .console-cur{ animation:none; opacity:.6; }
+  :root:not([data-motion="full"]) .console-cur{ animation:none; opacity:.6; }
 }
 :root[data-motion="reduce"] *,
 :root[data-motion="reduce"] *::before,
@@ -903,14 +981,13 @@ canvas{ display:block; }
   animation-duration:.001ms !important; animation-iteration-count:1 !important;
   transition-duration:.001ms !important; scroll-behavior:auto !important;
 }
-:root[data-motion="reduce"] .console-cur{ animation:none; opacity:.6; }
-/* The in-app override in the other direction, because many people have the OS setting on for
-   reasons that have nothing to do with a five-line console (06 §8.6). */
-:root[data-motion="full"] *,
-:root[data-motion="full"] *::before,
-:root[data-motion="full"] *::after{
-  animation-duration:revert; transition-duration:revert;
+:root[data-motion="reduce"] .console-line-enter,
+:root[data-motion="reduce"] .meter-fill,
+:root[data-motion="reduce"] .ledger-cap,
+:root[data-motion="reduce"] [data-rm-keep]{
+  transition-duration:180ms !important;
 }
+:root[data-motion="reduce"] .console-cur{ animation:none; opacity:.6; }
 
 /* ══ NUMERALS ══════════════════════════════════════════════════════════════
    Last in the file on purpose: `font:` is a shorthand and resets font-variant-numeric, so this

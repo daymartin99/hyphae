@@ -12,8 +12,13 @@
   //
   // Numbers: everything that crosses a module boundary is in `HY.core.TUNE.A1`. What lives below is
   // the per-type decomposition table (`01` §5.5's k / etaB / etaS / mineralPerG columns) and the
-  // event engine's payload constants (`01` §7.3–7.5) — a table and a set of rows that no other
-  // module reads, and that move as a unit or not at all.
+  // tap's own reservoir — a table and four rows that no other module reads, and that move as a
+  // unit or not at all.
+  //
+  // The event engine has exactly one owner and it is `economy1`: the table, the payloads and the
+  // application all live there, because every payload lands on a market row, a counterparty or a
+  // modifier that economy1 already reads. What act1 keeps is the *roll* — BIBLE §4 step 1 — and the
+  // lifecycle of `a1.activeEvents`, both of which hang off the season clock act1 owns.
 
   // ───────────────────────────────────────────────────────────────────────────
   // LAZY MODULE ACCESS — load order must not matter for anything except `core`
@@ -57,10 +62,24 @@
     carrion: { k: 3.00, etaB: 0.80, etaS: 0.50, mineralPerG: 0.0400 }
   }
 
-  // The tap (`01` §3.2). 2.0 g of litter at leaf's etaB is exactly +1.00 biomass, which is the
-  // first number the player ever sees move and the reason TIP_BASE = 60 g lands on 35 seconds at
-  // the measured one-thumb rate. Neither figure is a knob (BIBLE §9.1).
-  var TAP_LITTER = 2.0
+  // The tap (`01` §3.2). TIP_BASE = 60 g and the 35-second beat are not knobs (BIBLE §9.1), so the
+  // only honest way to make D05 hold for both a steady thumb and a masher is to make the *litter*
+  // rate-limited rather than the button.
+  //
+  // A tap lifts what has settled into the mat since the last one. `TAP_REGEN` g/s of litter works
+  // its way into reach; a tap takes all of it plus `TAP_FLOOR`, and never more than `TAP_MAX` in
+  // one go. So the yield of the n-th tap is a function of *when* it happened, not of how many
+  // preceded it, and the litter rate is `f·TAP_FLOOR + TAP_REGEN` — 3.20 g/s at one tap a second
+  // and 4.08 g/s at five, a 1.28× spread across a 5× spread in effort. Measured first tip: 36.5 s
+  // at 1/s, 34.2 s at 2/s, 32.1 s at 3/s, 28.6 s at 5/s. All four inside D05's 28–50 s, and the
+  // measured one-thumb rate of 1.70/s lands on 34.8 s.
+  //
+  // The clock is simulated time, so the reservoir is deterministic, survives a reload without being
+  // saved, and cannot be beaten by a faster device or a macro.
+  var TAP_FLOOR = 0.22           // g of litter every tap lifts, however recent the last one was
+  var TAP_REGEN = 2.98           // g/s settling into reach of the mat
+  var TAP_MAX = 3.20             // g, the most one tap can ever lift
+  var tapAt = -Infinity          // s, sim time of the last tap; not saved (§3 stores no tap phase)
 
   // Project effects that projects.js delegates here rather than expressing as a `mult` key.
   var SHEATH_HALVING = 0.50      // Hydrophobic Sheath: moistureMult' = 1 − 0.50·(1 − moistureMult)
@@ -69,82 +88,7 @@
   var CALM_RATE = 0.55           // set.calm: eventRateMod 1.00 → 0.55 (BIBLE §3, `01` §7.2)
   var EPS = 1e-9
 
-  // ── the event engine's constants (`01` §7.3–7.5) ───────────────────────────
-
   var SPRING = 0, SUMMER = 1, AUTUMN = 2, WINTER = 3
-
-  var EV = {
-    MAST_SEASONS: 2, MAST_MIN_YEARS: 3,
-    BEETLE_HIT: 0.40, BEETLE_DECAY: 0.10, BEETLE_DEATH: 0.05, BEETLE_SEASONS: 6,
-    WINDTHROW_LOG: [8000, 42000], WINDTHROW_BARK: [2000, 9000],
-    WINDTHROW_MOM: 0.55, WINDTHROW_BASE: 0.86, WINDTHROW_SEASONS: 2, WINDTHROW_KILL_P: 0.18,
-    CARRION: [400, 1400],
-    EARTHWORM_STRIP: 0.30, EARTHWORM_COMP: 2.20, EARTHWORM_SEASONS: 3,
-    FIRESCAR_MINERAL: 3.0, FIRESCAR_DEFICIT: 0.20, FIRESCAR_SEASONS: 1,
-    DROUGHT_MOIST: 0.55, DROUGHT_SEASONS: [1, 2],
-    FROST_MOIST: 0.60, FROST_TEMP: 0.70, FROST_SEASONS: 1,
-    WETSPRING_MOIST: 1.22, WETSPRING_PRICE: 0.82, WETSPRING_SEASONS: 2,
-    LATEFROST_NEED: 1.80, LATEFROST_PHASE: [0.15, 0.30], LATEFROST_SEASONS: 1
-  }
-
-  // Per-season probabilities, indexed SPRING SUMMER AUTUMN WINTER. A zero is "cannot happen here",
-  // which is a different statement from "is unlikely here" and the table says which is which.
-  var EVENTS = [
-    { id: 'mast',       kind: 'tree',    p: [0, 0, 0.12, 0] },
-    { id: 'beetle',     kind: 'tree',    p: [0, 0.06, 0, 0] },
-    { id: 'windthrow',  kind: 'supply',  p: [0.09, 0.09, 0.18, 0.14] },
-    { id: 'carrion',    kind: 'supply',  p: [0.10, 0.10, 0.10, 0.22] },
-    { id: 'earthworm',  kind: 'supply',  p: [0.07, 0.07, 0, 0] },
-    { id: 'firescar',   kind: 'supply',  p: [0.03, 0.03, 0.03, 0.03] },
-    { id: 'drought',    kind: 'weather', p: [0.04, 0.10, 0, 0] },
-    { id: 'frost',      kind: 'weather', p: [0, 0, 0, 0.14] },
-    { id: 'wetspring',  kind: 'weather', p: [0.18, 0, 0, 0] },
-    { id: 'latefrost',  kind: 'weather', p: [0.09, 0, 0, 0] }
-  ]
-
-  // The console line each event owns. Firing is imperative because the line is news, not a state.
-  var EV_LINE = {
-    windthrow: 'a1.windthrow', carrion: 'a1.carrion', earthworm: 'a1.earthworm',
-    firescar: 'a1.fire_scar', drought: 'a1.drought', frost: 'a1.hard_frost',
-    wetspring: 'a1.wet_spring', latefrost: 'a1.late_frost'
-  }
-
-  // ── the trees the event engine introduces (`01` §6.2, §7.3, §9) ────────────
-
-  var TREE_MAX = 7                                  // `01` §6.2: 3–7 simultaneous
-  var REP_NEIGHBOUR = [8, 22, 38, 55, 72]           // netRep thresholds that introduce one
-  var FROST_REFUSE = ['birch', 'aspen']             // who stops talking after a hard frost
-  var NEIGHBOUR_REP = { base: 15, slope: 0.45, min: 5, max: 70 }
-
-  var SPECIES = {
-    birch:   { ramets: 1, age: [30, 55], conifer: false, deciduous: true },
-    aspen:   { ramets: 3, age: [25, 70], conifer: false, deciduous: true },
-    fir:     { ramets: 1, age: [60, 140], conifer: true, deciduous: false },
-    hemlock: { ramets: 1, age: [90, 300], conifer: true, deciduous: false },
-    oak:     { ramets: 1, age: [120, 260], conifer: false, deciduous: true },
-    elm:     { ramets: 1, age: [70, 110], conifer: false, deciduous: true }
-  }
-
-  // What each patch introduces when its claim completes, and the pool a reputation threshold draws
-  // from at that patch count (`01` §7.3: home/2 birch-aspen, 3–4 fir-hemlock, 5–6 oak).
-  var PATCH_TREES = [
-    [],                     // index 0 is unused; patches are 1-based
-    ['birch'],
-    ['aspen'],
-    ['fir'],
-    ['hemlock', 'fir'],
-    ['elm'],
-    ['oak']
-  ]
-  var PATCH_POOL = [
-    [],
-    ['birch', 'aspen'],
-    ['birch', 'aspen'],
-    ['fir', 'hemlock'],
-    ['fir', 'hemlock'],
-    ['oak', 'elm'],
-    ['oak']
-  ]
 
   // ───────────────────────────────────────────────────────────────────────────
   // DETERMINISTIC EVENT ROLLS
@@ -157,8 +101,6 @@
   function rollStream (s, id, year, season) {
     return C().rng(C().hash32(s.seed, 'a1', id, year, season))
   }
-
-  function uniform (r, lo, hi) { return lo + (hi - lo) * r.next() }
 
   // ───────────────────────────────────────────────────────────────────────────
   // ACTIVE-EVENT MODIFIERS — derived from `a1.activeEvents`, never stored twice
@@ -198,14 +140,9 @@
     }
   }
 
-  function compMult (type) {
-    var m = mods(S())
-    return m.comp && typeof m.comp[type] === 'number' ? m.comp[type] : 1
-  }
-
+  // The only modifier act1 consumes itself. Competition, the carbon deficit and the printed price
+  // are read from `a1.activeEvents` by economy1, which owns all three.
   function mineralMult () { return mods(S()).mineral }
-  function deficitMod () { return mods(S()).deficit }
-  function needMod () { return mods(S()).need }
 
   // ───────────────────────────────────────────────────────────────────────────
   // THE CLOCK (tick step 1) AND THE ENVIRONMENT (tick step 2)
@@ -252,7 +189,10 @@
       if (s.a1.season !== SPRING) { list.splice(i, 1); continue }
       if (s.a1.seasonPhase >= num(e.at)) {
         e.pending = false
-        fire(EV_LINE[e.id])
+        // The line is looked up rather than carried: §3's row is {id, seasonsLeft, payload} and a
+        // string that is a pure function of the id has no business in the save budget.
+        var row = HY.economy1 && HY.economy1.eventById ? HY.economy1.eventById(e.id) : null
+        if (row && row.logId) fire(row.logId)
         publishMods(s)
       }
     }
@@ -289,34 +229,18 @@
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // THE EVENT ENGINE (`01` §7.2–7.5)
+  // THE EVENT ENGINE — the roll only (BIBLE §4 step 1)
+  //
+  // One engine, one owner. economy1 holds the table, the payload constants and `applyEvent`,
+  // because every effect an event has lands on a market row, a counterparty or a modifier that
+  // economy1 already reads every tick. What act1 owns is *when* a roll happens — the season
+  // boundary — and the lifetime of the rows in `a1.activeEvents`, which is the same clock.
   // ───────────────────────────────────────────────────────────────────────────
 
   function eventRateMod (s) { return s.set && s.set.calm ? CALM_RATE : 1 }
 
-  function mktRow (s, type) {
-    var i = TYPES.indexOf(type)
-    return i < 0 ? null : s.a1.mkt[i]
-  }
-
-  function addStock (s, type, grams) {
-    var row = mktRow(s, type)
-    if (row) C().setStock(row, 'stock', num(row.stock) + grams)
-  }
-
-  function push (s, id, seasons, payload, extra) {
-    var e = { id: id, seasonsLeft: seasons, payload: payload || {} }
-    if (extra) for (var k in extra) if (own(extra, k)) e[k] = extra[k]
-    s.a1.activeEvents.push(e)
-    return e
-  }
-
-  function trees (s) { return s.a1.trees }
-
-  function treesOf (s, test) {
-    var out = [], i, t = trees(s)
-    for (i = 0; i < t.length; i++) if (t[i] && test(t[i])) out.push(t[i])
-    return out
+  function schedule () {
+    return (HY.economy1 && HY.economy1.EVENTS) || []
   }
 
   // Every roll is independent and multiple events may be live at once; their modifiers multiply.
@@ -331,269 +255,58 @@
     var stochastic = !(opts && opts.stochastic === false)
     expire(s)
 
+    var rows = schedule()
     var rate = eventRateMod(s)
     var i, row, p, r
-    for (i = 0; i < EVENTS.length; i++) {
-      row = EVENTS[i]
-      p = row.p[s.a1.season] * rate
+    for (i = 0; i < rows.length; i++) {
+      row = rows[i]
+      p = (row.pBySeason ? row.pBySeason[s.a1.season] : 0) * rate
       if (!(p > 0)) continue
       r = rollStream(s, row.id, s.a1.year, s.a1.season)
+      // Offline substitutes expectations, and only for the events that hand the player something.
+      // Everything that takes — beetles, kills, droughts, frosts — does not run at all, because
+      // D32 says nothing is lost while away and an expected-value drought is a loss you did not
+      // get to answer. `applyEvent` is handed a null stream, which is how it knows.
       if (!stochastic) {
-        // Offline substitutes expectations, and only for the events that hand the player
-        // something. Everything that takes — beetles, kills, droughts, frosts — does not run at
-        // all, because D32 says nothing is lost while away and an expected-value drought is a loss
-        // you did not get to answer.
-        if (row.kind === 'supply') offlineSupply(s, row.id, p)
+        if (row.domain === 'supply' && HY.economy1) HY.economy1.applyEvent(row.id, null, p)
         continue
       }
       if (r.next() >= p) continue
-      switch (row.id) {
-        case 'mast': fireMast(s, r); break
-        case 'beetle': fireBeetle(s, r); break
-        case 'windthrow': fireWindthrow(s, r); break
-        case 'carrion': fireCarrion(s, r); break
-        case 'earthworm': fireEarthworm(s, r); break
-        case 'firescar': fireFireScar(s, r); break
-        case 'drought': fireDrought(s, r); break
-        case 'frost': fireFrost(s, r); break
-        case 'wetspring': fireWetSpring(s, r); break
-        case 'latefrost': fireLateFrost(s, r); break
-      }
+      if (HY.economy1) HY.economy1.applyEvent(row.id, r)
     }
-    stepNeighbours(s, true)
+    stepNeighbours()
     publishMods(s)
   }
 
+  // A row's seasons run down on every boundary. The per-season *effects* of a live row belong to
+  // whoever owns the quantity — a beetle's decay is economy1's stepTrees, a wet spring's price is
+  // economy1's eventPriceMod — so nothing here does anything but count and publish.
   function expire (s) {
     var list = s.a1.activeEvents, i, e
     for (i = list.length - 1; i >= 0; i--) {
       e = list[i]
       if (!e) { list.splice(i, 1); continue }
       if (e.pending) continue
-      if (e.id === 'beetle') beetleSeason(s, e)
       e.seasonsLeft -= 1
       if (e.seasonsLeft > 0) continue
       if (e.id === 'drought') s.stats.droughtsSurvived += 1
-      if (e.id === 'mast') { var t = treeById(s, e.payload.treeId); if (t) t.mastYear = false }
       list.splice(i, 1)
     }
     publishMods(s)
   }
 
-  function fireMast (s, r) {
-    var pool = treesOf(s, function (t) {
-      return t.species === 'oak' &&
-        (t.lastMast === undefined || s.a1.year - num(t.lastMast) >= EV.MAST_MIN_YEARS)
-    })
-    if (!pool.length) return
-    var t = r.pick(pool)
-    t.mastYear = true
-    t.lastMast = s.a1.year
-    push(s, 'mast', EV.MAST_SEASONS, { treeId: t.id })
-    fire('a1.mast')
-  }
-
-  function fireBeetle (s, r) {
-    var pool = treesOf(s, function (t) {
-      return SPECIES[t.species] && SPECIES[t.species].conifer && num(t.health) > EV.BEETLE_DEATH
-    })
-    if (!pool.length) return
-    var t = r.pick(pool)
-    t.health = C().clamp(num(t.health) - EV.BEETLE_HIT, 0, 1)
-    push(s, 'beetle', EV.BEETLE_SEASONS, { treeId: t.id })
-    fire('a1.beetle')
-    if (t.health <= EV.BEETLE_DEATH) killTree(s, t, 'beetle')
-  }
-
-  // A struck fir loses health every season and becomes, in every number the player can read, an
-  // elm: a superb counterparty with an end date.
-  function beetleSeason (s, e) {
-    var t = treeById(s, e.payload.treeId)
-    if (!t) { e.seasonsLeft = 0; return }
-    t.health = C().clamp(num(t.health) - EV.BEETLE_DECAY, 0, 1)
-    if (t.health <= EV.BEETLE_DEATH) { killTree(s, t, 'beetle'); e.seasonsLeft = 0 }
-  }
-
-  function fireWindthrow (s, r) {
-    var p = s.a1.patches
-    addStock(s, 'log', uniform(r, EV.WINDTHROW_LOG[0], EV.WINDTHROW_LOG[1]) * p)
-    addStock(s, 'bark', uniform(r, EV.WINDTHROW_BARK[0], EV.WINDTHROW_BARK[1]) * p)
-    var row = mktRow(s, 'log')
-    if (row) {
-      row.mom = num(row.mom) - EV.WINDTHROW_MOM
-      row.base = num(row.base) * EV.WINDTHROW_BASE
-    }
-    push(s, 'windthrow', EV.WINDTHROW_SEASONS, {})
-    fire('a1.windthrow')
-    if (r.next() < EV.WINDTHROW_KILL_P) {
-      var pool = trees(s)
-      if (pool.length) {
-        var t = r.pick(pool)
-        killTree(s, t, 'windthrow')
-        fire('a1.windthrow_kill')
-      }
-    }
-  }
-
-  function fireCarrion (s, r) {
-    addStock(s, 'carrion', uniform(r, EV.CARRION[0], EV.CARRION[1]))
-    s.stats.carrionEventsSeen += 1
-    fire('a1.carrion')
-  }
-
-  function fireEarthworm (s, r) {
-    var row = mktRow(s, 'leaf')
-    if (row) C().setStock(row, 'stock', num(row.stock) * EV.EARTHWORM_STRIP)
-    C().setStock(s.a1.sub, 'leaf', num(s.a1.sub.leaf) * EV.EARTHWORM_STRIP)
-    push(s, 'earthworm', EV.EARTHWORM_SEASONS, { comp: { leaf: EV.EARTHWORM_COMP } })
-    fire('a1.earthworm')
-  }
-
-  // Ash is a mineral windfall that simultaneously craters your contract rates: everything above you
-  // got the ash too, and needs you less.
-  function fireFireScar (s) {
-    push(s, 'firescar', EV.FIRESCAR_SEASONS,
-      { mineral: EV.FIRESCAR_MINERAL, deficit: -EV.FIRESCAR_DEFICIT })
-    fire('a1.fire_scar')
-  }
-
-  function fireDrought (s, r) {
-    var n = EV.DROUGHT_SEASONS[0] + r.int(EV.DROUGHT_SEASONS[1] - EV.DROUGHT_SEASONS[0] + 1)
-    push(s, 'drought', n, { moist: EV.DROUGHT_MOIST })
-    fire('a1.drought')
-  }
-
-  // Water is present and frozen, which is a different thing from absent. The two pioneers stop
-  // talking to anyone for a season; the conifers, who were never in a hurry, do not.
-  function fireFrost (s) {
-    push(s, 'frost', EV.FROST_SEASONS, { moist: EV.FROST_MOIST, temp: EV.FROST_TEMP })
-    var i, t = trees(s)
-    for (i = 0; i < t.length; i++) {
-      if (FROST_REFUSE.indexOf(t[i].species) >= 0) t[i].refuseUntil = s.t + T().CLOCK.SEASON_S
-    }
-    fire('a1.hard_frost')
-  }
-
-  function fireWetSpring (s) {
-    push(s, 'wetspring', EV.WETSPRING_SEASONS, { moist: EV.WETSPRING_MOIST })
-    var i, row
-    for (i = 0; i < 2; i++) {              // leaf and needle only
-      row = mktRow(s, TYPES[i])
-      if (row) row.base = num(row.base) * EV.WETSPRING_PRICE
-    }
-    fire('a1.wet_spring')
-  }
-
-  function fireLateFrost (s, r) {
-    push(s, 'latefrost', EV.LATEFROST_SEASONS, { need: EV.LATEFROST_NEED }, {
-      pending: true,
-      at: uniform(r, EV.LATEFROST_PHASE[0], EV.LATEFROST_PHASE[1])
-    })
-  }
-
-  // Offline, a supply event pays its expectation and nothing else happens: no price crash to buy
-  // into, no counterparty on the floor. The kindness is bounded and the decision is still yours.
-  function offlineSupply (s, id, p) {
-    if (id === 'windthrow') {
-      addStock(s, 'log', p * 0.5 * (EV.WINDTHROW_LOG[0] + EV.WINDTHROW_LOG[1]) * s.a1.patches)
-      addStock(s, 'bark', p * 0.5 * (EV.WINDTHROW_BARK[0] + EV.WINDTHROW_BARK[1]) * s.a1.patches)
-    } else if (id === 'carrion') {
-      addStock(s, 'carrion', p * 0.5 * (EV.CARRION[0] + EV.CARRION[1]))
-    }
-  }
-
   // ───────────────────────────────────────────────────────────────────────────
-  // TREES — introduced by the event engine, run by economy1
+  // COUNTERPARTIES — economy1 owns the ladder, the species table and every write to `a1.trees`
   // ───────────────────────────────────────────────────────────────────────────
 
-  function treeById (s, id) {
-    var t = trees(s), i
-    for (i = 0; i < t.length; i++) if (t[i] && t[i].id === id) return t[i]
-    return null
+  // loop.js calls this at BIBLE §4 step 10 and rollEvents calls it at every boundary; economy1's
+  // ladder is a set of idempotent threshold tests, so calling it twice in a tick costs a scan and
+  // changes nothing. Keeping the name here keeps the loop's step order readable.
+  function stepNeighbours () {
+    if (S().act !== 1) return
+    if (HY.economy1 && HY.economy1.stepNeighbours) HY.economy1.stepNeighbours()
   }
 
-  function maxTreeId (s) {
-    var t = trees(s), i, m = 0
-    for (i = 0; i < t.length; i++) if (t[i] && t[i].id > m) m = t[i].id
-    return m
-  }
-
-  function repFor (s) {
-    return C().clamp(NEIGHBOUR_REP.base + NEIGHBOUR_REP.slope * num(s.a1.netRep),
-      NEIGHBOUR_REP.min, NEIGHBOUR_REP.max)
-  }
-
-  function spawnTree (s, species, r) {
-    if (HY.economy1 && HY.economy1.spawnTree) return HY.economy1.spawnTree(species, s.a1.patches)
-    var sp = SPECIES[species] || SPECIES.birch
-    var t = {
-      id: maxTreeId(s) + 1,
-      species: species,
-      age: Math.round(uniform(r, sp.age[0], sp.age[1])),
-      health: 1,
-      rep: repFor(s),
-      ramets: sp.ramets,
-      refuseUntil: 0,
-      lastReneg: 0,
-      mastYear: false
-    }
-    trees(s).push(t)
-    if (species === 'aspen') fire('a1.aspen')
-    if (species === 'hemlock') fire('a1.hemlock')
-    if (species === 'elm') fire('a1.elm_offer')
-    return t
-  }
-
-  function killTree (s, t, cause) {
-    var list = trees(s), i = list.indexOf(t)
-    if (i < 0) return
-    // The book is settled before the body is: collateral returns, reputation is untouched. Then
-    // the trunk enters the log pool, and the game does not comment on what you do with it.
-    if (HY.economy1 && HY.economy1.voidContracts) HY.economy1.voidContracts(t.id, cause)
-    else voidContractsOf(s, t.id)
-    list.splice(i, 1)
-    if (cause === 'windthrow') addStock(s, 'log', uniform(rollStream(s, 'trunk', t.id, 0),
-      EV.WINDTHROW_LOG[0], EV.WINDTHROW_LOG[1]))
-    if (t.species === 'elm') fire('a1.elm_death')
-  }
-
-  function voidContractsOf (s, treeId) {
-    var list = s.a1.contracts, i, c
-    for (i = list.length - 1; i >= 0; i--) {
-      c = list[i]
-      if (!c || c.treeId !== treeId) continue
-      C().setStock(s.res, 'biomass', num(s.res.biomass) + num(c.collateral))
-      list.splice(i, 1)
-    }
-  }
-
-  // "New neighbour" (`01` §7.3), on reputation thresholds and on each patch claim. The ladder is
-  // resolved at season boundaries, with one exception: the first birch arrives the instant the
-  // understory opens, because that unlock is a panel with a counterparty in it.
-  //
-  // A tree that died is eventually replaced. That is deliberate: minerals have exactly one source
-  // in Act I, so a forest that cannot re-supply a counterparty is a dead end, and D78 does not
-  // permit one. The ladder still caps the book, and a death costs a whole season either way.
-  function stepNeighbours (s, atBoundary) {
-    if (s.act !== 1) return
-    var have = maxTreeId(s)
-    if (have === 0) {
-      if (!revealTrees(s)) return
-      spawnTree(s, 'birch', rollStream(s, 'neighbour', 1, s.a1.patches))
-      return
-    }
-    if (!atBoundary) return
-
-    var want = 1 + (s.a1.patches - 1)
-    var i
-    for (i = 0; i < REP_NEIGHBOUR.length; i++) if (num(s.a1.netRep) >= REP_NEIGHBOUR[i]) want += 1
-    while (have < want && trees(s).length < TREE_MAX) {
-      have += 1
-      var r = rollStream(s, 'neighbour', have, s.a1.patches)
-      var pool = PATCH_POOL[Math.min(s.a1.patches, PATCH_POOL.length - 1)]
-      spawnTree(s, r.pick(pool), r)
-    }
-  }
 
   // ───────────────────────────────────────────────────────────────────────────
   // THE TAP
@@ -627,11 +340,24 @@
     return out
   }
 
+  // What a tap would lift right now, before the floor is consulted. Exported for the button face,
+  // and the reason mashing is not a strategy: the second tap in a sim tick sees the same `t`, so it
+  // finds nothing settled and lifts only the floor.
+  function tapLitter (state) {
+    var s = state || S()
+    var since = num(s.t) - tapAt
+    if (!(since > 0)) since = 0
+    var settled = since === Infinity ? TAP_MAX : TAP_REGEN * since
+    var g = TAP_FLOOR + settled
+    return g > TAP_MAX ? TAP_MAX : g
+  }
+
   function onExtend () {
     var s = S()
     if (s.act !== 1) return false
-    var g = Math.min(TAP_LITTER, totalSubstrate())
+    var g = Math.min(tapLitter(s), totalSubstrate())
     if (!(g > 0)) return false          // the console says so on its own poll; nothing here advises
+    tapAt = num(s.t)
 
     var got = consume(s, g)
     C().setStock(s.res, 'biomass', num(s.res.biomass) + got.biomass)
@@ -838,13 +564,8 @@
     s.a1.patches = Math.min(Math.max(s.a1.patches, c.patchId), A().PATCH_MAX)
     syncPatchMult(s)
     // Each patch introduces its own counterparty; §7.3's "on each patch claim" is the second half
-    // of the New Neighbour rule and stepNeighbours reads the patch count directly.
-    var list = PATCH_TREES[s.a1.patches] || []
-    var i, r
-    for (i = 0; i < list.length && trees(s).length < TREE_MAX; i++) {
-      r = rollStream(s, 'patchtree', s.a1.patches, i)
-      spawnTree(s, list[i], r)
-    }
+    // of the New Neighbour rule, and economy1's ladder reads the patch count directly.
+    stepNeighbours()
     feel('claim', { patch: s.a1.patches })
   }
 
@@ -905,7 +626,7 @@
   // panel that is earned is never taken back and `biomass >= 60` stops being true the moment the
   // player spends it.
   function revealTrees (s) {
-    return trees(s).length > 0 ||
+    return s.a1.trees.length > 0 ||
       (num(s.res.sugar) >= A().TREES_SUGAR_G && s.a1.season === WINTER)
   }
 
@@ -999,6 +720,7 @@
   function init (s) {
     s = s || S()
     lastT = null
+    tapAt = -Infinity
     carrionTasted = false
     starving = false
     litterRate = 0
@@ -1022,7 +744,7 @@
     stepDecomposition(dt)
     stepSpoilage(dt)
     stepClaim()
-    stepNeighbours(s, false)
+    stepNeighbours()
   }
 
   // Everything act1 owns is a key in §3; state.js serialises all of it. Nothing here is private
@@ -1104,6 +826,21 @@
       ok(tipCost(100) < 10570, 'Foraging Front did not move the coefficient')
       delete S().proj.flags.foraging_front
 
+      // The decomposition columns and economy1's market columns are two views of `01` §5.5's one
+      // table, split because they are read on different sides of a module boundary. They are not
+      // allowed to drift: a k that disagrees moves the bottleneck without moving the price.
+      var df = HY.economy1 && HY.economy1.DEADFALL
+      if (df) {
+        for (i = 0; i < TYPES.length; i++) {
+          var dr = df[i], dl = DECOMP[TYPES[i]]
+          ok(dr && dr.id === TYPES[i], 'the deadfall table is out of order at ' + TYPES[i])
+          near(dl.k, dr.k, 0, TYPES[i] + ': k disagrees across the module boundary')
+          near(dl.etaB, dr.etaB, 0, TYPES[i] + ': etaB disagrees across the module boundary')
+          near(dl.etaS, dr.etaS, 0, TYPES[i] + ': etaS disagrees across the module boundary')
+          near(dl.mineralPerG, dr.minPerG, 0, TYPES[i] + ': mineralPerG disagrees')
+        }
+      }
+
       // ── the environment ──────────────────────────────────────────────────
       cold(2)
       near(moistureMult(), 1, 1e-9, 'cold boot moisture is not the peak of the hump')
@@ -1157,9 +894,12 @@
       // comfortable rate that still satisfies D05.
       within(r17.tipsAt90, 4, 9, 'D06 tips at 90 s, player R (1.70/s)')
       within(r17.tipsAt120, 5, 9, 'tips at 120 s vs 08 §7 minute-2 row')
+      // The tap is cadence-limited now, so a comfortable thumb and the reference thumb reach the
+      // same place: the 90-second count no longer separates them and the same band is asserted for
+      // both. A build where 2.00/s beat 1.70/s at 90 s would be a build that pays for mashing.
       var r20 = simulate({ tapRate: 2.00, until: 90 })
       within(r20.firstTipAt, 28, 50, 'D05 at 2.00 taps/s')
-      within(r20.tipsAt90, 5, 9, 'D06 tips at 90 s (5–9)')
+      within(r20.tipsAt90, 4, 9, 'D06 tips at 90 s, comfortable thumb')
 
       // The tap is not vestigial until t ≈ 100 s (window W1): tapping must beat waiting at 1 tip.
       ok(1.70 * 1.0 > 1.50, 'W1: the tap stopped mattering before the third tip')
@@ -1211,17 +951,38 @@
       near(litterOf(), 1.875 * 10 * DECOMP.stump.k, 1e-6, 'the stump throughput weight is wrong')
       ok(wood / litterOf() > 1.0, 'stumps do not out-yield leaf per gram')
 
-      // ── the tap ─────────────────────────────────────────────────────────
+      // ── the tap, and the reason mashing is not a strategy ───────────────
       cold(5)
       s = S()
+      // The mat is undisturbed at t = 0, so the first tap lifts everything a tap can.
+      near(tapLitter(s), TAP_MAX, 1e-12, 'the first tap does not lift a full mat')
       ok(onExtend(), 'the first tap did nothing')
-      near(num(s.res.biomass), 1.00, 1e-9, 'a tap is not +1.00 biomass')
-      near(num(s.res.sugar), 0.32, 1e-9, 'a tap is not +0.32 sugar')
-      near(num(s.a1.sub.leaf), A().BOOT_SUB_LEAF - TAP_LITTER, 1e-9, 'a tap did not eat 2 g')
+      near(num(s.res.biomass), TAP_MAX * A().ETA_B * DECOMP.leaf.etaB, 1e-9, 'the first tap yield')
+      near(num(s.res.sugar), TAP_MAX * A().ETA_S * DECOMP.leaf.etaS, 1e-9, 'the first tap sugar')
+      near(num(s.a1.sub.leaf), A().BOOT_SUB_LEAF - TAP_MAX, 1e-9, 'a tap did not eat what it lifted')
       near(num(s.a1.hyphaeManual), A().HYPHAE_PER_TAP, 1e-12, 'S4: a tap is 0.020 m')
       ok(s.stats.taps === 1, 'the tap was not counted')
+      // A second tap in the same sim tick finds nothing settled: it lifts the floor and no more.
+      near(tapLitter(s), TAP_FLOOR, 1e-12, 'mashing inside one tick still pays')
+      onExtend()
+      near(num(s.a1.sub.leaf), A().BOOT_SUB_LEAF - TAP_MAX - TAP_FLOOR, 1e-9,
+        'the second tap of a tick lifted more than the floor')
+      // And a tap after a full regeneration window is worth a full mat again.
+      s.t += TAP_MAX / TAP_REGEN
+      near(tapLitter(s), TAP_MAX, 1e-9, 'the mat did not refill')
       for (i = 0; i < TYPES.length; i++) C().setStock(s.a1.sub, TYPES[i], 0)
       ok(onExtend() === false, 'the tap worked on a bare floor')
+      // D05 across the whole plausible thumb band. The window is the pass condition (BIBLE §8.1);
+      // TIP_BASE stays 60 g and the tap's *cadence* is what carries it (BIBLE §9.1).
+      var band = [1, 2, 3, 5], bi, br
+      for (bi = 0; bi < band.length; bi++) {
+        br = simulate({ tapRate: band[bi], until: 90 })
+        within(br.firstTipAt, 28, 50, 'D05 at ' + band[bi] + ' taps/s')
+      }
+      // Mashing five times harder may not be worth more than a third more litter, or the button is
+      // a dexterity test and D05 becomes a function of the player's wrist.
+      ok(simulate({ tapRate: 1 }).firstTipAt / simulate({ tapRate: 5 }).firstTipAt < 1.45,
+        'the tap still rewards mashing')
 
       // ── the mineral gate: a wall with four tips of warning ───────────────
       cold(5)
@@ -1291,6 +1052,10 @@
       cold(7)
       s = S()
       s.res.biomass = 1e6
+      // The understory has to be open before a claim can introduce anybody: the panel is earned in
+      // sugar, in winter, and a patch does not un-earn it.
+      s.res.sugar = A().TREES_SUGAR_G + 1
+      s.a1.season = WINTER
       claimPatch(2)
       s.t += A().PATCH[1].claimS
       stepClaim()
@@ -1298,7 +1063,7 @@
       near(s.mult.patchMult, 1 + A().PATCH_MULT_STEP, 1e-9, 'patchMult was not resynced')
       near(patchSupplyMult(), Math.pow(2, 1.8), 1e-9, 'S3: fall must scale as patches^1.8')
       near(patchCapMult(), 2, 1e-9, 'S3: cap must stay linear in patches')
-      ok(trees(s).length >= 1, 'the second patch introduced no counterparty')
+      ok(s.a1.trees.length >= 1, 'the second patch introduced no counterparty')
 
       // ── the event engine ─────────────────────────────────────────────────
       cold(8)
@@ -1360,9 +1125,9 @@
       s.a1.patches = 6
       s.a1.unlockedTypes = TYPES.slice()
       for (i = 0; i < TYPES.length; i++) s.a1.sub[TYPES[i]] = 1e7
-      for (i = 0; i < TREE_MAX; i++) {
+      for (i = 0; i < 7; i++) {          // `01` §6.2's ceiling of simultaneous counterparties
         s.a1.trees.push({ id: i + 1, species: 'fir', age: 80, health: 1, rep: 50, ramets: 1,
-          refuseUntil: 0, lastReneg: 0, mastYear: false })
+          refuseUntil: 0, lastReneg: 0, mastYear: -1 })
       }
       syncPatchMult(s)
       var t0 = now()
@@ -1383,9 +1148,22 @@
       s.res.sugar = 300
       s.a1.season = WINTER
       ok(reveals().trees, 'the understory did not open at 250 g of sugar in winter')
-      stepNeighbours(s)
-      ok(trees(s).length === 1 && trees(s)[0].species === 'birch',
+      stepNeighbours()
+      ok(s.a1.trees.length === 1 && s.a1.trees[0].species === 'birch',
         'the first counterparty is not a birch')
+      // MINOR 6 / BLOCKER 2: exactly one module mints trees, and it mints them with unique ids.
+      ok(HY.economy1.spawnTree.length === 1,
+        'economy1.spawnTree no longer takes exactly (species)')
+      var idsSeen = {}, dupe = false
+      s.a1.patches = 6
+      stepNeighbours()
+      for (i = 0; i < s.a1.trees.length; i++) {
+        if (idsSeen[s.a1.trees[i].id]) dupe = true
+        idsSeen[s.a1.trees[i].id] = 1
+      }
+      ok(!dupe, 'two counterparties share one id')
+      ok(s.a1.trees.length > 1, 'the patch ladder introduced nobody')
+      s.a1.patches = 1
       s.a1.season = SPRING
       ok(reveals().trees, 'the understory closed again when winter ended')
 
@@ -1530,7 +1308,7 @@
     stepEnvironment: stepEnvironment,
     stepSpoilage: stepSpoilage,
     stepClaim: stepClaim,
-    stepNeighbours: function () { return stepNeighbours(S()) },
+    stepNeighbours: stepNeighbours,
     sugarCap: sugarCap,
     totalSubstrate: totalSubstrate,
     consume: function (g) { return consume(S(), g) },
@@ -1544,13 +1322,10 @@
     claimProgress: claimProgress,
     reveals: reveals,
     seasonName: seasonName,
-    compMult: compMult,
     mineralMult: mineralMult,
-    deficitMod: deficitMod,
-    needMod: needMod,
     get starving () { return isStarving() },
     DECOMP: DECOMP,
-    TAP_LITTER: TAP_LITTER,
+    tapLitter: tapLitter,
     __selftest: __selftest
   }
 })(window.HY = window.HY || {})

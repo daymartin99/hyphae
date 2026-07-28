@@ -29,9 +29,18 @@
   var SER_LEN = '$n'              // element count
   var SER_DATA = '$b'             // base64 payload; ABSENT means "all zero"
 
+  var MS_PER_S = 1000             // unit conversion, not a tunable
+
   function C () { return HY.core }
   function TUNE () { return HY.core.TUNE }
-  function now () { return Date.now() }
+
+  // Wall clock, in SECONDS since the epoch. Seconds is the unit of every duration in the build —
+  // TUNE holds nothing per-tick and nothing in milliseconds — and `wallClock` exists to be
+  // subtracted from a later reading by the offline reconciler. One unit on both sides is the whole
+  // point: a millisecond stamp read as seconds is off by a factor of a thousand, which reads as
+  // "last played forty years from now" and silently disables offline progress forever.
+  // This is the only clock reader in the build; loop.js reconciles against HY.state.now().
+  function now () { return Date.now() / MS_PER_S }
 
   // ───────────────────────────────────────────────────────────────────────────
   // TYPED-ARRAY CODEC
@@ -214,7 +223,8 @@
       // §3's literal is 0, but a save that is adopted and then reconciled before its first autosave
       // would read 0 as "last played at the epoch" and hand the player twelve hours of offline on a
       // cold boot. The invariant that matters is "wallClock is the only input to reconciliation";
-      // stamping it at construction is what makes that input correct from the first frame.
+      // stamping it at construction, in the same seconds that save() and loop.reconcileOffline()
+      // use, is what makes that input correct from the first frame of a first run.
       wallClock: now(),
       act: 1,
       phase: 'understory',
@@ -696,6 +706,12 @@
   // that cached `HY.state.state` in a closure is never left holding a dead save.
   function adopt (src) {
     var live = st(), k
+    // Adopting the live instance into itself is a no-op by definition, and it has to be written
+    // down: load() and importB64() both adopt and then hand the live object back, and boot() feeds
+    // what load() returned straight into init(), which adopts again. Without this line the second
+    // adopt deletes every key of the run and then copies them back from the object it has just
+    // emptied — a reload landed the player on a save with no `res`, no `a1` and no way back.
+    if (src === live) return live
     for (k in live) if (Object.prototype.hasOwnProperty.call(live, k)) delete live[k]
     for (k in src) if (Object.prototype.hasOwnProperty.call(src, k)) live[k] = src[k]
     return live
@@ -758,30 +774,65 @@
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // STORAGE — guarded; a hostile localStorage costs one warning, never the session
+  // STORAGE — guarded; a hostile localStorage costs the player one honest line, never the session
   // ───────────────────────────────────────────────────────────────────────────
 
   var mem = {}                 // in-memory mirror; always written, and the fallback for every read
-  var storageOK = true
-  var warned = false
+  var storageOK = true         // whether the last storage call we made succeeded
+  var retryAt = 0              // s, wall clock: while degraded, when storage is worth trying again
+  var announced = false        // whether this failure episode has been reported to the player
+  var quiet = false            // suppresses the player-facing line; set only by __selftest, which
+                               // provokes storage failures and must not spend log.js's once-latch
   var lastError = ''
   var lastBytes = 0
 
+  // A storage failure is nearly always temporary — a full quota that a background tab frees, a
+  // private-mode store that returns on the next navigation, a transient SecurityError. Latching it
+  // off for the life of the session turns "one autosave was lost" into "the whole run was lost",
+  // and the player is never told which happened. So the flag is a state, not a verdict: writes are
+  // retried, and the retry is rate-limited to the autosave cadence so a genuinely dead store costs
+  // one throw per autosave rather than one per call.
+  function storageReady () { return storageOK || now() >= retryAt }
+
   function degrade (e) {
+    var name = e && e.name ? e.name : String(e)
     storageOK = false
-    if (!warned) {
-      warned = true
-      // One warning, once, ever. Play continues against `mem`, so the session is intact; what is
-      // lost is persistence across a reload, and the player is told that by the UI, not by this.
-      console.warn('hyphae: local storage is unavailable (' + (e && e.name ? e.name : e) +
-        '); this session is being kept in memory only.')
+    retryAt = now() + TUNE().CLOCK.AUTOSAVE_S
+    if (announced) return
+    announced = true
+    // The session itself is intact — play continues against `mem` — so what the player needs to
+    // know is that it will not survive the tab, and which of the two reasons it is. A full store
+    // has an answer (export the run); a blocked one does not.
+    // Wrapped because this can fire from load() before log.init has run, and a module that cannot
+    // take the message is not a reason to lose the save that provoked it.
+    if (!quiet && HY.log && HY.log.notice) {
+      try { HY.log.notice(/quota|full/i.test(name) ? 'quota' : 'no_storage') } catch (err) { void 0 }
+    }
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('hyphae: local storage is unavailable (' + name +
+        '); this session is being kept in memory only until it comes back.')
+    }
+  }
+
+  function recovered () {
+    if (storageOK) return
+    storageOK = true
+    retryAt = 0
+    // The announcement latch is released with the flag, so a second outage is reported like the
+    // first. Nothing is said to the player: the console line said the run was in memory "until it
+    // comes back", and the next autosave has just made that true. Log entries are log.js's
+    // vocabulary and this module does not get to invent one.
+    announced = false
+    if (typeof console !== 'undefined' && console.info) {
+      console.info('hyphae: local storage is writable again; the run is being persisted.')
     }
   }
 
   function lsGet (key) {
-    if (storageOK) {
+    if (storageReady()) {
       try {
         var v = window.localStorage.getItem(key)
+        recovered()
         if (v !== null && v !== undefined) return v
       } catch (e) { degrade(e) }
     }
@@ -790,9 +841,10 @@
 
   function lsSet (key, value) {
     mem[key] = value           // the mirror is written first, so a quota failure never loses a turn
-    if (!storageOK) return false
+    if (!storageReady()) return false
     try {
       window.localStorage.setItem(key, value)
+      recovered()
       return true
     } catch (e) { degrade(e); return false }
   }
@@ -814,9 +866,16 @@
     return act >= 3 ? S.MAX_BYTES_A3 : (act === 2 ? S.MAX_BYTES_A2 : S.MAX_BYTES_A1)
   }
 
+  // What this session last wrote into each slot key. The rolling .bak is by definition the previous
+  // contents of the slot, and for every write after the first we are the one who put them there, so
+  // there is nothing to look up: remembering the string removes a synchronous getItem from every
+  // autosave. Storage is still read once per slot per session, on the first save, because a
+  // previous session's contents are the one thing we do not know.
+  var lastWritten = {}
+
   function save (slot) {
     var s = st()
-    var key, json, prev
+    var key, json, prev, ok
     if (slot === undefined) slot = curSlot
     curSlot = clampSlot(slot)
     key = slotKey(curSlot)
@@ -830,12 +889,14 @@
     json = JSON.stringify(serialise(s))
     lastBytes = json.length
 
+    prev = Object.prototype.hasOwnProperty.call(lastWritten, key) ? lastWritten[key] : lsGet(key)
+
     // The rolling .bak is the previous contents of this slot, written before the slot is touched.
-    // Reading it back costs one localStorage hit per autosave and is the difference between a
-    // corrupted write and a lost run.
-    prev = lsGet(key)
-    if (prev !== null) lsSet(key + '.bak', prev)
-    return lsSet(key, json)
+    // It is the difference between a write torn by a kill mid-string and a lost run.
+    if (prev !== null && prev !== undefined) lsSet(key + '.bak', prev)
+    ok = lsSet(key, json)
+    lastWritten[key] = json
+    return ok
   }
 
   // Parse → migrate → validate. Returns the §3-shaped save, or null with `reason` set. Shared by
@@ -891,6 +952,11 @@
 
     lastError = got.reason
     if (!got.save) return null
+
+    // Whatever we thought we had written here, someone else may have written since — a second tab
+    // shares this origin. The next save re-reads the slot once rather than rolling a .bak that was
+    // never the slot's contents.
+    delete lastWritten[key]
 
     curSlot = clampSlot(slot)
     sinceSave = 0
@@ -990,6 +1056,12 @@
 
     var keep = serialise(st())          // the live save is a player's; nothing below may disturb it
     var keptSlot = curSlot
+    // Everything the storage sections stand on its head is captured here rather than inside the
+    // try: a test that throws half way through must still hand the player back their session, and
+    // section 5 goes as far as dropping the live instance to imitate a reload.
+    var keptLive = live
+    var savedMem = mem, savedOK = storageOK, savedRetry = retryAt
+    var savedAnn = announced, savedWritten = lastWritten, savedQuiet = quiet
     try {
       // 1 · a cold-boot save is §3-shaped.
       var g = newGame(1234, null)
@@ -1136,10 +1208,11 @@
       ok(importB64('not a save at all !!!') === false, 'importB64 accepted rubbish')
 
       // 4 · slots, the rolling .bak, and a hostile localStorage.
-      var savedMem = mem, savedOK = storageOK, savedWarn = warned
       // Against the mirror only. A self-test that wrote through to localStorage would overwrite
       // the slot of whoever ran it, which is the exact failure the slot system exists to prevent.
-      mem = {}; storageOK = false
+      // `retryAt` at infinity is what holds it there now that a degraded store is retried, and
+      // `quiet` keeps the deliberate failures below out of the player's console.
+      mem = {}; lastWritten = {}; storageOK = false; retryAt = Infinity; quiet = true
       adopt(deserialise(parseB64(b1)))
       st().t = 100
       ok(save(1) !== undefined, 'save(1) threw')
@@ -1167,8 +1240,97 @@
       ok(load(1) === null && lastError.indexOf('newer') === 0,
         'a slot newer than CURRENT was not refused')
 
-      // Storage that throws on every call: play continues, exactly one warning is emitted.
-      mem = {}; storageOK = true; warned = false
+      // 5 · a played run survives a reload. This is what the file is for, and it is the one path
+      //     that runs load() and init() against the same object: boot() hands what load() returned
+      //     straight to init(s), and both of them adopt.
+      mem = {}; lastWritten = {}
+      adopt(newGame(0xC0FFEE, null))
+      var pi
+      if (HY.act1 && HY.act1.onExtend) for (pi = 0; pi < 60; pi++) HY.act1.onExtend()
+      // Deterministic ticks: the assertion is about persistence, not about the market's dice.
+      if (HY.loop && HY.loop.simTick) {
+        for (pi = 0; pi < 600; pi++) {
+          HY.loop.simTick(TUNE().CLOCK.DT_A1, { stochastic: false, offline: false })
+        }
+      } else {
+        st().t = 60
+      }
+      var playedT = st().t, playedB = st().res.biomass, playedTaps = st().stats.taps
+      ok(playedT > 0, 'the reload fixture never advanced its clock')
+      save(1)
+      var atSave = exportB64()           // after the save: save() is the writer of wallClock
+      live = null                        // exactly what a reload does to this module
+      var reloaded = init(load(1))
+      ok(reloaded === st(), 'init did not return the live instance')
+      ok(Object.keys(st()).length > 1, 'a reload left the live save with ' +
+        Object.keys(st()).length + ' keys')
+      ok(exportB64() === atSave, 'a reload did not restore the run byte for byte')
+      ok(st().t === playedT, 'a reload lost the clock: ' + st().t + ' vs ' + playedT)
+      ok(st().res.biomass === playedB, 'a reload lost the biomass')
+      ok(st().stats.taps === playedTaps, 'a reload lost the tap count')
+      ok(st().wallClock > 0, 'a reload restored a save with no wall clock')
+      live = keptLive                    // the reload imitation is over; give the modules back the
+                                         // identity they cached before it started
+
+      // 6 · a degraded store is retried, and recovering from it is silent but complete.
+      var fake = {}
+      var fakeLS = {
+        getItem: function (k) {
+          return Object.prototype.hasOwnProperty.call(fake, k) ? fake[k] : null
+        },
+        setItem: function (k, v) { fake[k] = String(v) },
+        removeItem: function (k) { delete fake[k] }
+      }
+      var realLS0 = null, swapped = false
+      try {
+        realLS0 = window.localStorage
+        Object.defineProperty(window, 'localStorage', { configurable: true, value: fakeLS })
+        swapped = true
+      } catch (e) { swapped = false }
+      if (swapped) {
+        mem = {}; lastWritten = {}; storageOK = false; announced = true
+        retryAt = now() + TUNE().CLOCK.AUTOSAVE_S
+        ok(save(0) === false, 'a degraded save touched storage inside its retry window')
+        ok(fake[slotKey(0)] === undefined, 'a degraded save wrote through anyway')
+        retryAt = 0                      // the cooldown, expired
+        st().t += 1
+        ok(save(0) === true, 'a store that works again was never retried')
+        ok(fake[slotKey(0)] !== undefined, 'the retried save did not reach storage')
+        ok(storageOK === true, 'a successful write did not clear the degraded flag')
+        ok(announced === false, 'recovery did not release the announcement latch')
+
+        // 7 · what one autosave costs in synchronous storage calls.
+        var calls = { get: 0, set: 0 }
+        fake = {}
+        fakeLS.getItem = function (k) {
+          calls.get++
+          return Object.prototype.hasOwnProperty.call(fake, k) ? fake[k] : null
+        }
+        fakeLS.setItem = function (k, v) { calls.set++; fake[k] = String(v) }
+        mem = {}; lastWritten = {}; storageOK = true; retryAt = 0
+        st().t += 1
+        save(2)
+        ok(calls.get === 1, 'the first save of a session read the slot ' + calls.get + ' times')
+        var n = 5, si
+        calls.get = 0; calls.set = 0
+        for (si = 0; si < n; si++) { st().t += TUNE().CLOCK.AUTOSAVE_S; save(2) }
+        ok(calls.get === 0, 'an autosave still reads the slot back: ' + calls.get + ' getItem calls')
+        ok(calls.set === 2 * n, 'an autosave wrote ' + (calls.set / n) + ' keys, expected 2')
+        ok(fake[slotKey(2) + '.bak'] !== fake[slotKey(2)] && fake[slotKey(2) + '.bak'] !== undefined,
+          'the rolling backup stopped being the previous distinct write')
+        // The guarantee the read was carrying: .bak is the slot's previous contents, exactly.
+        var prevSlot = fake[slotKey(2)]
+        st().t += TUNE().CLOCK.AUTOSAVE_S
+        save(2)
+        ok(fake[slotKey(2) + '.bak'] === prevSlot, 'the .bak is no longer the previous slot write')
+
+        try {
+          Object.defineProperty(window, 'localStorage', { configurable: true, value: realLS0 })
+        } catch (e) { /* the property is gone for this page; mem still carries the session */ }
+      }
+
+      // 8 · storage that throws on every call: play continues, exactly one warning is emitted.
+      mem = {}; lastWritten = {}; storageOK = true; retryAt = 0; announced = false
       var realWarn = console.warn, warnCount = 0
       console.warn = function () { warnCount++ }
       var realLS = null, hadLS = false
@@ -1193,11 +1355,13 @@
       } else {
         console.warn = realWarn
       }
-      mem = savedMem; storageOK = savedOK; warned = savedWarn
     } catch (e) {
       f.push('threw: ' + (e && e.stack ? e.stack : e))
     }
 
+    mem = savedMem; storageOK = savedOK; retryAt = savedRetry
+    announced = savedAnn; lastWritten = savedWritten; quiet = savedQuiet
+    if (keptLive) live = keptLive
     curSlot = keptSlot
     adopt(deserialise(keep))
     sinceSave = 0
@@ -1216,6 +1380,10 @@
     importB64: importB64,
     migrate: migrate,
     assertShape: assertShape,
+
+    // The build's one wall clock, in seconds. loop.js reconciles against this rather than reading
+    // Date.now() itself, because two readers is how the units drifted apart in the first place.
+    now: now,
 
     // §6's generic module surface.
     init: init,

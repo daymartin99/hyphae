@@ -1252,6 +1252,21 @@
     return true
   }
 
+  // `@boot` is the one trigger in the corpus with no call site anywhere outside this module: it is
+  // not an event the game raises, it is the fact that there is a game, and only the log knows
+  // whether the console has ever spoken. Nothing else in the corpus may speak until it has (09
+  // §2.1), so it is spoken outright rather than queued — D02 wants the line on the frame the game
+  // boots, and there is no gap to keep before the first line. init() calls this so the console is
+  // holding it at t = 0; manageLog() calls it again every second so that a state the game replaced
+  // after init — a load, an imported run, a new growth — still gets its opening rather than a
+  // console gated shut for the rest of the run.
+  function bootLine (s) {
+    var e = OPENING[1]
+    if (!s || s.act !== e.act) return false
+    if (s.log.openingLines >= 1 || firedHas(s, e.id)) return false
+    return emit(s, e, null, null)
+  }
+
   // A line that is not in the catalog: the sequences and the §6.8 notices. It still goes through
   // the ring, the renderer and the aria-live region, because there is only one console.
   function emitRaw (s, id, text, tone, channel) {
@@ -1349,13 +1364,16 @@
     if (!queue.length) return
 
     // Nothing may speak before the opening five have, and they are fired IN ORDER (09 §2.1). Only
-    // the next one in the sequence is eligible; the rest wait. If a predecessor is already in the
-    // fired set — a save written mid-opening, a slot reloaded — the counter walks forward over it
-    // rather than deadlocking on a line that can never arrive again.
+    // the next one in the sequence is eligible; the rest wait. If a predecessor can no longer
+    // arrive the counter walks forward over it rather than deadlocking on it: either it is already
+    // in the fired set — a save written mid-opening, a slot reloaded — or the run has left the act
+    // the opening belongs to, in which case waiting for it would silence the console for the rest
+    // of the game.
     var opening = s.log.openingLines < 5
     if (opening) {
       var need = s.log.openingLines + 1
-      while (need <= 5 && OPENING[need] && firedHas(s, OPENING[need].id)) {
+      while (need <= 5 && OPENING[need] &&
+             (firedHas(s, OPENING[need].id) || OPENING[need].act < s.act)) {
         s.log.openingLines = need
         need++
       }
@@ -1405,6 +1423,8 @@
     if (frozen) { drain(s); return }
 
     if (poolAct !== s.act || firedLen !== s.log.fired.length) buildPool(s)
+
+    bootLine(s)
 
     var i, e
     for (i = pool.length - 1; i >= 0; i--) {
@@ -1750,10 +1770,29 @@
       lh = parseFloat(window.getComputedStyle(mountEl).lineHeight)
     }
     rowPx = (lh > 0 && isFinite(lh)) ? lh : CONS.ROW_PX
+    repaint()
     return mountEl
   }
 
-  function render (line) {
+  // The console is a window onto the ring, not a record of this page load. Without this a reload
+  // — and the boot line, which is spoken before the shell exists — lands the player in front of an
+  // empty console that stays empty until the next line happens to fire, which in the quiet middle
+  // of Act I is minutes of blank screen.
+  function repaint () {
+    var s = S()
+    if (!s || !mountEl || typeof document === 'undefined') return
+    while (mountEl.firstChild) mountEl.removeChild(mountEl.firstChild)
+    var r = s.log.ring, i = Math.max(0, r.length - T().LOG.ROWS)
+    for (; i < r.length; i++) {
+      // The ring stores tone and text and nothing else. `amb` is the observation tone and no other
+      // line in the corpus carries it, so it is what tells a repainted row to keep its bare gutter.
+      var tone = CODE_TONE[r[i].charAt(0)] || null
+      render({ id: null, text: r[i].slice(1), tone: tone,
+        channel: tone === 'amb' ? 'observation' : null }, true)
+    }
+  }
+
+  function render (line, quiet) {
     if (!mountEl || typeof document === 'undefined') return
     var s = S()
     var prev = mountEl.lastChild
@@ -1777,7 +1816,8 @@
 
     div.appendChild(gutter)
     div.appendChild(body)
-    if (!(s && s.set && s.set.reduceMotion === true) && !reducedMotion(s)) {
+    // History does not arrive: a repainted row is already there and must not animate in.
+    if (!quiet && !(s && s.set && s.set.reduceMotion === true) && !reducedMotion(s)) {
       div.className += ' console-line-enter'
     }
     mountEl.appendChild(div)
@@ -1831,6 +1871,7 @@
     if (s) {
       rebuildFired(s)
       lastInputT = s.t - CONS.OBS_HANDS_OFF
+      bootLine(s)
     }
     return s
   }

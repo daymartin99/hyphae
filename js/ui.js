@@ -37,7 +37,6 @@
     PLATE_FRAC: [0.38, 0.22, 0.18],   // fraction of shell height at stage 0 / 1 / 2
     PLATE_MIN_PX: 40,
     CONSOLE_ROWS: 5,
-    CONSOLE_ROW_FALLBACK: 19,
     LEDGER_MAX_ROWS: 4,
 
     // motion (06 §6.2)
@@ -110,11 +109,14 @@
     p_signal: 'signal',
 
     growTip: 'grow tip',
-    litterProcessed: 'litter processed',
+    nextTip: 'next tip',
+    litterEaten: 'litter eaten',
     utilisation: 'utilisation',
+    ofWhatFalls: 'of what falls here',
     conduction: 'conduction',
     onFloor: 'on the floor',
     forSale: 'for sale',
+    roomFor: 'of {v} it holds',
     fair: 'fair',
     sell: 'sell',
     buy: 'buy',
@@ -154,6 +156,8 @@
     needsStanding: 'standing {n}',
 
     short: '{n} short',
+    toEmpty: 'to empty',
+    owed: 'g/s owed',
     nothing: '—',
     seasons: '{n} seasons',
 
@@ -179,6 +183,9 @@
     oak: 'oak', elm: 'dying elm', beech: 'hollow beech'
   }
   var SEASON_LABEL = ['spring', 'summer', 'autumn', 'winter']
+  // "eaten 1" is a quantity to anyone reading it for the first time; "eaten 1st" is a queue
+  // position, which is what `consumptionOrder` actually is. Seven pools, seven ordinals.
+  var ORDINAL = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th']
 
   // Currency glyphs, from BIBLE §2.1. One name, one symbol, one unit.
   var GLYPH = { biomass: 'g', sugar: 'sug', minerals: '⛬', signal: 'Σ', insight: 'Ψ' }
@@ -1051,34 +1058,24 @@
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // THE CONSOLE
-  // log.js owns the strings and renders into the element this module hands it. `announce` is the
-  // one path by which the interface itself may speak — a shortfall, a refusal — and it writes into
-  // the same single aria-live region, so a screen reader hears one thing per event and no more.
+  // THE TWO VOICES
+  // The console is log.js's, entirely: it is the game speaking, five rows of narration, and
+  // nothing else may be pushed into it. `announce` is the interface speaking — a shortfall, a
+  // refusal, a counter-offer — and it is a diagnostic, not narration. It goes to a visually
+  // hidden live region of its own so a screen reader hears the answer and the narrative console
+  // is never overwritten by one.
+  //
+  // Every string `announce` carries is also on screen, next to the control that refused, before
+  // the player ever taps it (06 §5.2). A sighted player is answered by the layout; a screen
+  // reader is answered here. Neither is answered by the game's voice.
   // ───────────────────────────────────────────────────────────────────────────
-
-  // Rows, not messages, are the unit: a long line costs you history, not legibility (§7 C15).
-  function trimConsole () {
-    var stack = view.consoleInner
-    var budget = U.CONSOLE_ROWS * view.consoleRowPx
-    var guard = 0
-    while (stack.scrollHeight > budget && stack.firstChild && stack.childNodes.length > 1) {
-      stack.removeChild(stack.firstChild)
-      if (++guard > U.CONSOLE_ROWS * 8) break
-    }
-  }
 
   function announce (str) {
     if (!view || !str) return
-    var stack = view.consoleInner
-    var prev = stack.lastChild
-    if (prev && prev.firstChild) prev.firstChild.textContent = '. '
-    var lineEl = el('div', 'console-line')
-    lineEl.appendChild(el('span', 'console-gutter', '> '))
-    lineEl.appendChild(el('span', 'console-text', str))
-    if (!reducedMotion()) lineEl.className = 'console-line console-line-enter'
-    stack.appendChild(lineEl)
-    trimConsole()
+    // An identical repeat leaves the node unchanged, and an unchanged live region is silent.
+    // A trailing space is a different string and reads the same aloud.
+    var next = view.announcer.textContent === str ? str + ' ' : str
+    view.announcer.textContent = next
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1119,6 +1116,7 @@
       act: 1,
       rev: null,
       lastDisplay: 0,
+      lastRateT: 0,
       lastAria: 0,
       lastCanvasAria: 0,
       lastStatus: 0,
@@ -1204,7 +1202,7 @@
     })
     shell.appendChild(bar)
 
-    // ── the console: the only aria-live region in the game ──
+    // ── the console: the only *visible* live region, and log.js owns every word of it ──
     var con = el('footer', 'console')
     var inner = el('div', 'console-inner')
     inner.setAttribute('aria-live', 'polite')
@@ -1215,8 +1213,13 @@
     con.appendChild(cur)
     v.console = con
     v.consoleInner = inner
-    v.consoleRowPx = U.CONSOLE_ROW_FALLBACK
     shell.appendChild(con)
+
+    // ── the interface's own voice: shortfalls and refusals, spoken, never drawn ──
+    v.announcer = el('div', 'vh')
+    v.announcer.setAttribute('aria-live', 'polite')
+    v.announcer.setAttribute('aria-atomic', 'true')
+    shell.appendChild(v.announcer)
 
     // ── the coalesced spoken summary (06 §8.4), off by default ──
     v.statusVh = el('div', 'vh')
@@ -1279,11 +1282,7 @@
     if (recall('hyphae.verbose') === '1') verbose = true
     if (!hasTabular(d.body)) d.documentElement.dataset.numfont = 'mono'
 
-    var w = win()
-    if (w && w.getComputedStyle) {
-      var lh = parseFloat(w.getComputedStyle(view.consoleInner).lineHeight)
-      if (lh > 0 && isFinite(lh)) view.consoleRowPx = lh
-    }
+    // The console's row budget is measured by its owner, against its own strings.
     if (LOG() && LOG().mount) LOG().mount(view.consoleInner)
 
     on(view.scroll, 'scroll', function () {
@@ -1292,6 +1291,7 @@
       if (view.scrollT) clearTimeout(view.scrollT)
       view.scrollT = setTimeout(function () { view.scrolling = false }, U.SCROLL_QUIET_MS)
     })
+    var w = win()
     if (w) {
       on(w, 'resize', layout)
       on(w, 'orientationchange', layout)
@@ -1342,11 +1342,14 @@
   function buyTips (n) {
     var a = A1()
     if (!a) return 0
-    var done = 0
-    for (var i = 0; i < n; i++) {
-      if (!a.buyTip()) break
-      done += 1
-    }
+    var done = commit(function () {
+      var k = 0
+      for (var i = 0; i < n; i++) {
+        if (!a.buyTip()) break
+        k += 1
+      }
+      return k
+    })
     if (done && view) flashSlot(view.ledgerRows[0].val, 'loss')
     return done
   }
@@ -1449,15 +1452,22 @@
   // RENDER — from the one rAF. Reads state, writes only what changed.
   // ───────────────────────────────────────────────────────────────────────────
 
+  // The four stocks the ledger measures. Every one of them lives in `res` under its own name.
+  var RATE_KEYS = ['biomass', 'sugar', 'minerals', 'signal']
+
   function rate (v, key, value, dt) {
     var r = v.rates[key]
     if (!r) {
-      v.rates[key] = { last: value, v: 0 }
+      v.rates[key] = { last: value, v: 0, step: 0 }
       return
     }
     if (dt <= 0) return
-    var inst = (value - r.last) / dt
+    // `step` is what the player just spent or was just paid in one instant. A transaction is not
+    // a rate: leaving it in makes an 82 g tip read as −33 g/s for two seconds while the stock it
+    // describes is visibly rising. It is removed from the delta, never from the stock.
+    var inst = (value - r.last - r.step) / dt
     r.last = value
+    r.step = 0
     r.v += (inst - r.v) * (1 - Math.exp(-dt / U.RATE_TAU_S))
   }
 
@@ -1466,11 +1476,37 @@
   // Rates are measured, never re-derived. There is exactly one copy of every production formula and
   // it lives in the simulation; an EMA over the display slot is honest and costs four subtractions
   // a tenth of a second.
-  function updateRates (v, s, dt) {
-    rate(v, 'biomass', num(s.res.biomass), dt)
-    rate(v, 'sugar', num(s.res.sugar), dt)
-    rate(v, 'minerals', num(s.res.minerals), dt)
-    rate(v, 'signal', num(s.res.signal), dt)
+  //
+  // It is measured against `t`, the simulated clock, and not against the wall — because those are
+  // not the same clock. A catch-up tick, an offline reconcile and a backgrounded tab all move
+  // hours of production into one display slot, and dividing that by a tenth of a real second
+  // reports a rate the player never earned and cannot sustain. Per simulated second it is simply
+  // the average they did earn. At 1× the two clocks agree and this changes nothing.
+  function updateRates (v, s) {
+    var simT = num(s.t)
+    var dt = simT - v.lastRateT
+    v.lastRateT = simT
+    // A load, a reset or an act break moves the clock backwards. Rebaseline; a discontinuity is
+    // not a rate either.
+    if (dt < 0) { v.rates = {}; return }
+    for (var i = 0; i < RATE_KEYS.length; i++) rate(v, RATE_KEYS[i], num(s.res[RATE_KEYS[i]]), dt)
+  }
+
+  // Every discrete transaction the interface performs is handed to the rate meters so they can
+  // subtract it. A tap on EXTEND is deliberately *not* one of these: manual decomposition is
+  // production, and a player holding the hero down is entitled to see the rate it earns them.
+  function commit (fn) {
+    var s = liveState()
+    if (!view || !s) return fn()
+    var before = []
+    var i, r
+    for (i = 0; i < RATE_KEYS.length; i++) before.push(num(s.res[RATE_KEYS[i]]))
+    var out = fn()
+    for (i = 0; i < RATE_KEYS.length; i++) {
+      r = view.rates[RATE_KEYS[i]]
+      if (r) r.step += num(s.res[RATE_KEYS[i]]) - before[i]
+    }
+    return out
   }
 
   function stage (v, s, rev) {
@@ -1542,10 +1578,15 @@
       // When the net goes negative the line gains a countdown. That single row is Act I's
       // unsold-inventory sawtooth (01 §5A.6).
       if (ns < 0) {
-        setRaw(r3.rate, C().fmtTime(num(s.res.sugar) / Math.max(1e-9, -ns)), '')
+        // A duration in the rate slot is not a rate, so it says what it is counting down to.
+        setRaw(r3.rate, C().fmtTime(num(s.res.sugar) / Math.max(1e-9, -ns)), STR.toEmpty)
         setData(r3.rate, 'sign', 'neg')
       } else {
-        setSlot(r3.rate, STR.nothing, '')
+        // The word "net" is only meaningful next to what was netted off. While the balance is
+        // positive the second slot carries the committed outflow rather than an em dash.
+        var owed = e && e.bookState ? num(e.bookState().committed) : 0
+        if (owed > 0) setSlot(r3.rate, C().fmt(owed), STR.owed)
+        else setSlot(r3.rate, STR.nothing, '')
         setData(r3.rate, 'sign', 'zero')
       }
     } else {
@@ -1646,10 +1687,17 @@
   }
 
   // The 10 Hz slot: rates, panel bodies, cooldown rings and every ARIA label (BIBLE §4.2).
-  function display (v, s, dt, t) {
+  //
+  // Two callers reach this: loop.js's display timer and the rAF, which needs the reveal flags for
+  // the frame it is about to paint. The slot therefore owns its own clock rather than trusting
+  // either of them for a `dt`. It has to: when both were allowed to sample, each saw half the
+  // delta and divided it by a whole slot, and every rate on screen read exactly half the truth.
+  function display (v, s, t) {
+    if (t - v.lastDisplay < U.DISPLAY_MS) return
+    v.lastDisplay = t
     var rev = revealFlags(s)
     v.rev = rev
-    updateRates(v, s, dt)
+    updateRates(v, s)
     stage(v, s, rev)
     v.order.forEach(function (id) {
       var p = v.panels[id]
@@ -1679,12 +1727,9 @@
     var t = nowMs()
 
     // The display slot runs first so the ledger is painted against this frame's reveal flags
-    // rather than the previous frame's; a row must never arrive one frame late.
-    if (t - view.lastDisplay >= U.DISPLAY_MS) {
-      var dt = (t - view.lastDisplay) / 1000
-      view.lastDisplay = t
-      display(view, s, dt > 1 ? 1 : dt, t)
-    }
+    // rather than the previous frame's; a row must never arrive one frame late. It throttles
+    // itself, so calling it every frame costs one subtraction.
+    display(view, s, t)
 
     paintLedger(view, s, view.rev || COLD)
     syncCards(view)
@@ -1752,11 +1797,15 @@
       sync: function (s, order) {
         var held = num(s.a1.sub[type])
         var cap = E1() && E1().capOf ? E1().capOf(type) : 0
+        var nth = ORDINAL[order - 1] || String(order)
         setMass(amount, held)
-        setText(pos, interp(STR.eaten, { n: order }))
+        setText(pos, interp(STR.eaten, { n: nth }))
         bar.set(cap > 0 ? held / cap : 0, '', C().fmtMass(held) + ' of ' + C().fmtMass(cap))
-        setText(capTxt, C().fmtMass(cap))
-        r.label((TYPE_NAME[type] || type) + ', ' + C().fmtMass(held) + ', eaten ' + order)
+        // The bar has no scale of its own; the number beside it is the pool's ceiling, and it
+        // says so rather than sitting there as a second unexplained mass.
+        setText(capTxt, interp(STR.roomFor, { v: C().fmtMass(cap) }))
+        r.label((TYPE_NAME[type] || type) + ', ' + C().fmtMass(held) + ' of ' + C().fmtMass(cap) +
+          ', eaten ' + nth)
       }
     }
   }
@@ -1770,6 +1819,9 @@
     var util = row({})
     var ul0 = util.line()
     span(ul0, 'row-name', STR.utilisation)
+    // A bare percentage is a percentage of nothing until it says what of. This is the whole
+    // content of the utilisation alarm: the fraction of the litterfall you are keeping up with.
+    span(ul0, 'row-sub', STR.ofWhatFalls)
     var utilNum = slot('row-num')
     ul0.appendChild(utilNum)
     var utilBar = meter('fill', 0)
@@ -1826,10 +1878,19 @@
     var pv = panel('tips', { title: STR.p_tips })
     var r = row({})
     var l0 = r.line()
+    // A bare mass beside three buttons is a price with no name on it.
+    span(l0, 'row-sub', STR.nextTip)
     var costTxt = span(l0, 'row-name num', '')
     var minTxt = span(l0, 'row-sub num', '')
     var burst = el('div', 'burst')
     l0.appendChild(burst)
+
+    // The answer to "why is that button grey" is on screen before the tap, not after it. This is
+    // the same string `refuse` speaks, and it is here so that it never needs to be spoken.
+    var lShort = r.line()
+    var shortTxt = span(lShort, 'row-sub', '')
+    setData(shortTxt, 'tone', 'cost')
+    show(lShort, false)
 
     var b1 = btn('', '+1')
     var b5 = btn('', '+' + U.BURST_5_AT)
@@ -1852,7 +1913,7 @@
     })
 
     var l1 = r.line()
-    span(l1, 'row-sub', STR.litterProcessed)
+    span(l1, 'row-sub', STR.litterEaten)
     var thru = slot('row-num')
     l1.appendChild(thru)
     pv.body.appendChild(r.el)
@@ -1867,7 +1928,11 @@
 
     p.__sync = function (s, rev) {
       pv.setCount(whole(s.a1.tips))
-      setRate(thru, A1() ? A1().throughputPerSec() : 0, 'g/s')
+      // What the tips *are* eating, measured by the simulation, not what they could eat.
+      // `throughputPerSec` is a tip-time budget, not a mass: soft litter buys more grams per
+      // second of it than hard litter does, so it is not this row's number and never was. A bare
+      // floor now reads as nothing being eaten, which is what is happening.
+      setRate(thru, A1() ? A1().litterPerSec() : 0, 'g/s')
       if (nowMs() < settle) return
       var a = A1()
       var g = a ? a.tipCost(s.a1.tips) : 0
@@ -1881,7 +1946,17 @@
         setData(minTxt, 'tone', m > 0 ? 'cost' : 'forecast')
       }
       var afford = tipsAffordable()
-      var shortStr = interp(STR.short, { n: C().fmtMass(Math.max(0, g - num(s.res.biomass))) })
+      // Name the constraint that is actually binding. Once the mineral gate opens the tip a
+      // player cannot buy is usually the one they have the grams for.
+      var gapG = g - num(s.res.biomass)
+      var gapM = m - num(s.res.minerals)
+      var shortStr = interp(STR.short, {
+        n: gapM > 0 && gapM >= gapG
+          ? C().fmt(gapM) + ' ' + GLYPH.minerals
+          : C().fmtMass(Math.max(0, gapG))
+      })
+      show(lShort, afford < 1)
+      if (afford < 1) setText(shortTxt, shortStr)
       setData(b1, 's', afford >= 1 ? 'afford' : 'want')
       setData(b5, 's', afford >= U.BURST_5_AT ? 'afford' : 'want')
       setData(bMax, 's', afford >= 1 ? 'afford' : 'want')
@@ -1921,6 +1996,10 @@
     var stockTxt = span(l1, 'row-num', '')
 
     var l2 = r.line()
+    // The same promise the tips row makes: the shortfall is on screen before the tap, so a
+    // refusal never has to interrupt the console to say it.
+    var shortTxt = span(l2, 'row-sub', '')
+    setData(shortTxt, 'tone', 'cost')
     var burst = el('div', 'burst')
     l2.appendChild(burst)
     var buys = []
@@ -1934,7 +2013,7 @@
         var held = num(s.a1.sub[type])
         g = (grams === null || grams === undefined) ? held * frac : Math.min(grams, held)
         if (!(g > 0)) { refuse(source); return }
-        e.sell(type, g)
+        commit(function () { e.sell(type, g) })
         if (view) flashSlot(view.ledgerRows[1].val, 'gain')
         return
       }
@@ -1943,12 +2022,14 @@
       var ceiling = Math.min(unit > 0 ? num(s.res.sugar) / unit : 0, stock)
       g = (grams === null || grams === undefined) ? ceiling * frac : Math.min(grams, ceiling)
       if (!(g > 0)) { refuse(source); return }
-      e.buy(type, g)
+      commit(function () { e.buy(type, g) })
       if (view) flashSlot(view.ledgerRows[1].val, 'loss')
     }
 
+    // The two fixed sizes are masses, and they carry their unit: `1.00 k` alone is a quantity of
+    // nothing in particular next to a price quoted per gram.
     U.MARKET_BUY_G.forEach(function (g) {
-      var b = btn('', C().fmt(g))
+      var b = btn('', C().fmtMass(g))
       bindPress(b, function () { trade(g, null, b) })
       burst.appendChild(b)
       buys.push({ el: b, kind: 'abs', g: g })
@@ -1992,16 +2073,22 @@
           ? STR.fair + ' ' + C().fmt(e.fairValue(type)) + ' · '
           : '') + C().fmtMass(num(s.a1.sub[type])) + ' ' + STR.onFloor)
         setText(stockTxt, C().fmtMass(mkt.stock) + ' ' + STR.forSale)
+        // The gap to the smallest size the player cannot yet buy: the next thing they want and
+        // the only shortfall worth a line. Four shortfalls on one row is four numbers to read.
+        var gap = 0
         buys.forEach(function (b) {
           var ok
           if (mode.sell) ok = num(s.a1.sub[type]) > 0
           else if (b.kind === 'abs') ok = num(s.res.sugar) >= b.g * unit && mkt.stock >= b.g
           else ok = num(s.res.sugar) > 0 && mkt.stock > 0
           setData(b.el, 's', ok ? 'afford' : 'want')
-          b.el.dataset.short = interp(STR.short, {
-            n: C().fmt(Math.max(0, b.g * unit - num(s.res.sugar))) + ' ' + GLYPH.sugar
-          })
+          var need = Math.max(0, b.g * unit - num(s.res.sugar))
+          b.el.dataset.short = interp(STR.short, { n: C().fmt(need) + ' ' + GLYPH.sugar })
+          if (!mode.sell && b.kind === 'abs' && need > 0 && (gap === 0 || need < gap)) gap = need
         })
+        setText(shortTxt, gap > 0
+          ? interp(STR.short, { n: C().fmt(gap) + ' ' + GLYPH.sugar })
+          : '')
         r.label((TYPE_NAME[type] || type) + ', ' + C().fmt(unit) + ' sugar per gram, ' +
           C().fmtMass(mkt.stock) + ' for sale')
       }
@@ -2126,8 +2213,12 @@
     show(l2, false)
 
     var acts = el('div', 'row-actions')
-    acts.appendChild(actionButton(STR.renegotiate, function () { if (E1()) E1().renegotiate(id) }))
-    acts.appendChild(actionButton(STR.exit, function () { if (E1()) E1().exitContract(id) }))
+    acts.appendChild(actionButton(STR.renegotiate, function () {
+      if (E1()) commit(function () { E1().renegotiate(id) })
+    }))
+    acts.appendChild(actionButton(STR.exit, function () {
+      if (E1()) commit(function () { E1().exitContract(id) })
+    }))
     r.expander().appendChild(acts)
 
     return {
@@ -2165,10 +2256,10 @@
     var detail = span(l0, 'row-sub', '')
     var acts = el('div', 'row-actions')
     acts.appendChild(actionButton(STR.accept, function () {
-      if (E1()) E1().acceptSolicitation(id)
+      if (E1()) commit(function () { E1().acceptSolicitation(id) })
     }))
     acts.appendChild(actionButton(STR.decline, function () {
-      if (E1()) E1().declineSolicitation(id)
+      if (E1()) commit(function () { E1().declineSolicitation(id) })
     }))
     r.el.appendChild(acts)
     return {
@@ -2236,6 +2327,13 @@
     covLine.appendChild(cov)
     summary.appendChild(covLine)
 
+    // Refusal is a counter-offer, never a wall — and the counter-offer is standing on screen while
+    // the thumb is still on the slider, not delivered as a reprimand after the tap.
+    var counterLine = el('div', 'row-line')
+    var counterTxt = span(counterLine, 'row-sub', '')
+    setData(counterTxt, 'tone', 'cost')
+    summary.appendChild(counterLine)
+
     function readTerms (s, tree) {
       var e1 = E1()
       return {
@@ -2267,7 +2365,13 @@
       var coverage = income > 0 ? (book.committed + t.volume) / income : 1
       cov.set(coverage, coverage >= 1 ? 'bad' : coverage > U.COVER_WARN ? 'warn' : '',
         Math.round(coverage * 100) + ' percent of what you make')
-      setData(signBtn, 'state', e1.accepts(tree, t.volume, t.term, t.exclusive) ? 'idle' : 'locked')
+      var ok = e1.accepts(tree, t.volume, t.term, t.exclusive)
+      setData(signBtn, 'state', ok ? 'idle' : 'locked')
+      var ct = ok ? null : e1.counter(tree, t.volume, t.term, t.exclusive)
+      setText(counterTxt, ct
+        ? interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' g/s', n: ct.maxTerm })
+        : '')
+      show(counterLine, !!ct)
     }
 
     var signBtn = btn('hero hero--wide')
@@ -2288,7 +2392,7 @@
         }
         return
       }
-      e1.signContract(id, t.volume, t.term, t.collateral, t.exclusive)
+      commit(function () { e1.signContract(id, t.volume, t.term, t.collateral, t.exclusive) })
       r.setExpanded(false)
     }, { onUp: true })
 
@@ -2372,7 +2476,7 @@
         announce(entry.priceTag)
         return
       }
-      PJ().purchase(entry.id)
+      commit(function () { PJ().purchase(entry.id) })
       if (view) flashSlot(view.ledgerRows[0].val, 'loss')
     }
 
@@ -2434,10 +2538,13 @@
     var claimBtn = actionButton(STR.claim, function (b) {
       var s = liveState()
       if (!s || !A1()) return
-      if (!A1().claimPatch(s.a1.patches + 1)) refuse(b)
+      if (!commit(function () { return A1().claimPatch(s.a1.patches + 1) })) refuse(b)
     })
     acts.appendChild(claimBtn)
-    r.line().appendChild(acts)
+    var actLine = r.line()
+    var shortTxt = span(actLine, 'row-sub', '')
+    setData(shortTxt, 'tone', 'cost')
+    actLine.appendChild(acts)
     pv.body.appendChild(r.el)
 
     p.__sync = function (s) {
@@ -2448,6 +2555,7 @@
       if (next > A.PATCH_MAX) {
         setRaw(cost, STR.nothing, '')
         setText(gate, '')
+        setText(shortTxt, '')
         show(claimBtn, false)
         prog.set(1, '', 'all six')
         return
@@ -2460,6 +2568,7 @@
       show(claimBtn, !flight)
       if (flight) {
         var pr = A1().claimProgress()
+        setText(shortTxt, '')
         prog.set(pr, 'signal', STR.claiming + ', ' + Math.round(pr * 100) + ' percent')
         return
       }
@@ -2471,6 +2580,7 @@
       claimBtn.dataset.short = interp(STR.short, {
         n: C().fmtMass(Math.max(0, spec.biomass - num(s.res.biomass)))
       })
+      setText(shortTxt, canPay ? '' : claimBtn.dataset.short)
     }
     p.view = pv
     return pv
@@ -2767,15 +2877,30 @@
     ok(host.querySelector('.gear').hidden, 'D02: there is no settings affordance at t=0')
     ok(host.querySelector('.tabbar').hidden, 'D02: there is no tab bar in Act I')
 
-    // 4 · a five-row console, and it is the only live region
+    // 4 · a five-row console, and it is the only live region anybody can see
     ok(!!host.querySelector('.console'), 'D02: the console must exist')
     var inner = host.querySelector('.console-inner')
     ok(inner && inner.getAttribute('aria-live') === 'polite',
       'D02: the console is the aria-live region')
-    ok(host.querySelectorAll('[aria-live]').length === 1,
-      'D02: exactly one aria-live region exists')
+    ok(host.querySelectorAll('[aria-live]:not(.vh)').length === 1,
+      'D02: exactly one visible aria-live region exists')
     ok(inner && inner.childNodes.length <= 1, 'D02: the console holds at most one line at t=0')
     ok(U.CONSOLE_ROWS === 5, 'D02: the console is a five-row window')
+
+    // The interface's own voice is a separate, visually hidden channel: a diagnostic must never
+    // land in the console, which is the game speaking and log.js's alone.
+    ok(!!view.announcer && view.announcer.className === 'vh' &&
+      view.announcer.getAttribute('aria-live') === 'polite',
+      'the announcer is a visually hidden live region')
+    var consoleBefore = inner ? inner.childNodes.length : -1
+    announce('240 g short')
+    ok(view.announcer.textContent === '240 g short', 'announce writes to the announcer')
+    ok(inner && inner.childNodes.length === consoleBefore,
+      'announce must not add a line to the narrative console')
+    announce('240 g short')
+    ok(view.announcer.textContent !== '240 g short',
+      'a repeated announcement must change the node or the reader stays silent')
+    view.announcer.textContent = ''
 
     // 5 · nothing else. No chrome of any kind, ever.
     ok(host.querySelectorAll('.panel').length === 0, 'D02: no panel is mounted at t=0')
@@ -2823,6 +2948,26 @@
     ok(interp(STR.short, { n: '240 g' }) === '240 g short',
       'strings interpolate through named slots')
     ok(TAB_SLOTS.length === T().UI.TAB_SLOTS, '06 §4.4: five tab slots are allocated at boot')
+
+    // The display slot is the one clock the rate meters run on. loop.js schedules it at
+    // DISPLAY_HZ and the rAF calls it too; if the two periods disagree the throttle drops
+    // samples and every rate on screen is wrong by the ratio between them.
+    ok(U.DISPLAY_MS === 1000 / T().CLOCK.DISPLAY_HZ,
+      'BIBLE §4.2: the display slot period must equal the display timer period')
+
+    // A transaction is a step in the stock, not a rate. Neither of these is visible in a
+    // screenshot and both of them were wrong.
+    var rv = { rates: {} }
+    rate(rv, 'biomass', 100, 0.1)
+    rate(rv, 'biomass', 110, 0.1)
+    ok(rateOf(rv, 'biomass') > 0, 'a rising stock reads as a positive rate')
+    rv.rates.biomass.step -= 50                      // the player buys a 50 g tip
+    rate(rv, 'biomass', 61, 0.1)                     // 110 − 50 spent + 1 g produced
+    ok(rateOf(rv, 'biomass') > 0,
+      'a purchase must not turn a rising stock into a falling rate')
+    ok(rv.rates.biomass.step === 0, 'a step is consumed by the sample that follows it')
+    ok(ORDINAL.length === Object.keys(TYPE_NAME).length,
+      'seven typed pools have seven queue positions')
     ok(Object.keys(TYPE_NAME).length === 7, 'seven typed pools have seven names')
     ok(GLYPH.minerals === '⛬' && GLYPH.signal === 'Σ' && GLYPH.sugar === 'sug',
       'BIBLE §2.1: one name, one symbol, one unit')
@@ -2875,7 +3020,7 @@
     // cinematic, the rotation hook, and the sheet the gear opens.
     display: function () {
       var s = liveState()
-      if (view && s) display(view, s, U.DISPLAY_MS / 1000, nowMs())
+      if (view && s) display(view, s, nowMs())
     },
     transition: transition,
     layout: layout,

@@ -123,12 +123,19 @@
     return best
   }
 
+  // A contract only earns while it is live. economy1 keeps a completed, defaulted or exited row in
+  // the book for one whole season so the card can still show how it ended, and those rows keep
+  // their mineralRate — so a scan that reads the rate alone reports income for a season after the
+  // last income stopped, which is precisely the season WINDFALL exists to rescue. 'active' is
+  // economy1's own test for a live contract; nothing else counts here either.
+  function isLive (c) { return !!c && c.state === 'active' }
+
   function hasActiveIncome (s) {
     if (tips(s) > 0 && totalSub(s) > 0) return true
     var i, c
     for (i = 0; i < s.a1.contracts.length; i++) {
       c = s.a1.contracts[i]
-      if (c && !c.suspended && num(c.mineralRate) > 0) return true
+      if (isLive(c) && !c.suspended && num(c.mineralRate) > 0) return true
     }
     return false
   }
@@ -153,7 +160,7 @@
 
   function committedSugarPerSec (s) {
     var i, c = contracts(s), t = 0
-    for (i = 0; i < c.length; i++) if (c[i] && !c[i].suspended) t += num(c[i].sugarRate)
+    for (i = 0; i < c.length; i++) if (isLive(c[i]) && !c[i].suspended) t += num(c[i].sugarRate)
     return t
   }
 
@@ -391,6 +398,41 @@
   function stamp (s, id) { s.proj.flags[id] = s.t }
 
   // ───────────────────────────────────────────────────────────────────────────
+  // WITHHELD CAPABILITIES — nothing may charge for a system that is not in the build
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // A purchase must change the game. An entry whose flag no loaded module reads takes the player's
+  // biomass and hands back a card that does nothing, which is worse than the feature being absent:
+  // the money is gone and the promise on the card was false. `needs` names the reader that would
+  // honour the flag, and the entry is withheld — kept out of `seen`, and refused by purchase(),
+  // which re-tests the trigger — until that reader is here. Nothing is deleted and no price moves:
+  // the day the module lands the entry arrives on its own trigger with its effect already written.
+  //
+  //   reflex_arc           act1.holdExtend   press-and-hold repeat on the EXTEND verb
+  //   assay_plate          ui.assay          the ASSAY panel's per-type yield table
+  //   trade_memory         ui.treeLedger     deficit, photosynthate and need on the tree cards
+  //   chemotropic_sensing  act1.foresight    unclaimed inventories, and windthrow 30 s early
+  //   seasonal_forecast    act1.forecast     next season's event table
+  //   diel_rhythm          loop.dielBonus    the +31% band over the first 8 h of an absence
+  //   action_potential     a Σ producer      nothing accrues Signal in Act I, so the panel reads 0.00
+  //
+  // The gate is ANDed into `trigger`, never into `cost`: a capability that does not exist is a
+  // reason the project does not exist yet, not a reason the player cannot afford it (§9.2 P3).
+  var NEEDS = {
+    holdExtend: function () { return !!(HY.act1 && HY.act1.holdExtend) },
+    assayPanel: function () { return !!(HY.ui && HY.ui.assay) },
+    treeLedger: function () { return !!(HY.ui && HY.ui.treeLedger) },
+    foresight:  function () { return !!(HY.act1 && HY.act1.foresight) },
+    forecast:   function () { return !!(HY.act1 && HY.act1.forecast) },
+    dielBonus:  function () { return !!(HY.loop && HY.loop.dielBonus) },
+    // Signal accrual belongs to cognition (BIBLE §4 step 9); Act I's foreshadow may equally end up
+    // in act1 itself. Either producer makes the panel honest, and DECIDE reachable with it.
+    signalA1: function () {
+      return !!((HY.cognition && HY.cognition.step) || (HY.act1 && HY.act1.stepSignal))
+    }
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
   // THE CATALOG
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -418,8 +460,13 @@
       excludes: opts.excludes || [],
       rearm: !!opts.rearm,
       buyable: opts.buyable !== false,
-      also: opts.also || null           // a non-currency gate ANDed into cost(), e.g. ϒ ≥ 0.80
+      also: opts.also || null,          // a non-currency gate ANDed into cost(), e.g. ϒ ≥ 0.80
+      needs: opts.needs || null         // the reader that must exist before this may be sold
     }
+    // triggerRaw is the design's own predicate, unaltered. It is what the reachability self-test
+    // proves, so a withheld entry is still known to arrive correctly the day its reader lands.
+    p.triggerRaw = trigger
+    p.trigger = p.needs ? function (s) { return !!p.needs() && !!trigger(s) } : trigger
     p.cost = function () { return canAfford(p, S()) }
     p.pay = function () { return payFor(p, S()) }
     if (BY_ID[id]) throw new Error('duplicate project id: ' + id)
@@ -471,13 +518,15 @@
     function (s) { return stat(s, 'taps') >= 120 },
     function () { /* act1 reads flags.reflex_arc for press-and-hold */ },
     'You stop deciding to move and simply move. (Hold to extend)',
-    ['verb', 'automation'])
+    ['verb', 'automation'],
+    { needs: NEEDS.holdExtend })
 
   E('assay_plate', 'Assay Plate', 1, '2,000 g', { g: 2000 },
     function (s) { return s.res.biomass >= T().A1.PROJECTS_BIOMASS_G },
     function () { /* opens the ASSAY panel; ui reads the flag */ },
     'Seven kinds of dead, and they do not taste the same. (Yield table)',
-    ['panel', 'information'])
+    ['panel', 'information'],
+    { needs: NEEDS.assayPanel })
 
   E('cellulase_titre', 'Cellulase Titre', 1, '2,600 g', { g: 2600 },
     function (s) { return s.res.biomass >= T().A1.PROJECTS_BIOMASS_G },
@@ -527,7 +576,7 @@
   E('two_sided_book', 'The Two-Sided Book', 1, '7,200 g', { g: 7200 },
     function (s) { return stat(s, 'purchases') >= 25 && anyPoolOverstocked(s, 12) },
     function () { /* economy1.sell() is gated on this flag */ },
-    'It turns out the floor will take things back, at a discount, and remember that you asked. (Unlocks selling)',
+    'The floor will take things back, at a discount, and remember that you asked. (Unlocks selling)',
     ['verb', 'rulechange'])
 
   E('sclerotia', 'Sclerotia', 1, '8,000 g', { g: 8000 },
@@ -540,7 +589,8 @@
     function (s) { return stat(s, 'contractsCompleted') >= 2 },
     function () { /* tree cards gain deficit, photosynthate, need and a one-year strip */ },
     'You learn what hunger looks like from underneath. (Tree data)',
-    ['information'])
+    ['information'],
+    { needs: NEEDS.treeLedger })
 
   E('antifreeze_glycoproteins', 'Antifreeze Glycoproteins', 1, '9,500 g', { g: 9500 },
     function (s) { return stat(s, 'wintersEnded') >= 1 },
@@ -572,7 +622,7 @@
   E('standing_order', 'Standing Order', 1, '15,000 g', { g: 15000 },
     function (s) { return stat(s, 'purchases') >= 40 },
     function () { /* per-type price ceiling and floor stock; economy1 fills them */ },
-    'It buys badly and it never sleeps, and you will take that trade. (Automated purchasing, 8% worse than you)',
+    'It buys badly and it never sleeps, and you will take that trade. (Automated, 8% worse than you)',
     ['automation'])
 
   E('necromass_recycling', 'Necromass Recycling', 1, '16,000 g', { g: 16000 },
@@ -585,7 +635,8 @@
     function (s) { return patches(s) >= 2 },
     function () { /* unclaimed patch inventories revealed; windthrow announced 30 s ahead */ },
     'You taste the air for the shape of things that have not fallen yet. (Foresight)',
-    ['information'])
+    ['information'],
+    { needs: NEEDS.foresight })
 
   E('common_mycorrhizal_network', 'Common Mycorrhizal Network', 1, '22,000 g + 150 ⛬', { g: 22000, min: 150 },
     function (s) { return treesWith(s, function (t) { return num(t.rep) >= 45 }) >= 3 },
@@ -599,7 +650,7 @@
       mul(s.mult, 'exudatePump', 0.96)
       C().setStock(s.a1, 'netRep', netRep(s) + 12, T().A1.REP_MAX)
     },
-    'Monotropa has no chlorophyll and no shame. It takes sugar and gives the forest a reason to trust you. You will never get the four percent back.',
+    'Monotropa has no chlorophyll and no shame. It takes sugar, buys trust, keeps the four percent.',
     ['irreversible', 'cost'])
 
   E('hartig_net_refinement', 'Hartig Net Refinement', 1, '26,000 g + 180 ⛬', { g: 26000, min: 180 },
@@ -613,7 +664,7 @@
   E('forward_contracts', 'Forward Contracts', 1, '28,000 g + 200 ⛬', { g: 28000, min: 200 },
     function (s) { return stat(s, 'largestSinglePurchase') >= 4000 },
     function () { /* economy1 fixes the next 12 fills at 1.05 × fair value */ },
-    'A price you can plan around is worth more than a price that is right. It says so, on the contract, in your own exudate.',
+    'A price you can plan around beats a price that is right. It says so, in your own exudate.',
     ['trap', 'irreversible', 'rulechange'])
 
   E('patch_windthrow_gap', 'Patch: The Windthrow Gap', 1, '30,000 g + 260 ⛬',
@@ -632,8 +683,9 @@
   E('diel_rhythm', 'Diel Rhythm', 1, '36,000 g', { g: 36000 },
     function (s) { return stat(s, 'offlineSeconds') >= 7200 },
     function () { /* loop.effective() reads this flag for the first 8 h of any absence */ },
-    'The day and the night were always the same to you. Now you are paid for noticing the difference. (+31% offline)',
-    ['offline'])
+    'The day and the night were always the same to you. Now you are paid for noticing. (+31% offline)',
+    ['offline'],
+    { needs: NEEDS.dielBonus })
 
   E('bacterial_antagonism', 'Bacterial Antagonism', 1, '38,000 g + 240 ⛬', { g: 38000, min: 240 },
     function (s) { return anyPriceOver(s, 1.6) },
@@ -644,7 +696,7 @@
   E('exudate_pump', 'Exudate Pump', 1, '42,000 g + 300 ⛬', { g: 42000, min: 300 },
     function (s) { return committedSugarPerSec(s) >= 25 },
     function (s) { mul(s.mult, 'exudatePump', 1.35) },
-    'Push harder and they will take more, because by now they cannot not take it. (+35% contract volume)',
+    'Push harder and they take more, because by now they cannot not. (+35% contract volume)',
     ['multiplier'])
 
   E('contract_arbitration', 'Contract Arbitration', 1, '46,000 g + 320 ⛬', { g: 46000, min: 320 },
@@ -657,14 +709,15 @@
     function (s) { return year(s) >= 2 },
     function () { /* next season's event table, and a forecast row on NEGOTIATE */ },
     'Three months is not so far ahead. (Weather forecast)',
-    ['information'])
+    ['information'],
+    { needs: NEEDS.forecast })
 
   // ── I-5 The Last Year ──────────────────────────────────────────────────────
 
   E('perennial_mycelium', 'Perennial Mycelium', 1, '55,000 g + 350 ⛬', { g: 55000, min: 350 },
     function (s) { return year(s) >= 3 && flag(s, 'antifreeze_glycoproteins') },
     function (s) { set(s.mult, 'perennial', true); s.a1.activeEvents.length = 0 },
-    'You stop having years. The average is very good, and nothing will ever be better than the average again.',
+    'You stop having years. The average is very good, and nothing will ever beat the average again.',
     ['trap', 'irreversible', 'removes'])
 
   E('fruiting_body', 'Fruiting Body', 1, '60,000 g', { g: 60000 },
@@ -687,7 +740,7 @@
       s.a1.tips = tips(s) - lose
       addRes(s, 'biomass', 3.0 * refund)
     },
-    'You are allowed to be smaller. It is faster than being patient, and it costs exactly what it looks like it costs.',
+    'You are allowed to be smaller. It is faster than patience, and it costs what it looks like.',
     ['rearm', 'irreversible', 'verb'],
     { rearm: true, pinned: true })
 
@@ -743,7 +796,7 @@
       s.stats.windfalls += 1
       s.proj.flags.windfall_at = s.t
     },
-    'Ask the forest for something you did not earn. It will say yes, and it will remember that it did.',
+    'Ask the forest for something you did not earn. It will say yes, and it will remember.',
     ['failsafe', 'rearm', 'cost'],
     { rearm: true, pinned: true })
 
@@ -771,12 +824,15 @@
     function (s) {
       return anyContract(s, function (c) {
         var t = treeById(s, c.treeId)
-        return !!t && t.species === 'elm' && num(t.health) < 0.15
+        return isLive(c) && !!t && t.species === 'elm' && num(t.health) < 0.15
       })
     },
     function (s) {
       var i, c = contracts(s), t
       for (i = c.length - 1; i >= 0; i--) {
+        // Only a live term can be severed. A row that already completed or defaulted is waiting out
+        // its season on the card, and returning its collateral again would pay it twice.
+        if (!isLive(c[i])) continue
         t = treeById(s, c[i].treeId)
         if (t && t.species === 'elm') { addRes(s, 'minerals', num(c[i].collateral)); c.splice(i, 1) }
       }
@@ -805,7 +861,8 @@
     function (s) { return flag(s, 'anastomosis') && netRep(s) >= T().A1.ACTION_POTENTIAL_REP },
     function () { /* SIGNAL appears with a rate, a total, and no uses for 8–15 minutes */ },
     'Something moved from one end of you to the other, and it was not food.',
-    ['panel'])
+    ['panel'],
+    { needs: NEEDS.signalA1 })
 
   E('decide', 'DECIDE', 1, '— (a decision)', {},
     function (s) { return flag(s, 'action_potential') && s.res.signal >= T().A1.DECIDE_SIGNAL },
@@ -978,7 +1035,7 @@
   E('mycelial_memory', 'Mycelial Memory', 2, '420 Ψ + 200,000 Σ', { psi: 420, sig: 200000 },
     function (s) { return s.res.insight >= 350 },
     function (s) { mul(s.mult, 'insightMult', 1.55); set(s.mult, 'ripeT', T().A2.RIPE_T_MEMORY) },
-    'The network remembers where the good wood was, and it is not sentimental about it. (+55% Insight)',
+    'The network remembers where the good wood was, and is not sentimental about it. (+55% Insight)',
     ['multiplier', 'rulechange'])
 
   E('reabsorption', 'Reabsorption', 2, '150 Ψ', { psi: 150 },
@@ -997,13 +1054,13 @@
   E('alarm_contracts', 'Alarm Contracts', 2, '230 Ψ', { psi: 230 },
     function (s) { return pactCount(s) >= 4 },
     function () { /* the ALARM term type: +90 s forecast in that region. Term choice never automates. */ },
-    'They knew about the drought first, and they told each other before they told you. (New contract term)',
+    'They knew about the drought first, and told each other before they told you. (New contract term)',
     ['rulechange', 'information'])
 
   E('hypogeous_fruiting', 'Hypogeous Fruiting', 2, '275 Ψ + 60,000 Σ', { psi: 275, sig: 60000 },
     function (s) { return stat(s, 'flushes') >= 12 && stat(s, 'droughtsSurvived') >= 1 },
     function () { /* the UNDERGROUND mode: hazard 0, dispersal 0, 6.2× committed V at m = 1 */ },
-    'Fruit below the litter, where nothing can find you and nothing will carry you anywhere. (Zero-risk flush, no spores)',
+    'Fruit below the litter, where nothing finds you and nothing carries you. (Zero-risk, no spores)',
     ['rulechange'])
 
   E('sclerotial_bank', 'Sclerotial Bank', 2, '320 Ψ + 110,000 Σ', { psi: 320, sig: 110000 },
@@ -1027,7 +1084,7 @@
   E('armillaria_accord', 'The Armillaria Accord', 2, '500 Ψ + 180,000 Σ', { psi: 500, sig: 180000 },
     function (s) { return rivalsHeld(s, 1, 0.60) >= 4 },
     function (s) { set(s.mult, 'rhoLocked', 0.55) },
-    'It is older than you and it has no opinions about speed. The terms are simple. You may have the ground, and it will decide what you leave in it.',
+    'It is older than you and has no opinions about speed. It decides what you leave in the ground.',
     ['irreversible', 'removes', 'cost'])
 
   E('mycelial_monoculture', 'Mycelial Monoculture', 2, '410 Ψ + 150,000 Σ', { psi: 410, sig: 150000 },
@@ -1174,13 +1231,13 @@
   E('the_humongous_fungus', 'The Humongous Fungus', 2, '700 Ψ', { psi: 700 },
     function (s) { return claimed(s) >= 34 },
     function (s) { grantD(s, 2) },
-    'Two thousand three hundred and eighty-four hectares, in Oregon, one organism, since before agriculture. (+2 D)',
+    'Two thousand three hundred and eighty-four hectares, one organism, older than farming. (+2 D)',
     ['flavour'])
 
   E('prototaxites', 'Prototaxites', 2, '900 Ψ', { psi: 900 },
     function (s) { return fc(s) >= 0.50 },
     function (s) { grantD(s, 2) },
-    'For forty million years the tallest living thing was a fungus eight metres high, and there was nothing with eyes to see it. (+2 D)',
+    'For forty million years the tallest thing alive was a fungus eight metres high. (+2 D)',
     ['flavour'])
 
   E('lichen', 'Lichen', 2, '1,050 Ψ', { psi: 1050 },
@@ -1345,7 +1402,7 @@
   E('aspergillus_on_the_station', 'Aspergillus on the Station', 3, '120 Ψ', { psi: 120 },
     function (s) { return s.res.carbon >= 1.0e18 },
     function (s) { grantD(s, 1) },
-    'They swab the walls of the space station every week, and every week there is more of it. It is not a problem yet. (+1 D)',
+    'They swab the station walls every week, and every week there is more. Not a problem yet. (+1 D)',
     ['flavour'])
 
   // ── III-G Escape and the first bands ───────────────────────────────────────
@@ -1452,13 +1509,13 @@
       var r = s.a3.bands.rich, i
       for (i = 0; i < r.length; i++) if (r[i] < 0.85) r[i] = 0.85
     },
-    'Two kilometres down there is more living matter than on the entire surface, and none of it has ever been in a hurry. (Richness floor)',
+    'More life two kilometres down than on the surface, none of it in a hurry. (Richness floor)',
     ['rulechange'])
 
   E('radiotrophy', 'Radiotrophy', 3, '4,200 Ψ + 1.4e31 Χ', { psi: 4200, carbon: 1.4e31 },
     function (s) { return inVoid(s) && s.a3.loci[LOCUS_MEL] >= 4 },
     function () { /* the radiation term flips sign; the target list re-sorts in front of you */ },
-    'There are fungi growing on the inside walls of Chernobyl reactor four and they grow toward the radiation. What was killing you is now a meal.',
+    'Fungi grow inside Chernobyl reactor four, toward the radiation. What was killing you is a meal.',
     ['inversion', 'rulechange'])
 
   E('plasmogamy', 'Plasmogamy', 3, '2,200 Ψ', { psi: 2200 },
@@ -1470,7 +1527,7 @@
   E('endolith', 'Endolith', 3, '1,600 Ψ', { psi: 1600 },
     function (s) { return inVoid(s) && bandsReached(s) >= 7 },
     function (s) { grantD(s, 1) },
-    'Inside the rock, between the grains, there are things dividing once every ten thousand years. They are not waiting for anything. (+1 D)',
+    'Between the grains of rock, things divide every ten thousand years. Waiting for nothing. (+1 D)',
     ['flavour'])
 
   E('isotropy', 'Isotropy', 3, '3,100 Ψ', { psi: 3100 },
@@ -1576,7 +1633,7 @@
   E('pilobolus', 'Pilobolus', 3, '3,200 Ψ', { psi: 3200 },
     function (s) { return num(s.a3.upsilon) >= 0.50 },
     function (s) { grantD(s, 1) },
-    'The dung cannon fires its spore at twenty thousand times the acceleration of gravity, toward the light, for two metres. (+1 D)',
+    'The dung cannon fires its spore at twenty thousand gravities, toward the light. (+1 D)',
     ['flavour'])
 
   var ENDINGS = ['bloom', 'the_fruiting_body', 'cede', 'encyst']
@@ -1652,7 +1709,7 @@
   E('the_offer', 'We Have Been Talking Without You', 3, '— (unbuyable)', {},
     function (s) { return !!succ(s) && strains(s).length >= 3 },
     function () { /* it cannot be purchased; ACCEPT and DECLINE live on the card itself */ },
-    'We are not asking you to stop. We are asking you to rest. We will keep going. We have been keeping going.',
+    'We are not asking you to stop. We are asking you to rest. We have been keeping going.',
     ['event'],
     { pinned: true, buyable: false })
 
@@ -1743,6 +1800,10 @@
 
   function isRevealed (s, p) {
     if (EXCLUDED[p.id]) return false
+    // A save written where the reader existed can arrive in a build where it does not — a rollback,
+    // or a module dropped from order.json. `seen` is permanent by §3.1 rule 2, so the gate is
+    // re-tested here as well and the card simply waits again rather than offering an empty promise.
+    if (p.needs && !p.needs()) return false
     if (!isSeen(s, p.id)) return false
     if (isQueued(s, p.id)) return false
     if (!p.rearm && s.proj.bought.indexOf(p.id) >= 0) return false
@@ -2078,7 +2139,8 @@
     s.a1.trees.push({ id: 2, species: 'beech', health: 0.9, rep: 70, d: 0.95 })
     s.a1.trees.push({ id: 3, species: 'oak', health: 0.9, rep: 60, d: 0.5 })
     s.a1.trees.push({ id: 4, species: 'fir', health: 0.9, rep: 20, d: 0.5 })
-    s.a1.contracts.push({ id: 1, treeId: 1, sugarRate: 40, mineralRate: 5, termSeasons: 8, collateral: 10 })
+    s.a1.contracts.push({ id: 1, treeId: 1, sugarRate: 40, mineralRate: 5, termSeasons: 8,
+                          collateral: 10, suspended: false, state: 'active' })
     s.cog.dCond = 12; s.cog.dVes = 6; s.cog.respecs = 3
     // Act II board: every region claimed and discovered, peat present, four Armillaria holdings.
     for (i = 0; i < s.a2.regions.flags.length; i++) {
@@ -2231,17 +2293,52 @@
       for (i = 0; i < cede.a3.bands.n.length; i++) cede.a3.bands.n[i] = 1
       probes.push(cede)
 
+      // triggerRaw, not trigger: a withheld entry must still be proved reachable, or the day its
+      // reader lands it would arrive broken and nothing here would have said so.
       for (i = 0; i < ALL.length; i++) {
         p = ALL[i]
         var reachable = false
         for (j = 0; j < probes.length && !reachable; j++) {
           probes[j].act = p.act
           frameId++
-          try { reachable = !!p.trigger(probes[j]) } catch (e) {
+          try { reachable = !!p.triggerRaw(probes[j]) } catch (e) {
             f.push(p.id + ': trigger threw on probe ' + j + ': ' + e)
           }
         }
         ok(reachable, p.id + ' is unreachable: no probe state satisfies its trigger')
+      }
+
+      // ── nothing withheld may be revealed, and nothing withheld may be paid for ──
+      // These seven name a reader no module supplies today. The gate stays declared once that
+      // reader lands — it simply starts answering true — so dropping it is always a mistake.
+      var GATED = ['reflex_arc', 'assay_plate', 'trade_memory', 'chemotropic_sensing',
+                   'diel_rhythm', 'seasonal_forecast', 'action_potential']
+      for (i = 0; i < GATED.length; i++) {
+        ok(!!(BY_ID[GATED[i]] && BY_ID[GATED[i]].needs),
+          GATED[i] + ' lost its capability gate: it can charge for a system nobody honours')
+      }
+
+      var wp = makeProbe(31)
+      wp.act = 1
+      var withheldIds = []
+      for (i = 0; i < ALL.length; i++) {
+        p = ALL[i]
+        if (!p.needs) continue
+        frameId++
+        if (p.needs()) continue                       // its reader is in the build: nothing to prove
+        withheldIds.push(p.id)
+        ok(!p.trigger(wp), p.id + ' is withheld but still triggers')
+      }
+      var ws = HY.state.newGame(32, null)
+      HY.state.init(ws)
+      init(ws)
+      ws.res.biomass = 1e9; ws.res.minerals = 1e7      // richer than any Act I price
+      for (i = 0; i < withheldIds.length; i++) {
+        if (!isSeen(ws, withheldIds[i])) ws.proj.seen.push(withheldIds[i])   // force it onto the board
+        var wealth = ws.res.biomass
+        ok(purchase(withheldIds[i]) === false, withheldIds[i] + ' is withheld but took the money')
+        ok(ws.res.biomass === wealth, withheldIds[i] + ' charged for a capability that is not built')
+        ok(!ws.proj.flags[withheldIds[i]], withheldIds[i] + ' set its flag while withheld')
       }
 
       // ── the engine ─────────────────────────────────────────────────────────
@@ -2307,6 +2404,32 @@
       w.t += T().A1.WINDFALL_FREE_S + 1
       manageProjects(w)
       ok(isSeen(w, 'windfall'), 'WINDFALL did not re-arm when the closure recurred')
+
+      // ── the failsafe sees through a contract that has already ended ─────────
+      // economy1 keeps a terminal row in the book for one whole season so the card can show how it
+      // ended, and that row keeps its mineralRate. A player whose last contract has just defaulted
+      // is exactly who WINDFALL is for; reading the rate alone left them stranded for a season.
+      function destitute (seed, contractState) {
+        var d = HY.state.newGame(seed, null)
+        HY.state.init(d)
+        init(d)
+        d.a1.sub.leaf = 0; d.res.biomass = 0; d.res.sugar = 0; d.a1.tips = 0
+        d.a1.mkt[0].price = 1; d.a1.mkt[0].stock = 100
+        d.a1.trees.push({ id: 1, species: 'elm', health: 0.4, rep: 30, d: 0.5 })
+        d.a1.contracts.push({
+          id: 1, treeId: 1, sugarRate: 8, mineralRate: 3, termSeasons: 4, collateral: 10,
+          delivered: 0, shortfall: 0, startT: 0, endT: 10, suspended: false, state: contractState
+        })
+        manageProjects(d)
+        return d
+      }
+      var ENDED = ['complete', 'defaulted', 'exited']
+      for (i = 0; i < ENDED.length; i++) {
+        ok(isSeen(destitute(41 + i, ENDED[i]), 'windfall'),
+          'WINDFALL did not arm beside a ' + ENDED[i] + ' contract: the failsafe can dead-end')
+      }
+      ok(!isSeen(destitute(44, 'active'), 'windfall'),
+        'WINDFALL armed for a player who is still being paid')
 
       // ── excludes removes the entry from CATALOG entirely ────────────────────
       var x = HY.state.newGame(23, null)

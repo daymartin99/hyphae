@@ -17,6 +17,7 @@
   function C () { return HY.core }
   function S () { return HY.state.state }
   function T () { return HY.core.TUNE }
+  function num (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
 
   var running = false
   var simTimer = 0
@@ -47,10 +48,16 @@
     var o = opts || { stochastic: true, offline: false }
     var act = s.act
     var a1 = HY.act1, ec = HY.economy1
+    // act1.stepSeason advances s.t itself whenever nobody else has — it has to, because the season
+    // boundary is a loop over a phase it derives from the clock. That makes it the owner of the
+    // clock for as long as Act I is running, and a second owner here cost the player a double step
+    // on the first tick after init() and after DECIDE, when act1's guard had nothing to compare to.
+    var seasonOwnsClock = !!(act === 1 && a1 && a1.stepSeason)
 
-    // 1 · Clock. Season phase and the boundary events that hang off it.
-    s.t += dt
-    if (act === 1 && a1) a1.stepSeason(dt, o)
+    // 1 · Clock. Season phase and the boundary events that hang off it. The loop moves the clock
+    //     only where no act module is there to move it, so it is advanced exactly once per tick.
+    if (seasonOwnsClock) a1.stepSeason(dt, o)
+    else s.t += dt
 
     // 2 · Environment. Offline this relaxes toward the seasonal mean because
     //     the modules read opts.stochastic rather than drawing.
@@ -146,11 +153,18 @@
     return acc
   }
 
+  // `wallClock` is seconds since the epoch, written by state.save() and by the cold-boot save, and
+  // read only here. state.now() is the single reader of the platform clock so the two sides cannot
+  // drift apart again; passing `nowS` explicitly is how the harness and the D35 determinism check
+  // hold the clock still.
   function reconcileOffline (nowS) {
     var s = S()
     if (!s) return 0
-    var elapsed = Math.max(0, (nowS === undefined ? Date.now() / 1000 : nowS) - (s.wallClock || 0))
-    s.wallClock = nowS === undefined ? Date.now() / 1000 : nowS
+    var at = nowS === undefined ? HY.state.now() : nowS
+    // A save with no wall clock at all is one this build has never written. Treating it as "just
+    // now" costs nothing; treating it as the epoch would hand out the offline cap on first sight.
+    var elapsed = s.wallClock > 0 ? Math.max(0, at - s.wallClock) : 0
+    s.wallClock = at
     if (!(elapsed > 1)) return 0
 
     var eff = effective(elapsed)
@@ -300,6 +314,17 @@
     return n
   }
 
+  // The policy `play` follows, named rather than sprinkled. These are harness
+  // numbers, not balance: they describe how the stand-in player behaves, and the
+  // game's own tables stay the only source of what that behaviour costs.
+  var PLAY = {
+    TIP_MARGIN: 1.25,        // × tipCost before reinvesting, the margin a player watching the number leaves
+    BUY_CAP: 5000,           // purchases per call; a ceiling so one long run cannot spin forever
+    BUFFER_S: 120,           // s of demand to keep on the floor: a buffer is a flow, not a fill level
+    SUGAR_KEEP: 0.50,        // fraction of sugar held back, so contracts stay signable
+    COVERAGE: 0.60           // ceiling on committed ÷ income, the ratio the tree card itself warns on
+  }
+
   // Advancing the clock is not the same as playing: Act I yields nothing at all
   // until the player extends something, so a pure fastForward reaches a state no
   // real player is ever in. This drives the actual verbs at a human cadence and
@@ -317,16 +342,102 @@
     for (var sec = 0; sec < seconds; sec++) {
       for (var k = 0; k < taps; k++) if (HY.act1 && HY.act1.onExtend) HY.act1.onExtend()
       for (var j = 0; j < perSec; j++) simTick(dt, sopts)
-      if (o.buy !== false && HY.act1 && HY.act1.buyTip && HY.act1.tipCost) {
+      if (o.buy === false) continue
+      // Act I is a liquidity business before it is a clicker: a stand-in that
+      // never restocks the floor eats its way to zero substrate and then holds a
+      // dead EXTEND for the rest of the run, which is a state no player is in
+      // and the wrong picture for a screenshot or a balance number.
+      if (o.restock !== false) restockFloor(s)
+      if (HY.act1 && HY.act1.buyTip && HY.act1.tipCost) {
         // Reinvest greedily but leave a margin, the way a player watching the
         // number actually behaves.
-        while (s.res.biomass >= HY.act1.tipCost() * 1.25 && bought < 5000) {
+        while (s.res.biomass >= HY.act1.tipCost() * PLAY.TIP_MARGIN && bought < PLAY.BUY_CAP) {
           if (!HY.act1.buyTip()) break
           bought++
         }
       }
+      // Projects are the only thing that moves the game forward: the act breaks
+      // are gated behind them, so a stand-in that buys none of them never leaves
+      // Act I however long it is run for.
+      if (o.projects !== false) bought += buyProjects()
+      if (o.contracts !== false) signContracts(s)
+      s = S()
     }
     return bought
+  }
+
+  // Cheapest-first, which is the order `visible()` already sorts into, and one
+  // pass per second so a purchase that reveals another waits a beat — the same
+  // rhythm the player reads the panel at.
+  function buyProjects () {
+    var pj = HY.projects
+    if (!pj || !pj.visible || !pj.purchase) return 0
+    var list = pj.visible(), n = 0, i
+    for (i = 0; i < list.length; i++) {
+      if (!list[i].buyable) continue
+      if (pj.affordRatio(list[i]) > 1) continue
+      if (pj.purchase(list[i].id)) n++
+    }
+    return n
+  }
+
+  // Buy the cheapest unlocked litter first, which is the consumption order the
+  // game itself defaults to, and never spend the whole book.
+  //
+  // The target is minutes of demand, not a fraction of the bin: the floor's caps
+  // run to tens of kilograms while a mid-act sugar book is three figures, so
+  // "fill the bin" is an order the player can never afford and the bot would
+  // spend every gram of sugar forever trying.
+  function restockFloor (s) {
+    var e1 = HY.economy1
+    if (!e1 || !e1.buy || s.act !== 1 || !s.a1) return
+    var want = HY.act1.throughputPerSec() * PLAY.BUFFER_S
+    if (!(want > 0) || totalFloor(s) >= want) return
+    var budget = num(s.res.sugar) * (1 - PLAY.SUGAR_KEEP)
+    var order = (s.a1.unlockedTypes || []).slice()
+    order.sort(function (a, b) { return e1.unitPrice(a) - e1.unitPrice(b) })
+    for (var i = 0; i < order.length && budget > 0; i++) {
+      var k = order[i]
+      var short = want - totalFloor(s)
+      if (!(short > 0)) return
+      var price = e1.unitPrice(k)
+      if (!(price > 0)) continue
+      var room = e1.capOf(k) - num(s.a1.sub[k])
+      var g = Math.min(short, room, budget / price)
+      if (!(g > 0)) continue
+      budget -= e1.buy(k, g) * price
+    }
+  }
+
+  function totalFloor (s) {
+    var t = 0, i, types = HY.economy1.TYPES
+    for (i = 0; i < types.length; i++) t += num(s.a1.sub[types[i]])
+    return t
+  }
+
+  // Selling sugar forward is the only thing in Act I that pays a mineral, and
+  // minerals gate the whole back half of the catalog and every tip past the
+  // twenty-fourth. A stand-in that never signs stalls at that wall with a
+  // seven-figure biomass and nothing to spend it on.
+  //
+  // The position is sized off the coverage ratio the tree card already shows,
+  // and the term is the shortest legal one: this is a harness keeping itself
+  // solvent, not a model of good trading.
+  function signContracts (s) {
+    var e1 = HY.economy1
+    if (!e1 || !e1.signContract || s.act !== 1 || !s.a1) return
+    var trees = s.a1.trees
+    if (!trees || !trees.length) return
+    var income = e1.netSugar() + e1.committedSugarPerSec()
+    if (!(income > 0)) return
+    var head = PLAY.COVERAGE * income - e1.committedSugarPerSec()
+    if (!(head > 0)) return
+    var term = T().A1.TERM_MIN
+    for (var i = 0; i < trees.length && head > 0; i++) {
+      var vol = Math.min(head, e1.maxIntake(trees[i]))
+      if (!(vol > 0) || !e1.accepts(trees[i], vol, term, false, 0)) continue
+      if (e1.signContract(trees[i].id, vol, term, 0, false)) head -= vol
+    }
   }
 
   function selftest () {
