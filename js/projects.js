@@ -2293,6 +2293,17 @@
       for (i = 0; i < cede.a3.bands.n.length; i++) cede.a3.bands.n[i] = 1
       probes.push(cede)
 
+      // anastomotic_grafting: 22+ regions in an archipelago, edges/nodes < 1.2. makeProbe claims
+      // the whole board, which is the densest network the map can hold; the spore-seeded shape is
+      // a different one and has to be a probe of its own or the entry reads as unreachable.
+      var sparse = makeProbe(17)
+      for (i = 0; i < sparse.a2.regions.flags.length; i++) {
+        // Every other hex of the outer three rings. Indices run along a ring, so alternating them
+        // shares almost no edges: 27 nodes, an archipelago, exactly what seeding builds.
+        if (i < 7 || i % 2 === 0) sparse.a2.regions.flags[i] &= ~RF_CLAIMED
+      }
+      probes.push(sparse)
+
       // triggerRaw, not trigger: a withheld entry must still be proved reachable, or the day its
       // reader lands it would arrive broken and nothing here would have said so.
       for (i = 0; i < ALL.length; i++) {
