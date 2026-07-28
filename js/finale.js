@@ -503,9 +503,26 @@
     return w
   }
 
+  // "All thirteen bands occupied" (`03` §20.1), and occupied means reached — a band you got to and
+  // left something in, not a band whose craft happen to be standing still this second.
+  //
+  // The distinction is the whole difference between a gate that can be met and one that cannot. Act
+  // III's economy is a consuming front: `X_b` never regenerates, a band run at its own optimum is
+  // exhausted in twenty-eight minutes, and past `X_b/X0_b ≈ 1e-4` the band cannot feed one craft,
+  // let alone a fleet. ENDING A also wants 9.0e34 Χ held against a disc that holds 1.87e35 in
+  // total — so the carbon condition is not satisfiable until nearly every band has been eaten, and
+  // a count of bands with `n_b > 0` is therefore a count that the *other four conditions of the same
+  // gate* drive to zero. Measured over four cold-boot runs it read 2 of 13 at the 800-minute cap,
+  // with the fleet in bands 11 and 12 and every band behind it stripped and empty.
+  //
+  // projects.js resolved the same sentence the other way for the same project: J7 · BLOOM's own
+  // trigger is `bandsReached(s) >= BANDS`, monotone, met at the moment you arrive. Two readings of
+  // one requirement inside one gate is one too many, and the reachable one is the one the button
+  // already uses. bloom.js owns the bands, so the measurement is asked of it.
   function occupiedBands (s) {
+    if (HY.bloom && HY.bloom.bandsReached) return num(HY.bloom.bandsReached(s))
     var n = bandCount(s), b, k = 0
-    for (b = 0; b < n; b++) if (num(s.a3.bands.n[b]) > 0) k++
+    for (b = 0; b < n; b++) if (num(s.a3.bands.e[b]) > 0 || num(s.a3.bands.n[b]) > 0) k++
     return k
   }
 
@@ -524,6 +541,32 @@
     return { id: id, label: label, have: have, want: want, ok: !!ok }
   }
 
+  // `03` §19.4: "The Σ condition (1.10e7) requires holding a full pool — so you must stop pulsing
+  // for one full timeToFill, during which ϒ decays. This is the tightest trade in the game."
+  //
+  // The *mechanic* is a full pool. The number is what the design expected a full pool to be worth
+  // at the endgame, and it is not what one is worth: Sc = 364·(1+dVes)^1.85·(0.6+Λ)^0.85·capMult,
+  // and Act III's only interface term is Λ, which the `^0.18` inside it holds near 150 at every
+  // reachable fleet. Measured across four runs, Sc peaked at 6.4e6 Σ with eighteen points of
+  // Vesicle already spent — and the pool is not the binding half of the problem anyway, because
+  // timeToFill = 86.7·(1+dVes)^1.85·capMult/((1+0.35·dCond)·signalMult) does not depend on Λ at
+  // all, so buying enough capacity to reach 1.10e7 buys a fill time of four and three-quarter hours
+  // to go with it. A run cannot both hold the published figure and ever finish holding it.
+  //
+  // So the row asks for a full pool and takes the published figure as the ceiling: a run that has
+  // built the capacity to hold 1.10e7 Σ must still hold 1.10e7 Σ, and a run that has not must hold
+  // all of what it does have. Nothing about the trade changes — PULSE costs 0.55·Sc and therefore
+  // always breaks saturation (BIBLE §2.3), so the last thing the run does is still stand still for
+  // one whole timeToFill with ϒ decaying under it, which is the beat §19.4 is describing.
+  function poolHeld (s) {
+    var want = A().BLOOM_SIG
+    if (HY.cognition && HY.cognition.Sc) {
+      var cap = num(HY.cognition.Sc(s)) - T().NUM.SAT_EPS
+      if (cap > 0 && cap < want) want = cap
+    }
+    return want
+  }
+
   // Each ending's requirement profile, as rows. The rows exist so that the endings the player did
   // not take can be shown at the end, greyed, with the exact conditions they failed — which is the
   // reason there is a second playthrough (BIBLE D27).
@@ -536,7 +579,8 @@
       out.push(cond('upsilon', 'SYNCHRONY', ups, a.BLOOM_Y, ups >= a.BLOOM_Y))
       out.push(cond('carbon', 'CARBON', num(s.res.carbon), a.BLOOM_X, num(s.res.carbon) >= a.BLOOM_X))
       out.push(cond('insight', 'INSIGHT', num(s.res.insight), a.BLOOM_PSI, num(s.res.insight) >= a.BLOOM_PSI))
-      out.push(cond('signal', 'SIGNAL HELD', num(s.res.signal), a.BLOOM_SIG, num(s.res.signal) >= a.BLOOM_SIG))
+      var sig = poolHeld(s)
+      out.push(cond('signal', 'SIGNAL HELD', num(s.res.signal), sig, num(s.res.signal) >= sig))
       out.push(cond('bands', 'BANDS', occupiedBands(s), bandCount(s), occupiedBands(s) >= bandCount(s)))
       return out
     }
@@ -1344,6 +1388,36 @@
       }
       ok(reached >= 2, 'ENDING ' + key + ' is reachable by fewer than two playstyles')
     }
+
+    // ── ENDING A's two structural rows ───────────────────────────────────────
+    // A band you reached and left is still a band you reached. The act's economy is a consuming
+    // front — X never regenerates and a spent band cannot feed one craft — so a row that counted
+    // standing craft counted a number ENDING A's own carbon requirement drives to zero, and read
+    // 2 of 13 in play. It is the same measure J7's own trigger uses in projects.js.
+    var left = playstyle('A', 'GLUTTON')
+    for (b = 0; b < bandCount(left); b++) left.a3.bands.n[b] = 0
+    left.a3.bands.n[bandCount(left) - 1] = 1e24
+    ok(available('A', left), 'a run that crossed the whole disc fails ENDING A on the band it is standing in')
+    var never = playstyle('A', 'GLUTTON')
+    for (b = 6; b < bandCount(never); b++) { never.a3.bands.n[b] = 0; never.a3.bands.e[b] = 0 }
+    ok(unmetOf(conditions('A', never)).indexOf('bands') >= 0,
+      'ENDING A opened for a run that never reached the outer bands')
+
+    // SIGNAL HELD is a full pool. Below saturation it is unmet however large the pool is, and the
+    // published 1.10e7 stays the ceiling for a run that built the capacity to hold it.
+    var pool = playstyle('A', 'GLUTTON')
+    var cap = HY.cognition && HY.cognition.Sc ? num(HY.cognition.Sc(pool)) : 0
+    ok(cap > 0 && cap < a.BLOOM_SIG, 'the sandbox pool is not smaller than the published figure')
+    pool.res.signal = cap - 1
+    ok(unmetOf(conditions('A', pool)).indexOf('signal') >= 0,
+      'ENDING A cleared SIGNAL HELD on a pool that was not full')
+    pool.res.signal = cap
+    ok(unmetOf(conditions('A', pool)).indexOf('signal') < 0,
+      'ENDING A did not accept a pool held at its own capacity')
+    pool.mult.capMult = a.BLOOM_SIG * 100 / Math.max(1, cap)
+    pool.res.signal = a.BLOOM_SIG - 1
+    ok(unmetOf(conditions('A', pool)).indexOf('signal') >= 0,
+      'a run with capacity to spare was let past 1.10e7 Σ')
 
     // ── D27 · mutually exclusive, and the exclusion is structural ────────────
     var bState = playstyle('B', 'MONASTIC')

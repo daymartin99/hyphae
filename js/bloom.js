@@ -235,6 +235,7 @@
   var humpFor = 0                  // s a band has spent with surplus falling while n rose
   var lastHumpN = 0, lastHumpSurplus = 0
   var newCraft = null              // repActual_b of the frame, read by divergence.js (§13.1)
+  var transitN = null              // craft in flight, by the band they left — Λ's other half (§12.1)
 
   // ───────────────────────────────────────────────────────────────────────────
   // GEOMETRY
@@ -472,6 +473,25 @@
     var i, t = 0
     for (i = 0; i < s.a3.transit.length; i++) t += num(s.a3.transit[i].count)
     return t
+  }
+
+  function zeroTransit () {
+    var n = bandCount(), i
+    if (!transitN || transitN.length !== n) transitN = new Float64Array(n)
+    else for (i = 0; i < n; i++) transitN[i] = 0
+    return transitN
+  }
+
+  // Bands you have got to. `e_b` is the explored fraction and it is monotone — arriving stamps it
+  // (LANDING_E) and nothing ever takes it back — so this is a count of where the organism has been,
+  // not of where it is standing this second. projects.js gates half of tier H, J2 and J7 on its own
+  // copy of exactly this; finale.js reads it for ENDING A's band row. Both are the same question.
+  function bandsReached (state) {
+    var s = state || S()
+    if (!s) return 0
+    var n = bandCount(), b, k = 0
+    for (b = 0; b < n; b++) if (num(s.a3.bands.e[b]) > 0 || num(s.a3.bands.n[b]) > 0) k++
+    return k
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1031,15 +1051,57 @@
   // aDis = 0.020 and above that every DISPERSE setting empties a band at exactly the same rate.
   // Scaled, the vertex reads as what the triangle says it is — the fraction of the fleet leaving —
   // and DISPERSE at 0.20 clears a band in 250 s against transit legs of 90 to 2,443 s.
+  //
+  // A band never launches its last craft. Nothing bounded the launch below, and the only thing that
+  // eventually stopped one was that band's surplus reaching zero — which is also what an empty band
+  // reads. So Act III ran as a wave rather than as a network: measured, the reference run crossed
+  // the disc with nine bands occupied at its widest, arrived at band 12 holding two of thirteen,
+  // and Λ — the only source of Signal in the act, and therefore of Insight — fell from 126 to 20 on
+  // the way out. Every gate ENDING A is priced in reads that collapse: Σ and Ψ are both built on Λ,
+  // ϒ cannot be measured at all until 3,600 Ψ has bought the instrument that measures it, and the
+  // band count is the collapse stated directly.
+  //
+  // The garrison is a tenth of NCAP and it is small on purpose. `harvest ∝ n` while `X0 ∝ NCAP`, so
+  // a band's lifetime under a garrison of `g·NCAP` is about `6.0e10/(g·HARV_K·μ)` seconds whatever
+  // the band's size: at n* it is twenty-two minutes and the colony eats itself out behind the
+  // frontier, at a tenth of NCAP it is three hours and the colony is still there at the ending. The
+  // `^0.18` in Λ is what makes that a good trade — a garrison at 1.4% of n* still carries half of
+  // that band's Λ term, because Λ was always about *presence* and never about mass.
+  //
+  // Never above n*: a spent band cannot feed a garrison at any size, and holding one there would be
+  // holding craft in a place that produces less than it eats. When the band is finished the floor
+  // falls to zero on its own and the last of them leave rather than starve.
+  //
+  // Never above a tenth of what is standing there either, and that third clamp is what keeps the
+  // rule from becoming a gate on the act's opening: band 0 carries 1.00e13 NCAP and the void begins
+  // with 4% of a Phase A fleet in it, so a floor of a tenth of NCAP alone is a floor the first
+  // launch cannot clear and the front never leaves home. A garrison is what a band keeps, not a
+  // threshold it must pass to be allowed to send anyone.
+  var GARRISON_NCAP = 0.10
+  var GARRISON_KEEP = 0.10
+
+  function garrison (s, b) {
+    return Math.min(nStar(b, s), GARRISON_NCAP * NCAP(s, b), GARRISON_KEEP * num(s.a3.bands.n[b]))
+  }
+
   function stepDispersal (dt, s, sur, total, aDis) {
     if (inCanopy(s) || !(aDis > 0)) return
     var a = A(), m = craftMass(s)
     if (!(m > 0)) return
-    var n = count(s), b, demand, launch, spend
+    var n = count(s), b, demand, launch, spend, spare
     for (b = 0; b < n - 1; b++) {
-      if (!(sur[b] > 0) || !(num(s.a3.bands.n[b]) > 0)) continue
-      demand = aDis * total * (sur[b] / total) / (m * a.PROP_K)
-      launch = Math.min(demand, num(s.a3.bands.n[b]) * a.MAXLAUNCH * aDis)
+      if (!(num(s.a3.bands.n[b]) > 0)) continue
+      spare = num(s.a3.bands.n[b]) - garrison(s, b)
+      if (!(spare > 0)) continue
+      // A band with no surplus left is the one band you most need to leave, and until now it was
+      // the one band you could not: the demand term is a share of income, income was zero, and the
+      // survivors of a stripped band stood there until they starved. §10.2's stated recovery from
+      // BLOOM COLLAPSE — "the fleet self-corrects to n† and must then be *bled* outward" — was not
+      // performable. The propellant was never coming out of the band anyway; `spend` has always
+      // been drawn from the bank. So a producing band launches a share of what it earns, and a
+      // spent one launches at the vertex's ceiling and is paid for out of Χ like anything else.
+      demand = sur[b] > 0 ? aDis * total * (sur[b] / total) / (m * a.PROP_K) : Infinity
+      launch = Math.min(demand, num(s.a3.bands.n[b]) * a.MAXLAUNCH * aDis, spare / dt)
       if (!(launch > 0)) continue
       spend = Math.min(launch * dt * m * a.PROP_K, heldCarbon(s))
       launch = spend / (m * a.PROP_K * dt)
@@ -1060,15 +1122,29 @@
   // the readout is a total in transit, attrition is a rate applied uniformly, and arrival is a
   // count times pEst. So they are one record, and the quantum is one second against a shortest leg
   // of ninety. Nothing the player can see moves.
+  //
+  // One second is the right quantum for the 0→1 leg and the wrong one for 11→12: a fixed quantum
+  // costs τ records per leg, and Στ is 9,164 s, so a void that is launching out of every band at
+  // once — which is what a stripped band evacuating looks like — carries nine thousand of them and
+  // serialises to 347 KB against `SAVE.MAX_BYTES_A3`. A leg is sliced instead: sixty cohorts is
+  // finer than the IN TRANSIT readout can show on any leg, and it bounds the list at 60 per leg
+  // however long the leg is, which is 732 records for the whole disc.
   var TRANSIT_QUANTUM_S = 1.0
+  var TRANSIT_SLICES = 60
+
+  function transitQuantum (tau) {
+    return Math.max(TRANSIT_QUANTUM_S, num(tau) / TRANSIT_SLICES)
+  }
 
   function pushTransit (s, from, count, tRem) {
     var list = s.a3.transit, i
+    var quantum = transitQuantum(tRem)
+    if (transitN && from >= 0 && from < transitN.length) transitN[from] += count
     for (i = list.length - 1; i >= 0; i--) {
       if (list[i].from !== from) continue
       // The list is append-ordered, so the newest record for this leg is the only merge candidate;
       // anything older has already drifted more than a quantum away.
-      if (tRem - num(list[i].tRem) < TRANSIT_QUANTUM_S) {
+      if (tRem - num(list[i].tRem) < quantum) {
         list[i].count = num(list[i].count) + count
         return
       }
@@ -1089,13 +1165,22 @@
       (flagOn(s, 'sclerotial_coat') ? COAT_TR : 1)
     var keep = Math.exp(-haz * dt)
     var list = s.a3.transit, i = 0, c, lost, land
+    // Λ needs the per-band total of what is in flight, and cognition asks for Λ two to four times a
+    // tick. Walking a list that runs to hundreds of records that many times over is the same frame
+    // cost the transit quantum was introduced to remove, so the totals are accumulated here, in the
+    // one loop that already touches every record.
+    var acc = zeroTransit()
     while (i < list.length) {
       c = list[i]
       lost = num(c.count) * (1 - keep)
       c.count = num(c.count) - lost
       attribute(CAUSE.TRANSIT, lost, s)
       c.tRem = num(c.tRem) - dt
-      if (c.tRem > 0 && c.count > 0) { i++; continue }
+      if (c.tRem > 0 && c.count > 0) {
+        if (c.from >= 0 && c.from < acc.length) acc[c.from] += c.count
+        i++
+        continue
+      }
       if (c.count > 0) {
         land = c.count * arrivalPEst(s, c.to)
         addN(s, c.to, land)
@@ -1200,13 +1285,33 @@
   // left that could spend it. In canopy units Λ is 14.7 at a whole-planet n* rather than 4.25,
   // which is 2.66× on both Sc and Sr, and §3.3's "identical equations" becomes true of the
   // cognition the equations are read through as well as of the equations.
+  //
+  // §12.1 sources Act III's Signal on "craft in coherent contact, degraded by light-lag", and a
+  // cohort on a leg is in contact — it is producing nothing, which is a statement about carbon, not
+  // about whether anyone can hear it. Counting only craft that are standing still made Λ, and with
+  // it every Σ and Ψ price in the act, fall precisely when the network is at its longest: measured,
+  // the outer legs run 1,809 and 2,443 seconds and the endgame carries 50–90% of the fleet in
+  // flight, so Λ fell from 126 to 20 across the last three bands and took Insight — the only thing
+  // that can buy the phase system ENDING A is gated on — down with it. A cohort is credited to the
+  // band it left, because that is where its light-lag is measured from and where its trail still is.
+  function transitIn (s) {
+    if (transitN && transitN.length === bandCount()) return transitN
+    var acc = zeroTransit(), i, c
+    for (i = 0; i < s.a3.transit.length; i++) {
+      c = s.a3.transit[i]
+      if (c.from >= 0 && c.from < acc.length) acc[c.from] += Math.max(0, num(c.count))
+    }
+    return acc
+  }
+
   function Lambda (state) {
     var s = state || S()
     if (!s || s.act !== 3) return 0
     var a = A(), n = count(s), b, acc = 0, q
     var ref = a.NSIG * (inCanopy(s) ? CANOPY_SCALE : 1)
+    var moving = inCanopy(s) ? null : transitIn(s)
     for (b = 0; b < n; b++) {
-      q = num(field(s).n[b]) / ref
+      q = (num(field(s).n[b]) + (moving ? moving[b] : 0)) / ref
       if (!(q > 0)) continue
       acc += lambda(s, b) * Math.pow(q, a.LAMBDA_EXP)
     }
@@ -1457,6 +1562,7 @@
     lastHumpN = 0
     lastHumpSurplus = 0
     newCraft = null
+    transitN = null
     predBudget = Infinity
     wasOffline = false
     lastAct = s ? (s.act === 3 ? 0 : s.act) : 0
@@ -1825,6 +1931,7 @@
     totalCraft: totalCraft,
     stranded: stranded,
     inTransit: inTransit,
+    bandsReached: bandsReached,
     wildIn: wildIn,
     newCraftIn: function (b) { return newCraft && newCraft[b] ? newCraft[b] : 0 },
     bandRadius: bandRadius,

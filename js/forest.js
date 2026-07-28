@@ -85,12 +85,29 @@
   var DECOMPF_A = 1.55, DECOMPF_B = 0.62      // decompF = 1.55 − 0.62·lignin ∈ [0.65, 1.07]
   var YIELDF_A = 0.70, YIELDF_B = 0.42        // yieldF  = 0.70 + 0.42·lignin ∈ [1.03, 1.31]
   var MOIST_A = 0.10, MOIST_B = 3.60          // moistureF is a HUMP: 0.10 + 3.60·m·(1−m), peak 1.00
-  var HUMUSF_A = 0.45, HUMUSF_B = 0.55        // humusF = 0.45 + 0.55·h
+  // humusF = 0.50 + 0.50·h. The endpoint at h = 1 is fixed by KAPPA's calibration and does not
+  // move; the *intercept* does, and it is the act's middle hour. Measured over five seeds, every
+  // claimed stand's humus settles near 0.03 under the default TAKE dial — the equilibrium
+  // dec·ρ·HUMUS_IN/(HUMUS_SCALE_F·L0·out) is 0.03 at ρ = 0.10 whatever the enzyme suite — so the
+  // old 0.45 intercept was not the bottom of a range the player travels, it was the coefficient
+  // the whole act ran at, from the first claim to ASCOSPORE. 0.50 is as far as it can move and
+  // leave D18's margin intact: the intercept lifts the floor of the curve, and the ratio between
+  // the act's peak and its tenth percentile is exactly what D18 measures, so the two pull opposite
+  // ways and the arc arbitrates. Measured, 0.50 leaves that ratio at 2.57 against a gate of 2.50.
+  var HUMUSF_A = 0.50, HUMUSF_B = 0.50
   var GROW_A = 0.25, GROW_B = 0.75            // growth's humus bracket
   var FALL_A = 0.55, FALL_B = 0.45            // litterfall's humus bracket
   var IFACE_T_EXP = 0.60                      // (T/T0)^0.60 — trees degrade gracefully
   var IFACE_PACT = 0.50                       // ×(1 + 0.50) while the stand is under a pact
   var MORT_TO_LITTER = 0.92                   // of everything that dies, this much becomes litter
+  // …and of everything a fire kills standing, this much falls as charred wood. Fire is lossy — the
+  // fine fuel goes up as smoke (IGNITE_L) — but a burnt stand is not a hole in the world, it is a
+  // pile of scorched timber on a bare floor. Measured, the old reading (the killed 70% simply
+  // ceased to exist) deleted 0.5–1.6e12 g of the act's 4.00e12 g budget depending only on how many
+  // stands happened to ignite, which is 14 on one seed and 27 on the next: the single largest
+  // source of the 85-minute spread in Act II's length, and the one thing in the act the player
+  // could neither see nor price.
+  var FIRE_TO_LITTER = 0.55
   var PEAT_DECOMP = 0.45                      // peat is a larder you cannot open …
   var PEAT_AERENCHYMA = 0.95                  // … until you can breathe through the water
   var SCREE_T0 = 0.35                         // "no trees above ring 2"
@@ -103,8 +120,21 @@
 
   // Fire, `02` §9.5. The rates themselves are TUNE (FIRE_ACC/DEC/TRIG/P); these are the predicate.
   var FIRE_DRY_M = 0.26                       // m below which a low-humus stand is dry
-  var FIRE_CANOPY = 0.55                      // ×(1 − 0.55·canopy): shade keeps the litter damp
-  var FIRE_SPREAD_RISK = 0.55                 // a neighbour at this risk catches
+  // ×(1 − 0.85·canopy): shade keeps the litter damp. `02` §9.5 makes fire the punishment for a
+  // mined floor, and a mined floor is one you have stripped — but at 0.55 a stand with its canopy
+  // fully intact still accrued risk at half rate, and humus falls below HUMUS_FIRE on every claimed
+  // stand at once around minute 45 whatever the player does, so ten to thirteen live stands burned
+  // in the same fifty-minute window on every seed. That window is where the interface peaks, and
+  // each burn takes 70% of a stand's trees with it, so the act's Signal curve was being flattened
+  // at its maximum by an event the player had no way to be responsible for. At 0.85 a living
+  // canopy is nearly proof against fire and a killed one is not: fire arrives after the stand does,
+  // which is the sentence the design already wrote.
+  var FIRE_CANOPY = 0.85
+  // A neighbour at this risk catches. 0.55 was below the level the whole board sits at once humus
+  // has been mined out, so one ignition took its entire neighbourhood and the count of burnt stands
+  // was a cascade length rather than a number of accidents. 0.70 is 0.15 under FIRE_TRIG: a
+  // neighbour catches when it was nearly going to ignite on its own, which is what a wavefront is.
+  var FIRE_SPREAD_RISK = 0.70
   var FIRE_SLOW = 2.0                         // s — fire is evaluated at 0.5 Hz, not every tick
   var FIRE_MAX_DT = 60                        // s — the most risk one offline macro-step may accrue
   var IGNITE_L = 0.15, IGNITE_T = 0.30, IGNITE_D = 0.25, IGNITE_H = 0.45
@@ -353,8 +383,10 @@
     var s = st || S()
     var lock = rhoLocked(s)
     if (lock > 0) return lock                       // The Armillaria Accord decides this now
-    if (s.a2.regions.flags[i] & RF_QUIET) return RHO_QUIET
-    return C().clamp(num(s.a2.regions.rho[i]), 0, A().RHO_MAX)
+    var r = s.a2.regions
+    if (r.flags[i] & RF_QUIET) return RHO_QUIET
+    var dial = C().clamp(num(r.rho[i]), 0, A().RHO_MAX)
+    return dial + homeoOffset(s, i, dial)
   }
 
   // The global dial is not a stored scalar: it is the value every unpinned region carries. That is
@@ -389,20 +421,30 @@
 
   // Homeostatic Soil: the dial stops being a fraction and becomes a setpoint. It holds the switch,
   // which is the one value a player who has understood the act would hold it at anyway.
-  function stepHomeostasis (s, dt) {
-    if (!flagOn(s, 'homeostatic_soil') || rhoLocked(s) > 0) return
-    var r = s.a2.regions, a = A(), i
-    var target = a.HUMUS_SWITCH
-    // Read the dial once: the controller writes into the same array globalRho() reads out of, and
-    // a reference that moves while the loop runs is a reference that runs away.
-    var base = globalRho(s)
-    for (i = 0; i < nreg; i++) {
-      if (!(r.flags[i] & RF_CLAIMED) || (r.flags[i] & RF_RHOPINNED)) continue
-      var want = C().clamp(base + HOMEO_GAIN * (target - r.h[i]), 0, a.RHO_MAX)
-      // Move, do not jump: an instant dial would make humus a step function and the fire predicate
-      // chatter across its threshold.
-      r.rho[i] += (want - r.rho[i]) * Math.min(1, dt)
-    }
+  //
+  // It is an *offset read off h*, not a value written into r.rho, and that is the whole of the fix.
+  // The old controller wrote its output into the same array `globalRho()` reads its input out of,
+  // so `base` on tick n+1 was the controller's own output from tick n and the loop was a pure
+  // integrator with no anti-windup. Whenever the setpoint was out of reach — which is most of the
+  // second half, because h's equilibrium is dec·ρ·HUMUS_IN/(HUMUS_SCALE_F·L0·out) and there is very
+  // little dec left — it wound to its ceiling and stayed. Measured: ρ ≈ 0.74 for the last 130
+  // minutes of one seed, i.e. three quarters of everything decomposed put back into ground that
+  // could not hold it, while `extracted` — the act's clock — took the other quarter. That seed ran
+  // 283 minutes; the seed whose controller happened not to wind ran 198.
+  //
+  // Computed rather than stored, the dial the player set stays the dial the player set, the offset
+  // falls back to zero the moment h reaches the switch, and there is no state to run away.
+  //
+  // Its authority stops at RHO_FLAT_MAX, the value TUNE names as the top of the range where
+  // retention is nearly free in the short run. An automation may spend the free part of the dial;
+  // giving back more than that is a decision with a visible price on it, and it stays the player's.
+  function homeoOffset (s, i, dial) {
+    if (!flagOn(s, 'homeostatic_soil')) return 0
+    var r = s.a2.regions
+    if (!(r.flags[i] & RF_CLAIMED) || (r.flags[i] & RF_RHOPINNED)) return 0
+    var a = A()
+    var want = C().clamp(dial + HOMEO_GAIN * (a.HUMUS_SWITCH - num(r.h[i])), 0, a.RHO_FLAT_MAX)
+    return want > dial ? want - dial : 0
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -417,7 +459,6 @@
     applyDeepLitter(s)
     stepLiving(dt, o, s)
     stepHumus(dt, o, s)
-    stepHomeostasis(s, dt)
     syncOut(s)
   }
 
@@ -708,7 +749,14 @@
     if (!(Lf[i] > 0)) return false
     var lost = Lf[i] * (1 - IGNITE_L)
     Lf[i] *= IGNITE_L                               // 85% of the litter is not converted. It is gone.
+    // The crown goes with it, and most of the trunks come down — but they come *down*, onto a floor
+    // that has just been swept bare. FIRE_TO_LITTER of the killed standing mass is charred wood the
+    // player can still eat; the rest went up with the litter. The stand still loses its canopy, its
+    // density, its Signal and its say in when it was converted, which is the whole of fire's sting.
+    var killedStanding = Tf[i] * (1 - IGNITE_T)
     Tf[i] *= IGNITE_T
+    Lf[i] += killedStanding * FIRE_TO_LITTER
+    lost += killedStanding * (1 - FIRE_TO_LITTER)
     r.L[i] = Lf[i]; r.T[i] = Tf[i]
     r.d[i] = num(r.d[i]) * IGNITE_D
     r.h[i] = IGNITE_H
@@ -1139,8 +1187,9 @@
       ok(moistureF(0.5) > moistureF(0.9) && moistureF(0.5) > moistureF(0.1),
         'moistureF is a ramp, not a hump')
       near(moistureF(0.0), MOIST_A, 1e-12, 'moistureF floor moved')
-      near(humusF(0), 0.45, 1e-12, 'humusF intercept moved')
-      near(humusF(1), 1.00, 1e-12, 'humusF slope moved')
+      near(humusF(0), HUMUSF_A, 1e-12, 'humusF intercept moved')
+      near(humusF(1), 1.00, 1e-12, 'humusF at full humus is not 1.00 — KAPPA is calibrated on it')
+      ok(HUMUSF_A >= 0.50, 'a stripped floor decomposes at less than half of a deep one')
       near(DECOMPF_A - DECOMPF_B * 0.78, 1.0664, 1e-3, 'pure birch decompF off 02 §6.5')
       near(DECOMPF_A - DECOMPF_B * 1.45, 0.651, 1e-3, 'pure pine decompF off 02 §6.5')
       near((DECOMPF_A - DECOMPF_B * 0.78) / (DECOMPF_A - DECOMPF_B * 1.45), 1.638, 0.02,
