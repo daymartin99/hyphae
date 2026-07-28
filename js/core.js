@@ -345,8 +345,17 @@
       // canopy, phase A
       SPORE_DECAY_3: 0.99700,   // per second, Phase A only (half-life 231 s)
       SETTLE_Q: 2.4e7,          // ◦ per SETTLE
-      REACH_BASE: 2.6e3,        // ◦, first REACH
-      REACH_GROWTH: 2.35,       // × per REACH
+      REACH_BASE: 2.6e3,        // Σ, first REACH
+      // 03 §3.2 priced the ladder at 2.35× per step (761,000 Σ across Phase A); 03 §12.1 made the
+      // Signal that pays for it grow as Λ ∝ n^0.18, explicitly "very flat … you get vastly richer
+      // without getting proportionally smarter". Geometric demand against a ^0.18 supply diverges,
+      // and it did: measured, the reference player paid the first five reaches on schedule, hit
+      // #6 at 79,295 Σ against a peak income of 42 Σ/s, ate the five biomes it could reach while
+      // saving, and lost the whole fleet to starvation at planetConsumed 0.206 with no spores left
+      // to settle and no ENCYST offered outside the void — an unrecoverable dead end, every run.
+      // Λ rose 1.42× per reach over that stretch, so the ladder grows at the rate the act's own
+      // Signal does and the "~2.5 minutes apart" cadence of 03 §3.1 Beat 4 survives.
+      REACH_GROWTH: 1.45,       // × per REACH
       BIOME_X0: [2.0e15, 1.4e17, 2.6e17, 9.0e16, 3.4e17, 1.2e18, 3.0e17, 1.7e18],  // g carbon per biome
       GERM_TUBE_N: 2.0e8,       // craft, auto-SETTLE unlocks
       APPRESSORIUM_X: 4.0e14,   // g carbon, REACH and the biome list unlock

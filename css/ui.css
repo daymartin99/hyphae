@@ -31,6 +31,17 @@
   --void-sunk:#050508; --void-soft:#1F1F2C; --void-line:#2A2A3A; --void-strong:#3A3A4E;
   --void-500:#5A5878; --void-state:#7A7796; --void-tertiary:#8B87A8;
   --void-300:#A8A4C6; --void-100:#D2CFE4; --void-hyphae:#C9C6DE;
+  /* ---- primitives: frost — Act III's cold shift in the LIGHT material ----
+     The void rebinding is a set of near-black surfaces, and applying it to the light theme turned
+     a daylight screen into a black one with near-black ink on it (1.1 : 1). Act III's cold shift
+     is a *cast*, not a darkness, so in the light material it is the same paper with the warmth
+     taken out of it. Contrast against --frost-bg: slate-tertiary 5.42, slate-secondary 7.53,
+     slate-primary 12.9, slate-max 15.8. */
+  --frost-bg:#E6E6EC; --frost-sunk:#DBDBE3; --frost-1:#F0F0F5; --frost-2:#F8F8FB;
+  --frost-press:#DCDCE6; --frost-soft:#D6D6E0; --frost-line:#C8C8D4;
+  --frost-strong:#ADADBE; --frost-state:#75758A; --frost-track:#CFCFDB;
+  --slate-max:#101018; --slate-primary:#20202C; --slate-secondary:#494957;
+  --slate-tertiary:#5E5E70; --slate-hyphae:#6A6A80;
   /* ---- primitives: the light material ---- */
   --paper-bg:#EAE6D9; --paper-sunk:#E0DBCB; --paper-1:#F3F0E6; --paper-2:#FBF9F2;
   --paper-press:#DFDACA; --paper-soft:#DBD5C3; --paper-line:#CFC9B6;
@@ -91,8 +102,7 @@
      12 px hairline is a third of the phone spent on nothing. Opening the window is a crop, not a
      resize: only ui.js resizes the canvas, and only it can tell the renderer it did. */
   --plate-cap:30dvh; --plate-seed:17dvh;
-  --plate-full:min(var(--plate-px), var(--plate-cap));
-  --plate-open:var(--plate-full);
+  --plate-min:48px;      /* 06 §4.3: the stage-2 map collapses to a strip, never to nothing */
   --panels-min:14dvh;    /* the list keeps this much even when 200% text squeezes the column */
   /* The atrium's living wall, 900 px and up: a specimen panel beside the column, not a slab. It
      earns its height on the same terms the plate does. */
@@ -231,6 +241,35 @@
   --canvas-bg:var(--void-sunk); --hyphae-stroke:var(--void-hyphae);
 }
 
+/* The same shift, in the light material. Without it the block above put the light theme's near-
+   black ink onto the void's near-black surfaces for the last five hours of the game. `--text-max`
+   moves here because it is the one text token the dark shift leaves alone — on a dark ground the
+   warm spore-white still reads, and on a pale one it does not. */
+@media (prefers-color-scheme: light){
+  :root[data-act="3"]:not([data-theme="dark"]){
+    --bg:var(--frost-bg); --bg-sunk:var(--frost-sunk);
+    --surface-1:var(--frost-1); --surface-2:var(--frost-2); --surface-press:var(--frost-press);
+    --line-soft:var(--frost-soft); --line:var(--frost-line);
+    --line-strong:var(--frost-strong); --line-state:var(--frost-state);
+    --text-max:var(--slate-max); --text-primary:var(--slate-primary);
+    --text-secondary:var(--slate-secondary); --text-tertiary:var(--slate-tertiary);
+    --text-console:var(--slate-secondary);
+    --meter-track:var(--frost-track);
+    --canvas-bg:var(--frost-sunk); --hyphae-stroke:var(--slate-hyphae);
+  }
+}
+:root[data-theme="light"][data-act="3"]{
+  --bg:var(--frost-bg); --bg-sunk:var(--frost-sunk);
+  --surface-1:var(--frost-1); --surface-2:var(--frost-2); --surface-press:var(--frost-press);
+  --line-soft:var(--frost-soft); --line:var(--frost-line);
+  --line-strong:var(--frost-strong); --line-state:var(--frost-state);
+  --text-max:var(--slate-max); --text-primary:var(--slate-primary);
+  --text-secondary:var(--slate-secondary); --text-tertiary:var(--slate-tertiary);
+  --text-console:var(--slate-secondary);
+  --meter-track:var(--frost-track);
+  --canvas-bg:var(--frost-sunk); --hyphae-stroke:var(--slate-hyphae);
+}
+
 /* 06 §2.6. Secondary and tertiary text move one full step up; the decorative hairline becomes
    structural. Six lines. */
 @media (prefers-contrast: more){
@@ -264,6 +303,13 @@ canvas{ display:block; }
 
 .shell{
   position:relative;
+  /* --plate-full and --plate-open are declared HERE and not in :root, because ui.js writes
+     --plate-px onto this element. A custom property is substituted at the element that declares
+     it: while these two lived in :root they resolved against :root's 296 px placeholder, every
+     write of --plate-px was inert, and the plate sat at --plate-cap in all three stages. The
+     staged shell of 06 §4.3 — the layout as the progress bar — never once ran. */
+  --plate-full:min(var(--plate-px), var(--plate-cap));
+  --plate-open:var(--plate-full);
   display:flex; flex-direction:column;
   height:100vh; height:100dvh;
   max-width:1680px; margin:0 auto;
@@ -310,12 +356,42 @@ canvas{ display:block; }
 .plate > canvas{ position:absolute; inset-inline:0; bottom:0;
                  width:100%; height:var(--plate-full); }
 
+/* Stage 2 is the only stage whose strip comes FIRST (06 §4.3's stage-2 frame). In Act I the plate
+   is the game and the ledger is a caption under it; from Act II the numbers are the game and the
+   map is the thing they are about, so the map moves to sit directly on top of the panel that
+   reads it. One `order`, no reflow, no second layout. */
+.shell[data-stage="2"] .ledger{ order:-1; border-bottom:0; }
+.shell[data-stage="2"] .ledger::after{ content:none; }
+.shell[data-stage="2"] .plate{ border-top:1px solid var(--line-soft); }
+
+/* The collapse handle. A map is worth a third of a phone while you are reading it and nothing at
+   all while you are signing a pact, and which of those is true is the player's business, not
+   ours — so it is a control and not a heuristic, and its state persists. Cropping keeps the
+   canvas box at --plate-full, so collapsing moves no pixel the renderer has already drawn and
+   fires no resize; the crop is taken from both edges so the middle of the map is what survives. */
+.plate-toggle{
+  position:absolute; inset-inline-end:var(--sp-4); bottom:var(--sp-4);
+  width:var(--tap); height:var(--tap); z-index:2;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:var(--r-sm); color:var(--text-tertiary);
+  transition:color var(--d-state) linear, background-color var(--d-state) linear;
+}
+.plate-toggle[data-press="1"]{ background:var(--surface-press); color:var(--text-max); }
+.plate-toggle svg{ transition:transform var(--d-state) var(--ease-out); }
+.shell[data-plate="min"] .plate-toggle svg{ transform:rotate(180deg); }
+.shell[data-plate="min"]{ --plate-open:var(--plate-min); }
+.shell[data-plate="min"] .plate > canvas{ bottom:auto; top:50%; transform:translateY(-50%); }
+
 /* The panel stack takes what the frame does not and scrolls inside it; the hero sits below it
    whether the stack is short or long. Zone A, forever. Basis zero and a floor: the list takes the
    free space when there is any, and when 200% text leaves none it is the plate, not the list and
    never the button, that gives ground. */
 .panels{ flex:1 1 0; min-height:var(--panels-min); padding-top:var(--sp-12);
-         overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+         overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+         scroll-behavior:smooth; }
+/* A floating button may pass over a list mid-scroll; it may never park on the last row of one.
+   The stack owes the FAB its own height at the end, and only while the FAB is on screen. */
+.shell[data-fab="1"] .panels{ padding-bottom:calc(64px + var(--sp-24)); }
 .tail{ flex:0 0 auto; height:calc(var(--sp-8) + env(safe-area-inset-bottom)); }
 
 /* ══ LEDGER / STATUS STRIP · 06 §5.1 ═══════════════════════════════════════ */
@@ -704,6 +780,7 @@ canvas{ display:block; }
   background:linear-gradient(to right, var(--signal) 0 calc(var(--p,0) * 100%),
                                        var(--meter-track) 0);
 }
+.slider[data-tone="signal"]::-moz-range-progress{ background:var(--signal); }
 
 .check{ display:flex; align-items:center; gap:var(--sp-12);
         min-height:var(--tap); width:100%; text-align:start;
@@ -772,11 +849,22 @@ canvas{ display:block; }
   color:var(--text-tertiary); visibility:hidden;
   transition:color var(--d-state) linear, background-color var(--d-state) linear;
 }
+/* Each slot carries both of its faces and the act chooses. Swapping the child at the break would
+   drop focus and re-run the arrival animation on a tab earned two hours ago. */
+.tab svg[data-face="3"]{ display:none; }
+:root[data-act="3"] .tab svg[data-face="2"]{ display:none; }
+:root[data-act="3"] .tab svg[data-face="3"]{ display:block; }
 .tab[data-earned="1"]{ visibility:visible; animation:tabIn var(--d-reveal) linear both; }
 @keyframes tabIn{ from{opacity:0} to{opacity:1} }
 .tab[aria-selected="true"]{ color:var(--text-max); }
 .tab[data-press="1"]{ background:var(--surface-press); color:var(--text-max); }
-.tab-lab{ font:var(--t-micro); letter-spacing:.10em; text-transform:uppercase; }
+/* At 200% text five labels no longer fit five columns, and the old rule let them run into each
+   other across the whole bar. The glyph is the tab's identity; the word is the redundancy, so the
+   word is what gives ground. */
+.tab-lab{ font:var(--t-micro); letter-spacing:.10em; text-transform:uppercase;
+          max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+          padding-inline:2px; }
+.tab{ overflow:hidden; }
 /* A TOP rule, not a bottom one: a bottom indicator on a bottom bar sits under the thumb and is
    invisible while being touched. */
 .tab-ind{ position:absolute; top:0; left:14px; right:14px; height:2px;
@@ -880,7 +968,113 @@ canvas{ display:block; }
 .curtain-line{ font:var(--t-display); letter-spacing:-.022em; color:var(--text-max);
                text-align:center; animation:reveal var(--d-reveal) var(--ease-organic) both; }
 
+/* ══ ACT II / III ADDITIONS ════════════════════════════════════════════════
+   Nothing here is a second component vocabulary. Every block below is either a canvas box that
+   06 specifies by size (§5.6d, §7.7), or a modifier on .row / .card / .act-btn that exists so a
+   later act can say something Act I never had to say. */
+
+/* (a) The two mid-act canvases. Both are looked up by id from canvas.js and both live inside a
+   panel body rather than on the plate, because they are readings of one sub-game and not of the
+   world. 06 §5.6(d): 44 px, full column width, 1 Hz. */
+.strip-canvas{
+  display:block; width:calc(100% - var(--gutter) * 2); height:44px;
+  margin:0 var(--gutter) var(--sp-8);
+  background:var(--bg-sunk); border:1px solid var(--line-soft); border-radius:var(--r-md);
+}
+.wheel-canvas{
+  display:block; width:calc(100% - var(--gutter) * 2); height:168px;
+  margin:0 var(--gutter) var(--sp-8);
+  background:var(--bg-sunk); border:1px solid var(--line-soft); border-radius:var(--r-md);
+}
+/* Every canvas in this build is decoration over a fact that is also printed. The caption is where
+   that fact is printed, so it is part of the canvas component and not an afterthought. */
+/* Two fixed columns, not a wrapping row: the number of keys is known, and a legend that reflows
+   as a label's text changes length is a legend that moves under the reader's eye. */
+.strip-key{ display:grid; grid-template-columns:1fr 1fr; gap:var(--sp-2) var(--sp-12);
+            padding:0 var(--gutter) var(--sp-8); font:var(--t-micro); letter-spacing:.08em;
+            text-transform:uppercase; color:var(--text-tertiary); }
+.strip-key > span::before{ content:"— "; }
+.strip-key > span[data-tone="warn"]{ color:var(--attention); }
+.strip-key > span[data-tone="signal"]{ color:var(--signal-text); }
+.strip-key > span[data-tone="neg"]{ color:var(--negative-text); }
+
+/* (b) The note. One sentence under a control, saying what the control is for in words the player
+   has already heard the game use. It is not a tutorial: it never appears before the control and
+   it never says "tap". */
+.note{ padding:0 var(--gutter) var(--sp-12); font:var(--t-meta); color:var(--text-tertiary);
+       text-wrap:pretty; }
+.row-note{ font:var(--t-meta); color:var(--text-tertiary); margin-top:var(--sp-4);
+           text-wrap:pretty; }
+
+/* (c) The stepper. Act III's genome is eight integers and the whole act is the shape of them, so
+   each axis gets a named row, a count, and two 44 px targets — never a slider, because a locus is
+   discrete and a slider would lie about that. */
+.stepper{ display:flex; gap:var(--sp-4); margin-inline-start:var(--sp-8); flex:0 0 auto; }
+.stepper > button{
+  width:var(--tap); height:var(--tap); border-radius:var(--r-sm);
+  background:var(--surface-2); border:1px solid var(--line-strong); color:var(--text-primary);
+  font:var(--t-value);
+  transition:background-color var(--d-state) linear, color var(--d-state) linear,
+             border-color var(--d-state) linear;
+}
+.stepper > button[data-press="1"]{ background:var(--surface-press); }
+.stepper > button[data-s="want"]{ color:var(--text-locked); border-color:var(--line-soft); }
+
+/* (d) The condition list. An ending is a checklist and the checklist is the whole interface for
+   it: five rows, each with the number you have and the number you need. The met/unmet state is
+   carried by a glyph and by weight, never by the colour alone (06 §0.1 rule 7). */
+.cond{ display:flex; align-items:baseline; gap:var(--sp-8); min-height:24px;
+       font:var(--t-meta); color:var(--text-secondary); }
+.cond-mark{ flex:0 0 auto; width:1.4ch; font-family:var(--font-mono);
+            color:var(--text-tertiary); }
+.cond-num{ margin-inline-start:auto; font:var(--t-meta); color:var(--text-secondary);
+           text-align:end; }
+.cond[data-met="1"]{ color:var(--positive-text); }
+.cond[data-met="1"] .cond-mark{ color:var(--positive); }
+.cond[data-met="1"] .cond-num{ color:var(--positive-text); font-weight:600; }
+
+/* (e) The ending card. A .card whose accent edge is the only thing that changes when the last
+   condition falls, and whose title goes to full white at the same instant. */
+.card--end[data-s="afford"]{ border-inline-start-color:var(--signal); }
+.card--end[data-s="afford"] .card-title{ color:var(--text-max); }
+.card-conds{ margin-top:var(--sp-8); }
+/* The hold wipe on an ending is cold light, not rust: this is the one destructive commit in the
+   build that is not a loss, and a red wipe would say the opposite of what the act means. */
+.card--end .hold-fill{ background:var(--signal-wash); }
+.card--end > .card-top, .card--end > .card-conds{ position:relative; }
+
+/* (f) The taken/held row state. Act III has three rows that are facts rather than offers — a band
+   you have left, a strain in an engagement, an ending already chosen — and all three read as
+   "this one is live" rather than "this one is affordable". */
+.row[data-live="1"]{ border-color:var(--line-state); }
+.row[data-live="warn"]{ border-color:var(--attention); }
+.row[data-live="neg"]{ border-color:var(--negative); }
+.row-tag{ font:var(--t-micro); letter-spacing:.10em; text-transform:uppercase;
+          color:var(--text-tertiary); border:1px solid var(--line);
+          border-radius:var(--r-xs); padding:1px var(--sp-4); }
+.row-tag[data-tone="warn"]{ color:var(--attention); border-color:var(--attention-dim); }
+.row-tag[data-tone="signal"]{ color:var(--signal-text); border-color:var(--signal-fill); }
+.row-tag[data-tone="neg"]{ color:var(--negative-text); border-color:var(--negative); }
+
+/* (g) The dismantle. 06 §4.3: the shell shrinks all the way to one button. Panels leave by fading,
+   never by collapsing a height, and the FAB and the strip go with them. */
+.shell[data-dismantle] .fab{ opacity:0; pointer-events:none;
+                             transition:opacity var(--d-act) linear; }
+.shell[data-dismantle="strip"] .ledger,
+.shell[data-dismantle="strip"] .plate,
+.shell[data-dismantle="strip"] .tabbar{ opacity:0; pointer-events:none;
+                                        transition:opacity var(--d-act) linear; }
+
 /* ══ RESPONSIVE · 06 §4.7 ══════════════════════════════════════════════════ */
+
+/* A short phone (the 568 px floor) has the same five bands to fit as a tall one, and the strip
+   plus the plate were taking 46% of it before a single row of the game appeared. Both give a
+   little; the list and the tab bar give nothing. */
+@media (max-height:700px){
+  :root{ --plate-cap:22dvh; --con-rows:4; }
+  .ledger-row{ min-height:32px; }
+  .ledger-row[data-lead="1"]{ min-height:40px; }
+}
 
 @media (max-width:359px){
   :root{ --gutter:12px; }

@@ -85,7 +85,14 @@
     // Act II panels
     STANDS_SHOWN: 10,         // rows of the ranked STANDS list; the header carries the true count
     FLUSH_BET_MAX: 0.25,      // fraction of held biomass the stake slider spans
-    FLUSH_BET_DEFAULT: 0.40   // of that span, so the slider opens on 10% of the book
+    FLUSH_BET_DEFAULT: 0.40,  // of that span, so the slider opens on 10% of the book
+
+    // Act III panels
+    BANDS_SHOWN: 13,          // 03 §6.1 has thirteen and every one of them is a decision
+    COMMIT_DEFAULT: 60,       // of SLIDER_STEPS — 03 §14.2's threshold sits near here on purpose
+    ALLOC_STEPS: 20,          // the triangle is coarse: three sliders of twenty, not of a hundred
+    ENGAGE_WARN: 0.9,         // predicted survivors below this fraction and the row says so
+    STELLAR_WARN_S: 40        // 03 §11.3's warning window, so the row can count it down
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -248,7 +255,122 @@
     stake: 'stake',
     noPacts: 'nobody has offered you anything yet.',
     noOffers: 'no offers on the table.',
-    termLeft: '{v} left'
+    termLeft: '{v} left',
+    channelsOf: '{n} of {k}',
+    offerTerm: 'term',
+    rootType: 'root type',
+    forecast: 'forecast',
+    forecastNone: 'nothing is knotted, so there is nothing to forecast.',
+    keyNow: 'now',
+    keyPast: 'measured',
+    keySoon: 'forecast',
+    keyDry: 'too dry',
+    keyWet: 'too wet',
+    keyGraze: 'grazing',
+    mapKey: 'held stands are filled; the frontier is outlined; a dotted edge is a barrier.',
+    collapseMap: 'collapse the map',
+    expandMap: 'expand the map',
+
+    // ── Act III ───────────────────────────────────────────────────────────────
+    p_canopy: 'the canopy',
+    p_void: 'the void',
+    p_bands: 'bands',
+    p_genome: 'the genome',
+    p_loci: 'loci',
+    p_fleet: 'the fleet',
+    p_mortality: 'what kills you',
+    p_hazards: 'the six hazards',
+    p_lineages: 'lineages',
+    p_engage: 'engagements',
+    p_successor: 'the successor',
+    p_synchrony: 'synchrony',
+    p_endings: 'endings',
+
+    t_void: 'void', t_genome: 'genome', t_fleet: 'fleet', t_lineages: 'lineages',
+
+    carbon: 'carbon',
+    craft: 'craft',
+    alleles: 'alleles',
+    biome: 'biome',
+    settle: 'settle',
+    reach: 'reach',
+    escape: 'escape',
+    reached: 'reached',
+    unreached: 'not reached',
+    needsFirst: 'needs another adaptation',
+    tierShort: '{n} biomes first',
+    canopyNote: 'spores land where you put them. every one you settle is carbon the void will ' +
+      'need, and the canopy does not refill.',
+    escapeNote: 'nothing here comes with you but the craft, the carbon and what you have learned.',
+
+    band: 'band {n}',
+    explored: 'explored',
+    occupancy: 'occupancy',
+    surplus: 'surplus',
+    richness: 'richness',
+    resource: 'resource',
+    harvest: 'harvest',
+    subsist: 'subsistence',
+    nStar: 'best count',
+    yours: 'yours',
+    wild: 'wild',
+    stellar: 'stellar event in {v}',
+    noBands: 'the void is dark. nothing has been looked at yet.',
+    voidKey: 'a solid arc is yours; a dashed arc is wild; the ring is the part you have looked at.',
+
+    allocation: 'allocation',
+    replicate: 'replicate',
+    disperse: 'disperse',
+    bank: 'bank',
+    allocNote: 'every gram of surplus goes to one of three places, and the split is the act.',
+    craftMass: 'craft mass',
+    fidelity: 'fidelity',
+    genomeLen: 'length',
+    lociFree: '{n} unplaced',
+    lociCost: 'next locus',
+    raiseCap: 'raise cap',
+    regenome: 'regenome',
+    rewriting: 'rewriting · {v}',
+    regenomeNote: 'a regenome empties every locus and gives you the window to place them again.',
+    genomeNote: 'longer genomes cost mass, and mass is subsistence. eight axes, and no build ' +
+      'takes more than four of them.',
+    deaths: 'deaths, last {v}',
+    noDeaths: 'nothing has died yet.',
+
+    strainName: 'strain',
+    sequenced: 'sequenced',
+    unsequenced: 'unsequenced',
+    sequence: 'sequence',
+    engage: 'engage',
+    predictLine: 'you win with {v} left',
+    predictLose: 'you lose · {v} of theirs left',
+    predictWide: 'unsequenced: anywhere from {lo} to {hi}',
+    resolveIn: 'resolves in {v}',
+    commit: 'commit',
+    reinforce: 'reinforce',
+    withdraw: 'withdraw',
+    purge: 'purge',
+    absorb: 'absorb',
+    quarantine: 'quarantine',
+    drifted: 'drift {v}',
+    theirMass: 'theirs',
+    distance: 'distance {n}',
+    noStrains: 'nothing has diverged from you yet.',
+    successorAge: 'age {v}',
+    inEngagement: 'engaged',
+    engageFull: 'you can only fight {n} at a time',
+
+    upsilon: 'synchrony',
+    phase: 'phase',
+    period: 'period',
+    entrainNote: 'a pulse drags the band it lands on toward the phase it arrived carrying.',
+    endTake: 'hold to take',
+    endTaken: 'taken',
+    endShort: '{n} to go',
+    wheelKey: 'each dot is a band; the line is where the fleet as a whole is pointing.',
+    newGrowth: 'new growth',
+    sclerotium: 'sclerotia',
+    dismantling: 'dismantling'
   }
 
   var TYPE_NAME = {
@@ -267,25 +389,57 @@
   // Currency glyphs, from BIBLE §2.1. One name, one symbol, one unit.
   var GLYPH = {
     biomass: 'g', sugar: 'sug', minerals: '⛬', signal: 'Σ', insight: 'Ψ',
-    spores: '◦', accord: '⟡', diff: 'D'
+    spores: '◦', accord: '⟡', diff: 'D',
+    carbon: 'Χ', alleles: 'α', canon: '†', upsilon: 'ϒ'
+  }
+  // 03 §9.2's eight axes, in BIBLE §3's order forever, with the word each one actually means. The
+  // three-letter key is what every other module calls the locus; nobody should have to learn it.
+  var AXIS_NAME = {
+    BAL: 'ballistospory', GER: 'germination', MYC: 'myceliation', SPO: 'sporulation',
+    MEL: 'melanisation', DOR: 'dormancy', FID: 'fidelity', ANT: 'antagonism'
+  }
+  var AXIS_NOTE = {
+    BAL: 'reach further, arrive sooner, land worse',
+    GER: 'more of what lands takes hold',
+    MYC: 'harvest more, and burn a little of the armour for it',
+    SPO: 'replicate faster',
+    MEL: 'survive radiation and predation',
+    DOR: 'cheap to keep, slow to do anything',
+    FID: 'copies stay copies',
+    ANT: 'your craft fight back, and drift faster for it'
   }
 
   // 06 §4.4. Inline path data, 24 × 24, stroke=currentColor. No emoji, no icon font, no asset.
+  // Five slots, and each one is a different organ in each act: the slot is the position, never the
+  // subject. `d3`/`label3` are the Act III face of the same slot, from 06 §4.4's second table.
   var TAB_SLOTS = [
-    { key: 'forest', label: 'forest', d: ['M12 3.5 L18.5 13.5 H5.5 Z', 'M12 13.5 V20.5'] },
+    { key: 'forest',
+      label: 'forest', label3: 'void',
+      d: ['M12 3.5 L18.5 13.5 H5.5 Z', 'M12 13.5 V20.5'],
+      d3: ['M12 12 m-8.5 0 a8.5 8.5 0 1 0 17 0 a8.5 8.5 0 1 0 -17 0',
+        'M12 12 m-3.5 0 a3.5 3.5 0 1 0 7 0 a3.5 3.5 0 1 0 -7 0'] },
     { key: 'mind',
-      label: 'mind',
+      label: 'mind', label3: 'genome',
       d: ['M12 4.2 a2 2 0 1 0 .01 0 Z', 'M5.4 15.4 a2 2 0 1 0 .01 0 Z',
         'M18.6 15.4 a2 2 0 1 0 .01 0 Z', 'M11.2 7.6 L6.6 13.6', 'M12.8 7.6 L17.4 13.6',
-        'M7.4 16.6 H16.6'] },
+        'M7.4 16.6 H16.6'],
+      d3: ['M8 4 C14 8, 14 16, 8 20', 'M16 4 C10 8, 10 16, 16 20',
+        'M9.4 8 H14.6', 'M9.4 16 H14.6'] },
     { key: 'flush',
-      label: 'flush',
-      d: ['M4.5 13.2 a7.5 5.4 0 0 1 15 0 Z', 'M10.2 13.2 V19 a1.8 1.8 0 0 0 3.6 0 V13.2'] },
+      label: 'flush', label3: 'fleet',
+      d: ['M4.5 13.2 a7.5 5.4 0 0 1 15 0 Z', 'M10.2 13.2 V19 a1.8 1.8 0 0 0 3.6 0 V13.2'],
+      d3: ['M12 3.5 L15 11 L12 9.2 L9 11 Z', 'M12 12.5 V20.5'] },
     { key: 'pact',
-      label: 'pact',
-      d: ['M10 7.5 a4.5 4.5 0 0 0 0 9', 'M14 7.5 a4.5 4.5 0 0 1 0 9', 'M10 12 H14'] },
-    { key: 'log', label: 'log', d: ['M4.5 7.5 H19.5', 'M4.5 12 H19.5', 'M4.5 16.5 H13'] }
+      label: 'pact', label3: 'lineages',
+      d: ['M10 7.5 a4.5 4.5 0 0 0 0 9', 'M14 7.5 a4.5 4.5 0 0 1 0 9', 'M10 12 H14'],
+      d3: ['M12 4 V9', 'M12 9 L7 14 V20', 'M12 9 L17 14 V20'] },
+    { key: 'log',
+      label: 'log', label3: 'log',
+      d: ['M4.5 7.5 H19.5', 'M4.5 12 H19.5', 'M4.5 16.5 H13'],
+      d3: ['M4.5 7.5 H19.5', 'M4.5 12 H19.5', 'M4.5 16.5 H13'] }
   ]
+  // The plate's collapse handle: a chevron, rotated 180° by the stylesheet when it is closed.
+  var CHEVRON_D = ['M6 14.5 L12 8.5 L18 14.5']
   // The pulse glyph: a step change travelling, not a lightning bolt.
   var PULSE_D = ['M3 16 H8 L10.5 6 L14 18 L16.5 12 H21']
   var GEAR_D = [
@@ -936,6 +1090,9 @@
     var val = slot('field-val')
     top.appendChild(val)
     var input = el('input', 'slider')
+    // 06 §5.10: the filled portion is --positive, or --signal from Act II on. The token is the
+    // act's, not the control's, so the caller names it.
+    if (spec.tone) setData(input, 'tone', spec.tone)
     input.type = 'range'
     input.min = '0'
     input.max = String(spec.steps || U.SLIDER_STEPS)
@@ -1226,6 +1383,19 @@
     flux.setAttribute('aria-label', '')
     plate.appendChild(net)
     plate.appendChild(flux)
+    // The handle exists from boot and is revealed by the stylesheet at stage 2, so the bar it sits
+    // in never gains a control mid-act; the plate is simply not collapsible until it is competing
+    // with a tabbed panel for the same column.
+    var pt = btn('plate-toggle')
+    pt.appendChild(glyphSvg(CHEVRON_D, 22))
+    setAttr(pt, 'aria-label', STR.collapseMap)
+    setAttr(pt, 'aria-expanded', 'true')
+    // Hidden, not merely undisplayed: D02's cold-boot inventory is one button and it is EXTEND,
+    // and a control the stylesheet happens not to paint is still a control in the DOM.
+    pt.hidden = true
+    bindPress(pt, togglePlate, { onUp: true })
+    plate.appendChild(pt)
+    v.plateToggle = pt
     v.plate = plate
     v.net = net
     v.flux = flux
@@ -1256,10 +1426,17 @@
     var hero = btn('hero')
     v.heroLab = el('span', 'hero-lab', STR.extend)
     hero.appendChild(v.heroLab)
+    // The cost line exists from boot and is empty until a verb has a price. SETTLE has one — the
+    // spores it spends — and that stock is the whole of Phase A, so it belongs on the button that
+    // consumes it rather than in a strip row that is only true for twenty minutes.
+    v.heroCost = el('span', 'hero-cost num', '')
+    v.heroCost.hidden = true
+    hero.appendChild(v.heroCost)
     v.hero = hero
     bindPress(hero, onHero, { feel: 'extend', quiet: true })
     scroll.appendChild(hero)
-    scroll.appendChild(el('div', 'tail'))
+    v.tailEl = el('div', 'tail')
+    scroll.appendChild(v.tailEl)
 
     main.appendChild(scroll)
     shell.appendChild(main)
@@ -1284,12 +1461,28 @@
       t.setAttribute('aria-selected', 'false')
       t.tabIndex = -1
       t.dataset.tab = spec.key
-      t.appendChild(glyphSvg(spec.d, 24))
-      t.appendChild(el('span', 'tab-lab', spec.label))
+      // Both faces are built once and one is hidden. Swapping a slot's meaning at the act break by
+      // replacing its children would drop focus and restart the reveal animation on a tab that has
+      // been earned for two hours.
+      var g2 = glyphSvg(spec.d, 24)
+      var g3 = glyphSvg(spec.d3, 24)
+      // `hidden` is an HTMLElement property and an <svg> is not one, so setting it here does
+      // nothing at all; the face that is showing is chosen by the stylesheet off <html data-act>,
+      // which is the same attribute the whole Act III palette hangs from.
+      g2.setAttribute('data-face', '2')
+      g3.setAttribute('data-face', '3')
+      if (spec.key === 'forest') g3.setAttribute('stroke-dasharray', '5 3')
+      var lab = el('span', 'tab-lab', spec.label)
+      t.appendChild(g2)
+      t.appendChild(g3)
+      t.appendChild(lab)
       t.appendChild(el('span', 'tab-ind'))
       bindPress(t, function () { setTab(spec.key) })
       bar.appendChild(t)
-      v.tabs.push({ key: spec.key, el: t, index: idx, earned: false, badge: null })
+      v.tabs.push({
+        key: spec.key, el: t, index: idx, earned: false, badge: null,
+        spec: spec, glyph2: g2, glyph3: g3, lab: lab
+      })
     })
     shell.appendChild(bar)
 
@@ -1324,6 +1517,16 @@
   // ───────────────────────────────────────────────────────────────────────────
   // MOUNT AND LAYOUT
   // ───────────────────────────────────────────────────────────────────────────
+
+  // The two in-panel canvases are created inside a hidden panel, so canvas.js's first attach
+  // measures them at zero and leaves the default 300 × 150 backing store in place; everything
+  // drawn afterwards is then stretched by 150/44 vertically. They are told to re-measure the
+  // first frame they actually have a box, and never again.
+  function sizeLater (cv) {
+    if (!cv || cv.__sized || !(cv.clientHeight > 0)) return
+    cv.__sized = 1
+    sizeCanvas(cv)
+  }
 
   function sizeCanvas (cv) {
     var w = cv.clientWidth
@@ -1401,11 +1604,29 @@
   // COMMANDS — every state change the interface can cause, in one place.
   // ───────────────────────────────────────────────────────────────────────────
 
+  // The hero is the act's own verb, not one particular verb that happens to be Act I's. There are
+  // three of them across the game and each is the thing the player does more than any other thing:
+  // EXTEND on the floor, SETTLE in the canopy, NEW GROWTH at the very end.
+  function heroVerb (s) {
+    if (!s) return null
+    if (s.act === 1) return 'extend'
+    if (s.act >= 3) {
+      var fin = HY.finale
+      var e = fin && fin.ending ? fin.ending(s) : null
+      if (e && e.button) return 'newgrowth'
+      if (s.phase === 'canopy') return 'settle'
+    }
+    return null
+  }
+
   function onHero () {
     var s = liveState()
     if (!s) return
     if (LOG() && LOG().notifyInput) LOG().notifyInput()
-    if (s.act === 1 && A1() && A1().onExtend) A1().onExtend()
+    var verb = heroVerb(s)
+    if (verb === 'extend' && A1() && A1().onExtend) A1().onExtend()
+    else if (verb === 'settle' && HY.bloom) commit(function () { return HY.bloom.settle() })
+    else if (verb === 'newgrowth' && HY.finale && HY.finale.newGrowth) HY.finale.newGrowth()
     // feel.js fires the extend haptic from act1's own call site; this is the fallback for a build
     // in which it has not been concatenated yet.
     if (!FEEL()) haptic(U.HAP_PRESS, 'extend')
@@ -1460,6 +1681,27 @@
     return true
   }
 
+  // The plate's window, opened and closed by the player and remembered. It is not a game state and
+  // has no owning module, so it lives here beside the theme, which is the same kind of thing.
+  function togglePlate () {
+    if (!view) return false
+    var min = view.shell.dataset.plate === 'min'
+    setPlate(!min)
+    store('hyphae.plate', min ? 'open' : 'min')
+    return !min
+  }
+
+  function setPlate (min) {
+    if (!view) return
+    if (min) setData(view.shell, 'plate', 'min')
+    else delete view.shell.dataset.plate
+    setAttr(view.plateToggle, 'aria-label', min ? STR.expandMap : STR.collapseMap)
+    setAttr(view.plateToggle, 'aria-expanded', min ? 'false' : 'true')
+    // Only the frame moved; the canvas box is unchanged, so nothing is re-drawn and nothing is
+    // re-seeded. layout() is still called because the panel stack below it grew.
+    layout()
+  }
+
   function setTab (id) {
     if (!view) return id
     view.tab = id
@@ -1493,24 +1735,88 @@
     if (!p || p.shown) return p || null
     p.shown = true
     // A panel arrives at the bottom of the existing stack, never in the middle, so nothing the
-    // player was looking at moves.
+    // player was looking at moves. EXTEND, once it has joined the stack, stays after all of them:
+    // it is the last row of the scroll and not the last panel to have arrived.
     view.stack.appendChild(p.view.el)
+    // ADAPTATIONS is a global panel that started life on the MIND tab. In Act III that slot's
+    // subject is the genome, so the tree stays below whatever the act itself puts there rather
+    // than above it by seniority.
+    var ad = view.panels.adaptations
+    if (view.act >= 3 && id !== 'adaptations' && ad && ad.shown) view.stack.appendChild(ad.view.el)
+    if (view.hero.parentNode === view.stack) view.stack.appendChild(view.hero)
     if (!reducedMotion()) p.view.el.classList.add('reveal')
     haptic(U.HAP_REVEAL, 'ui.reveal')
     return p
+  }
+
+  // A slot that has been earned can be taken back exactly once, at the Act II → III break, because
+  // the slot's *subject* changes there: the GENOME tab is not the MIND tab with a new label, it is
+  // a different organ that has not been unlocked yet. 06 §4.3's "the screen grows and then, in the
+  // dismantle, shrinks" only reads as progress if the growing starts again.
+  function unearnTab (id) {
+    if (!view) return
+    view.tabs.forEach(function (t) {
+      if (t.key !== id) return
+      t.earned = false
+      delete t.el.dataset.earned
+      if (view.tab === id) setTab('log')
+    })
   }
 
   // The Act III cold shift: one attribute, cross-faded by the stylesheet over 2,600 ms.
   function setAct (n) {
     var d = doc()
     if (!d || !view) return n
+    var was = view.act
     view.act = n
-    if (n >= 3) d.documentElement.dataset.act = '3'
+    // NEW GROWTH is a cold boot, and it calls this with 1. Without the reset the next run opened
+    // in Act III's palette, behind Act III's tab bar, with the void's glyphs over Act I's panels —
+    // the shell is the only thing in the build that does not rebuild itself on a new game.
+    if (n === 1) {
+      delete d.documentElement.dataset.act
+      delete view.shell.dataset.dismantle
+      view.stage = 0
+      setData(view.shell, 'stage', '0')
+      show(view.tabbar, false)
+      show(view.plateToggle, false)
+      setPlate(false)
+      view.tabs.forEach(function (t) {
+        t.earned = false
+        delete t.el.dataset.earned
+        setText(t.lab, t.spec.label)
+      })
+      view.tab = null
+      placeHero(view, true)
+      layout()
+      return n
+    }
     if (n >= 2) {
       view.stage = 2
       setData(view.shell, 'stage', '2')
       show(view.tabbar, true)
+      // Stage 2's plate is a map beside a tabbed list rather than the whole picture, so the window
+      // opens at whatever the player last left it at rather than always wide, and the handle that
+      // moves it arrives in the same frame the tab bar does.
+      show(view.plateToggle, true)
+      setPlate(recall('hyphae.plate') === 'min')
       layout()
+    }
+    if (n >= 3) {
+      d.documentElement.dataset.act = '3'
+      view.tabs.forEach(function (t) { setText(t.lab, t.spec.label3) })
+      // The void and the log are what Act III opens with (03 §23.1). The other three arrive again.
+      if (was < 3) {
+        unearnTab('flush')
+        unearnTab('pact')
+        // The project tree is a global panel that happens to have started on the MIND tab. In Act
+        // III that tab's subject is the genome, so the tree steps to the bottom of the stack: this
+        // is the one moment §4.5's "never reordered" yields, because the act break is precisely
+        // when the shell is allowed to become a different shell.
+        var ad = view.panels.adaptations
+        if (ad && ad.shown) view.stack.appendChild(ad.view.el)
+        if (view.hero.parentNode === view.stack) view.stack.appendChild(view.hero)
+        setTab('forest')
+      }
     }
     return n
   }
@@ -1560,8 +1866,45 @@
     }
   }
 
+  // Act III's predicates read `proj.flags` and the phase, exactly as Act II's do. The one extra
+  // reading is the dismantle: after an ending is taken, panels close on a timetable finale.js owns,
+  // and a closed panel is the only non-monotone reveal in the build (06 §4.3 — the shell shrinks).
+  function a3Reveals (s) {
+    var dv = HY.divergence
+    var fin = HY.finale
+    var end = fin && fin.ending ? fin.ending(s) : null
+    var closed = end && end.dismantle ? end.dismantle.closed : []
+    var voidPhase = s.phase === 'void' || s.phase === 'dismantle'
+    var strains = dv && dv.strains ? dv.strains(s) : []
+    return {
+      substrate: false, tips: false, sugar: false, market: false, seasons: false,
+      trees: false, mineralWarn: true, mineralGate: false, decide: false,
+      projects: true,
+      canopy: !voidPhase,
+      voidPhase: voidPhase,
+      genome: flagOn(s, 'genome'),
+      // The triangle is Translocation and nothing else: without it every gram banks itself and
+      // there is no allocation to show (03 §8).
+      fleet: flagOn(s, 'translocation'),
+      lineages: strains.length > 0 || !!(s.a3 && s.a3.succ),
+      wheel: flagOn(s, 'circadian_entrainment'),
+      endings: flagOn(s, 'circadian_entrainment') || !!end ||
+        !!(fin && fin.conditions && unmetCount(fin.conditions('ENCYST', s)) === 0),
+      pulse: voidPhase || flagOn(s, 'action_potential_ii'),
+      dismantle: closed,
+      ending: end
+    }
+  }
+
+  function unmetCount (rows) {
+    var n = 0, i
+    for (i = 0; rows && i < rows.length; i++) if (!rows[i].ok) n += 1
+    return n
+  }
+
   function revealFlags (s) {
     if (!s) return COLD
+    if (s.act >= 3) { try { return a3Reveals(s) } catch (e) { return COLD } }
     if (s.act >= 2) { try { return a2Reveals(s) } catch (e) { return COLD } }
     var a = A1()
     if (!a || !a.reveals) return COLD
@@ -1572,8 +1915,9 @@
   // RENDER — from the one rAF. Reads state, writes only what changed.
   // ───────────────────────────────────────────────────────────────────────────
 
-  // The four stocks the ledger measures. Every one of them lives in `res` under its own name.
-  var RATE_KEYS = ['biomass', 'sugar', 'minerals', 'signal']
+  // The stocks the ledger measures. Every one of them lives in `res` under its own name, and
+  // carbon joins the list at the act break because it is Act III's biomass.
+  var RATE_KEYS = ['biomass', 'sugar', 'minerals', 'signal', 'carbon']
 
   function rate (v, key, value, dt) {
     var r = v.rates[key]
@@ -1641,12 +1985,43 @@
   // at a time, so the bar never reflows when one arrives.
   function tabs (v, s, rev) {
     if (s.act < 2) return
-    if (v.act < 2) setAct(2)
+    // `v.act < s.act`, not `< 2`: the old test made the Act III cold shift unreachable, because
+    // v.act was already 2 when the act broke and setAct was never called a second time. Five hours
+    // of Act III were painted in Act II's palette.
+    if (v.act < s.act) setAct(s.act)
+    if (s.act >= 3) {
+      // The slot holding the project tree is never taken away — `genome` is bought from it. The
+      // dismantle is the one thing that closes a slot, and a slot it has closed must not be
+      // re-earned on the next frame by the same call that earned it in the first place.
+      if (!dismantled(rev, 'forest')) revealTab('forest')
+      if (!dismantled(rev, 'mind')) revealTab('mind')
+      if (rev.fleet && !dismantled(rev, 'flush')) revealTab('flush')
+      if (rev.lineages && !dismantled(rev, 'pact')) revealTab('pact')
+      revealTab('log')
+      dismantle(v, rev)
+      return
+    }
     if (rev.forest) revealTab('forest')
     if (rev.signal) revealTab('mind')
     if (rev.flush) revealTab('flush')
     if (rev.pact) revealTab('pact')
     revealTab('log')
+  }
+
+  // 06 §4.3: "It never shrinks except in the Act III dismantle, where it shrinks all the way to a
+  // single button." finale.js owns the timetable and publishes which groups have closed; this
+  // turns that list into the two things the shell has to do — take the slots away, and fade the
+  // frame — and nothing else. The order is finale's, not ours.
+  function dismantle (v, rev) {
+    var d = rev.dismantle
+    if (!d || !d.length) {
+      if (v.shell.dataset.dismantle) delete v.shell.dataset.dismantle
+      return
+    }
+    setData(v.shell, 'dismantle', d.indexOf('strip') >= 0 ? 'strip' : String(d.length))
+    for (var i = 0; i < d.length; i++) {
+      if (DISMANTLE_TAB[d[i]]) unearnTab(DISMANTLE_TAB[d[i]])
+    }
   }
 
   function rotLine (r, rot) {
@@ -1717,7 +2092,57 @@
     return shown
   }
 
+  // Act III's strip, 03 §23.1. Carbon leads because it is the only thing the void produces and the
+  // only thing it spends; Signal keeps its capacity hairline because saturation still gates
+  // Insight; the third row is the fleet you have, which in the canopy is spores you have not
+  // planted yet and in the void is craft.
+  function paintLedgerA3 (v, s, rev) {
+    var g = HY.cognition
+    var bl = HY.bloom
+
+    var r0 = v.ledgerRows[0]
+    show(r0.el, true)
+    setText(r0.lab, STR.carbon)
+    setSlot(r0.val, C().fmt(num(s.res.carbon)), GLYPH.carbon)
+    setRate(r0.rate, rateOf(v, 'carbon'), GLYPH.carbon + '/s')
+    setData(r0.el, 'lead', '1')
+    if (r0.sub) show(r0.sub, false)
+
+    var r1 = v.ledgerRows[1]
+    show(r1.el, true)
+    setText(r1.lab, STR.p_signal)
+    var held = num(s.res.signal)
+    var cap = g && g.Sc ? num(g.Sc(s)) : 0
+    setSlot(r1.val, C().fmt(held), GLYPH.signal)
+    show(r1.cap, true)
+    r1.cap.style.setProperty('--v', fill(cap > 0 ? held / cap : 0).toFixed(4))
+    var sat = !!(g && g.saturated && g.saturated(s))
+    setData(r1.cap, 'tone', sat ? 'warn' : 'ok')
+    if (sat) setSlot(r1.rate, STR.saturated, '')
+    else setRate(r1.rate, rateOf(v, 'signal'), '/s')
+
+    // Craft is a count and a count takes no unit: the row already says the word. The rate slot
+    // carries the surplus the whole fleet is running, because a standing count with no direction
+    // beside it is a number you cannot steer by.
+    var r2 = v.ledgerRows[2]
+    show(r2.el, true)
+    setText(r2.lab, STR.craft)
+    setSlot(r2.val, C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0), '')
+    setRate(r2.rate, bl && bl.Lambda ? num(bl.Lambda(s)) : 0, GLYPH.carbon + '/s')
+
+    var r3 = v.ledgerRows[3]
+    show(r3.el, true)
+    setText(r3.lab, STR.insight)
+    setSlot(r3.val, C().fmt(num(s.res.insight)), GLYPH.insight)
+    setRate(r3.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, '/s')
+
+    show(v.gear, true)
+    setData(v.ledger, 'gear', '1')
+    return 4
+  }
+
   function paintLedger (v, s, rev) {
+    if (s.act >= 3) return paintLedgerA3(v, s, rev)
     if (s.act >= 2) return paintLedgerA2(v, s, rev)
     var shown = 1
     var r0 = v.ledgerRows[0]
@@ -1788,20 +2213,44 @@
     setData(v.ledger, 'gear', shown > 1 ? '1' : '0')
   }
 
+  // A live verb is pinned in the bottom band, because 06 §0.1 rule 2 says the primary action is
+  // always there. A verb the act has finished with is not deleted — 06 §4.3 keeps EXTEND as the
+  // last row of the FOREST tab's scroll — but it stops holding 92 px of thumb country while the
+  // verbs that *are* live sit above the fold, which is what it did for the whole of Act II.
+  function placeHero (v, pinned) {
+    var want = pinned ? v.scroll : v.stack
+    if (v.hero.parentNode === want) return
+    want.insertBefore(v.hero, pinned ? v.tailEl : null)
+  }
+
   function paintHero (v, s) {
-    setText(v.heroLab, STR.extend)
+    var verb = heroVerb(s)
     var state = 'idle'
-    if (s.act === 1 && A1() && A1().totalSubstrate && !(A1().totalSubstrate() > 0)) {
+    var label = STR.extend
+
+    if (verb === 'settle') {
+      label = STR.settle
+      if (!(num(s.res.spores) > 0)) state = 'disabled'
+    } else if (verb === 'newgrowth') {
+      label = STR.newGrowth
+      state = 'new'
+    } else if (s.act === 1) {
+      if (A1() && A1().totalSubstrate && !(A1().totalSubstrate() > 0)) state = 'disabled'
+    } else {
       state = 'disabled'
     }
-    // `06` §4.3: EXTEND does not vanish at the act break, it becomes the last row of the FOREST
-    // tab's scroll. Everywhere else in Act II it would be a button that does nothing.
-    if (s.act >= 2) {
-      show(v.hero, v.tab === 'forest')
-      state = 'disabled'
-    }
+
+    setText(v.heroLab, label)
+    show(v.heroCost, verb === 'settle')
+    if (verb === 'settle') setText(v.heroCost, C().fmt(num(s.res.spores)) + ' ' + GLYPH.spores)
+    placeHero(v, !!verb)
+    // In Act II and in the void the button is a memorial, and a memorial belongs on the tab whose
+    // subject it was. A live verb belongs on every tab, because it is the act's whole loop.
+    show(v.hero, verb ? true : v.tab === 'forest')
     setData(v.hero, 'state', state)
-    setAttr(v.hero, 'aria-label', STR.extend)
+    setAttr(v.hero, 'aria-label', verb === 'settle'
+      ? label + ', ' + C().fmt(num(s.res.spores)) + ' ' + GLYPH.spores
+      : label)
     paintFab(v, s)
   }
 
@@ -1811,6 +2260,9 @@
     var g = HY.cognition
     var on = s.act >= 2 && !!(v.rev && v.rev.pulse) && !!g
     show(v.fab, on)
+    // The stack owes the FAB its own height at the end of the scroll, and only while it is there.
+    if (on) setData(v.shell, 'fab', '1')
+    else delete v.shell.dataset.fab
     if (!on) return
     var cd = num(s.cog.pulseCd)
     var max = g.pulseCooldown ? num(g.pulseCooldown(s)) : 0
@@ -1835,6 +2287,15 @@
   function pulseEpicentre (s) {
     var f = HY.forest
     var r = s.a2 && s.a2.regions
+    // In Act III the epicentre is a band, and the band carrying the most craft is the one a pulse
+    // reaches the most of — the same argument, one field further out.
+    if (s.act >= 3) {
+      var n = s.a3 && s.a3.bands ? s.a3.bands.n : null
+      if (!n) return 0
+      var bb = 0, most = -1, k
+      for (k = 0; k < n.length; k++) { if (num(n[k]) > most) { most = num(n[k]); bb = k } }
+      return bb
+    }
     if (!f || !f.liveInterface || !r) return num(s.cog.pulseEpicentre)
     var best = -1, bv = -1, i
     for (i = 0; i < r.flags.length; i++) {
@@ -1881,28 +2342,72 @@
 
   // The status strip is not a live region: a counter that changes ten times a second must never be
   // one. Each row is a group whose label is recomputed at most every three seconds (06 §8.4).
+  // The strip's four rows carry a different stock in each act, and the spoken label has to follow
+  // them. It did not: a screen reader heard "sugar" over the Signal row for the whole of Act II and
+  // "net sugar" over Insight, which is worse than silence — it is a wrong number with a confident
+  // name on it. The label is now built from the row's own painted label and value.
+  function ariaRow (v, i, label, value, tail) {
+    var r = v.ledgerRows[i]
+    if (r.el.hidden) return
+    setAttr(r.el, 'aria-label', label + ', ' + value + (tail ? ', ' + tail : ''))
+  }
+
   function paintAria (v, s) {
-    setAttr(v.ledgerRows[0].el, 'aria-label',
-      STR.biomass + ', ' + C().fmtMass(num(s.res.biomass)) + ', ' +
-      (rateOf(v, 'biomass') > 0 ? 'rising' : 'steady'))
-    if (!v.ledgerRows[1].el.hidden) {
-      var cap = A1() && A1().sugarCap ? A1().sugarCap() : 0
-      setAttr(v.ledgerRows[1].el, 'aria-label',
-        STR.sugar + ', ' + C().fmt(num(s.res.sugar)) + ' of ' + C().fmt(cap))
+    var g = HY.cognition
+    if (s.act >= 3) {
+      var bl = HY.bloom
+      ariaRow(v, 0, STR.carbon, C().fmt(num(s.res.carbon)),
+        rateOf(v, 'carbon') > 0 ? 'rising' : 'steady')
+      ariaRow(v, 1, STR.p_signal, C().fmt(num(s.res.signal)) + ' of ' +
+        C().fmt(g && g.Sc ? num(g.Sc(s)) : 0),
+        g && g.saturated && g.saturated(s) ? STR.saturated : '')
+      ariaRow(v, 2, STR.craft, C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0),
+        STR.surplus + ' ' + signed(bl && bl.Lambda ? num(bl.Lambda(s)) : 0))
+      ariaRow(v, 3, STR.insight, C().fmt(num(s.res.insight)))
+      return
     }
-    if (!v.ledgerRows[2].el.hidden) {
-      setAttr(v.ledgerRows[2].el, 'aria-label', STR.minerals + ', ' + C().fmt(num(s.res.minerals)))
+    ariaRow(v, 0, STR.biomass, C().fmtMass(num(s.res.biomass)),
+      rateOf(v, 'biomass') > 0 ? 'rising' : 'steady')
+    if (s.act >= 2) {
+      ariaRow(v, 1, STR.p_signal, C().fmt(num(s.res.signal)) + ' of ' +
+        C().fmt(g && g.Sc ? num(g.Sc(s)) : 0),
+        g && g.saturated && g.saturated(s) ? STR.saturated : '')
+      ariaRow(v, 2, STR.insight, C().fmt(num(s.res.insight)))
+      ariaRow(v, 3, STR.minerals, C().fmt(num(s.res.minerals)))
+      return
     }
-    if (!v.ledgerRows[3].el.hidden) {
-      var e = E1()
-      setAttr(v.ledgerRows[3].el, 'aria-label',
-        STR.netSugar + ', ' + C().fmt(e && e.netSugar ? e.netSugar() : 0) + ' per second')
-    }
+    var cap = A1() && A1().sugarCap ? A1().sugarCap() : 0
+    ariaRow(v, 1, STR.sugar, C().fmt(num(s.res.sugar)) + ' of ' + C().fmt(cap))
+    ariaRow(v, 2, STR.minerals, C().fmt(num(s.res.minerals)))
+    var e = E1()
+    ariaRow(v, 3, STR.netSugar,
+      C().fmt(e && e.netSugar ? e.netSugar() : 0) + ' per second')
   }
 
   // No canvas ever carries information that is not also available as text on the same screen; this
   // label is the text form of the same fact (06 §7.9).
   function paintCanvasAria (v, s) {
+    // The plate draws three different things across the game and the label has to be the third of
+    // them by Act III, or the last five hours are described as a network of threads that no longer
+    // exists (06 §7.9: the canvas carries nothing that is not also text).
+    if (s.act >= 3) {
+      var bl = HY.bloom
+      var occ = 0, i
+      var f = a3Field(s)
+      if (f) for (i = 0; i < f.n.length; i++) if (num(f.n[i]) > 0) occ += 1
+      setAttr(v.flux, 'aria-label',
+        occ + ' of ' + (f ? f.n.length : 0) + ' ' +
+        (s.phase === 'canopy' ? 'biomes' : 'bands') + ' occupied, ' +
+        C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0) + ' craft')
+      return
+    }
+    if (s.act >= 2) {
+      var w = HY.world
+      setAttr(v.flux, 'aria-label',
+        (w && w.claimedCount ? w.claimedCount() : 0) + ' of 61 stands held, ' +
+        (w && w.discoveredCount ? w.discoveredCount() : 0) + ' discovered. ' + STR.mapKey)
+      return
+    }
     var m = A1() && A1().hyphae ? A1().hyphae() : 0
     setAttr(v.flux, 'aria-label',
       C().fmt(m) + ' metres of thread, ' + C().fmt(s.a1.tips) + ' tips, ' +
@@ -1911,7 +2416,27 @@
 
   var verbose = false
 
+  // The coalesced spoken summary, off by default (06 §8.4). Three facts, and they are the three
+  // the current act is actually played on — not Act I's three repeated for five hours.
   function paintStatus (v, s) {
+    var g = HY.cognition
+    var bl = HY.bloom
+    if (s.act >= 3) {
+      setText(v.statusVh,
+        STR.carbon + ' ' + C().fmt(num(s.res.carbon)) + '. ' +
+        STR.craft + ' ' + C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0) + '. ' +
+        STR.surplus + ' ' + signed(bl && bl.Lambda ? num(bl.Lambda(s)) : 0) + ' per second.')
+      return
+    }
+    if (s.act >= 2) {
+      var w = HY.world
+      setText(v.statusVh,
+        STR.biomass + ' ' + C().fmtMass(num(s.res.biomass)) + '. ' +
+        STR.p_signal + ' ' + C().fmt(num(s.res.signal)) + ' of ' +
+        C().fmt(g && g.Sc ? num(g.Sc(s)) : 0) + '. ' +
+        (w && w.claimedCount ? w.claimedCount() : 0) + ' stands.')
+      return
+    }
     var cap = A1() && A1().sugarCap ? A1().sugarCap() : 0
     setText(v.statusVh,
       STR.biomass + ' ' + C().fmtMass(num(s.res.biomass)) + '. ' +
@@ -2011,13 +2536,32 @@
 
     var cv = CANVAS()
     if (!cv) return
-    // The plate is the act: threads growing in Act I, sixty-one hexes in Act II. Growing the
-    // network past the break would keep drawing a body that DECIDE deleted.
-    if (s.act >= 2) {
+    // The plate is the act: threads growing in Act I, sixty-one hexes in Act II, concentric arcs
+    // in Act III. Growing the network past the first break would keep drawing a body that DECIDE
+    // deleted, and drawing the map past the second would keep drawing a forest that is gone.
+    if (s.act >= 3) {
+      if (cv.drawVoid) cv.drawVoid(a3Field(s))
+    } else if (s.act >= 2) {
       if (cv.drawMap && s.a2) cv.drawMap(s.a2.regions)
     } else {
       if (cv.growNetwork && A1() && A1().hyphae) cv.growNetwork(A1().hyphae())
       if (cv.drawNet) cv.drawNet()
+    }
+    // The two in-panel canvases are drawn only while their own tab is the one on screen: a strip
+    // nobody can see costs the same milliseconds as one they can.
+    // Not drawn until the box has been measured. The strip redraws at 1 Hz, so one frame painted
+    // into an unsized 300 × 150 buffer is not a glitch that corrects itself next frame — it is a
+    // squashed picture that stays on screen for a second, and then a blank one for another.
+    if (view.tab === 'flush' && s.act === 2 && cv.drawForecast && HY.flush && HY.flush.strip) {
+      sizeLater(view.forecastEl)
+      if (view.forecastEl && view.forecastEl.__sized) cv.drawForecast(HY.flush.strip())
+    }
+    if (view.tab === 'forest' && s.act >= 3 && cv.drawWheel && HY.finale && HY.finale.wheel) {
+      var wh = HY.finale.wheel(s)
+      if (wh && wh.live) {
+        sizeLater(view.wheel)
+        cv.drawWheel(wh.phases, wh.mass)
+      }
     }
     // Nothing draws while the finger is moving: this is worth ~1.5 ms per frame during the one
     // moment the player is most likely to notice jank (06 §6.7 rule 8).
@@ -2033,8 +2577,15 @@
   // `tab` is the slot a panel belongs to once the tab bar exists. Act I has no tab bar, so a panel
   // with no tab is simply always on screen; in Act II a panel is on screen when its tab is the
   // selected one, which is how five tabs share one scroller without a router.
-  function def (v, id, need, build, tab) {
-    var p = { id: id, shown: false, view: null, tab: tab || null, sync: function () {} }
+  function def (v, id, need, build, tab, live) {
+    var p = {
+      id: id, shown: false, view: null, tab: tab || null, sync: function () {},
+      // A revealed panel is permanent *within its act*. Two things end one anyway: the act break,
+      // where Act II's organs are gone rather than idle, and the dismantle, where 06 §4.3 has the
+      // shell shrink to a single button. Both are stated here rather than smuggled into `need`,
+      // because `need` is monotone by contract and these two are the exceptions to it.
+      live: live || null
+    }
     p.need = function (s, rev) {
       var yes = need(s, rev)
       if (yes && !p.view) {
@@ -2047,9 +2598,32 @@
     v.order.push(id)
   }
 
+  // A panel is on screen when its act still has it and its tab is the selected one. Before the tab
+  // bar exists there is no selected tab, so the act scope is the whole test — which matters because
+  // NEW GROWTH returns a live shell to Act I without rebuilding it, and every panel the last run
+  // earned is still in the stack.
   function onTab (v, p, s) {
-    if (s.act < 2) return !p.act2
+    if (p.live && !p.live(s, v.rev || COLD)) return false
+    if (s.act < 2) return true
     return p.tab === v.tab
+  }
+
+  // `dismantle` is finale.js's list of panel *groups* — the tab each one lives on. A group that is
+  // closed takes its whole tab with it, which is what makes the screen empty rather than thin.
+  var DISMANTLE_TAB = { lineages: 'pact', genome: 'mind', fleet: 'flush', void: 'forest' }
+
+  function dismantled (rev, tab) {
+    var d = rev && rev.dismantle
+    var i
+    if (!d || !d.length) return false
+    for (i = 0; i < d.length; i++) if (DISMANTLE_TAB[d[i]] === tab) return true
+    return false
+  }
+
+  function actI (s) { return s.act === 1 }
+  function actII (s) { return s.act === 2 }
+  function actIII (tab) {
+    return function (s, rev) { return s.act >= 3 && !dismantled(rev, tab) }
   }
 
   // Ground becomes a decision the moment the utilisation alarm could conceivably fire, or the
@@ -2972,6 +3546,7 @@
     var dial = slider({
       label: STR.retention,
       steps: U.SLIDER_STEPS,
+      tone: 'signal',
       onInput: function (n) {
         var f = HY.forest
         if (f && f.setRho) f.setRho(n / U.SLIDER_STEPS * T().A2.RHO_MAX)
@@ -3284,6 +3859,27 @@
 
   function buildFlush (v, p) {
     var pv = panel('flush', { title: STR.p_flush })
+
+    // 06 §7.7's strip. It belongs here and not on the plate because it is a reading of ONE
+    // sub-game — this region's moisture, past and bought-forward — and the plate is a reading of
+    // the whole world. canvas.js finds it by id and sizes it on its own next attach.
+    var fore = el('canvas', 'strip-canvas')
+    fore.id = 'forecast'
+    fore.setAttribute('role', 'img')
+    fore.setAttribute('aria-label', '')
+    pv.body.appendChild(fore)
+    var key = el('div', 'strip-key')
+    span(key, '', STR.keyPast)
+    var keySoon = span(key, '', STR.keySoon)
+    setData(keySoon, 'tone', 'signal')
+    var keyDry = span(key, '', STR.keyDry)
+    setData(keyDry, 'tone', 'warn')
+    var keyGraze = span(key, '', STR.keyGraze)
+    setData(keyGraze, 'tone', 'neg')
+    pv.body.appendChild(key)
+    v.forecastEl = fore
+    v.forecastKey = key
+
     var head = row({})
     var slotsN = statLine(head, STR.slots)
     var sporesN = statLine(head, STR.spores)
@@ -3296,6 +3892,7 @@
     var bet = slider({
       label: STR.stake,
       steps: U.SLIDER_STEPS,
+      tone: 'signal',
       value: Math.round(U.FLUSH_BET_DEFAULT * U.SLIDER_STEPS)
     })
     head.line().appendChild(bet)
@@ -3334,6 +3931,19 @@
       pv.setCount(list.length)
       if (list.length) pv.unempty()
       else pv.empty(STR.noPrimordia)
+
+      // The strip is a picture of two numbers the player has bought: how wet it has been, and how
+      // wet it is going to be for as far ahead as the forecast reaches. Both are said in words
+      // here, because the canvas carries nothing that is not also text on the same screen.
+      var st = fl.strip ? fl.strip() : null
+      var hzn = st ? num(st.horizon) : 0
+      show(key, !!st)
+      show(keySoon, hzn > 0)
+      setText(keySoon, hzn > 0 ? STR.keySoon + ' ' + C().fmtTime(hzn) : '')
+      setAttr(fore, 'aria-label', st
+        ? STR.moisture + ' ' + num(st.hist[st.hist.length - 1]).toFixed(2) +
+          (hzn > 0 ? ', ' + STR.forecast + ' ' + C().fmtTime(hzn) : ', ' + STR.forecastNone)
+        : STR.forecastNone)
     }
     p.view = pv
     return pv
@@ -3352,9 +3962,17 @@
     span(chLine, 'row-sub', STR.channels)
     var pips = meter('pips', 0)
     chLine.appendChild(pips)
-    var sLab = span(r.line(), 'row-sub', STR.strain)
-    var strain = meter('ascii', 0)
-    sLab.parentNode.appendChild(strain)
+    // Strain is the number that ends a pact, so it gets a real meter and a real percentage. The
+    // ascii bar 06 §5.6(c) licenses is for stand rows and band rows — twenty grey block glyphs at
+    // 13 px read as texture, and texture is the wrong instrument for the one figure on the row
+    // that is counting down to a default.
+    var sLine = r.line()
+    span(sLine, 'row-sub', STR.strain)
+    var strain = meter('fill', 0)
+    strain.classList.add('meter--grow')
+    sLine.appendChild(strain)
+    var strainN = slot('row-num')
+    sLine.appendChild(strainN)
 
     var ex = r.expander()
     var bondLine = el('div', 'row-line')
@@ -3389,7 +4007,10 @@
         setText(guild, c.guild + (c.notice ? ' · notice' : ''))
         setSlot(rateN, c.rateText || C().fmt(c.rate), '')
         pips.set(c.chMax > 0 ? c.ch / c.chMax : 0, '', c.ch + ' of ' + c.chMax + ' ' + STR.channels)
-        strain.set(c.strain, c.warn ? 'warn' : '', STR.strain + ' ' + pct(c.strain))
+        strain.set(c.strain, c.warn ? 'warn' : 'signal', STR.strain + ' ' + pct(c.strain))
+        setSlot(strainN, pct(c.strain), '')
+        setData(strainN, 'tone', c.warn ? 'warn' : '')
+        setData(r.el, 'live', c.warn ? 'warn' : '1')
         setSlot(bondN, c.bond.toFixed(2), '×' + c.bondMult.toFixed(2))
         setText(termTxt, interp(STR.termLeft, { v: secs(c.termLeft) }))
         r.label(c.name + ', ' + c.guild + ', ' + STR.strain + ' ' + pct(c.strain))
@@ -3408,6 +4029,35 @@
     var l1 = r.line()
     var terms = span(l1, 'row-sub', '')
     var ex = r.expander()
+
+    // An offer is negotiable, and until now nothing said so: pactbook has carried setOfferChannels
+    // and setOfferTerm since it was written and the panel called neither, so every pact in the game
+    // was signed on whatever the generator happened to roll. Both are sliders, because both move
+    // the stake continuously and the stake is the number the decision is actually about.
+    var chDial = slider({
+      label: STR.channels,
+      steps: 1,
+      tone: 'signal',
+      onInput: function (n) {
+        var pb = HY.pactbook
+        if (pb && pb.setOfferChannels) pb.setOfferChannels(api.id, n)
+      }
+    })
+    var termDial = slider({
+      label: STR.offerTerm,
+      steps: 1,
+      tone: 'signal',
+      onInput: function (n) {
+        var pb = HY.pactbook
+        if (pb && pb.setOfferTerm) pb.setOfferTerm(api.id, n)
+      }
+    })
+    ex.appendChild(chDial)
+    ex.appendChild(termDial)
+    var rootSeg = el('div', 'row-line')
+    ex.appendChild(rootSeg)
+    var rootCtl = null
+
     var acts = el('div', 'row-actions')
     acts.appendChild(actionButton(STR.sign, function (b) {
       var pb = HY.pactbook
@@ -3426,9 +4076,30 @@
         setText(name, o.name)
         setText(guild, o.guild)
         setSlot(stake, C().fmtMass(o.stake), '')
-        setText(terms, o.ch + ' ' + STR.channels + ' · ' +
-          interp(STR.seasons, { n: o.termPeriods }) + ' · ' + secs(o.left))
+        setText(terms, interp(STR.channelsOf, { n: o.ch, k: o.chMax }) + ' ' + STR.channels +
+          ' · ' + interp(STR.seasons, { n: o.termPeriods }) + ' · ' + secs(o.left))
         setData(r.el, 's', o.affordable ? 'afford' : 'want')
+        chDial.setMax(Math.max(1, o.chMax))
+        if (!chDial.__seeded) { chDial.__seeded = 1; chDial.setValue(o.ch) }
+        chDial.setReadout(String(o.ch), '', STR.channels + ' ' + o.ch)
+        termDial.setMax(Math.max(1, o.maxTerm))
+        if (!termDial.__seeded) { termDial.__seeded = 1; termDial.setValue(o.termPeriods) }
+        termDial.setReadout(String(o.termPeriods), '',
+          interp(STR.seasons, { n: o.termPeriods }))
+        // Both dials move the same number, so that number is printed once, under the pair.
+        termDial.setNote(STR.collateral + ' ' + C().fmtMass(o.stake))
+        if (o.rootTypes && !rootCtl) {
+          rootCtl = seg(o.rootTypes.map(function (t) { return { label: t, value: t } }),
+            o.rootType, function (val) {
+              var pb = HY.pactbook
+              // The offer carries labels; setOfferType matches on the key, and the two differ only
+              // in case (05 §4.1's ROOT_TYPES).
+              if (pb && pb.setOfferType) pb.setOfferType(api.id, String(val).toUpperCase())
+            })
+          span(rootSeg, 'row-sub', STR.rootType)
+          rootSeg.appendChild(rootCtl)
+        }
+        show(rootSeg, !!o.rootTypes)
         r.label(o.aria)
       }
     }
@@ -3507,26 +4178,830 @@
     return pv
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ACT III PANELS
+  //
+  // The act is eight biomes, then thirteen bands, eight loci, six causes of death, a book of
+  // defectors and a wheel. Every one of those is a *list of the same shape*, so every one of them
+  // is a `.row` with a name, one leading figure, and the bars underneath — the same component Act
+  // I introduced on the litter floor. Nothing new was invented for the last act; what changed is
+  // what the rows are about.
+  //
+  // Two rules hold everywhere below. First: no bare number. Every figure arrives through statLine
+  // or a slot with a unit and a label beside it. Second: the leading figure on a row is the number
+  // the row is asking a question about — SURPLUS on a band, mass on a locus, survivors on a strain
+  // — because a row whose big number is not its decision is a row that has to be read twice.
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function BL () { return HY.bloom }
+  function DV () { return HY.divergence }
+  function FIN () { return HY.finale }
+
+  function signed (v) { return (v >= 0 ? '+' : '−') + C().fmt(Math.abs(v)) }
+
+  // A one-line caption under a canvas or a control. It is the text form of whatever the picture
+  // says (06 §7.9) and it never says "tap".
+  function note (host, text) {
+    var n = el('p', 'note', text)
+    host.appendChild(n)
+    return n
+  }
+
+  // statLine and barLine take a `row`, because that is what they were written against. An expander
+  // is the same list of lines with a different parent, so it is handed the same one-method shape
+  // rather than either helper gaining a second signature.
+  function lines (host) {
+    return { line: function () { var d = el('div', 'row-line'); host.appendChild(d); return d } }
+  }
+
+  // The plate is the act's field, and in Act III the field has two shapes. drawVoid wants
+  // { e, n, ncap }; the canopy's eight biomes are the same three quantities under other names, so
+  // the same thirteen-arc renderer draws them and the player sees one instrument all act.
+  function a3Field (s) {
+    if (!s.a3) return null
+    if (s.phase === 'canopy') {
+      var bi = s.a3.biomes
+      var e = [], n = [], cap = [], i, max = 1
+      for (i = 0; i < bi.n.length; i++) if (num(bi.n[i]) > max) max = num(bi.n[i])
+      for (i = 0; i < bi.n.length; i++) {
+        e.push(bi.reached[i] ? 1 : 0)
+        n.push(num(bi.n[i]))
+        cap.push(max)
+      }
+      return { e: e, n: n, ncap: cap }
+    }
+    return s.a3.bands
+  }
+
+  // ── THE CANOPY ─────────────────────────────────────────────────────────────
+
+  function biomeRow () {
+    var r = row({ expand: true })
+    var l0 = r.line()
+    var name = span(l0, 'row-name', '')
+    var tag = span(l0, 'row-tag', '')
+    var craftN = slot('row-num')
+    l0.appendChild(craftN)
+
+    var l1 = r.line()
+    var state = span(l1, 'row-sub', '')
+
+    var occLab = span(r.line(), 'row-sub', STR.occupancy)
+    var occ = meter('ascii', 0)
+    occLab.parentNode.appendChild(occ)
+
+    var ex = r.expander()
+    var exw = lines(ex)
+    var sur = statLine(exw, STR.surplus)
+    var res = statLine(exw, STR.resource)
+    var acts = el('div', 'row-actions')
+    ex.appendChild(acts)
+    var reachBtn = actionButton(STR.reach, function (b) {
+      var bl = BL()
+      if (!bl || !commit(function () { return bl.reach(api.id) })) refuse(b)
+    })
+    acts.appendChild(reachBtn)
+
+    var api = {
+      el: r.el,
+      id: -1,
+      sync: function (s, c) {
+        api.id = c.id
+        var bl = BL()
+        setText(name, c.name)
+        var can = !!(bl && bl.canReach && bl.canReach(s, c.id))
+        var cost = bl && bl.reachCost ? num(bl.reachCost(s)) : 0
+        setText(tag, c.reached ? STR.reached : (can ? C().fmt(cost) + ' ' + GLYPH.signal : ''))
+        setData(tag, 'tone', c.reached ? 'signal' : '')
+        show(tag, !!tag.textContent)
+        setSlot(craftN, C().fmt(c.n), '')
+        setText(state, c.reached
+          ? STR.harvest + ' ' + C().fmt(c.harvest) + ' ' + GLYPH.carbon + '/s'
+          : (can ? STR.unreached : STR.needsFirst))
+        var f = c.NCAP > 0 ? c.n / c.NCAP : 0
+        occ.set(f, '', STR.occupancy + ' ' + pct(f))
+        setSlot(sur, signed(c.surplus), GLYPH.carbon + '/s')
+        setData(sur, 'tone', c.surplus >= 0 ? 'pos' : 'neg')
+        setSlot(res, C().fmt(c.X), GLYPH.carbon)
+        show(reachBtn, !c.reached)
+        setData(reachBtn, 's', can && num(s.res.signal) >= cost ? 'afford' : 'want')
+        setData(r.el, 'live', c.reached ? '1' : '0')
+        r.label(c.name + ', ' + (c.reached ? STR.reached : STR.unreached) + ', ' +
+          C().fmt(c.n) + ' craft, ' + STR.surplus + ' ' + signed(c.surplus))
+      }
+    }
+    return api
+  }
+
+  function buildCanopy (v, p) {
+    var pv = panel('canopy', { title: STR.p_canopy })
+    var head = row({})
+    var craftN = statLine(head, STR.craft)
+    var sporeN = statLine(head, STR.spores)
+    var lamN = statLine(head, STR.surplus)
+    pv.body.appendChild(head.el)
+    note(pv.body, STR.canopyNote)
+
+    var bag = {}
+    p.__sync = function (s) {
+      var bl = BL()
+      if (!bl || !bl.list) return
+      setSlot(craftN, C().fmt(num(bl.totalCraft(s))), '')
+      setSlot(sporeN, C().fmt(num(s.res.spores)), GLYPH.spores)
+      var lam = num(bl.Lambda(s))
+      setSlot(lamN, signed(lam), GLYPH.carbon + '/s')
+      setData(lamN, 'tone', lam >= 0 ? 'pos' : 'neg')
+      reconcile(pv.body, bag, bl.list(s), function (c) { return c.id }, biomeRow, s)
+      pv.setCount(C().fmt(num(bl.totalCraft(s))))
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── THE VOID ───────────────────────────────────────────────────────────────
+
+  function bandRow () {
+    var r = row({ expand: true })
+    // Three lines, ~100 px collapsed. 03 §23.3 draws four, but the fourth was `X` and `λ` — two
+    // figures that only matter once you are already reading the band closely, which is what the
+    // expander is for. The three that survive are the three every scan is made of.
+    var l0 = r.line()
+    var name = span(l0, 'row-name', '')
+    var tag = span(l0, 'row-tag', '')
+    // SURPLUS is the most important number in the act (03 §23.3), so it is the row's lead figure,
+    // it is named in the same line rather than captioned under it, and it is on every row whether
+    // the band is doing well or not.
+    span(l0, 'row-sub', STR.surplus)
+    var surN = slot('row-num')
+    l0.appendChild(surN)
+
+    var l1 = r.line()
+    span(l1, 'row-sub', STR.occupancy)
+    var occ = meter('fill', 0)
+    occ.classList.add('meter--grow')
+    l1.appendChild(occ)
+    var occN = slot('row-num')
+    l1.appendChild(occN)
+
+    var l2 = r.line()
+    var expTxt = span(l2, 'row-sub', '')
+    var richTxt = span(l2, 'row-sub', STR.richness)
+    var richN = slot('row-num')
+    l2.appendChild(richN)
+    void richTxt   // the caption is static; the slot beside it is what moves
+
+    var ex = r.expander()
+    var wrap = lines(ex)
+    var resN = statLine(wrap, STR.resource)
+    var harvN = statLine(wrap, STR.harvest)
+    var subN = statLine(wrap, STR.subsist)
+    var wildN = statLine(wrap, STR.wild)
+    var starN = statLine(wrap, STR.nStar)
+
+    var api = {
+      el: r.el,
+      id: -1,
+      sync: function (s, c) {
+        api.id = c.id
+        setText(name, interp(STR.band, { n: c.id < 10 ? '0' + c.id : String(c.id) }))
+        setSlot(surN, signed(c.surplus), GLYPH.carbon + '/s')
+        setData(surN, 'tone', c.surplus > 0 ? 'pos' : (c.surplus < 0 ? 'neg' : ''))
+        var f = c.NCAP > 0 ? c.n / c.NCAP : 0
+        setSlot(occN, C().fmt(c.n), '')
+        // The tick is `n*`, and it only appears once H4 has been bought: the act's best question
+        // is "how many craft is the right number", and selling the answer early would end it.
+        occ.set(f, c.surplus < 0 ? 'warn' : 'signal',
+          C().fmt(c.n) + ' of ' + C().fmt(c.NCAP) + ' ' + STR.occupancy,
+          c.showStar && c.NCAP > 0 ? c.nStar / c.NCAP : undefined)
+        setText(expTxt, STR.explored + ' ' + pct(c.e))
+        setSlot(richN, c.richKnown ? c.rich.toFixed(2) : STR.nothing, '×')
+        var wildHere = num(c.wild)
+        setText(tag, wildHere > 0 ? STR.wild : '')
+        setData(tag, 'tone', wildHere > c.n ? 'neg' : 'warn')
+        show(tag, wildHere > 0)
+        setData(r.el, 'live', c.surplus < 0 ? 'warn' : (c.n > 0 ? '1' : '0'))
+        setSlot(resN, C().fmt(c.X), GLYPH.carbon)
+        setSlot(harvN, C().fmt(c.harvest), GLYPH.carbon + '/s')
+        setSlot(subN, C().fmt(c.subsist), GLYPH.carbon + '/s')
+        setSlot(wildN, C().fmt(wildHere), '')
+        setSlot(starN, c.showStar ? C().fmt(c.nStar) : STR.nothing, '')
+        r.label(interp(STR.band, { n: c.id }) + ', ' + STR.surplus + ' ' + signed(c.surplus) +
+          ' carbon per second, ' + C().fmt(c.n) + ' craft of ' + C().fmt(c.NCAP) + ', ' +
+          STR.explored + ' ' + pct(c.e))
+      }
+    }
+    return api
+  }
+
+  function buildVoid (v, p) {
+    var pv = panel('void', { title: STR.p_void })
+    var head = row({})
+    var occN = statLine(head, STR.p_bands)
+    var craftN = statLine(head, STR.craft)
+    var lamN = statLine(head, STR.surplus)
+    var warnTxt = span(head.line(), 'row-sub', '')
+    setData(warnTxt, 'tone', 'cost')
+    pv.body.appendChild(head.el)
+    note(pv.body, STR.voidKey)
+
+    var bag = {}
+    p.__sync = function (s) {
+      var bl = BL()
+      if (!bl || !bl.list) return
+      var list = bl.list(s)
+      var occ = 0, i
+      for (i = 0; i < list.length; i++) if (list[i].n > 0) occ += 1
+      setSlot(occN, occ + ' / ' + list.length, '')
+      setSlot(craftN, C().fmt(num(bl.totalCraft(s))), '')
+      var lam = num(bl.Lambda(s))
+      setSlot(lamN, signed(lam), GLYPH.carbon + '/s')
+      setData(lamN, 'tone', lam >= 0 ? 'pos' : 'neg')
+      // A stellar warning is the one thing in the act that is about to happen rather than
+      // happening, so it gets the header's only sentence.
+      var w = bl.stellarWarnings ? bl.stellarWarnings() : []
+      setText(warnTxt, w.length
+        ? interp(STR.stellar, { v: secs(w[0].inS) }) + ' · ' +
+          interp(STR.band, { n: w[0].band })
+        : '')
+      show(warnTxt, w.length > 0)
+      reconcile(pv.body, bag, list, function (c) { return c.id }, bandRow, s)
+      pv.setCount(occ + ' / ' + list.length)
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── SYNCHRONY ──────────────────────────────────────────────────────────────
+
+  function buildSynchrony (v, p) {
+    var pv = panel('synchrony', { title: STR.p_synchrony })
+    var cv = el('canvas', 'wheel-canvas')
+    cv.id = 'wheel'
+    cv.setAttribute('role', 'img')
+    cv.setAttribute('aria-label', '')
+    pv.body.appendChild(cv)
+    v.wheel = cv
+    var head = row({})
+    var ups = statLine(head, STR.upsilon)
+    var upsBar = barLine(head, null)
+    var worst = span(head.line(), 'row-sub', '')
+    pv.body.appendChild(head.el)
+    note(pv.body, STR.wheelKey + ' ' + STR.entrainNote)
+
+    p.__sync = function (s) {
+      var fin = FIN()
+      if (!fin || !fin.wheel) return
+      var w = fin.wheel(s)
+      if (!w) return
+      setSlot(ups, w.upsilon.toFixed(3), GLYPH.upsilon)
+      // The ring on the canvas is ENDING A's threshold; the bar carries it as a tick so the same
+      // fact survives a greyscale screenshot and a screen reader.
+      upsBar.set(w.upsilon, w.upsilon >= w.ring ? 'signal' : 'warn',
+        STR.upsilon + ' ' + w.upsilon.toFixed(3) + ' of ' + w.ring.toFixed(2), w.ring)
+      // 03 §23.5: the wheel is completable from text alone. The band furthest from the resultant
+      // is the only one the player can act on, so it is the one named.
+      var i, bx = 0, by = 0, m
+      for (i = 0; i < w.phases.length; i++) {
+        m = w.mass && w.mass[i] > 0 ? w.mass[i] : 0
+        bx += Math.cos(2 * Math.PI * w.phases[i]) * m
+        by += Math.sin(2 * Math.PI * w.phases[i]) * m
+      }
+      var mean = Math.atan2(by, bx) / (2 * Math.PI)
+      var far = -1, fd = -1
+      for (i = 0; i < w.phases.length; i++) {
+        if (!(w.mass && w.mass[i] > 0)) continue
+        var d = Math.abs(((w.phases[i] - mean) % 1 + 1.5) % 1 - 0.5)
+        if (d > fd) { fd = d; far = i }
+      }
+      setText(worst, far >= 0
+        ? interp(STR.band, { n: far }) + ' · ' + fd.toFixed(2) + ' ' + STR.phase
+        : '')
+      show(worst, far >= 0)
+      setAttr(cv, 'aria-label', STR.upsilon + ' ' + w.upsilon.toFixed(3) + '. ' +
+        (far >= 0 ? interp(STR.band, { n: far }) + ' is ' + fd.toFixed(2) + ' turns from the rest.'
+          : ''))
+      pv.setCount(w.upsilon.toFixed(2))
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── THE ENDINGS ────────────────────────────────────────────────────────────
+
+  function condRow (host) {
+    var n = el('div', 'cond')
+    var mark = span(n, 'cond-mark', '·')
+    var lab = span(n, '', '')
+    var val = slot('cond-num')
+    n.appendChild(val)
+    host.appendChild(n)
+    return {
+      el: n,
+      set: function (c) {
+        setData(n, 'met', c.ok ? '1' : '0')
+        setText(mark, c.ok ? '✓' : '·')
+        setText(lab, String(c.label).toLowerCase())
+        // A condition is a pair, always: what you have and what it wants. One of the two alone is
+        // a number with nothing to compare it to.
+        setSlot(val, C().fmt(c.have) + ' / ' + C().fmt(c.want), '')
+      }
+    }
+  }
+
+  function endingCard () {
+    var n = btn('card card--end hold')
+    n.appendChild(el('span', 'hold-fill'))
+    var top = el('div', 'card-top')
+    var title = el('span', 'card-title', '')
+    var state = el('span', 'card-cost num', '')
+    top.appendChild(title)
+    top.appendChild(state)
+    n.appendChild(top)
+    var conds = el('div', 'card-conds')
+    n.appendChild(conds)
+    var rows = []
+    var api = {
+      el: n,
+      key: '',
+      sync: function (s, e) {
+        api.key = e.key
+        setText(title, e.title)
+        setText(state, e.taken ? STR.endTaken
+          : (e.available ? STR.endTake : interp(STR.endShort, { n: e.unmet.length })))
+        n.dataset.s = e.taken ? 'unbuyable' : (e.available ? 'afford' : 'want')
+        setAttr(n, 'aria-disabled', e.available && !e.taken ? 'false' : 'true')
+        var i
+        for (i = 0; i < e.conditions.length; i++) {
+          if (!rows[i]) rows.push(condRow(conds))
+          rows[i].set(e.conditions[i])
+        }
+        for (i = e.conditions.length; i < rows.length; i++) show(rows[i].el, false)
+        setAttr(n, 'aria-label', e.title + ', ' +
+          (e.taken ? STR.endTaken
+            : e.available ? STR.endTake
+              : interp(STR.endShort, { n: e.unmet.length })))
+      }
+    }
+    // An ending is the most irreversible thing in the game, so it is the 400 ms hold and not a tap
+    // (06 §5.5's destructive commit, used here for its fourth and last time).
+    bindHold(n, function () {
+      var fin = FIN()
+      if (fin && fin.takeEnding) fin.takeEnding(api.key)
+    })
+    return api
+  }
+
+  function buildEndings (v, p) {
+    var pv = panel('endings', { title: STR.p_endings })
+    var bag = {}
+    p.__sync = function (s) {
+      var fin = FIN()
+      if (!fin || !fin.endings) return
+      var list = fin.endings(s)
+      reconcile(pv.body, bag, list, function (e) { return e.key }, endingCard, s)
+      var i, ready = 0
+      for (i = 0; i < list.length; i++) if (list[i].available) ready += 1
+      pv.setCount(ready > 0 ? String(ready) : '')
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── THE GENOME ─────────────────────────────────────────────────────────────
+
+  function axisRow (key, idx) {
+    var r = row({})
+    var l0 = r.line()
+    span(l0, 'row-name', key.toLowerCase())
+    var countN = slot('row-num')
+    l0.appendChild(countN)
+    var st = el('div', 'stepper')
+    var minus = btn('', '−')
+    var plus = btn('', '+')
+    setAttr(minus, 'aria-label', 'lower ' + AXIS_NAME[key])
+    setAttr(plus, 'aria-label', 'raise ' + AXIS_NAME[key])
+    st.appendChild(minus)
+    st.appendChild(plus)
+    l0.appendChild(st)
+    // The full word, and one line saying what the axis does to the fleet. Three letters and a
+    // number is a spreadsheet of a genome, which is the one thing this panel must not be.
+    span(r.line(), 'row-sub', AXIS_NAME[key])
+    r.el.appendChild(el('p', 'row-note', AXIS_NOTE[key]))
+
+    function step (d) {
+      var s = liveState()
+      var bl = BL()
+      if (!s || !bl) return false
+      return commit(function () { return bl.setLocus(idx, num(s.a3.loci[idx]) + d) })
+    }
+    bindPress(plus, function () { if (!step(1)) refuse(plus) }, { onUp: true })
+    bindPress(minus, function () { if (!step(-1)) refuse(minus) }, { onUp: true })
+
+    return {
+      el: r.el,
+      sync: function (s) {
+        var bl = BL()
+        var have = num(s.a3.loci[idx])
+        setSlot(countN, String(have), '')
+        // Lowering a locus is legal only inside a REGENOME window (03 §9.4), so the minus is a
+        // live control for exactly as long as that window lasts and a refusal the rest of the time.
+        var canDown = !!(bl && bl.rewriting && bl.rewriting(s)) && have > 0
+        var cost = bl && bl.nextLocusCost ? num(bl.nextLocusCost(s)) : Infinity
+        setData(minus, 's', canDown ? 'afford' : 'want')
+        setData(plus, 's', num(s.res.insight) >= cost ? 'afford' : 'want')
+        setData(r.el, 'live', have > 0 ? '1' : '0')
+      }
+    }
+  }
+
+  function buildGenome (v, p) {
+    var pv = panel('genome', { title: STR.p_genome })
+    var head = row({})
+    var lenN = statLine(head, STR.genomeLen)
+    var massN = statLine(head, STR.craftMass)
+    var fidN = statLine(head, STR.fidelity)
+    var fidBar = barLine(head, null)
+    var costN = statLine(head, STR.lociCost)
+    pv.body.appendChild(head.el)
+    note(pv.body, STR.genomeNote)
+
+    var rows = []
+    var axes = (HY.bloom && HY.bloom.AXES) || []
+    var i
+    for (i = 0; i < axes.length; i++) {
+      rows.push(axisRow(axes[i], i))
+      pv.body.appendChild(rows[i].el)
+    }
+
+    var foot = row({})
+    var capN = statLine(foot, STR.p_loci)
+    var acts = el('div', 'row-actions')
+    var capBtn = actionButton(STR.raiseCap, function (b) {
+      var dv = DV()
+      if (!dv || !commit(function () { return dv.raiseLociCap() })) refuse(b)
+    })
+    var regenBtn = btn('act-btn hold')
+    regenBtn.appendChild(el('span', 'hold-fill'))
+    regenBtn.appendChild(el('span', 'hold-lab', STR.regenome))
+    bindHold(regenBtn, function () {
+      var bl = BL()
+      if (bl) commit(function () { return bl.regenome() })
+    })
+    acts.appendChild(capBtn)
+    acts.appendChild(regenBtn)
+    foot.line().appendChild(acts)
+    var regenNote = span(foot.line(), 'row-sub', STR.regenomeNote)
+    setData(regenNote, 'tone', 'cost')
+    pv.body.appendChild(foot.el)
+
+    p.__sync = function (s) {
+      var bl = BL()
+      var dv = DV()
+      if (!bl) return
+      var len = num(bl.genomeLength(s))
+      setSlot(lenN, String(len), '')
+      setSlot(massN, C().fmt(num(bl.craftMass(s))), '')
+      var fid = num(bl.effFid(s))
+      setSlot(fidN, fid.toFixed(3), '')
+      fidBar.set(fid, fid < 0.9 ? 'warn' : 'signal', STR.fidelity + ' ' + fid.toFixed(3))
+      var cost = num(bl.nextLocusCost(s))
+      setSlot(costN, C().fmt(cost), GLYPH.insight)
+      setSlot(capN, num(s.a3.lociBought) + ' / ' + num(s.a3.lociCap), '')
+      var capCost = dv && dv.capCost ? num(dv.capCost(s)) : Infinity
+      setText(capBtn, STR.raiseCap + ' · ' + C().fmt(capCost) + ' ' + GLYPH.alleles)
+      setData(capBtn, 's', num(s.res.alleles) >= capCost ? 'afford' : 'want')
+      var rw = !!bl.rewriting(s)
+      setText(regenBtn.lastChild, rw
+        ? interp(STR.rewriting, { v: secs(num(s.a3.regenomeAt) - num(s.t)) })
+        : STR.regenome + ' · ' + C().fmt(num(bl.regenomeCost(s))) + ' ' + GLYPH.carbon)
+      setData(regenBtn, 's', !rw && num(s.res.carbon) >= num(bl.regenomeCost(s))
+        ? 'afford' : 'want')
+      for (var k = 0; k < rows.length; k++) rows[k].sync(s)
+      pv.setCount(String(len))
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── THE FLEET: the triangle, and what kills you ────────────────────────────
+
+  function buildFleet (v, p) {
+    var pv = panel('fleet', { title: STR.p_fleet })
+    var head = row({})
+    var harvN = statLine(head, STR.harvest)
+    var subN = statLine(head, STR.subsist)
+    var surN = statLine(head, STR.surplus)
+    pv.body.appendChild(head.el)
+
+    // 03 §8 is a triangle and a triangle on a phone is three sliders that renormalise: the
+    // barycentric pad is a beautiful control that cannot be operated with a thumb, and every one
+    // of the three numbers has to be readable while the other two move.
+    var body = el('div', 'row')
+    var bars = [null, null, null]
+    var labels = [STR.replicate, STR.disperse, STR.bank]
+    function push () {
+      var s = liveState()
+      var bl = BL()
+      if (!s || !bl) return
+      bl.setAlloc(bars[0].value(), bars[1].value(), bars[2].value())
+      s.stats.reallocations = num(s.stats.reallocations) + 1
+    }
+    var i
+    for (i = 0; i < 3; i++) {
+      bars[i] = slider({ label: labels[i], steps: U.ALLOC_STEPS, tone: 'signal', onInput: push })
+      body.appendChild(bars[i])
+    }
+    pv.body.appendChild(body)
+    note(pv.body, STR.allocNote)
+
+    var seeded = false
+    p.__sync = function (s) {
+      var bl = BL()
+      if (!bl) return
+      var a = bl.alloc(s)
+      var h = 0, sub = 0, k
+      var list = bl.list(s)
+      for (k = 0; k < list.length; k++) { h += num(list[k].harvest); sub += num(list[k].subsist) }
+      setSlot(harvN, C().fmt(h), GLYPH.carbon + '/s')
+      setSlot(subN, C().fmt(sub), GLYPH.carbon + '/s')
+      setSlot(surN, signed(h - sub), GLYPH.carbon + '/s')
+      setData(surN, 'tone', h - sub >= 0 ? 'pos' : 'neg')
+      if (!seeded) {
+        seeded = true
+        for (k = 0; k < 3; k++) bars[k].setValue(Math.round(a[k] * U.ALLOC_STEPS))
+      }
+      // The readout is the normalised share, not the raw slider step: three sliders of twenty are
+      // a ratio, and printing the step would print a number the simulation never sees.
+      for (k = 0; k < 3; k++) {
+        bars[k].setReadout(pct(a[k]), '', labels[k] + ' ' + pct(a[k]))
+      }
+      bars[0].setNote(C().fmt((h - sub) * a[0]) + ' ' + GLYPH.carbon + '/s ' + STR.replicate)
+      bars[1].setNote(C().fmt((h - sub) * a[1]) + ' ' + GLYPH.carbon + '/s ' + STR.disperse)
+      bars[2].setNote(C().fmt((h - sub) * a[2]) + ' ' + GLYPH.carbon + '/s ' + STR.bank)
+      pv.setCount(pct(a[0]) + ' / ' + pct(a[1]) + ' / ' + pct(a[2]))
+    }
+    p.view = pv
+    return pv
+  }
+
+  // One block per cause: the name and the two numbers on one line, the bar under them, and 03
+  // §11.7's sentence under that — but only for the causes that are actually killing something.
+  // Interleaving six labels with six explanations gave twelve lines with no visual hierarchy, and
+  // the count on a cause with no deaths was a `0.00` competing for attention with the one that had
+  // just taken a tenth of the fleet.
+  function causeBlock (host, hazard) {
+    var l = el('div', 'row-line')
+    span(l, 'row-sub', hazard.name.toLowerCase())
+    var n = slot('row-num')
+    var share = slot('row-num')
+    share.style.minWidth = '4ch'
+    l.appendChild(n)
+    l.appendChild(share)
+    host.appendChild(l)
+    var bl = el('div', 'row-line')
+    var bar = meter('ascii', 0)
+    bl.appendChild(bar)
+    host.appendChild(bl)
+    var q = el('p', 'row-note', hazard.line)
+    host.appendChild(q)
+    return {
+      name: hazard.name,
+      set: function (r) {
+        bar.set(r.frac, r.frac > 0.4 ? 'warn' : '', hazard.name.toLowerCase() + ' ' + pct(r.frac))
+        setSlot(n, r.count > 0 ? C().fmt(r.count) : STR.nothing, '')
+        setSlot(share, r.count > 0 ? pct(r.frac) : '', '')
+        setData(share, 'tone', r.frac > 0.4 ? 'warn' : '')
+        show(q, r.count > 0)
+      }
+    }
+  }
+
+  function buildMortality (v, p) {
+    var pv = panel('mortality', { title: STR.p_mortality })
+    var rows = []
+    var body = el('div', 'row')
+    pv.body.appendChild(body)
+    var hazards = (HY.bloom && HY.bloom.HAZARD_CARD) || []
+    for (var i = 0; i < hazards.length; i++) rows.push(causeBlock(body, hazards[i]))
+    p.__sync = function (s) {
+      var bl = BL()
+      if (!bl || !bl.mortality) return
+      var m = bl.mortality(s)
+      // The header carries the window, not the total: a total over six causes says nothing, and
+      // "deaths, last 2:00" is the sentence that makes all six of them readable.
+      pv.setCount(m.total > 0 ? interp(STR.deaths, { v: C().fmtTime(m.window) }) : '')
+      for (var k = 0; k < rows.length && k < m.rows.length; k++) rows[k].set(m.rows[k])
+      show(body, m.total > 0)
+      if (m.total > 0) pv.unempty()
+      else pv.empty(STR.noDeaths)
+    }
+    p.view = pv
+    return pv
+  }
+
+  // ── LINEAGES ───────────────────────────────────────────────────────────────
+
+  function strainRow () {
+    var r = row({ expand: true })
+    var l0 = r.line()
+    var name = span(l0, 'row-name', '')
+    var tag = span(l0, 'row-tag', '')
+    var massN = slot('row-num')
+    l0.appendChild(massN)
+    var l1 = r.line()
+    var where = span(l1, 'row-sub', '')
+    var predTxt = el('p', 'row-note', '')
+    r.el.appendChild(predTxt)
+
+    var ex = r.expander()
+    // The commit fraction is the whole of 03 §14.2: the square law makes 0.6 of a fleet worth 0.36
+    // of it, so the size of the bet is the decision and the button is only the confirmation.
+    var stake = slider({ label: STR.commit, steps: U.SLIDER_STEPS, tone: 'signal',
+      value: U.COMMIT_DEFAULT })
+    ex.appendChild(stake)
+    var acts = el('div', 'row-actions')
+    ex.appendChild(acts)
+    var seqBtn = actionButton(STR.sequence, function (b) {
+      var dv = DV()
+      if (!dv || !commit(function () { return dv.sequence(api.id) })) refuse(b)
+    })
+    var engBtn = actionButton(STR.engage, function (b) {
+      var dv = DV()
+      if (!dv || !commit(function () { return dv.engage(api.id, stake.value() / U.SLIDER_STEPS) })) {
+        refuse(b)
+      }
+    })
+    var reinBtn = actionButton(STR.reinforce, function (b) {
+      var dv = DV()
+      if (!dv || !commit(function () { return dv.reinforce(api.id) })) refuse(b)
+    })
+    var wdBtn = actionButton(STR.withdraw, function (b) {
+      var dv = DV()
+      if (!dv || !commit(function () { return dv.withdraw(api.id) })) refuse(b)
+    })
+    var absBtn = actionButton(STR.absorb, function (b) {
+      var dv = DV()
+      if (!dv || !commit(function () { return dv.absorb(api.id) })) refuse(b)
+    })
+    var qtBtn = actionButton(STR.quarantine, function (b) {
+      var dv = DV()
+      if (!dv || !commit(function () { return dv.quarantine(api.id) })) refuse(b)
+    })
+    acts.appendChild(seqBtn)
+    acts.appendChild(engBtn)
+    acts.appendChild(reinBtn)
+    acts.appendChild(wdBtn)
+    acts.appendChild(absBtn)
+    acts.appendChild(qtBtn)
+
+    var api = {
+      el: r.el,
+      id: -1,
+      sync: function (s, e) {
+        api.id = e.id
+        var dv = DV()
+        var succ = s.a3 && s.a3.succ === e
+        setText(name, e.name || STR.strainName)
+        var fighting = !!e.eng
+        setText(tag, succ ? STR.p_successor
+          : fighting ? STR.inEngagement
+            : e.sequenced ? STR.sequenced : STR.unsequenced)
+        setData(tag, 'tone', succ ? 'neg' : fighting ? 'warn' : e.sequenced ? 'signal' : '')
+        var mass = 0, i
+        for (i = 0; i < e.w.length; i++) mass += num(e.w[i])
+        setSlot(massN, C().fmt(mass), '')
+        var d = dv && dv.distance ? dv.distance(e, s) : 0
+        setText(where, interp(STR.band, { n: e.origin }) + ' · ' +
+          interp(STR.distance, { n: d }) +
+          (succ ? ' · ' + interp(STR.successorAge, { v: secs(dv.succAge(s)) }) : ''))
+
+        // The prediction is the panel's reason to exist: an unsequenced foe is a *range*, and the
+        // width of that range is exactly what Ψ buys (03 §13.5).
+        var pr = dv && dv.predict ? dv.predict(e.id, stake.value() / U.SLIDER_STEPS) : null
+        if (!pr) setText(predTxt, '')
+        else if (pr.wide) {
+          setText(predTxt, interp(STR.predictWide, {
+            lo: (pr.lo.win ? '+' : '−') + C().fmt(pr.lo.survivors),
+            hi: (pr.hi.win ? '+' : '−') + C().fmt(pr.hi.survivors)
+          }))
+        } else {
+          setText(predTxt, interp(pr.win ? STR.predictLine : STR.predictLose,
+            { v: C().fmt(pr.survivors) }) + ' · ' +
+            interp(STR.resolveIn, { v: secs(pr.tResolve) }))
+        }
+
+        var conc = dv && dv.maxConcurrent ? dv.maxConcurrent(s) : 1
+        var busy = dv && dv.engagements ? dv.engagements(s).length : 0
+        show(seqBtn, !e.sequenced && !succ)
+        show(engBtn, !fighting)
+        show(reinBtn, fighting)
+        show(wdBtn, fighting)
+        show(absBtn, !fighting && !succ)
+        show(qtBtn, !fighting && !succ)
+        var seq = dv && dv.seqCost ? num(dv.seqCost(s)) : Infinity
+        setText(seqBtn, STR.sequence + ' · ' + C().fmt(seq) + ' ' + GLYPH.insight)
+        setData(seqBtn, 's', num(s.res.insight) >= seq ? 'afford' : 'want')
+        setData(engBtn, 's', busy < conc ? 'afford' : 'want')
+        setAttr(engBtn, 'aria-label', busy < conc ? STR.engage
+          : interp(STR.engageFull, { n: conc }))
+        var ab = dv && dv.absorbCost ? num(dv.absorbCost(s)) : Infinity
+        setText(absBtn, STR.absorb + ' · ' + C().fmt(ab) + ' ' + GLYPH.insight)
+        setData(absBtn, 's', num(s.res.insight) >= ab ? 'afford' : 'want')
+        var qt = dv && dv.quarantineCost ? num(dv.quarantineCost(e.origin)) : Infinity
+        setText(qtBtn, STR.quarantine + ' · ' + C().fmt(qt) + ' ' + GLYPH.carbon)
+        setData(qtBtn, 's', num(s.res.carbon) >= qt ? 'afford' : 'want')
+
+        setData(r.el, 'live', succ ? 'neg' : fighting ? 'warn' : '1')
+        r.label((e.name || STR.strainName) + ', ' + C().fmt(mass) + ' craft, ' +
+          (e.sequenced ? STR.sequenced : STR.unsequenced) +
+          (fighting ? ', ' + STR.inEngagement : ''))
+      }
+    }
+    return api
+  }
+
+  function buildLineages (v, p) {
+    var pv = panel('lineages', { title: STR.p_lineages })
+    var head = row({})
+    var nStrain = statLine(head, STR.p_lineages)
+    var shareN = statLine(head, STR.theirMass)
+    var shareBar = barLine(head, null)
+    var driftN = statLine(head, STR.drifted.replace(' {v}', ''))
+    pv.body.appendChild(head.el)
+
+    var bag = {}
+    p.__sync = function (s) {
+      var dv = DV()
+      if (!dv || !dv.strains) return
+      var list = dv.strains(s).slice()
+      if (s.a3 && s.a3.succ) list.push(s.a3.succ)
+      setSlot(nStrain, String(list.length), '')
+      var share = dv.strainShare ? num(dv.strainShare(s)) : 0
+      setSlot(shareN, pct(share), '')
+      shareBar.set(share, share > 0.5 ? 'bad' : (share > 0.25 ? 'warn' : ''),
+        STR.theirMass + ' ' + pct(share))
+      setSlot(driftN, (dv.driftFraction ? num(dv.driftFraction(s)) : 0).toFixed(3), '')
+      reconcile(pv.body, bag, list, function (e) { return e.id }, strainRow, s)
+      pv.setCount(list.length)
+      if (list.length) pv.unempty()
+      else pv.empty(STR.noStrains)
+    }
+    p.view = pv
+    return pv
+  }
+
   function definePanels (v) {
-    def(v, 'floor', function (s, rev) { return rev.substrate }, buildFloor)
-    def(v, 'tips', function (s, rev) { return rev.tips }, buildTips)
-    def(v, 'market', function (s, rev) { return rev.market }, buildMarket)
-    def(v, 'seasons', function (s, rev) { return rev.seasons }, buildSeasons)
-    def(v, 'understory', function (s, rev) { return rev.trees }, buildUnderstory)
-    def(v, 'patches', needPatches, buildPatches)
-    def(v, 'signal', function (s, rev) { return s.act === 1 && rev.signal }, buildSignal)
-    // Act II. Adaptations is the one panel that spans both acts, so it lives on the MIND tab and
-    // has no Act I tab at all.
-    def(v, 'forest', function (s, rev) { return s.act >= 2 && rev.forest }, buildForest, 'forest')
-    def(v, 'stands', function (s, rev) { return s.act >= 2 && rev.stands }, buildStands, 'forest')
-    def(v, 'mind', function (s, rev) { return s.act >= 2 && rev.signal }, buildMind, 'mind')
-    def(v, 'diff', function (s, rev) { return s.act >= 2 && rev.diff }, buildDiff, 'mind')
-    def(v, 'adaptations', function (s, rev) { return rev.projects }, buildAdaptations, 'mind')
-    def(v, 'weather', function (s, rev) { return s.act >= 2 && rev.flush }, buildWeather, 'flush')
-    def(v, 'flush', function (s, rev) { return s.act >= 2 && rev.flush }, buildFlush, 'flush')
-    def(v, 'pact', function (s, rev) { return s.act >= 2 && rev.pact }, buildPact, 'pact')
-    def(v, 'offers', function (s, rev) { return s.act >= 2 && rev.pact }, buildOffers, 'pact')
-    def(v, 'log', function (s) { return s.act >= 2 }, buildLog, 'log')
+    def(v, 'floor', function (s, rev) { return rev.substrate }, buildFloor, null, actI)
+    def(v, 'tips', function (s, rev) { return rev.tips }, buildTips, null, actI)
+    def(v, 'market', function (s, rev) { return rev.market }, buildMarket, null, actI)
+    def(v, 'seasons', function (s, rev) { return rev.seasons }, buildSeasons, null, actI)
+    def(v, 'understory', function (s, rev) { return rev.trees }, buildUnderstory, null, actI)
+    def(v, 'patches', needPatches, buildPatches, null, actI)
+    def(v, 'signal', function (s, rev) { return s.act === 1 && rev.signal }, buildSignal,
+      null, actI)
+    // Act II. Adaptations is the one panel that spans all three acts, so it lives on the MIND slot
+    // and has no Act I tab at all. Everything else in Act II is scoped to Act II by `live`: the
+    // forest is not idle in Act III, it is gone, and a panel reporting on it would be a lie.
+    def(v, 'forest', function (s, rev) { return s.act >= 2 && rev.forest }, buildForest,
+      'forest', actII)
+    def(v, 'stands', function (s, rev) { return s.act >= 2 && rev.stands }, buildStands,
+      'forest', actII)
+    def(v, 'mind', function (s, rev) { return s.act >= 2 && rev.signal }, buildMind, 'mind', actII)
+    def(v, 'diff', function (s, rev) { return s.act >= 2 && rev.diff }, buildDiff, 'mind', actII)
+    def(v, 'adaptations', function (s, rev) { return rev.projects }, buildAdaptations, 'mind',
+      function (s, rev) { return s.act < 3 || !dismantled(rev, 'mind') })
+    // FLUSH before WEATHER: both arrive on the same frame, and the one carrying the verb goes
+    // first. The other order put four read-only figures between the top of the tab and the only
+    // button on it, and FRUIT was below the fold from the moment the tab existed.
+    def(v, 'flush', function (s, rev) { return s.act >= 2 && rev.flush }, buildFlush,
+      'flush', actII)
+    def(v, 'weather', function (s, rev) { return s.act >= 2 && rev.flush }, buildWeather,
+      'flush', actII)
+    def(v, 'pact', function (s, rev) { return s.act >= 2 && rev.pact }, buildPact, 'pact', actII)
+    def(v, 'offers', function (s, rev) { return s.act >= 2 && rev.pact }, buildOffers,
+      'pact', actII)
+
+    // Act III. The two field panels share the VOID slot because they are the same field in two
+    // phases; the canopy is not a place you go back to.
+    def(v, 'canopy', function (s, rev) { return s.act >= 3 && rev.canopy }, buildCanopy,
+      'forest', function (s, rev) { return s.act >= 3 && rev.canopy && !dismantled(rev, 'forest') })
+    def(v, 'void', function (s, rev) { return s.act >= 3 && rev.voidPhase }, buildVoid,
+      'forest', actIII('forest'))
+    def(v, 'synchrony', function (s, rev) { return s.act >= 3 && rev.wheel }, buildSynchrony,
+      'forest', actIII('forest'))
+    def(v, 'endings', function (s, rev) { return s.act >= 3 && rev.endings }, buildEndings,
+      'forest', actIII('forest'))
+    def(v, 'genome', function (s, rev) { return s.act >= 3 && rev.genome }, buildGenome,
+      'mind', actIII('mind'))
+    def(v, 'fleet', function (s, rev) { return s.act >= 3 && rev.fleet }, buildFleet,
+      'flush', actIII('flush'))
+    def(v, 'mortality', function (s, rev) { return s.act >= 3 && rev.fleet }, buildMortality,
+      'flush', actIII('flush'))
+    def(v, 'lineages', function (s, rev) { return s.act >= 3 && rev.lineages }, buildLineages,
+      'pact', actIII('pact'))
+
+    def(v, 'log', function (s) { return s.act >= 2 }, buildLog, 'log',
+      function (s) { return s.act >= 2 })
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

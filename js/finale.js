@@ -562,7 +562,11 @@
     }
     if (key === 'ENCYST') {
       var since = inVoid(s) ? s.t - num(s.proj.flags.void_t) : 0
-      out.push(cond('void', 'IN THE VOID', Math.max(0, since), a.ENCYST_S, since >= a.ENCYST_S))
+      // A stranded run satisfies the row outright: there is no fleet left to wait with, so waiting
+      // twenty minutes for it would be twenty minutes of a frozen board (`08` §5.3 L5).
+      var strand = !!(HY.bloom && HY.bloom.stranded && HY.bloom.stranded(s))
+      out.push(cond('void', 'IN THE VOID', strand ? a.ENCYST_S : Math.max(0, since),
+        a.ENCYST_S, strand || since >= a.ENCYST_S))
       return out
     }
     return out
@@ -601,16 +605,30 @@
     return out
   }
 
-  // A | B | C | ENCYST | null, with the unmet conditions carried along. The taken ending wins; then
-  // the first available in catalogue order; then the nearest one, so the readout is never blank
-  // while the player is working toward something.
+  // A | B | C | null, with the unmet conditions carried along. The taken ending wins; then the
+  // first available in catalogue order; then the nearest one, so the readout is never blank while
+  // the player is working toward something.
+  //
+  // ENCYST is answering a different question and is never reported here unless it has actually been
+  // taken. Its only condition is twenty minutes in the void, so from void + 20:00 it is permanently
+  // "available" — and a readout that says so says it for the whole of the last hundred minutes,
+  // over the top of the three endings the act is about. Measured, that ended every run at void +
+  // 20:00: the reference player asks this function what is available, is told ENCYST, and concedes
+  // a hundred minutes early with ϒ at its free-running 0.31, two bands occupied and 101 Ψ. The
+  // concession is not hidden by this — `endings()` still lists all four rows with their conditions
+  // and `encyst` is a pinned card on the board from the moment it opens (§5.4). It is simply not
+  // the answer to "which ending is this run walking toward".
   function endingAvailable (state) {
     var s = state || S()
     if (!s || s.act !== 3) return null
     var list = endings(s), i, best = null
     for (i = 0; i < list.length; i++) if (list[i].taken) return list[i]
-    for (i = 0; i < list.length; i++) if (list[i].available) return list[i]
     for (i = 0; i < list.length; i++) {
+      if (list[i].key === 'ENCYST') continue
+      if (list[i].available) return list[i]
+    }
+    for (i = 0; i < list.length; i++) {
+      if (list[i].key === 'ENCYST') continue
       if (!best || list[i].unmet.length < best.unmet.length) best = list[i]
     }
     return best
@@ -1359,6 +1377,24 @@
     ok(listed === 3, 'a path not taken does not still say what it wanted')
     ok(end.phase === 'dismantle', 'taking an ending did not begin the dismantle')
     ok(!takeEnding('B', end), 'a second ending was taken after the first')
+
+    // ── the concession never stands in front of an ending ────────────────────
+    // ENCYST clears its one condition twenty minutes into the void and never stops clearing it, so
+    // a readout that reports it reports it for the rest of the run. Measured, that ended every
+    // reference run at void + 20:00.
+    var conc = playstyle('ENCYST', 'BALANCED')
+    ok(available('ENCYST', conc), 'ENCYST is not available twenty minutes into the void')
+    var pick = endingAvailable(conc)
+    ok(pick && pick.key !== 'ENCYST', 'the concession was offered as the ending in reach')
+    var stillListed = 0
+    var encRows = endings(conc)
+    for (i = 0; i < encRows.length; i++) if (encRows[i].key === 'ENCYST' && encRows[i].available) stillListed = 1
+    ok(stillListed, 'ENCYST stopped being listed as an option at all')
+    var reach = playstyle('A', 'GLUTTON')
+    reach.t = a.ENCYST_S + 1
+    var pickA = endingAvailable(reach)
+    ok(pickA && pickA.key === 'A' && pickA.available,
+      'ENDING A was not the ending in reach on a run that had cleared it')
 
     // ── the dismantle: reverse order of acquisition, nine seconds, then nothing ─
     var d0 = dismantleAt(0)

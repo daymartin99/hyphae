@@ -753,7 +753,7 @@
     if (o.projects !== false) n += buyProjects(sv)
     if (s.phase === 'canopy') settleAndReach(s, sv)
     if (o.triangle !== false) steerTriangle(s)
-    if (o.genome !== false && !poolShort(s)) spendInsightOnLoci(s)
+    if (o.genome !== false && !poolShort(s)) spendInsightOnLoci(s, sv)
     if (o.strains !== false) handleStrains(s)
     if (o.entrain !== false) entrainWorst(s)
     if (o.ending !== false) takeAnEnding(s)
@@ -813,11 +813,17 @@
 
   // Ψ has exactly two homes in Act III: loci and the divergence economy. Loci first — every axis
   // multiplies a rate, and the genome tax is paid in craft mass rather than in Insight.
-  function spendInsightOnLoci (s) {
+  function spendInsightOnLoci (s, sv) {
     var b = HY.bloom
     if (!b || !b.setLocus || !b.AXES) return
     var loci = s.a3.loci
     if (!loci) return
+    // The door's reserve covers every currency it is priced in, not just grams and Σ. Insight was
+    // the omission: `settleAndReach` already refuses to spend the exit's Signal, but nothing stopped
+    // the genome spending the exit's Insight, and a locus is bought every second the budget allows.
+    // Measured, a run held 108,657 Σ against an 80,000 Σ door and 15.27 Ψ against its Ψ leg,
+    // because every point of Insight the act had produced was already in the genome.
+    if (sv && sv.isDoor && sv.wouldStarveDoor('psi', num(b.nextLocusCost(s)))) return
     // A locus is not free: craftMass = 2.40e6·(1+0.085·G)^1.15, so every point makes every craft
     // heavier to keep alive. Buying them into a fleet that is already at its surplus peak is
     // buying subsistence, and the peak is exactly where the margin to pay for it is thinnest.

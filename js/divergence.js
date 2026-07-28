@@ -95,6 +95,7 @@
     // §13 · divergence
     DRIFT_PER_BAND: 0.14,    // (1 + 0.14·b) — the far bands are unsupervised
     DRIFT_PER_LOCUS: 0.05,   // (1 + 0.05·G) — a longer genome copies worse
+    DRIFT_REP_REF: 0.0375,   // the copy rate §13.1's MTBD table is tabulated at
     DEFECT_FID: 0.100,       // frac = 0.040 + 0.100·(1 − Φ), clamped to [0.040, 0.140]
     MUT_SLACK: 2,            // total loci preserved ±2
     // §13.4 · the three responses
@@ -665,6 +666,33 @@
     return 0
   }
 
+  // §13.1's table is tabulated at "steady-state replication, newCraft/n ≈ 0.0375" — a copy rate the
+  // engine cannot reach. REP_K is 0.0250/s before the crowding damp, so a fleet sitting at its own
+  // max-surplus occupancy and pouring every last unit of surplus into REPLICATE copies itself at
+  // 0.0250·(1 − 7.17/(7.17 + 12)) = 0.01565/s, which is 42% of what the MTBD column assumes. Taken
+  // literally the published drift/s is therefore 2.4× too slow everywhere, and because DRIFT_DECAY
+  // is subtracted flat at 6.0e-4·Φ that shortfall is not a slower act — it is a different act.
+  // Measured at Φ 0.818 (a legacy-0.35 run with no Fidelity loci, which §13.1 puts at a divergence
+  // every four hundred seconds): accumulation 4.2e-4/s against decay 4.9e-4/s, so drift never rose
+  // at all. Two hundred and twenty minutes of void produced zero strains, zero alleles, no
+  // coalescence and no Successor, which closes ENDING C and empties half the act.
+  //
+  // So the copy rate is read as a fraction of the fastest the act can actually copy, and that
+  // fraction is what §13.1's reference stands for. Every one of the section's four statements
+  // survives unchanged — a parked fleet still does not drift, infidelity is still superlinear, the
+  // far bands still copy worse, a longer genome still copies worse — and the MTBD column becomes
+  // true of a fleet doing the most replication the game permits rather than of one that cannot
+  // exist. The REPLICATE vertex now sets divergence in the same proportion it sets growth, which is
+  // §13's own first line: replication ↑ → divergence ↑.
+  function copyRate (b) {
+    var A3 = A()
+    var nb = Math.max(1, num(bands(S()).n[b]))
+    var occ = A3.N_STAR_K
+    var repMax = A3.REP_K * (1 - occ / (occ + LAW.REP_DAMP))
+    if (!(repMax > 0)) return 0
+    return (replicatedIn(b) / nb) * (LAW.DRIFT_REP_REF / repMax)
+  }
+
   function stepDrift (dt, opts) {
     var s = S()
     if (!s || !inVoid(s) || !(dt > 0)) return
@@ -680,7 +708,7 @@
       nb = Math.max(0, num(bd.n[b]))
       add = 0
       if (nb > 0) {
-        add = A3.DRIFT_K * (replicatedIn(b) / Math.max(1, nb)) * infid *
+        add = A3.DRIFT_K * copyRate(b) * infid *
           (1 + LAW.DRIFT_PER_BAND * b) * lengthTerm * dt
       }
       bd.drift[b] = C().clamp(num(bd.drift[b]) + add - A3.DRIFT_DECAY * fid * dt, 0, 1)
@@ -1890,6 +1918,26 @@
       ok(mtbd > 380 && mtbd < 600, 'MTBD at Φ=0.85 is ' + Math.round(mtbd) + ' s, want ≈472 s')
       // 0.85 → 0.95 is worth 4.4× (§13.1). This is the number that prices the last locus of FID.
       near(driftAt(0.85) / driftAt(0.95), 4.4, 1.0, 'the 0.85 → 0.95 fidelity step is not ≈4.4×')
+
+      // …and the table is tabulated at a copy rate the engine can actually reach: a fleet at its
+      // own max-surplus occupancy pouring everything into REPLICATE reads as §13.1's reference.
+      coldVoid()
+      s = S()
+      s.a3.bands.n[6] = 1.0e20
+      var repMax = A3.REP_K * (1 - A3.N_STAR_K / (A3.N_STAR_K + LAW.REP_DAMP))
+      noteReplication(6, 1.0e20 * repMax)
+      near(copyRate(6), LAW.DRIFT_REP_REF, 1e-12,
+        'full REPLICATE at max-surplus occupancy does not read as the MTBD table\'s copy rate')
+      noteReplication(6, 0)
+      near(copyRate(6), 0, 1e-15, 'a parked fleet drifts')
+      // The decay term is not a rounding error beside the accumulation: at the fidelity a
+      // legacy-0.35 run arrives with, drift must actually rise, or the act has no antagonist.
+      var phi = 0.818
+      var gross = A3.DRIFT_K * LAW.DRIFT_REP_REF * Math.pow(1 - phi, A3.DRIFT_FID_EXP) *
+        (1 + LAW.DRIFT_PER_BAND * 6) * (1 + LAW.DRIFT_PER_LOCUS * 6)
+      ok(gross > A3.DRIFT_DECAY * phi * 2,
+        'at Φ = 0.818 drift accumulates at ' + gross.toExponential(2) +
+        '/s against a decay of ' + (A3.DRIFT_DECAY * phi).toExponential(2) + '/s: no strain can be born')
 
       // ── the divergence event takes craft out of your fleet and puts them in theirs ──────
       coldVoid()

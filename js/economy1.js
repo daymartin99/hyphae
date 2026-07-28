@@ -246,7 +246,30 @@
     FORWARD_MARK: 1.05,       // × fair value, for each of them
     STANDING_PENALTY: 1.08,   // standing_order pays this much more than you would
     STANDING_FLOOR: 0.15,     // × cap: the stock level below which the standing order stops buying
-    STANDING_MAX_FRAC: 0.02   // × cap per second: the automated fill rate
+    STANDING_MAX_FRAC: 0.02,  // × cap per second: the automated fill rate
+    // THE PRICE-IMPACT CEILING, in units of `fair`, per second of market time.
+    //
+    // `08` §3.4 publishes the walk in four lines and there is no trade-impact term in it; the
+    // stationary excursion from fair is stated as ±14% typical and ±38% at the 99th percentile,
+    // and the whole learnability claim — the trend has memory, the mean is a published function of
+    // a visible stock — is written against that band. `A1.IMPACT` is this module's addition, and
+    // charged per call it is not an excursion at all but a *bias*: a stream of feedstock purchases
+    // re-kicks momentum every second, and momentum settles where mean reversion cancels the kick,
+    // at `fair · (1 + kickPerSecond / MEAN_REV)`.
+    //
+    // Measured on the reference player at minute 48 that was `fair × 2.5` with the leaf pool at
+    // full stock — a printed price of 0.26 against a return of 0.160 g of sugar per gram, so every
+    // gram the network ate lost sugar. Contract delivery then stops, the mineral engine stops with
+    // it, the patch that would have tripled supply is unaffordable, and the act sits at 54 tips for
+    // twenty-four minutes. That is `08` §11's F1 lockout arriving through the price rather than
+    // through the stock, and the stock guard G1 cannot see it.
+    //
+    // The kick per trade is unchanged, so a single purchase moves the print exactly as far as it
+    // always did and *Mycelial Ledger* still draws a readable trend. What is bounded is the kick
+    // per *second*, so a continuous feedstock stream can sit at the top of §3.4's typical band and
+    // no further. Over-buying is still punished — by the stock, through `scarcity`, which is the
+    // mechanism §3.4 actually names.
+    IMPACT_BIAS_MAX: 0.14     // × fair, the largest steady bias continuous trading may hold
   }
 
   // 02 §10.4, verbatim. The same walk as the Litter Market with a different parameterisation,
@@ -347,6 +370,11 @@
   var standing = {}      // per-type standing-order overrides, a UI setting rather than game state
   var walk = null        // the price walk's own rng stream; never in scope in a pricing function
   var book = { deliveredSugar: 0, deferred: 0, reserve: 0 }
+
+  // Grams traded per pool since the last market step, signed: bought positive, sold negative.
+  // Sub-second phase like `acc`, and excluded from the save for the same reason — it is consumed
+  // by the next 1 Hz walk step and a reload that loses it loses at most one second of impact.
+  var traded = [0, 0, 0, 0, 0, 0, 0]
 
   // Reused rather than rebuilt: a twelve-hour reconcile calls walkCoef 240 times and five fresh
   // arrays per call is 1,200 allocations on the one path in the game with a hard millisecond budget.
@@ -524,10 +552,15 @@
   // rather than core.clamp() — a namespace getter and a call per bound is 90,000 of each across a
   // twelve-hour return, and this is the only loop in the module where that is measurable.
   function walkStep (c, stochastic) {
-    var s = S(), A = T().A1, i, row, cap, fair, gap, sc, m, p
+    var s = S(), A = T().A1, i, row, cap, fair, gap, sc, m, p, kick
     var mkt = s.a1.mkt, h = c.h
     var fairK = A.FAIR_K, fairE = A.FAIR_EXP, clampM = A.MOM_CLAMP
     var lo = A.PRICE_FLOOR, hi = A.PRICE_CEIL, coolS = A.COOL_S
+    // Momentum settles where mean reversion cancels the kick, so a kick of `MEAN_REV · b` per
+    // second holds the price at `fair · (1 + b)` for as long as the trading lasts. This is that
+    // identity solved for the bias MK.IMPACT_BIAS_MAX allows, and it is why the ceiling scales
+    // with the step: an offline macro-step covers more seconds of trading, not more impact.
+    var kickMax = A.MEAN_REV * MK.IMPACT_BIAS_MAX * h
     for (i = 0; i < TYPES.length; i++) {
       cap = c.cap[i]
       if (!(cap > 0)) continue
@@ -550,6 +583,13 @@
       fair = row.base * (sc === 0 ? 1 : 1 + fairK * Math.pow(sc, fairE)) * c.mod[i]
       gap = fair > 0 ? (fair - row.price) / fair : 0
       m = c.momDecay * row.mom + c.rev * gap + (stochastic ? c.sig * walkGauss() : 0)
+      if (traded[i] !== 0) {
+        kick = A.IMPACT * traded[i] / (0.05 * cap)
+        if (kick > kickMax) kick = kickMax
+        else if (kick < -kickMax) kick = -kickMax
+        m += kick
+        traded[i] = 0
+      }
       if (!(m > -clampM)) m = -clampM
       else if (m > clampM) m = clampM
       row.mom = m
@@ -692,7 +732,7 @@
 
     // You are the inflation. Osmotic Priming halves it; nothing removes it.
     row.base *= 1 + A.INFL * num(s.mult.osmoticPriming) * grams / cap
-    row.mom = C().clamp(row.mom + A.IMPACT * (grams / (0.05 * cap)), -A.MOM_CLAMP, A.MOM_CLAMP)
+    traded[i] += grams
     row.coolT = 0
 
     if (forwardLeft(s) > 0) s.proj.uses.forward_contracts = num(s.proj.uses.forward_contracts) + 1
@@ -718,7 +758,7 @@
     row.stock = Math.min(cap, row.stock + grams)
     row.base *= 1 - A.SELL_BASE_DROP * grams / cap
     if (row.base < A.COOL_FLOOR * DEADFALL[i].price) row.base = A.COOL_FLOOR * DEADFALL[i].price
-    row.mom = C().clamp(row.mom - A.IMPACT * (grams / (0.05 * cap)), -A.MOM_CLAMP, A.MOM_CLAMP)
+    traded[i] -= grams
     row.coolT = 0
     return grams
   }
@@ -1359,6 +1399,9 @@
     return 'leaf'
   }
 
+  // The standalone fallback is for a build in which act1 has not been concatenated; it carries no
+  // environment term and no `08` §4.1 E column, so it reads low rather than wrong. Every shipped
+  // path takes the first branch, which is the only place E is assembled.
   function throughput () {
     var s = S()
     if (HY.act1 && HY.act1.throughputPerSec) return num(HY.act1.throughputPerSec())
@@ -1682,6 +1725,7 @@
     histFill = 0
     acc = 0
     mxAcc = 0
+    for (i = 0; i < TYPES.length; i++) traded[i] = 0
     solicits.length = 0
     standing = {}
     book = { deliveredSugar: 0, deferred: 0, reserve: 0 }
@@ -1786,6 +1830,7 @@
     near(A.PRICE_SIGMA / Math.sqrt(1 - A.MOM_DECAY * A.MOM_DECAY), 0.0203, 0.001,
       'stationary σ of momentum is not 0.0203')
 
+
     // Determinism of the whole market walk under {stochastic:false}.
     var snapA = marketSnapshot(g)
     g.a1.season = A.SEASON_AUTUMN
@@ -1816,6 +1861,41 @@
     var wide = g3.a1.mkt[IDX.leaf].stock
     var narrow = JSON.parse(afterA).stock
     near(wide / narrow, 1.0, 0.02, 'a wide offline step diverges from narrow steps')
+
+    // §3.4's band is the whole learnability claim, and a continuous buyer must stay inside it.
+    // This is the failure that made Act I 160 minutes rather than 108: charged per call, IMPACT
+    // held the print at 2.5× fair on a *full* pool, which is a −60% margin on the act's only
+    // feedstock, and the mineral engine that pays for the patch ladder stops with it.
+    //
+    // Bought here at 400 g/s for ten minutes — roughly what a 55-tip network eats — against a leaf
+    // pool pinned at cap, where `fair` is exactly `base` and any excursion is the walk's own doing.
+    // The bound carries a quarter over IMPACT_BIAS_MAX because the walk is a 1 Hz difference
+    // equation and its fixed point is approached from above: `mom` is not zero within a step, only
+    // across one.
+    g = fresh(0x51EED1); init(g)
+    g.a1.season = A.SEASON_AUTUMN
+    C().setStock(g.res, 'sugar', 1e9)
+    var lfi = IDX.leaf, worst = 0, bias
+    for (w = 0; w < 600; w++) {
+      g.a1.mkt[lfi].stock = capOf('leaf')
+      C().setStock(g.a1.sub, 'leaf', 0)
+      buy('leaf', 400)
+      stepMarket(1.0, { stochastic: false })
+      bias = g.a1.mkt[lfi].price / fairValue('leaf') - 1
+      if (w > 60 && bias > worst) worst = bias      // after the walk has settled
+    }
+    ok(worst <= MK.IMPACT_BIAS_MAX * 1.25,
+      'continuous buying biases the print ' + (worst * 100).toFixed(0) + '% above fair')
+    // And one trade still moves the print, or the market stops being readable and the Ledger — the
+    // whole of `08` §3.4's learnability claim — draws a flat line.
+    g = fresh(0x51EED1); init(g)
+    g.a1.season = A.SEASON_AUTUMN
+    C().setStock(g.res, 'sugar', 1e9)
+    g.a1.mkt[lfi].stock = capOf('leaf')
+    var mom0 = g.a1.mkt[lfi].mom
+    buy('leaf', 0.05 * capOf('leaf'))
+    stepMarket(1.0, { stochastic: false })
+    ok(g.a1.mkt[lfi].mom > mom0, 'a five-percent-of-cap fill did not move momentum')
 
     // Inflation is permanent and it is yours.
     g = fresh(0x51EED1); init(g)

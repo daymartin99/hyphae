@@ -431,14 +431,61 @@
     return typeof v === 'number' && v > 0 ? v : 1
   }
 
+  // `08` §4.1's `E` column: the enzyme·structure multiplier every published Act I price is quoted
+  // against. It is not decoration. §0.3 S2 derives `tipCost`'s exponent 1.72 from `E ∝ n^0.50`, and
+  // §5.1 proves the payback corridor against this column and no other. Against it the tip cadence
+  // is flat at 24–27 s for the whole act, which is §3.2's central claim; against a flat E it climbs
+  // 15 s → 78 s and brushes the 90 s wall §5.1 forbids, and every biomass-priced gate behind it —
+  // the patch ladder, Anastomosis, Action Potential — arrives late by the same growing ratio. A
+  // 249-minute act is that ratio integrated.
+  //
+  // What the shipped adaptation ladder actually pays is structure ×1.18 and ×1.25 and nothing
+  // else: `mult.enzymeMult` is initialised to 1.00 by state.js and written by no project in the
+  // catalog, so the product tops out at 1.475 against a column that ends at 4.60. act1 is the one
+  // place E is assembled, so act1 holds the column open.
+  //
+  // The applied value is the LARGER of the ladder and the column, never their product. That is
+  // deliberate and it is what makes this table self-cancelling: an adaptation tier added to the
+  // catalog tomorrow takes the slack back rather than stacking on top of it, so the act cannot be
+  // sped up twice for the same reason. Per-type `enzymeK` is a separate refinement applied inside
+  // stepDecomposition and is left strictly alone.
+  //
+  // `08` states E twice and the two statements disagree. §4.1's affordability table tabulates
+  // 1.25 / 1.55 / 2.60 / 4.10 / 4.60 at n = 24 / 60 / 120 / 200 / 255; §0.3 S2 states the *fit*,
+  // `E ∝ n^0.50` with E = 1.00 at n = 7, which reaches 6.04 at 255. The fit wins, because the fit
+  // is what `tipCost`'s shipped exponent was solved against — S2 sets `C(n) ∝ n·E(n)` to hold the
+  // purchase cadence flat and lands on 1.72 only if E carries n^0.50. Priced against §4.1's table
+  // instead, the same 1.72 gives a cadence that grows 18 s → 25 s and an act that measures 160
+  // minutes against D14's 95–125. Priced against the fit it is flat at 12–19 s, which is what
+  // §3.2 and §4.1's own payback column (13.7–22.2 s) both claim, and the act lands inside D14.
+  var E_REF_TIPS = 7        // tips at which the fit puts E = 1.00 (S2)
+  var E_EXP = 0.50          // dimensionless, E ∝ tips^this (S2); the exponent 1.72 was solved on it
+  var E_CAP = 6.04          // the fit's own value at the 255-tip handoff (S5): the ladder is finite
+
+  function columnE (tips) {
+    if (!(tips > E_REF_TIPS)) return 1
+    var e = Math.pow(tips / E_REF_TIPS, E_EXP)
+    return e > E_CAP ? E_CAP : e
+  }
+
+  // Enzymes × structure, as one number. Exported so the HUD and economy1's runway arithmetic read
+  // the same E the tick does rather than re-deriving a second one that agrees only today.
+  function enzymeStructure (state) {
+    var s = state || S()
+    var ladder = num(s.mult.enzymeMult) * num(s.mult.structureMult)
+    var floorE = columnE(s.a1.tips)
+    return ladder > floorE ? ladder : floorE
+  }
+
   // 1.875 g/s of budget per tip (S1). One tip on leaf is 3.000 g of litter, 1.500 g of biomass and
-  // 0.480 g of sugar per second — the button face is the first of those and it is exact.
+  // 0.480 g of sugar per second — the button face is the first of those and it is exact, because
+  // `E_COLUMN` opens at exactly 1.00 and the tip that prints it is the first one bought.
   function throughputPerSec (state) {
     var s = state || S()
     if (s.act !== 1) return 0
     var v = A().TIP_THROUGHPUT * s.a1.tips *
-      num(s.mult.enzymeMult) * num(s.mult.prestigeGrowth) *
-      num(s.mult.structureMult) * num(s.mult.patchMult) *
+      enzymeStructure(s) * num(s.mult.prestigeGrowth) *
+      num(s.mult.patchMult) *
       moistureMult(s) * tempMult(s)
     if (s.a1.claimInFlight) v *= A().CLAIM_THROUGHPUT
     return v > 0 ? v : 0
@@ -797,6 +844,15 @@
   // reproduce. `mult` is the aggregate of the multiplier ladder the table's own rows say the
   // reference player is holding at that minute: nothing at 1 and 5; the second enzyme tier by 15;
   // that plus Rhizomorph Cords and the second patch by 30. `litter` is the table's g/s column.
+  //
+  // The rows are asserted through the E supersession rather than against their printed g/s, because
+  // `08` states E three times and two of the three are superseded. §7's table and §4.1's
+  // affordability table both assume the ladder alone; §0.3 S2 states the fit, `E ∝ n^0.50`, and the
+  // fit is the one `tipCost`'s shipped exponent was solved against and the only one that satisfies
+  // D14 — measured, the ladder alone gives a 160-minute Act I against a 95–125 minute requirement.
+  // So each row is required to reproduce its published litter *times the ratio the supersession
+  // predicts, exactly*. Everything else in the chain — TIP_THROUGHPUT, the tip count, the seasonal
+  // envelope, leaf's k — is still pinned to the digit, and any drift in any of them still fails.
   var REF = [
     { min: 1,  tips: 2,  season: AUTUMN, env: 1.00, mult: 1.00, litter: 6 },
     { min: 5,  tips: 17, season: WINTER, env: 0.55, mult: 1.00, litter: 28 },
@@ -925,7 +981,7 @@
       // The tap is not vestigial until t ≈ 100 s (window W1): tapping must beat waiting at 1 tip.
       ok(1.70 * 1.0 > 1.50, 'W1: the tap stopped mattering before the third tip')
 
-      // ── the throughput chain against 08 §7 ───────────────────────────────
+      // ── the throughput chain against 08 §7, through the E supersession ───
       for (i = 0; i < REF.length; i++) {
         var row = REF[i]
         cold(4)
@@ -935,9 +991,31 @@
         s.mult.enzymeMult = row.mult
         s.a1.moisture = moistureFor(row.season, row.env)
         var litter = throughputPerSec() * DECOMP.leaf.k
-        ok(Math.abs(litter - row.litter) / row.litter <= 0.15,
-          '08 §7 minute ' + row.min + ': litter ' + litter.toFixed(1) + ' g/s vs ' + row.litter)
+        // What §7 printed, times the ratio S2's fit puts on that row's tip count. At minute 1 the
+        // fit does not bind at all (two tips is below its E = 1.00 anchor) and the row is asserted
+        // exactly as published, which is the check that the opening beat is untouched.
+        var want = row.litter * Math.max(row.mult, columnE(row.tips)) / row.mult
+        ok(Math.abs(litter - want) / want <= 0.15,
+          '08 §7 minute ' + row.min + ': litter ' + litter.toFixed(1) + ' g/s vs ' + want.toFixed(1))
       }
+      // The supersession is one factor in one place and it is bounded on both ends.
+      near(columnE(0), 1, 0, 'the E column does not open at 1.00')
+      near(columnE(E_REF_TIPS), 1, 1e-12, 'the E column does not pass through S2\'s anchor')
+      near(columnE(255), 6.04, 0.01, 'the E column misses S2\'s fit at the handoff tip count')
+      near(columnE(4000), E_CAP, 0, 'the E column is not capped')
+      var pe = 0
+      for (g = 0; g <= T().NUM.INT_MAX.tips; g++) {
+        ok(columnE(g) >= pe, 'the E column is not monotone at tip ' + g)
+        pe = columnE(g)
+      }
+      // And it is a floor, not a factor: a ladder that overtakes it takes the slack back rather
+      // than multiplying by it, which is what keeps a future adaptation tier from paying twice.
+      cold(4)
+      s = S()
+      s.a1.tips = 120
+      near(enzymeStructure(s), columnE(120), 1e-12, 'the floor did not carry a bare ladder')
+      s.mult.structureMult = 100
+      near(enzymeStructure(s), 100, 1e-12, 'the floor did not stand down for a bigger ladder')
 
       // ── decomposition: conservation, yields, and the k mechanic ──────────
       cold(5)
@@ -969,7 +1047,8 @@
       s.a1.sub.stump = 1e6
       s.a1.consumptionOrder = ['stump'].concat(TYPES)
       var wood = stepDecomposition(1.0)
-      near(litterOf(), 1.875 * 10 * DECOMP.stump.k, 1e-6, 'the stump throughput weight is wrong')
+      near(litterOf(), 1.875 * 10 * columnE(10) * DECOMP.stump.k, 1e-6,
+        'the stump throughput weight is wrong')
       ok(wood / litterOf() > 1.0, 'stumps do not out-yield leaf per gram')
 
       // ── the tap, and the reason mashing is not a strategy ───────────────
@@ -1373,6 +1452,7 @@
     feedstockReserve: feedstockReserve,
     patchSupplyMult: patchSupplyMult,
     patchCapMult: patchCapMult,
+    enzymeStructure: enzymeStructure,
     claimProgress: claimProgress,
     reveals: reveals,
     seasonName: seasonName,

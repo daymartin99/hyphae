@@ -895,7 +895,15 @@
 
   // ── II-A Awakening ─────────────────────────────────────────────────────────
 
-  E('chemotaxis', 'Chemotaxis', 2, '400 Σ', { sig: 400 },
+  // Σ is hard-clamped at Sc (BIBLE §2.3), so an Act II price above the pool is not expensive, it is
+  // impossible — no amount of waiting produces it. Sc = 260·(0.60+Σℓ)^0.85 and the act opens on one
+  // claimed stand, whose live interface tops out near 0.79 once it is fully colonised: a ceiling of
+  // 344 Σ. `chemotaxis` is what opens the map, so nothing else can raise Σℓ until it is bought, and
+  // 04's 400 Σ was therefore a permanent deadlock — measured, the pool plateaued at 343.3 Σ and the
+  // act stood still for the whole of a 700-minute run with the card on screen the entire time.
+  // 300 Σ is 0.87 of that ceiling: payable a few minutes in, once the first stand is most of the
+  // way alive, and not before.
+  E('chemotaxis', 'Chemotaxis', 2, '300 Σ', { sig: 300 },
     function (s) { return s.act === 2 },
     function () { /* opens FOREST: the 61-hex map, STANDS, and ADVANCE */ },
     'Sense the gradient. Go up it.',
@@ -1140,7 +1148,8 @@
     'Wet the ground ahead of it. (Fire control)',
     ['rulechange'])
 
-  E('deep_substrate_hyphae', 'Deep Substrate Hyphae', 2, '900 Ψ + 900,000 Σ', { psi: 900, sig: 900000 },
+  // 900,000 Σ was above the Sc ceiling described at II-E below; 440,000 sits under it.
+  E('deep_substrate_hyphae', 'Deep Substrate Hyphae', 2, '900 Ψ + 440,000 Σ', { psi: 900, sig: 440000 },
     function (s) { return fc(s) >= 0.65 },
     function (s) { mul(s.mult, 'yieldMult', 1.85); set(s.mult, 'ripeT', T().A2.RIPE_T_DEEP) },
     'There is older wood underneath, and nobody is using it. (+85% yield, +litter)',
@@ -1168,7 +1177,16 @@
 
   // ── II-E The End of the Forest ─────────────────────────────────────────────
 
-  E('ballistospory', 'Ballistospory', 2, '1,100 Ψ + 1.2e6 Σ', { psi: 1100, sig: 1.2e6 },
+  // THE Σ CEILING. Signal is hard-clamped at Sc (BIBLE §2.3) and Sc = 260·(0.60+Σℓ)^0.85·
+  // (1+dVes)^1.85·capMult. Σℓ is the live interface of sixty-one stands and it peaks near 45, so a
+  // bare pool tops out around 7.3e3 Σ and a well-differentiated one — the reference player reaches
+  // dVes 13–19 with Vesicular Storage's ×1.45 — peaks at a measured 5.55e5–5.77e5 Σ. 04's 9.0e5 and 1.2e6 Σ are above
+  // that ceiling, which does not make them expensive, it makes them impossible: the pool cannot
+  // physically hold the price at any allocation of D, so the card greys forever. Measured, both sat
+  // unbought through 300 minutes of Act II while every other leg of their price was long since
+  // covered. They are repriced under the ceiling, keeping their order: Deep Substrate first, then
+  // Ballistospory, then the exit.
+  E('ballistospory', 'Ballistospory', 2, '1,100 Ψ + 4.8e5 Σ', { psi: 1100, sig: 4.8e5 },
     function (s) { return fc(s) >= 0.85 },
     function (s) { mul(s.mult, 'sporeMult', 2.80); mul(s.mult, 'matSpeed', 3.40) },
     'Fire them. Do not wait for wind. (Everything, faster)',
@@ -1183,15 +1201,65 @@
     ['failsafe', 'rulechange'],
     { pinned: true })
 
-  E('seed_bank', 'Seed Bank', 2, '1,000 Ψ + 9.99e10 g',
-    { psi: 1000, g: a2g(3.0e11) },
-    function (s) { return fc(s) >= 0.90 },
+  // Moved off fc ≥ 0.90 and off 1,000 Ψ, because both put it behind the thing it is a prerequisite
+  // for. The six non-pinned slots are already full of the fc ≥ 0.85 wave by 0.90, so it entered the
+  // reveal queue and stayed there; and 1,000 Ψ is unaffordable where Insight income has fallen with
+  // the Signal rate that feeds it. Measured, it was not bought until 63 minutes after the exit was
+  // already on screen, and until then the spore stock the exit asks for only decayed. fc ≥ 0.75 is
+  // after the Signal peak and after the necrotrophic turn — the point at which the sentence on the
+  // card is true — and it gets the entry a slot while there is still one to have.
+  E('seed_bank', 'Seed Bank', 2, '450 Ψ + 9.99e10 g',
+    { psi: 450, g: a2g(3.0e11) },
+    function (s) { return fc(s) >= 0.75 },
     function () { /* spore decay off; biomass → spores on demand at SPORE_DIVISOR */ },
     'Nothing you make now is for you. (Biomass to spores)',
     ['rulechange', 'verb'])
 
-  E('ascospore_discharge', 'Ascospore Discharge', 2, '1.6e6 Σ + 1,400 Ψ + 5.33e11 g + 4.0e8 ◦',
-    { sig: 1.6e6, psi: 1400, g: a2g(1.6e12), spore: 4.0e8 },
+  // THE ACT BREAK, PRICED AGAINST THE ACT THAT PAYS IT.
+  //
+  // The trigger is forest consumption ≥ 0.97, and by BIBLE §8 D22 the Signal curve is *already
+  // falling* when it fires — the interface term Σℓ is the standing forest, and the forest has been
+  // eaten. That decline is correct and is untouched here. What was wrong was the relationship
+  // between the decline and the price.
+  //
+  // 04 asked 1.6e6 Σ. Σ is hard-clamped at Sc (BIBLE §2.3) and Sc = 260·(0.60+Σℓ)^0.85·
+  // (1+dVes)^1.85·capMult, so at the moment the card appears — Σℓ down to about 9.7 from a peak
+  // near 45 — the reference player's pool ceiling is 4.6e5 and their holding is 3.1e4. 1.6e6 is not
+  // a long save against that, it is a wall: the only lever is Vesicle, and BIBLE §9.4 makes
+  // time-to-fill scale as (1+dVes)^1.85, the *same* exponent that makes the price holdable. Every
+  // point that brings the gate into reach pushes it the same distance away again. Measured, the
+  // card came up at minute 361 against 98,830 Σ and wanted roughly fourteen more hours.
+  //
+  // Two changes, and they are the same change: the gate is repriced to what the act actually
+  // produces, and its weight is moved off the one currency that is collapsing while the player
+  // saves.
+  //
+  //   Σ 70,000   — what the decline itself pays out inside the target window, and about a sixth of
+  //                the pool ceiling standing when the card appears. That headroom is the whole
+  //                point: the price is holdable from the first second the card is visible and it
+  //                never recedes as the ceiling falls, so the wait is a fill and not a capacity
+  //                purchase. Measured over two seeds, 31,141 Σ and 253,500 Σ held at reveal, and
+  //                the leg cleared at +23 and +0 minutes; it is 150 seconds of the rate those runs
+  //                peaked at — the act's height, spent on leaving.
+  //   Ψ 350      — Insight is BIBLE P2's *waiting*, it is earned only from saturation, and nothing
+  //                about the collapse takes it away. It is the leg that makes the gate a wait
+  //                rather than a formality, and it lands within a minute of the Σ leg. 04's 1,400
+  //                was 45 minutes of end-of-act Insight income stacked on top of Photoreception's
+  //                1,300 and Seed Bank's 1,000, which is how the endgame became an hour of staring.
+  //   g 4.66e11  — biomass keeps accruing through the decline. 5.33e11 sat exactly on the level the
+  //                bank crossed and fell back under as other things were bought; 4.66e11 clears
+  //                before the card appears and stays clear.
+  //   ◦ 2.0e8    — held 2.82e8 and 2.56e8 at reveal on the two seeds, and *falling*: past fc 0.90
+  //                there is no canopy left to fruit in and the only source is Seed Bank, repriced
+  //                above so it can arrive in time to stop the decay. 4.0e8 was never reached in
+  //                300 minutes. This leg is deliberately the slackest of the four — it is the only
+  //                one that can go backwards while the player saves, so it is the one that must
+  //                never be the reason the gate is unpayable.
+  //
+  // A gate is allowed to be the largest number in the act. It is not allowed to be a number the act
+  // does not produce.
+  E('ascospore_discharge', 'Ascospore Discharge', 2, '70,000 Σ + 350 Ψ + 4.66e11 g + 2.0e8 ◦',
+    { sig: 70000, psi: 350, g: a2g(1.4e12), spore: 2.0e8 },
     function (s) { return fc(s) >= T().A2.ASCOSPORE_FC },
     function (s) {
       if (HY.forest && HY.forest.ascospore) { HY.forest.ascospore(); return }
@@ -1407,8 +1475,27 @@
 
   // ── III-G Escape and the first bands ───────────────────────────────────────
 
-  E('escape_velocity', 'Escape Velocity', 3, '9.0e17 Χ + 620,000 Σ + 180 Ψ',
-    { carbon: 9.0e17, sig: 620000, psi: 180 },
+  // 03 §4 prices this at 9.0e17 Χ + 620,000 Σ + 180 Ψ. Two of those three legs are priced in
+  // currencies Phase A cannot deliver at the moment the gate is open, and they fail in opposite
+  // directions, which is why no run had ever escaped.
+  //
+  // Σ: Act III Signal is Λ ∝ Σ_b n_b^0.18, fed by harvest. `planetConsumed ≥ 0.97` means there is
+  // no carbon left to harvest, so the fleet starves, Λ collapses and Sc collapses with it. Measured,
+  // the run crossed pc = 0.99 holding 108,657 Σ against a peak capacity of 298,080 Σ and eight
+  // minutes later held a capacity of 45,106 Σ: 620,000 was not merely unaffordable, it was
+  // unholdable, permanently, from the instant the trigger fired. 80,000 Σ is the largest number the
+  // measured Phase A reaches while the gate is live, and it is still 3.3× the ladder's last REACH.
+  //
+  // Ψ: Insight accrues only while the Signal pool is saturated (`02` §5, carried into Act III by
+  // `03` §12.2), and Phase A is ninety minutes of uninterrupted fleet growth, so Sc rises faster
+  // than S can chase it and the pool never saturates. Measured, Insight sat at exactly 15.27 Ψ for
+  // seventy-five consecutive minutes — an income of zero — and only began accruing at t = 26,453,
+  // after the fleet had collapsed, reaching 190 Ψ at t = 27,894 by which time Σ had fallen to
+  // 45,106. The Σ leg and the Ψ leg are never payable in the same second, so ESCAPE is priced in
+  // the two currencies Phase A does produce. Insight is Act III's currency from the void onward,
+  // where the pool does saturate and the three endings are priced in it.
+  E('escape_velocity', 'Escape Velocity', 3, '9.0e17 Χ + 80,000 Σ',
+    { carbon: 9.0e17, sig: 80000 },
     function (s) { return planetConsumed(s) >= T().A3.ESCAPE_PC },
     function (s) {
       if (HY.bloom && HY.bloom.escape) { HY.bloom.escape(); return }
@@ -1677,9 +1764,13 @@
     ['ending', 'irreversible'],
     { excludes: othersThan('cede') })
 
-  // A real ending at END_MULT 0.35, not a failure screen. Twenty minutes in the void is the price.
+  // A real ending at END_MULT 0.35, not a failure screen. Twenty minutes in the void is the price —
+  // or a stranded fleet, which `08` §5.3 L5 says must always have this door (see bloom.stranded).
   E('encyst', 'Encyst', 3, '— (a decision)', {},
-    function (s) { return inVoid(s) && (s.t - flagVal(s, 'void_t')) >= T().A3.ENCYST_S },
+    function (s) {
+      if (HY.bloom && HY.bloom.stranded && HY.bloom.stranded(s)) return true
+      return inVoid(s) && (s.t - flagVal(s, 'void_t')) >= T().A3.ENCYST_S
+    },
     function (s) { s.stats.endingsReached += 1; s.phase = 'dismantle' },
     'Stop here. Keep what you have.',
     ['ending', 'failsafe', 'irreversible'],

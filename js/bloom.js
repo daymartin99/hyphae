@@ -193,6 +193,22 @@
   var SITEQ_EXP = 0.35             // §7.7: siteQ = e^this
   var WILD_EST = 0.60              // §7.7: pEst × (1 − this·wildShare)
   var PEST_MIN = 0.02, PEST_MAX = 0.98
+  // §6.3 grows exploration from wherever a band already is, and §7.3 makes harvest exactly
+  // proportional to it — `A_b = HARV_K · μ_myc · e_b · rich · dep`. A band nobody has ever stood in
+  // has e = 0, so its harvest is exactly zero, so §7.4's deficit is the whole of subsistence and
+  // the arriving party dies at n·SUB_K/(craftMass·0.30) per second. Measured: DISPERSE landed
+  // 5.5e11 craft in band 1 and thirty-five seconds later there were 9.34e6 of them, then none; the
+  // void never held more than one band in a seven-hour run, in every run, because the first
+  // instant of every colonisation divides the act's own economy by nothing.
+  //
+  // Landing is not the same as arriving unannounced. `arrivalPEst` (§7.7) already models whether a
+  // craft found a workable site — that is what `siteQ` is — so a craft that lands has, by
+  // construction, found one. This is the exploration that fact represents, and it is the boundary
+  // condition §6.3 assumes and never states. A/S = 66.7·e at baseline, so break-even is e = 0.0150;
+  // at 0.060 a landing party runs A/S = 4.0, which puts n† at 3.0·NCAP and n* at 1.0·NCAP — it can
+  // feed itself and compound, and it still has 94% of the band left to learn the slow way.
+  var LANDING_E = 0.060
+
   var RICH_MIN = 0.55, RICH_SPAN = 1.05    // §6.2: rich ∈ [0.55, 1.60]
   var RICH_KNOWN_E = 0.20          // §6.2: rich is unknown until e ≥ this
   var LAMBDA_REF = 1.0             // §3.3: λ_b = 1 on one planet
@@ -431,6 +447,23 @@
     for (i = 0; i < s.a3.bands.n.length; i++) t += num(s.a3.bands.n[i])
     for (i = 0; i < s.a3.transit.length; i++) t += num(s.a3.transit[i].count)
     return t
+  }
+
+  // Total fleet loss with nothing left to reseed from. Replication, exploration and dispersal are
+  // all proportional to what is already standing, and SETTLE is the only source that is not — so a
+  // run with no craft and no spores can never produce another craft, in either phase, at any price.
+  //
+  // `08` §5.3 L5 promises that this state is answered by ENCYST "at zero cost … a bad ending, not a
+  // dead end", but `03` §20.4 gates ENCYST on twenty minutes *in the void*, and the state is
+  // reachable in Phase A, before `void_t` is ever stamped. Measured, that is exactly where the
+  // reference player landed: fleet zero at planetConsumed 0.206 in the canopy, with the board
+  // frozen for the remaining seven hours of the run and no ending of any kind offered. `08` wins on
+  // precedence, so being stranded is a second, independent trigger for the concession.
+  function stranded (state) {
+    var s = state || S()
+    if (!s || s.act !== 3) return false
+    // Act III opens with a full spore bank and an empty board; that is the opening, not the end.
+    return totalCraft(s) <= 0 && num(s.res.spores) <= 0
   }
 
   function inTransit (state) {
@@ -950,6 +983,21 @@
   // §7.6. Both repDemand and available carbon scale with n, so the binding constraint is a ratio,
   // not a level: at low occupancy the rate binds, at n → n† the carbon binds and replication
   // stops on its own. During a REGENOME it is halted network-wide (§9.4) and harvest continues.
+  //
+  // The vertex scales the rate ceiling as well as the carbon budget, because at these constants the
+  // budget alone is not a control. §7.6 puts the crossover — where carbon rather than rate binds —
+  // at aRep ≈ 0.33, and that is not reachable from the published numbers: per-craft surplus at n*
+  // is (√(A/S) − 1)·S = 4.30e6 g/s against a craft mass of 2.40e6 g, so one craft's income buys
+  // 1.79 craft per second against a REP_K ceiling of 0.0157/s and the true crossover is aRep =
+  // 0.0087. Below one per cent the vertex did nothing; above it every setting was the same setting
+  // and the fleet crossed from n* to n† in 202 s. Measured, that made the triangle uncontrollable —
+  // the reference player pinned REPLICATE at 0.02 from minute 16, the fleet still grew sixteenfold
+  // to n†, surplus fell to zero, and Phase A banked 2.87e17 Χ against ESCAPE's 9.0e17 Χ with the
+  // rest of the planet going into subsistence. A vertex is a fraction of a maximum, so it is
+  // applied to the maximum. REPLICATE at 0.70 is 70% of REP_K and still crosses n* to n† in 289 s,
+  // which keeps BLOOM COLLAPSE (§10.2) five minutes away from anyone who wants it; REPLICATE at
+  // 0.02 is a fleet that holds its size. The carbon term is untouched and is still the term that
+  // stops replication dead at n†, where surplus is zero.
   function stepReplication (dt, s, sur, total, aRep) {
     if (rewriting(s) || !(aRep > 0)) return
     var m = craftMass(s)
@@ -959,7 +1007,7 @@
       if (!live(s, b) || !(sur[b] > 0)) continue
       occ = occupancy(s, b)
       mod = inCanopy(s) ? biomeRepMod(s, b) : 1
-      demand = num(field(s).n[b]) * A().REP_K * muSpo(s) * mult(s, 'replMult') * mod *
+      demand = num(field(s).n[b]) * A().REP_K * aRep * muSpo(s) * mult(s, 'replMult') * mod *
         (1 - occ / (occ + REP_CROWD_DAMP))
       budget = aRep * total * (sur[b] / total)
       act = Math.min(demand, budget / m)
@@ -977,6 +1025,12 @@
   // §7.7. Craft in transit produce nothing and die at TR_HAZ: DISPERSE is the vertex that costs
   // you now to be able to afford later, and PROP_K makes it cost 1.8 craft-masses of propellant
   // for every craft that leaves.
+  //
+  // MAXLAUNCH is scaled by the vertex for the same reason REP_K is: a band's income buys 0.995
+  // launches per craft per second against a ceiling of 0.020, so the carbon term crosses over at
+  // aDis = 0.020 and above that every DISPERSE setting empties a band at exactly the same rate.
+  // Scaled, the vertex reads as what the triangle says it is — the fraction of the fleet leaving —
+  // and DISPERSE at 0.20 clears a band in 250 s against transit legs of 90 to 2,443 s.
   function stepDispersal (dt, s, sur, total, aDis) {
     if (inCanopy(s) || !(aDis > 0)) return
     var a = A(), m = craftMass(s)
@@ -985,15 +1039,42 @@
     for (b = 0; b < n - 1; b++) {
       if (!(sur[b] > 0) || !(num(s.a3.bands.n[b]) > 0)) continue
       demand = aDis * total * (sur[b] / total) / (m * a.PROP_K)
-      launch = Math.min(demand, num(s.a3.bands.n[b]) * a.MAXLAUNCH)
+      launch = Math.min(demand, num(s.a3.bands.n[b]) * a.MAXLAUNCH * aDis)
       if (!(launch > 0)) continue
       spend = Math.min(launch * dt * m * a.PROP_K, heldCarbon(s))
       launch = spend / (m * a.PROP_K * dt)
       if (!(launch > 0)) continue
       addCarbon(s, -spend)
       addN(s, b, -launch * dt)
-      s.a3.transit.push({ from: b, to: b + 1, count: launch * dt, tRem: legTau(s, b) })
+      pushTransit(s, b, launch * dt, legTau(s, b))
     }
+  }
+
+  // One launch record per band per tick is twenty records a second per leg, and a leg is up to
+  // 1,340 s long (`TAU_GROWTH^10`), so a fully-dispersing void carries tens of thousands of live
+  // records. Measured, the void reached 30,979 of them: `a3.transit` serialised to 2.16 MB of a
+  // 2.18 MB save — the whole rest of Act III is 20 KB — which is past what localStorage will take,
+  // and iterating it twenty times a second is most of the act's frame cost.
+  //
+  // Launches on the same leg in the same second are indistinguishable to everything downstream:
+  // the readout is a total in transit, attrition is a rate applied uniformly, and arrival is a
+  // count times pEst. So they are one record, and the quantum is one second against a shortest leg
+  // of ninety. Nothing the player can see moves.
+  var TRANSIT_QUANTUM_S = 1.0
+
+  function pushTransit (s, from, count, tRem) {
+    var list = s.a3.transit, i
+    for (i = list.length - 1; i >= 0; i--) {
+      if (list[i].from !== from) continue
+      // The list is append-ordered, so the newest record for this leg is the only merge candidate;
+      // anything older has already drifted more than a quantum away.
+      if (tRem - num(list[i].tRem) < TRANSIT_QUANTUM_S) {
+        list[i].count = num(list[i].count) + count
+        return
+      }
+      break
+    }
+    list.push({ from: from, to: from + 1, count: count, tRem: tRem })
   }
 
   // §7.7's attrition and arrival. The outer legs are where Dormancy stops being a tax and starts
@@ -1019,6 +1100,8 @@
         land = c.count * arrivalPEst(s, c.to)
         addN(s, c.to, land)
         attribute(CAUSE.ESTAB, c.count - land, s)
+        // The site the survivors landed on is a site they surveyed to land on (see LANDING_E).
+        if (land > 0 && num(s.a3.bands.e[c.to]) < LANDING_E) s.a3.bands.e[c.to] = LANDING_E
         stat(s, 'targetsReached', 1)
       }
       list.splice(i, 1)
@@ -1104,12 +1187,26 @@
   // The ^0.18 exponent is very flat on purpose: a band that is 1e11 times richer is 42 times
   // smarter. You get vastly richer without getting proportionally cleverer, so expansion is an
   // economic decision and the only cognitive lever is dLag.
+  //
+  // NSIG is a reference *count*, so in the canopy it is counted in canopy craft — the last constant
+  // reconciliation 2 had left in void units, and the one that decided whether Phase A finishes.
+  // Λ is what Act III's Sc and Sr are both built on (§12.1), so a Λ measured against a craft a
+  // thousand times too large made Phase A's own published prices unpayable at every allocation of
+  // D: measured, Sc peaked at 4.57e5 Σ against a seventh REACH of 4.38e5 Σ and an ESCAPE of 6.20e5
+  // Σ, and — because Λ loses a whole term each time a biome empties — the ceiling then receded
+  // faster than 214 Σ/s could fill it. The run reached 2.65e5 Σ at minute 75, watched Sc fall
+  // through it, never opened Permafrost (1.70e18 g, 42% of the planet), stalled at pc 0.578 against
+  // an ESCAPE_PC of 0.97, and starved to zero craft at minute 107 with 1.73e18 Χ banked and nothing
+  // left that could spend it. In canopy units Λ is 14.7 at a whole-planet n* rather than 4.25,
+  // which is 2.66× on both Sc and Sr, and §3.3's "identical equations" becomes true of the
+  // cognition the equations are read through as well as of the equations.
   function Lambda (state) {
     var s = state || S()
     if (!s || s.act !== 3) return 0
     var a = A(), n = count(s), b, acc = 0, q
+    var ref = a.NSIG * (inCanopy(s) ? CANOPY_SCALE : 1)
     for (b = 0; b < n; b++) {
-      q = num(field(s).n[b]) / a.NSIG
+      q = num(field(s).n[b]) / ref
       if (!(q > 0)) continue
       acc += lambda(s, b) * Math.pow(q, a.LAMBDA_EXP)
     }
@@ -1726,6 +1823,7 @@
     planetConsumed: planetConsumed,
     biomeDepleted: biomeDepleted,
     totalCraft: totalCraft,
+    stranded: stranded,
     inTransit: inTransit,
     wildIn: wildIn,
     newCraftIn: function (b) { return newCraft && newCraft[b] ? newCraft[b] : 0 },

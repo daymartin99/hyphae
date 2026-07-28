@@ -171,9 +171,9 @@
   // of the failsafe. BIBLE §5.5 names it the Act II anti-softlock; §5.3 states its guarantee as
   // `Sr ≥ 0.40·SrPeak`. But Signal is hard-clamped at Sc (§2.3), and Sc carries the same collapsing
   // bracket, so a floor applied to the rate alone cannot make a pool larger — measured, a run that
-  // reached fc = 1.000 held Sc = 9.17e4 against the exit's 1.6e6 Σ price and could not leave the act
-  // at any allocation of D. Flooring the shared bracket floors both, and because the bracket is the
-  // term that cancels, the §9.4 time-to-fill identity comes through untouched.
+  // reached fc = 1.000 held Sc = 9.17e4 against an exit gate it could not pay at any allocation of
+  // D. Flooring the shared bracket floors both, and because the bracket is the term that cancels,
+  // the §9.4 time-to-fill identity comes through untouched.
   function ifaceRaw (s) {
     var A = T().A2
     return Math.pow(A.IFACE_BASE + Math.max(0, interfaceSum(s)), A.IFACE_EXP)
@@ -923,9 +923,11 @@
       stub.conn = 1
 
       // ── the Act II anti-softlock (BIBLE §5.5) ─────────────────────────────
-      // The failsafe exists to make an 1.6e6 Σ exit gate payable after the forest that produced
-      // the Signal has been eaten. Because the pool is hard-clamped at Sc, that is a claim about
-      // CAPACITY, not about rate: assert the pool can actually hold the price.
+      // The failsafe exists to make the ASCOSPORE exit payable after the forest that produced the
+      // Signal has been eaten. Because the pool is hard-clamped at Sc, that is a claim about
+      // CAPACITY, not about rate: assert the pool can actually hold the price. The price is read
+      // out of the catalog rather than restated here: it is projects.js's number, it has moved
+      // once already, and a second copy of it in this file would be the first thing to go stale.
       s.cog.dVes = 0; s.cog.dCond = 0; s.mult.capMult = 1; s.mult.signalMult = 1
       delete s.proj.flags.photoreception
       stub.iface = 58                                  // a forest at its Signal peak
@@ -936,7 +938,7 @@
       ok(bare < peakCap * 0.05, 'the collapse this failsafe answers for does not happen')
       s.proj.flags.photoreception = 1
       ok(Sc(s) > bare * 10, 'Photoreception did not raise the CAPACITY, only the rate — ' +
-        'Signal is clamped at Sc, so a rate-only floor cannot pay a 1.6e6 Σ gate')
+        'Signal is clamped at Sc, so a rate-only floor cannot pay the exit at all')
       near(Sr(s), A.PHOTO_FLOOR * s.cog.SrPeak, s.cog.SrPeak * 1e-9,
         'the floor is not exactly §5.3\'s 0.40·SrPeak')
       // The floored bracket must still cancel, or §9.4 is broken by the failsafe itself.
@@ -950,10 +952,16 @@
           'the Photoreception floor broke the §9.4 identity, case ' + i)
       }
       // With the floor armed, the exit price is reachable inside the D the act actually grants.
-      s.cog.dVes = 24; s.cog.dCond = 0; s.mult.capMult = 1.45; s.mult.signalMult = 1
+      // Six points of Vesicle and Vesicular Storage's ×1.45 is a book a player has well before
+      // fc 0.90 — the reference run reaches fifteen. The old assertion needed twenty-four, which
+      // was the shape of the fault rather than a test of the failsafe.
+      s.cog.dVes = 6; s.cog.dCond = 0; s.mult.capMult = 1.45; s.mult.signalMult = 1
       stub.conn = 1
-      ok(Sc(s) >= 1.6e6, 'ASCOSPORE remains unpayable at 24 Vesicle with the failsafe armed: ' +
-        'Sc = ' + Sc(s).toExponential(3))
+      var exit = HY.projects && HY.projects.priceOf ? HY.projects.priceOf('ascospore_discharge') : null
+      var exitSig = exit ? num(exit.sig) : 0
+      ok(exitSig > 0, 'the ASCOSPORE Σ leg did not price against this state')
+      ok(Sc(s) >= exitSig, 'ASCOSPORE remains unpayable at 6 Vesicle with the failsafe armed: ' +
+        'Sc = ' + Sc(s).toExponential(3) + ' against ' + exitSig.toExponential(3) + ' Σ')
       delete s.proj.flags.photoreception
       s.cog.SrPeak = 0
       s.cog.dVes = 0; s.cog.dCond = 0; s.mult.capMult = 1; s.mult.signalMult = 1
