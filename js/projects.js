@@ -1447,66 +1447,141 @@
   // is not expensive, it is impossible, which is the same fault this file already documents at
   // `escape_velocity` and `ascospore_discharge`.
   //
-  // So the three Ψ-priced entries of the canopy tier are repriced in Χ, which is the one thing
-  // Phase A produces in quantity: measured 5.2e14 at the act break, 1.1e16 at +30 min, 8.6e17 at
-  // +50, 2.9e18 at the escape gate. Carbon-time is Phase A's own clock, and the three rungs are
-  // spaced along it so they interleave with the Σ ladder rather than all landing at once.
+  // So the Ψ-priced entries of the canopy tier are repriced in Χ, which is the one thing Phase A
+  // produces in quantity: measured 1.0e13 at the act break, 1.0e15 at +12 min, 2.4e16 at +20,
+  // 4.0e17 at +26, 1.7e18 at the escape gate. Carbon-time is Phase A's own clock.
+  //
+  // THE TIER IS SPREAD ALONG THAT CLOCK BECAUSE THE PHASE IS THREE TIMES ITS DESIGNED LENGTH.
+  //
+  // `03` §3 budgets Phase A at 22 minutes and tier F holds eight entries, which is a rung every
+  // three minutes on the phase the tier was written for. Measured on the built game over three
+  // seeds and all three ending paths, Phase A runs 72–74 minutes: `planetConsumed` crosses 0.22 at
+  // +30 and then decelerates, because 72% of BIOME_X0 sits in biomes 5 and 7 and both carry a
+  // penalty. Eight entries keyed to biome counts all land inside the first 30 minutes — every biome
+  // is reached by then — and the last 26 minutes had *no entry on the board at all*, on every seed.
+  // The duration belongs to bloom.js (harvest against BIOME_X0) and is not this file's to shorten
+  // directly; what is this file's is that nothing was keyed to the second half of the phase.
+  //
+  // So the tier is re-keyed onto two clocks rather than one. The verbs and the biome unlocks keep
+  // their causal triggers — they gate REACH and they must arrive before the thing they open — and
+  // the three that have no causal position are moved onto `planetConsumed`, which is the phase's
+  // own progress bar and therefore compresses with it if bloom.js ever brings the phase back to 22
+  // minutes. `endolith` and `the_ediacaran_silence` come forward from the void for the same reason:
+  // both are flavour grants of a single D point with no system behind them, so they are the only
+  // two entries in the act that can be honestly moved, and the tail of Phase A is where the act has
+  // nothing else to put on the board.
+  //
+  // The two penalty-lifters are also the accelerator, and they are priced to arrive early for that
+  // reason: Permafrost is 42% of the planet's carbon at harvMod 0.72 and Wetland is 30% of it at
+  // repMod 0.55. Bought at +14 and +23 instead of +46 and +36, they shorten the tail they are
+  // spread across, which is the only lever this file has on the duration itself, and measured it
+  // moves: Phase A comes in at 62–65 minutes across nine runs against the 72–74 it ran before.
+  //
+  // AND THE TIER IS PRICED IN Σ, NOT Χ. Carbon in Phase A is not a balance the player spends from,
+  // it is the fleet's food: replication draws on the same stock a project would. A first draft of
+  // this pass put the whole tier on the carbon clock
+  // and measured the phase getting *longer* — 91 minutes against 72 — because every rung bought was
+  // a rung of replication not bought, and the escape gate's own 9.0e17 Χ was still standing at +91
+  // with 8.99e17 held. Signal is the opposite: it is hard-clamped at Sc, and past the eighth REACH
+  // the pool sits at its cap — a measured 7.4e4 Σ, flat, for forty consecutive minutes with the
+  // income above it discarded. Spending Σ in the tail of Phase A costs the phase nothing at all,
+  // which is exactly what a paced ladder wants underneath it.
   E('germ_tube', 'Germ Tube', 3, '200 Σ', { sig: 200 },
-    function (s) { return fleet(s) >= T().A3.GERM_TUBE_N },
+    // 03's `n ≥ 2.0e8` and 04's `X ≥ 4.0e14` are both crossed at +8 minutes, and until then the
+    // Act III board was empty — the two verbs that open the act arrived eight minutes after it did.
+    // They are keyed to the act instead, and priced against what the act break actually hands over:
+    // 500 Σ and 1.0e13 Χ.
+    function (s) { return s.act === 3 && !inVoid(s) },
     function () { /* auto-SETTLE at 1.5 × SETTLE_Q/s. Automation inside a minute, third act running. */ },
     'Grow toward the smell of carbon. (Automates SETTLE)',
     ['automation'])
 
-  E('appressorium', 'Appressorium', 3, '1,400 Σ', { sig: 1400 },
-    function (s) { return s.res.carbon >= T().A3.APPRESSORIUM_X },
+  // The one carbon leg the tier keeps. Σ at the act break is a measured 500–620 and clamped there
+  // until the fleet grows, so a second Σ rung on top of GERM TUBE could not be paid for six minutes
+  // whatever it cost; 1.2e14 Χ is three minutes of the opening carbon curve and it is the smallest
+  // number in the act, so the fleet never feels it.
+  E('appressorium', 'Appressorium', 3, '1.2e14 Χ', { carbon: 1.2e14 },
+    function (s) { return s.act === 3 && !inVoid(s) },
     function () { /* unlocks REACH and the eight-biome list */ },
     'Force an entry. (Unlocks REACH)',
     ['verb', 'panel'])
 
-  E('translocation', 'Translocation', 3, '4,200 Σ', { sig: 4200 },
-    function (s) { return biomesReached(s) >= 2 },
+  E('translocation', 'Translocation', 3, '2,400 Σ', { sig: 2400 },
+    function (s) { return s.act === 3 && !inVoid(s) },
     function () { /* the TRIANGLE opens with two vertices */ },
     'Move it to where it is needed. (Unlocks the triangle)',
     ['panel', 'dial'])
 
-  // The two upper Σ rungs move out to 40,000 and 70,000. Phase A's Signal income at that point is a
-  // measured 5,700 Σ/min and rising, so each is ~7 and ~12 minutes of it: they land at +52 and +72
-  // minutes into the act instead of +50 and +65, which is what puts a rung between the last biome
-  // purchase and the escape gate rather than leaving a 28-minute walk to it.
-  E('osmotic_adjustment', 'Osmotic Adjustment', 3, '26,000 Σ', { sig: 26000 },
-    function (s) { return biomesReached(s) >= 3 },
+  E('osmotic_adjustment', 'Osmotic Adjustment', 3, '5,000 Σ', { sig: 5000 },
+    function (s) { return s.act === 3 && !inVoid(s) },
     function () { /* biome 6 becomes reachable */ },
     'Salt is only a gradient. (Unlocks a biome)',
     ['rulechange'])
 
-  E('antifreeze_glycoprotein', 'Antifreeze Glycoprotein', 3, '200,000 Σ', { sig: 200000 },
-    function (s) { return biomesReached(s) >= 4 },
+  E('antifreeze_glycoprotein', 'Antifreeze Glycoprotein', 3, '9,000 Σ', { sig: 9000 },
+    function (s) { return biomesReached(s) >= 3 },
     function () { /* biomes 2 and 7 lose their penalty */ },
     'Ice grows in shapes you can forbid. (Two biome penalties removed)',
     ['rulechange'])
 
-  E('secondary_metabolites', 'Secondary Metabolites', 3, '2.4e16 Χ', { carbon: 2.4e16 },
-    function (s) { return !!s.a3.biomes.reached[4] },
+  E('secondary_metabolites', 'Secondary Metabolites', 3, '16,000 Σ', { sig: 16000 },
+    function (s) { return biomesReached(s) >= 4 },
     function () { /* biome 4 penalty removed; the ANT axis unlocks early */ },
     'Nothing else here has read your chemistry. (Biome penalty removed)',
     ['rulechange'])
 
-  E('facultative_anaeroby', 'Facultative Anaeroby', 3, '7.0e17 Χ', { carbon: 7.0e17 },
-    function (s) { return !!s.a3.biomes.reached[5] },
+  E('facultative_anaeroby', 'Facultative Anaeroby', 3, '21,000 Σ', { sig: 21000 },
+    function (s) { return biomesReached(s) >= 5 },
     function () { /* biome 5 penalty removed */ },
     'Breathing was always optional. (Biome penalty removed)',
     ['rulechange'])
 
-  // The trigger moves out with the price: at 1.0e18 Χ the card arrived and was payable in the same
-  // second, which is a rung the ladder does not have. The three carbon rungs together are 5.1e17
-  // against the 2.9e18 standing when the escape gate opens — under a fifth of it, because
-  // `escape_velocity` wants 9.0e17 of that same stock and a Phase A that cannot pay its own exit
-  // would be a worse fault than the one being fixed.
-  E('aspergillus_on_the_station', 'Aspergillus on the Station', 3, '4.5e17 Χ', { carbon: 4.5e17 },
-    function (s) { return s.res.carbon >= 3.0e17 },
+  // The three entries with no causal position in the phase. Every biome is reached by +30 and after
+  // that `planetConsumed` is the only quantity in Phase A still moving, so it is what spaces them;
+  // the prices are short saves against a pool that is standing at its cap, because the trigger is
+  // already doing the spacing and a long save on top of it is the 26-minute hole again, one rung
+  // further along.
+  E('aspergillus_on_the_station', 'Aspergillus on the Station', 3, '50,000 Σ', { sig: 50000 },
+    function (s) { return planetConsumed(s) >= 0.22 },
     function (s) { grantD(s, 1) },
     'They swab the station walls every week, and every week there is more. Not a problem yet. (+1 D)',
     ['flavour'])
+
+  E('endolith', 'Endolith', 3, '60,000 Σ', { sig: 60000 },
+    function (s) { return planetConsumed(s) >= 0.40 },
+    function (s) { grantD(s, 1) },
+    'Between the grains of rock, things divide every ten thousand years. Waiting for nothing. (+1 D)',
+    ['flavour'])
+
+  E('the_ediacaran_silence', 'The Ediacaran Silence', 3, '78,000 Σ', { sig: 78000 },
+    function (s) { return planetConsumed(s) >= 0.55 },
+    function (s) { grantD(s, 1) },
+    'Six hundred million years of nothing deciding to move. (+1 D)',
+    ['flavour'])
+
+  // GENOME IS THE TAIL'S ONE SUBSTANTIAL PURCHASE, AND IT IS LIVE HERE.
+  //
+  // `03` §18.2 keys it to the void flag, and on a 22-minute Phase A that is right — the genome is
+  // what you decide on the way out. On the measured 64-minute one it left the last third of the
+  // phase with three flavour grants and the exit in it, and nothing else in the act can honestly be
+  // moved: every other void entry acts on transit, bands, light-lag or strains, and bloom.js makes
+  // all four inert in the canopy (λ is LAMBDA_REF, exploration is binary, there is no transit
+  // because REACH is instantaneous). The genome is the exception. Loci are read by harvest and
+  // replication with no canopy branch at all, the panel is gated on the flag and `act >= 3` rather
+  // than on the phase, and ESCAPE preserves loci by name — so bought here it is live here, live
+  // across the break, and the four free loci make the tail it sits in shorter.
+  //
+  // It is also the right sentence for the place. The planet is four-fifths eaten, there is nothing
+  // left to reach, and the question the card asks is the one the player now has time for.
+  E('genome', 'Genome', 3, '40,000 Σ', { sig: 40000 },
+    function (s) { return planetConsumed(s) >= 0.10 },
+    function (s) {
+      var A = T().A3
+      set(s.a3, 'lociCap', Math.max(num(s.a3.lociCap), A.LOCI_CAP0))
+      set(s.a3, 'lociFree', A.LOCI_FREE0)
+    },
+    'Decide what you are for. (Unlocks the genome, four free loci)',
+    ['panel', 'dial'])
 
   // ── III-G Escape and the first bands ───────────────────────────────────────
 
@@ -1529,9 +1604,16 @@
   // 45,106. The Σ leg and the Ψ leg are never payable in the same second, so ESCAPE is priced in
   // the two currencies Phase A does produce. Insight is Act III's currency from the void onward,
   // where the pool does saturate and the three endings are priced in it.
+  //
+  // THE GATE IS REVEALED BEFORE IT OPENS. `planetConsumed` crosses 0.88 about eleven minutes before
+  // it crosses ESCAPE_PC, and those were eleven of the twenty-six minutes in which Phase A had
+  // nothing on the board at all. The two predicates exist precisely for this: `trigger` says the
+  // door is there and can be saved toward, `also` holds ESCAPE_PC — TUNE's number, unchanged and
+  // still the only thing that opens it. The player watches the last of the planet go with the exit
+  // in front of them, which is the scene `03` §3.4 asks for and the opposite of an empty list.
   E('escape_velocity', 'Escape Velocity', 3, '9.0e17 Χ + 80,000 Σ',
     { carbon: 9.0e17, sig: 80000 },
-    function (s) { return planetConsumed(s) >= T().A3.ESCAPE_PC },
+    function (s) { return planetConsumed(s) >= 0.80 },
     function (s) {
       if (HY.bloom && HY.bloom.escape) { HY.bloom.escape(); return }
       // 96% of the fleet, exactly, never stochastically (BIBLE D26).
@@ -1543,7 +1625,7 @@
     },
     'Leave nothing behind that can decide to stay.',
     ['irreversible', 'removes'],
-    { pinned: true })
+    { pinned: true, also: function (s) { return planetConsumed(s) >= T().A3.ESCAPE_PC } })
 
   // THE VOID IS PAID FOR IN CARBON. INSIGHT BELONGS TO THE ENDINGS.
   //
@@ -1558,13 +1640,24 @@
   //
   // Two facts settle what the ladder should be priced in.
   //
-  //   · Carbon is the one thing the void makes in quantity, monotonically, and never gives back:
-  //     measured 5e23 held before the first cohort disperses, 1e26 at +40 minutes, 1e29 at +60,
-  //     1e31 at +100, 1e32 at +140. Thirty-one geometric rungs at ×1.834, from 2.0e24 to 1.5e32,
-  //     sum to 3.3e32 — two thousandths of the 1.7e35 the run ends holding, so the ladder is free
-  //     of the endings, which are the only things in this game allowed to want carbon by the mole.
-  //     Carbon-time is also the act's own clock: if bloom.js makes the fleet grow faster the whole
-  //     ladder compresses with it, which is the coupling a paced catalog should have.
+  //   · Carbon is the one thing the void makes in quantity, monotonically, and never gives back.
+  //     Re-measured on the built game over three seeds and all three ending paths, from the second
+  //     ESCAPE fires: 1e18–3.5e19 held at +0, 3–4.7e20 at +2 minutes, 1.8–2.6e21 at +4, 0.8–1.2e22
+  //     at +6, 3.0–3.9e22 at +8, 7.3–8.6e22 at +10, 2.0–2.3e23 at +14, 1.9–3.2e24 at +18,
+  //     0.9–5.3e25 at +22, 4e25–8.4e26 at +30. The `cede` path runs about one order ahead of the
+  //     other two by +10 and two by +18, so the rungs below are set against the slowest of the
+  //     three and simply arrive earlier on the fastest. Carbon-time is also the act's own clock: if
+  //     bloom.js makes the fleet grow faster the whole ladder compresses with it, which is the
+  //     coupling a paced catalog should have.
+  //
+  //     THE BOTTOM OF THE LADDER WAS THREE ORDERS ABOVE THE VOID IT OPENS ON. The figures the rungs
+  //     were first set against — 5e23 held before the first cohort disperses — are not what the
+  //     built game hands the player at ESCAPE, which is 1e18–3.5e19. Measured, the first rung sat
+  //     at an affordability ratio of 1.28e4 in the second after ESCAPE and the void's opening
+  //     twenty minutes contained three purchases, all of them in the first second, and then nothing
+  //     until ENCYST armed. The rungs below are re-set against the curve above, one every two to
+  //     three minutes, so the twenty minutes before the failsafe arms are the ladder's densest
+  //     stretch rather than its emptiest.
   //   · The three endings are priced in Ψ (2,400 and 3,600 by TUNE). Every Ψ a project takes is a
   //     Ψ the ending does not get, and at 20 Ψ/min the whole void produces about one ending's
   //     worth. So the void tier takes none of it: Insight is what the player is saving *toward*
@@ -1579,67 +1672,51 @@
   // run made no purchase at all for the remaining 470 minutes. `thrust` is a gate, not an upgrade;
   // it is priced at a fifth of the ceiling standing when it appears and everything downstream of
   // it — which is the entire carbon ladder — is priced behind it.
-  E('genome', 'Genome', 3, '2,400 Σ', { sig: 2400 },
-    function (s) { return inVoid(s) },
-    function (s) {
-      var A = T().A3
-      set(s.a3, 'lociCap', Math.max(num(s.a3.lociCap), A.LOCI_CAP0))
-      set(s.a3, 'lociFree', A.LOCI_FREE0)
-    },
-    'Decide what you are for. (Unlocks the genome, four free loci)',
-    ['panel', 'dial'])
-
   E('radial_survey', 'Radial Survey', 3, '7,000 Σ', { sig: 7000 },
     function (s) { return inVoid(s) },
     function () { /* the VOID canvas, the band list and the exploration readout */ },
     'Look outward. It is all outward. (Unlocks the bands)',
     ['panel', 'information'])
 
-  E('thrust', 'Thrust', 3, '18,000 Σ', { sig: 18000 },
+  E('thrust', 'Thrust', 3, '12,000 Σ', { sig: 12000 },
     function (s) { return s.a3.bands.e[0] >= 0.25 },
     function () { /* the triangle's third vertex: DISPERSE */ },
     'There is nothing to push against. Push anyway. (Unlocks DISPERSE)',
     ['verb'])
 
-  E('chemotropism', 'Chemotropism', 3, '6.0e24 Χ', { carbon: 6.0e24 },
+  E('chemotropism', 'Chemotropism', 3, '1.7e23 Χ', { carbon: 1.7e23 },
     function (s) { return bandsReached(s) >= 2 },
     function (s) { mul(s.mult, 'exploreMult', 1.7) },
     'Follow the gradient across four light-years. (+70% exploration)',
     ['multiplier'])
 
-  E('sclerotial_coat', 'Sclerotial Coat', 3, '2.0e25 Χ', { carbon: 2.0e25 },
+  E('sclerotial_coat', 'Sclerotial Coat', 3, '1.3e23 Χ', { carbon: 1.3e23 },
     function (s) { return inTransit(s) >= 0.1 * fleet(s) && inTransit(s) > 0 },
     function () { /* TR_HAZ ×0.55; bloom reads the flag at the point of attribution */ },
     'Harden. Wait. It is a long way. (-45% transit hazard)',
     ['rulechange'])
 
-  E('recruit', 'Recruit', 3, '6.0e25 Χ', { carbon: 6.0e25 },
+  E('recruit', 'Recruit', 3, '4.6e23 Χ', { carbon: 4.6e23 },
     function (s) { return bandsReached(s) >= 2 && inTransit(s) > 0 },
     function () { /* the RECRUIT pulse mode */ },
     'Tell the ones already moving to hurry. (Unlocks RECRUIT)',
     ['verb'])
 
-  E('the_ediacaran_silence', 'The Ediacaran Silence', 3, '1.3e29 Χ', { carbon: 1.3e29 },
-    function (s) { return s.res.cumCarbon >= 4.0e27 },
-    function (s) { grantD(s, 1) },
-    'Six hundred million years of nothing deciding to move. (+1 D)',
-    ['flavour'])
-
   // ── III-H Deep void ────────────────────────────────────────────────────────
 
-  E('hyphal_continuity', 'Hyphal Continuity', 3, '1.6e26 Χ', { carbon: 1.6e26 },
+  E('hyphal_continuity', 'Hyphal Continuity', 3, '2.4e25 Χ', { carbon: 2.4e25 },
     function (s) { return inVoid(s) && bandsReached(s) >= 4 },
     function () { /* LAG_K ×0.78: the light-lag on a pulse shortens, it does not vanish */ },
     'A thought that takes a century is still a thought. (-22% pulse lag)',
     ['rulechange'])
 
-  E('pyomelanin', 'Pyomelanin', 3, '1.2e28 Χ', { carbon: 1.2e28 },
+  E('pyomelanin', 'Pyomelanin', 3, '2.4e27 Χ', { carbon: 2.4e27 },
     function (s) { return inVoid(s) && stat(s, 'radiationHazards') >= 20 },
     function (s) { if (s.a3.loci) s.a3.loci[LOCUS_MEL] = s.a3.loci[LOCUS_MEL] + 1 },
     'Black is not a colour. It is a decision. (+0.9 melanisation, no harvest cost)',
     ['rulechange'])
 
-  E('saltatory_conduction_void', 'Saltatory Conduction', 3, '2.0e28 Χ', { carbon: 2.0e28 },
+  E('saltatory_conduction_void', 'Saltatory Conduction', 3, '5.6e27 Χ', { carbon: 5.6e27 },
     function (s) { return inVoid(s) && stat(s, 'pulses') >= 12 },
     function () { /* pulse cooldown 75 → 50 s */ },
     'Skip the parts in between. (Faster PULSE)',
@@ -1647,24 +1724,35 @@
 
   // 03's trigger is behavioural — SURPLUS fell while n rose, twice. §3.stats carries no such counter,
   // and `targetsReached` is the arrival count that only rises once a band is being grown into.
-  E('allometry', 'Allometry', 3, '4.0e26 Χ', { carbon: 4.0e26 },
+  E('allometry', 'Allometry', 3, '3.5e24 Χ', { carbon: 3.5e24 },
     function (s) { return inVoid(s) && bandsReached(s) >= 3 && stat(s, 'targetsReached') >= 2 },
     function () { /* draws n*_b on every band bar. Deliberately expensive and deliberately late. */ },
     'There is a size that produces the most. It is small. (Draws the maximum)',
     ['information'])
 
-  // The ⛬ legs in Act III are spent out of a bank that never refills: nothing in the third act
-  // produces minerals, and the only deposit is forest.js's ×0.25 at the act break (measured
-  // 8.3e4–1.2e5 ⛬, flat to the last digit for five hundred minutes). They are kept small on
-  // purpose — a mineral leg here is a one-time drawdown, not a wait, and pricing one as though it
-  // were a wait would make the entry unbuyable forever rather than late.
-  E('neutrino_precursor', 'Neutrino Precursor', 3, '9.0e26 Χ + 2,400 ⛬', { carbon: 9.0e26, min: 2400 },
+  // THE ⛬ LEGS ARE GONE, AND THE REASON IS THE ONE THIS FILE APPLIES EVERYWHERE ELSE.
+  //
+  // Nothing in Act III produces minerals. The whole bank is forest.js's ×0.25 of whatever Act II
+  // happened to be holding at the break, and that is not a number the third act can influence:
+  // measured over nine runs — three seeds against all three ending paths — the carry was 3.1e3,
+  // 2.37e4, 4.53e4, 1.16e5, 1.24e5, 1.62e5, 1.87e5, 2.21e5 and 2.46e5 ⛬. A seventy-nine-fold spread
+  // decided two hundred minutes earlier, in another act, by variance the player never sees.
+  //
+  // Against that distribution a fixed ⛬ leg is not a price, it is a coin flip. `03` §18.5 budgets
+  // 12,000 ⛬ across these two and `circadian_entrainment` and says a low-mineral run must choose two
+  // of the three — but it assumed an inherited 4,500–12,500 ⛬. At the top of the measured spread all
+  // three are 5% of the bank and there is no choice to make; at the bottom none of the three is
+  // payable and the run loses PHASE, and with it the ϒ gate every ending but ENCYST is behind.
+  // Worse, measured: on the 3.1e3 ⛬ seed the third act made no purchase at all for its whole
+  // length, because the reference player will not spend a mineral it needs for the phase gate and
+  // the phase gate was never payable. Both legs move to Χ, which is the only currency the act makes.
+  E('neutrino_precursor', 'Neutrino Precursor', 3, '1.2e26 Χ', { carbon: 1.2e26 },
     function (s) { return inVoid(s) && bandsReached(s) >= 5 && stat(s, 'radiationHazards') >= 1 },
     function () { /* 40 s of warning, and the ENCYST pulse mode */ },
     'The light is the last part to arrive. (40 s warning)',
     ['information', 'verb'])
 
-  E('the_deep_biosphere', 'The Deep Biosphere', 3, '2.0e27 Χ + 3,600 ⛬', { carbon: 2.0e27, min: 3600 },
+  E('the_deep_biosphere', 'The Deep Biosphere', 3, '4.0e26 Χ', { carbon: 4.0e26 },
     function (s) { return inVoid(s) && bandsReached(s) >= 6 },
     function (s) {
       var r = s.a3.bands.rich, i
@@ -1679,19 +1767,13 @@
     'Fungi grow inside Chernobyl reactor four, toward the radiation. What was killing you is a meal.',
     ['inversion', 'rulechange'])
 
-  E('plasmogamy', 'Plasmogamy', 3, '7.0e27 Χ', { carbon: 7.0e27 },
+  E('plasmogamy', 'Plasmogamy', 3, '1.0e27 Χ', { carbon: 1.0e27 },
     function (s) { return inVoid(s) && num(s.cog.respecs) >= 1 },
     function () { /* REGENOME 90 → 60 s, cost ×0.70 */ },
     'Two nuclei, one wall, no argument yet. (Cheaper, faster respec)',
     ['rulechange'])
 
-  E('endolith', 'Endolith', 3, '4.0e27 Χ', { carbon: 4.0e27 },
-    function (s) { return inVoid(s) && bandsReached(s) >= 7 },
-    function (s) { grantD(s, 1) },
-    'Between the grains of rock, things divide every ten thousand years. Waiting for nothing. (+1 D)',
-    ['flavour'])
-
-  E('isotropy', 'Isotropy', 3, '3.2e28 Χ', { carbon: 3.2e28 },
+  E('isotropy', 'Isotropy', 3, '1.3e28 Χ', { carbon: 1.3e28 },
     function (s) { return inVoid(s) && bandsReached(s) >= 9 },
     function () { /* τ_b ×0.80 on every leg */ },
     'It is the same in every direction. Confirmed. (-20% transit time)',
@@ -1774,7 +1856,11 @@
     'Let it steer. It will steer worse. (Automates the triangle, 0.86×)',
     ['automation'])
 
-  E('circadian_entrainment', 'Circadian Entrainment', 3, '1.5e31 Χ + 6,000 ⛬', { carbon: 1.5e31, min: 6000 },
+  // The third of `03` §18.5's mineral legs, dropped for the reason given at `neutrino_precursor`.
+  // This is the one that mattered most: PHASE is what ϒ is made of, and ϒ gates two of the three
+  // endings, so a 6,000 ⛬ leg against a measured 3.1e3 ⛬ carry made the run's ending a function of
+  // Act II's variance rather than of anything done in Act III.
+  E('circadian_entrainment', 'Circadian Entrainment', 3, '1.5e31 Χ', { carbon: 1.5e31 },
     function (s) { return bandsReached(s) >= 11 },
     function () { /* the PHASE system, the wheel, and the ENTRAIN pulse mode */ },
     'Agree on when now is. (Unlocks PHASE)',
@@ -1820,7 +1906,7 @@
     ['ending', 'irreversible'],
     { excludes: othersThan('bloom'), also: function (s) { return num(s.a3.upsilon) >= T().A3.BLOOM_Y } })
 
-  E('the_fruiting_body', 'The Fruiting Body', 3, '1.60e35 Χ + 3,600 Ψ (ϒ ≥ 0.97, Φ ≥ 0.985)',
+  E('the_fruiting_body', 'The Fruiting Body', 3, '1.35e35 Χ + 3,600 Ψ (ϒ ≥ 0.97, Φ ≥ 0.985)',
     function () { var A = T().A3; return { carbon: A.BODY_X, psi: A.BODY_PSI } },
     function (s) { return num(s.a3.upsilon) >= 0.90 && strains(s).length === 0 },
     function (s) { s.stats.endingsReached += 1; s.phase = 'dismantle' },
