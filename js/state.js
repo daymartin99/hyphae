@@ -558,7 +558,11 @@
   // cheaper to name here than to debug as a rendering fault three panels later.
   var ENUMS = {
     phase: ['understory', 'network', 'canopy', 'void', 'dismantle', 'ended'],
-    'cog.pulseMode': ['SURGE', 'SUSTAIN', 'PROBE'],
+    // Cognition's real mode table, not the draft this validator was first
+    // written against — SUSTAIN and PROBE never shipped, and rejecting ENTRAIN
+    // meant importB64 refused the game's own Act III export (found at 473 min,
+    // pulseMode 'ENTRAIN'). A save the game wrote must always re-import.
+    'cog.pulseMode': ['SURGE', 'REPEL', 'RECRUIT', 'BLOOM', 'ENCYST', 'ANTAGONISE', 'ENTRAIN'],
     'carry.pathFlag': ['symbiont', 'necrotroph', 'mixed'],
     'set.theme': ['auto', 'dark', 'light'],
     'set.sound': ['off', 'sparse', 'full']
@@ -992,6 +996,12 @@
 
     adopt(got.save)
     sinceSave = 0
+    // The object swap is not the whole job: modules keep private counters that
+    // only their init() rehydrates, and a state simulated against another
+    // run's counters diverges from a cold boot of the same save (D35). The
+    // composition root owns the order; absent it (a bare node harness), the
+    // import still lands and the harness is expected to init what it loads.
+    if (HY.loop && HY.loop.reinitModules) HY.loop.reinitModules(st())
     return true
   }
 

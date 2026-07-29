@@ -466,10 +466,13 @@
       // 15.4% of the stock — and the constraint is throughput, not stock. A
       // committed B build that eats every band to 100% banks 1.42e35, because
       // the un-banked remainder IS the fleet doing the eating. Measured across
-      // runs; priced 5% under the observed floor so B is reachable by the build
-      // that wants it. Exclusivity does not rest here — it rests on ϒ ≥ 0.97,
-      // Φ ≥ 0.985 and a void with no strains left in it.
-      BODY_X: 1.35e35,          // g carbon, ENDING B
+      // runs; priced under the observed floor so B is reachable by the build
+      // that wants it. The nine-run proof then landed B at 1.3501–1.3503e35 —
+      // a 0.02% margin, one banking regression away from un-firing — so the
+      // row sits at 1.32e35 for ~2% of real headroom. Exclusivity does not
+      // rest here — it rests on ϒ ≥ 0.97, Φ ≥ 0.985 and a void with no
+      // strains left in it.
+      BODY_X: 1.32e35,          // g carbon, ENDING B
       BLOOM_SIG: 1.10e7,        // Σ held, ENDING A — you must stop pulsing for one timeToFill
       BLOOM_PSI: 2400,          // Ψ, ENDING A
       BODY_PSI: 3600,           // Ψ, ENDING B

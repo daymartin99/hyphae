@@ -271,20 +271,35 @@
     HY.state.init(save || null)
     var s = S()
 
-    // Order matters only here: log and ui must exist before anything can want
-    // to write a line or reveal a panel.
-    var mods = ['log', 'projects', 'act1', 'economy1', 'cognition', 'world', 'forest',
-      'flush', 'pactbook', 'bloom', 'divergence', 'finale', 'feel', 'canvas', 'ui']
-    for (var i = 0; i < mods.length; i++) {
-      var m = HY[mods[i]]
-      if (m && m.init) { try { m.init(s) } catch (e) { logBootFault(mods[i], e) } }
-    }
+    reinitModules(s)
 
     var root = typeof document !== 'undefined' ? document.getElementById('app') : null
     if (HY.ui && HY.ui.mount && root) HY.ui.mount(root)
 
     reconcileOffline()
     start()
+  }
+
+  // Order matters only here: log and ui must exist before anything can want to
+  // write a line or reveal a panel. This is also the repair path for an import:
+  // module-scope caches (economy1's id counters, the market walk, pact books)
+  // are rehydrated only by init, so a state swapped in by importB64 without
+  // this pass keeps simulating with the previous run's counters — D35 found
+  // the fingerprint as a tree id that crept 6 -> 7 -> 8 across reconciles of
+  // the same exported save.
+  function reinitModules (s) {
+    // The stand-in player's own memory has to reset with the run: its sticky
+    // savings goal (`saver`) otherwise survives an import, and a warm page
+    // mid-goal refuses purchases a cold boot of the same save makes — the two
+    // then diverge on the very first second, in the buyer, not the sim.
+    saver = null
+    tickNo = 0
+    var mods = ['log', 'projects', 'act1', 'economy1', 'cognition', 'world', 'forest',
+      'flush', 'pactbook', 'bloom', 'divergence', 'finale', 'feel', 'canvas', 'ui']
+    for (var i = 0; i < mods.length; i++) {
+      var m = HY[mods[i]]
+      if (m && m.init) { try { m.init(s) } catch (e) { logBootFault(mods[i], e) } }
+    }
   }
 
   function logBootFault (name, err) {
@@ -1501,6 +1516,7 @@
     setSimRate: setSimRate,
     onFrame: onFrame,
     effective: effective,
+    reinitModules: reinitModules,
     get running () { return running },
     get ticks () { return tickNo },
     __selftest: __selftest
