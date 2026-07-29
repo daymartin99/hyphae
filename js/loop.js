@@ -898,11 +898,23 @@
     // point the void produced: measured, a run that made 13,490 Ψ with the genome held still ended
     // a 780-minute run holding 309 Ψ with the genome running. An ending is not one claim on Insight
     // among several; from the moment the void opens it is the only one.
-    if (endgameSpare('insight') < num(b.nextLocusCost(s))) return
+    //
+    // The one exception is the axis the same ending named. An ending is a conjunction, and Insight
+    // banked for one of its rows is worth nothing if another row needs Insight to close: measured,
+    // a run playing for ENDING B reached 3,601 Ψ against its 3,600 Ψ row at minute 462 holding
+    // Φ 0.9799 against 0.9850, and from that second the bank was one point deep, no locus was ever
+    // affordable again, and the fidelity row could not move for the remaining 338 minutes. Ψ is a
+    // flow — the void makes about 70 a minute while the pool is saturated — and Φ is a stock that
+    // only the genome moves, so the flow yields to the stock and re-banks afterwards. It is bounded
+    // by `favoured()` itself, which stops naming an axis the moment the row it was named for closes.
+    var first = favoured()
+    if (first < 0 && endgameSpare('insight') < num(b.nextLocusCost(s))) return
     // A locus is not free: craftMass = 2.40e6·(1+0.085·G)^1.15, so every point makes every craft
     // heavier to keep alive. Buying them into a fleet that is already at its surplus peak is
     // buying subsistence, and the peak is exactly where the margin to pay for it is thinnest.
-    if (overPeak(s, b)) return
+    // The ending's own axis is exempt for the same reason: a fleet trimmed to its peak is still a
+    // fleet with an ending it cannot reach.
+    if (first < 0 && overPeak(s, b)) return
     // Round-robin, lowest axis first, so the genome stays broad. BIBLE M14: a perfectly specialised
     // genome produces perfectly specialised defectors with the same holes, and you cannot exploit a
     // hole you do not have.
@@ -912,7 +924,7 @@
     // the FID axis and spent on the ANT one, and ENDING C wants the opposite — a fidelity low
     // enough to keep producing the defectors it is about. Measured, a broad genome finished B's run
     // at Φ 0.979 against 0.985, one ANT point short of the ending, with every other row green.
-    var lo = leastOf(loci, banned(), favoured())
+    var lo = leastOf(loci, banned(), first)
     if (lo < 0) return
     b.setLocus(lo, num(loci[lo]) + 1, s)
   }

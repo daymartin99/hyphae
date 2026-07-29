@@ -788,9 +788,31 @@
 
   // F1's effect. Auto-SETTLE at 1.5 × SETTLE_Q per second is the number that outruns
   // SPORE_DECAY_3, and it is the whole of the act's opening crisis.
+  //
+  // It stops at the surplus peak, and that bound is the difference between an opening and a dead
+  // end. `03` §3.1 sizes the bank at eighty-three taps — 2.0e9 spores — and 2.0e9·0.42 craft mass
+  // 2.0e15 g against a biome that holds 2.00e15 g of carbon in total, so clearing the bank into
+  // The Stand builds a fleet the whole biome cannot feed. §10.2 calls that BLOOM COLLAPSE and
+  // offers a recovery — drop aRep, raise aDis, bleed outward — but every step of it needs
+  // somewhere to bleed to, and in Phase A before REACH there is nowhere.
+  //
+  // Measured on the default seed: the bank arrived at 2.4e9, F1 took biome 0 to 1.63e9 craft
+  // against an n* of 2.37e8 and an n† of 2.16e9, surplus fell to almost nothing at 75% of carrying
+  // capacity, carbon stalled at 1.89e14 g against APPRESSORIUM's 4.0e14 g reveal, REACH was
+  // therefore never offered, the fleet ate X_0 out from under itself, and the last craft died 53
+  // minutes into the act with no spores left to start again. The board was frozen for the
+  // remaining six hours and no ending of any kind was reachable.
+  //
+  // The player's own SETTLE stays unbounded: overshooting is a decision, and §10.2 is the document
+  // about living with one. An automation is not a decision, and one that guarantees the collapse
+  // the same document teaches you to avoid is not automating the verb, it is automating the
+  // mistake. The bank still decays underneath this — the crisis is untouched — and every craft
+  // REACH bleeds out of biome 0 is room the next second re-fills from what is left.
   function autoSettle (s, dt) {
     if (!flagOn(s, 'germ_tube')) return
-    var q = Math.min(num(s.res.spores), A().SETTLE_Q * AUTOSETTLE_RATE * dt)
+    var room = (nStar(0, s) - num(s.a3.biomes.n[0])) / SETTLE_P_EST
+    if (!(room > 0)) return
+    var q = Math.min(num(s.res.spores), A().SETTLE_Q * AUTOSETTLE_RATE * dt, room)
     if (!(q > 0)) return
     C().setStock(s.res, 'spores', num(s.res.spores) - q)
     s.a3.biomes.n[0] = num(s.a3.biomes.n[0]) + q * SETTLE_P_EST
@@ -897,21 +919,47 @@
     }
   }
 
+  // The two stochastic draws in the act — whether a band is hit and how hard — come from a stream
+  // keyed on the sim clock rather than from a running generator, exactly as the Successor's desync
+  // does. `Math.random()` was here, and it is the one thing BIBLE §3.1 does not allow anywhere:
+  // a save reloaded mid-act reproduces a different galaxy, and no two runs of one seed agree.
+  //
+  // Measured, it was also the whole of the seed-to-seed spread at the endings. Two runs of ENDING B
+  // on the same seed differed by an entire fleet: one detonation in a band carrying 1e25 craft at
+  // severity 0.52 rather than 0.18 cost the run its carbon row, and repeats of the identical seed
+  // finished 574 minutes apart. A balance number measured against an unseeded draw is not a
+  // measurement.
+  //
+  // STELLAR_QUANT is the act's own tick, so one draw per band per tick; the severity stream is
+  // keyed separately because a warned detonation resolves PRECURSOR_S later, in a different tick
+  // from the one that rolled it.
+  var STELLAR_QUANT = 0.05         // s, one draw per band per tick
+
+  function stellarRoll (s, kind, band) {
+    return C().rng(C().hash32(s.seed, kind, Math.floor(num(s.t) / STELLAR_QUANT),
+      band === undefined ? '' : band))
+  }
+
   // §11.3. Rare, large, band-wide — and announced, if you paid for the announcement. Never fires
   // offline: you come back to live warnings and forty seconds to act, which is the same kindness
   // Act II's fires are given.
   function stepStellar (s, dt, o) {
     if (o.stochastic === false || o.offline) return
     var a = A(), b, n = count(s)
+    var roll = stellarRoll(s, 'stellar')
     // A precursor that has finished counting down fires now, wherever the player left it.
     var i = 0
     while (i < warnings.length) {
       if (warnings[i].at <= num(s.t)) { detonate(s, warnings[i].band); warnings.splice(i, 1) } else i++
     }
     for (b = 0; b < n; b++) {
+      // Every band draws, occupied or not: a stream advanced only by the occupied bands would
+      // hand band 9 a different number depending on whether band 3 still had craft in it, and a
+      // hazard schedule that depends on the fleet's shape is not the hazard §11.3 describes.
+      var u = roll.next()
       if (!live(s, b) || !(num(field(s).n[b]) > 0)) continue
       var p = (inCanopy(s) ? canopyEventP(s, b) : a.STELLAR_P * (1 + STELLAR_BAND_SLOPE * b)) * dt
-      if (!(p > 0) || Math.random() >= p) continue
+      if (u >= p) continue
       if (!inCanopy(s) && flagOn(s, 'neutrino_precursor')) {
         warnings.push({ band: b, at: num(s.t) + PRECURSOR_S * (s.set.slow ? 2 : 1) })
       } else {
@@ -934,7 +982,7 @@
       lost = have * FIRE_LOSS
       fire('a3.grass_fire')
     } else {
-      var sev = STELLAR_SEV_MIN + STELLAR_SEV_SPAN * Math.random()
+      var sev = STELLAR_SEV_MIN + STELLAR_SEV_SPAN * stellarRoll(s, 'stellarSev', b).next()
       // ENCYST buys a dormant fraction of 1.0 for thirty seconds at the cost of all production
       // there. It is the act's only timed decision and the window is forty seconds, not two.
       var encysted = HY.cognition && HY.cognition.pulseEffect
@@ -1849,6 +1897,50 @@
     ok(num(r.res.carbon) > 0, 'a minute of Phase A harvested no carbon')
     ok(r.a3.biomes.n[0] > n0 * 0.5, 'the opening fleet starved: ' + r.a3.biomes.n[0])
     ok(num(r.res.cumCarbon) >= num(r.res.carbon), 'cumCarbon fell behind carbon')
+
+    // ── F1 automates the verb, not the mistake ───────────────────────────────
+    // `03` §3.1's own bank is eighty-three taps — 2.0e9 spores, 8.4e8 craft, 2.0e15 g of craft
+    // against a biome holding 2.00e15 g — so an automation that clears it into The Stand builds a
+    // fleet the whole biome cannot feed and §10.2's recovery has nowhere to bleed to. Measured on
+    // the default seed before this bound: 1.63e9 craft against an n* of 2.37e8, carbon frozen at
+    // 1.89e14 g under APPRESSORIUM's 4.0e14 g reveal, every craft dead 53 minutes into the act and
+    // the board frozen for six hours with no ending of any kind in reach.
+    var g1 = sandbox('canopy')
+    g1.res.spores = 2.4e9
+    g1.proj.flags.germ_tube = 1
+    var star0 = nStar(0, g1)
+    for (secs = 0; secs < 600; secs++) tick(g1, 1, opts)
+    ok(g1.a3.biomes.n[0] <= star0 * 1.02,
+      'auto-SETTLE ran the fleet past the surplus peak: ' + g1.a3.biomes.n[0] + ' against ' + star0)
+    ok(g1.a3.biomes.n[0] > 0 && num(g1.res.carbon) > 0,
+      'ten minutes of F1 on a full spore bank left nothing alive')
+    // …and it is a bound, not a ban: room made by REACH is re-filled from what is left of the bank.
+    var held = g1.a3.biomes.n[0]
+    g1.a3.biomes.n[0] = held * 0.5
+    tick(g1, 1, opts)
+    ok(g1.a3.biomes.n[0] > held * 0.5, 'auto-SETTLE did not re-fill the room REACH would make')
+
+    // ── the two stochastic draws in the act are seeded ───────────────────────
+    // BIBLE §3.1: the same seed is the same run. `Math.random()` was in stepStellar and detonate,
+    // and it was the whole of the seed-to-seed spread at the endings — two runs of one seed
+    // finished 574 minutes apart because one detonation landed at severity 0.52 rather than 0.18.
+    var bannedDraw = ['Math.random']
+    var drawn = [stepStellar, detonate, autoSettle, settle], di, bi2
+    for (di = 0; di < drawn.length; di++) {
+      var src = Function.prototype.toString.call(drawn[di])
+      for (bi2 = 0; bi2 < bannedDraw.length; bi2++) {
+        if (src.indexOf(bannedDraw[bi2]) >= 0) f.push('bloom function ' + di + ' reaches for ' + bannedDraw[bi2])
+      }
+    }
+    // Same seed, same clock, same band: the same galaxy. A reload mid-act must not re-roll it.
+    var d1 = sandbox('void'), d2 = sandbox('void'), b2
+    for (b2 = 0; b2 < bandCount(); b2++) { d1.a3.bands.n[b2] = 1e14; d2.a3.bands.n[b2] = 1e14 }
+    var liveOpts = { stochastic: true, offline: false }
+    for (secs = 0; secs < 400; secs++) { stepStellar(d1, 0.05, liveOpts); d1.t += 0.05 }
+    for (secs = 0; secs < 400; secs++) { stepStellar(d2, 0.05, liveOpts); d2.t += 0.05 }
+    var agree = 1
+    for (b2 = 0; b2 < bandCount(); b2++) if (d1.a3.bands.n[b2] !== d2.a3.bands.n[b2]) agree = 0
+    ok(agree, 'two runs of one seed disagree about where the stellar events fell')
 
     // ── a void run actually runs, and the fleet compounds ────────────────────
     var z = sandbox('void')
