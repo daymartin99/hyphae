@@ -919,6 +919,11 @@
     decide: {
       id: 'decide',
       words: 'Stop tasting. Start knowing.',
+      // An act break empties the console: Act II must open on its own two authored lines, with
+      // a2.open's capital — the game's first — landing as the newest line of an otherwise clean
+      // window, not as the sixth row under Act I's news.
+      flush: 1,
+      selfDrive: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.00, 'motion', { what: 'panelsFade', to: 0.06, ms: 400, holdConsole: true }),
@@ -954,6 +959,11 @@
     ascospore: {
       id: 'ascospore',
       words: 'Let go of the ground.',
+      // Same rule at the second break: the three lines of the discharge are the whole console
+      // Act III opens holding — "You are very light." stays on screen, and nothing of Act II
+      // or Act I stands above it.
+      flush: 1,
+      selfDrive: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.00, 'motion', { what: 'panelsFade', to: 0.35, ms: 900, except: 'map' }),
@@ -982,6 +992,7 @@
     escape: {
       id: 'escape',
       words: 'Leave nothing behind that can decide to stay.',
+      selfDrive: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.00, 'motion', { what: 'collapseList', list: 'BIOMES', rows: 8, stepMs: 140 }),
@@ -1194,6 +1205,7 @@
   var mountEl = null
   var rowPx = CONS.ROW_PX
   var soft = null           // sequence player handle
+  var seqT = null           // sim-time baseline for self-driven sequences (act transitions)
 
   // The opening five, by their position in 09 §2.1's order. Index 0 is unused.
   var OPENING = []
@@ -1432,6 +1444,19 @@
   function manageLog (s) {
     s = s || S()
     if (!s) return
+    // The transitions have no other conductor: finale.js drives the endings from real frames, but
+    // DECIDE, the discharge and ESCAPE play against a sim that keeps running, so the sim's own
+    // clock paces them here, before the frozen gate — the freeze is theirs. At 1× the sim clock is
+    // the player's clock; headless, it is the only clock there is — and without this the freeze a
+    // transition takes on the queue was never given back.
+    if (soft && !soft.done && soft.seq.selfDrive) {
+      if (seqT === null || s.t < seqT) seqT = s.t
+      var seqDt = s.t - seqT
+      seqT = s.t
+      if (seqDt > 0) stepSequence(seqDt)
+    } else {
+      seqT = null
+    }
     if (frozen) { drain(s); return }
 
     if (poolAct !== s.act || firedLen !== s.log.fired.length) buildPool(s)
@@ -1693,7 +1718,11 @@
     opts = opts || {}
 
     freeze()
+    seqT = null
     if (seq.flush) flushConsole(s)
+    // ESCAPE's one line states the carbon that is moving, and its caller does not pass tokens;
+    // the figure is read here so the sentence never ships with a bare {amt} in it.
+    if (id === 'escape' && !opts.tokens && s) opts.tokens = { amt: s.res.carbon }
 
     var steps = (opts.reduced !== undefined ? opts.reduced : reducedMotion(s))
       ? (seq.reduced || seq.steps) : seq.steps
