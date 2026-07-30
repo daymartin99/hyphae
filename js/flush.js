@@ -1076,7 +1076,10 @@
     bloomUntil = -1
     mastWarned = 0
     lastAct = s.act
-    enter(s)
+    // ASCOSPORE deleted the weather (D26), and a2.W = 0 is that deletion's record. Re-entering
+    // here would re-boot W and windSpeed on every load or import of an Act III save,
+    // resurrecting what the transition revoked and mutating the save on import (D37).
+    if (s.act < 3) enter(s)
   }
 
   // loop.js drives the three steps directly, in BIBLE §4's order; this exists for a harness
