@@ -1954,6 +1954,10 @@
     // not a rate either.
     if (dt < 0) { v.rates = {}; return }
     for (var i = 0; i < RATE_KEYS.length; i++) rate(v, RATE_KEYS[i], num(s.res[RATE_KEYS[i]]), dt)
+    // Craft is the one ledger quantity that is not a stock in `res`: it is the fleet's headcount,
+    // and its row's rate must be the rate of that count, so it is measured here the same way.
+    var bl = HY.bloom
+    if (s.act >= 3 && bl && bl.totalCraft) rate(v, 'craft', num(bl.totalCraft(s)), dt)
   }
 
   // Every discrete transaction the interface performs is handed to the rate meters so they can
@@ -2122,13 +2126,13 @@
     else setRate(r1.rate, rateOf(v, 'signal'), '/s')
 
     // Craft is a count and a count takes no unit: the row already says the word. The rate slot
-    // carries the surplus the whole fleet is running, because a standing count with no direction
-    // beside it is a number you cannot steer by.
+    // carries the measured rate of the count itself — a row's rate is the rate of its own
+    // quantity, and the fleet's carbon surplus already reads out on the CARBON row above.
     var r2 = v.ledgerRows[2]
     show(r2.el, true)
     setText(r2.lab, STR.craft)
     setSlot(r2.val, C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0), '')
-    setRate(r2.rate, bl && bl.Lambda ? num(bl.Lambda(s)) : 0, GLYPH.carbon + '/s')
+    setRate(r2.rate, rateOf(v, 'craft'), '/s')
 
     var r3 = v.ledgerRows[3]
     show(r3.el, true)
