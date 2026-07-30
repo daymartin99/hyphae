@@ -959,13 +959,18 @@
     // ×1.85 (Monoculture) ×2.60 (Fenton, tier D) = 16.2, and E ≈ 26 with the act's last purchases.
     // Interpolated log-linearly rather than stepped, because projects arrive one at a time.
     //
-    // The terminal value lands at fc = 0.92, not 0.88: E reaches 26 only with tier E, whose budget
+    // The terminal value lands at fc = 0.94, not 0.88: E reaches 26 only with tier E, whose budget
     // (`08` §4.5) is the largest in the act and is therefore the *last* thing bought — after the
-    // Photoreception floor at 0.88 and before ASCOSPORE at 0.97. Placing it at 0.88 made the
-    // production peak arrive at fc 0.862 and only 10.5 min after the Signal peak; placing it where
-    // the budget says it can be afforded puts the peak on D22's stated 0.88 and the D19 gap inside
-    // its 12–22 min corridor.
-    E_CURVE: [[0, 1], [0.04, 1.60], [0.15, 3.36], [0.40, 6.22], [0.80, 13], [0.92, 26], [1.0, 26]],
+    // Photoreception floor and before ASCOSPORE at 0.97. The late catalog was re-spaced to fill the
+    // minute-252-to-345 drought, which lengthened the act, so every fc-unit past the mid-game now
+    // carries more project budget and each of the ladder's late rungs is afforded at a *higher* fc
+    // than before: the ×13 waypoint and the ×26 terminal both slide ~0.03–0.05 later. The peak of
+    // production is where the rising enzyme suite stops outpacing the draining stock, so it moves
+    // with them — at the old 0.80/0.92 anchors the peak had drifted back to fc 0.857, only 10.3 min
+    // after the Signal peak (D19 wants 12–22) and leaving a 34.6-min tail (D22 wants 25 ± 8). The
+    // 0.85/0.94 anchors put the production peak on D22's stated fc 0.88, the D19 gap at 13.9 min and
+    // the decline at 30.6 min, both inside their corridors, with D18's peak/early ratio still 2.8.
+    E_CURVE: [[0, 1], [0.04, 1.60], [0.15, 3.36], [0.40, 6.22], [0.85, 13], [0.94, 26], [1.0, 26]],
     Y_CURVE: [[0, 1], [0.30, 1.20], [0.70, 1.85], [0.85, 2.20], [1.0, 2.20]],
     // The act's one Signal multiplier is Saltatory Conduction, ×2.20. Its 820 Ψ + 300,000 Σ price
     // puts it late in tier D (55 → 85%), and where it lands is where Signal peaks — because from
