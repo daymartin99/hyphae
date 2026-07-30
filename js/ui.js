@@ -1432,15 +1432,12 @@
     v.heroCost = el('span', 'hero-cost num', '')
     v.heroCost.hidden = true
     hero.appendChild(v.heroCost)
-    v.hero = hero
-    bindPress(hero, onHero, { feel: 'extend', quiet: true })
-    scroll.appendChild(hero)
-
     // ── the ending bar: the take control, pinned the moment an ending is available ──
     // The ending card lives panels deep in the VOID tab's scroll, and the most irreversible verb
     // in the game must not be below the fold — EXTEND earned a pinned home for less (06 §0.1
     // rule 2). This is the card's own 400 ms hold, in the bottom band, on every tab, for exactly
-    // as long as an ending (never the ENCYST concession) is available and untaken.
+    // as long as an ending (never the ENCYST concession) is available and untaken. It sits above
+    // the hero's slot, because the hero is the last element in the scroll, forever (D02).
     var endbar = btn('endbar hold')
     endbar.appendChild(el('span', 'hold-fill'))
     var endbarLab = el('span', 'hold-lab')
@@ -1458,6 +1455,9 @@
     v.endbar = endbar
     scroll.appendChild(endbar)
 
+    v.hero = hero
+    bindPress(hero, onHero, { feel: 'extend', quiet: true })
+    scroll.appendChild(hero)
     v.tailEl = el('div', 'tail')
     scroll.appendChild(v.tailEl)
 
