@@ -1094,8 +1094,19 @@ canvas{ display:block; }
                              transition:opacity var(--d-act) linear; }
 .shell[data-dismantle="strip"] .ledger,
 .shell[data-dismantle="strip"] .plate,
-.shell[data-dismantle="strip"] .tabbar{ opacity:0; pointer-events:none;
+.shell[data-dismantle="strip"] .tabbar,
+/* The panel stack — by now only THE LOG — and the console's cursor go with the strip: 03 §20's
+   dismantle finishes on nothing at all, and the console the ending then speaks into is flushed
+   by the sequence itself, so only the final text remains. */
+.shell[data-dismantle="strip"] .panels{ opacity:0; pointer-events:none;
                                         transition:opacity var(--d-act) linear; }
+/* The cursor's own blink is an animation and would win the cascade over a plain opacity, so the
+   blink is stopped as well: a machine that has finished dismantling itself is not still typing.
+   The console's frame goes with it — the final text stands on nothing. */
+.shell[data-dismantle="strip"] .console-cur{ animation:none; opacity:0; }
+.shell[data-dismantle="strip"] .console{ background:none; border-top-color:transparent;
+                                         transition:background-color var(--d-act) linear,
+                                                    border-color var(--d-act) linear; }
 
 /* ══ RESPONSIVE · 06 §4.7 ══════════════════════════════════════════════════ */
 

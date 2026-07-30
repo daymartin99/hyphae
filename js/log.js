@@ -1022,6 +1022,9 @@
     // which is what puts [ NEW GROWTH ] at 27.0 exactly, as 09 §5.1 states.
     ending_a: {
       id: 'ending_a',
+      // The dismantle has just emptied the screen (03 §20); the final text lands on an emptied
+      // console too, not on the tail of the run's news.
+      flush: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.0, 'motion', { what: 'wheelConverge', ms: 1400 }),
@@ -1071,6 +1074,9 @@
     // become longer than the organism's own capacity to hold them in one piece.
     ending_b: {
       id: 'ending_b',
+      // The dismantle has just emptied the screen (03 §20); the final text lands on an emptied
+      // console too, not on the tail of the run's news.
+      flush: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.0, 'motion', { what: 'wheelCollapse', ms: 2400, easing: 'linear' }),
@@ -1114,6 +1120,9 @@
     // four hundred and six differences, or twelve differences, or nine. The sentence is the same.
     ending_c_press: {
       id: 'ending_c_press',
+      // The dismantle has just emptied the screen (03 §20); the final text lands on an emptied
+      // console too, not on the tail of the run's news.
+      flush: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.0, 'line', { text: 'You release the phase lock.' }),
@@ -1134,6 +1143,9 @@
     // sclerotium is a real structure and it is how most fungi survive most of history.
     encyst: {
       id: 'encyst',
+      // The dismantle has just emptied the screen (03 §20); the final text lands on an emptied
+      // console too, not on the tail of the run's news.
+      flush: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.0, 'line', { text: 'You draw in. It takes about a day.' }),
@@ -1665,6 +1677,15 @@
     try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches } catch (e) { return false }
   }
 
+  // The console owes nothing across a hard break. An ending's final text — and, per 09 §4, a new
+  // act's opening — must land on an emptied window: the ring is cleared and the rendered rows with
+  // it, so the first line the new register speaks is the first line on screen, not the sixth.
+  function flushConsole (s) {
+    s = s || S()
+    if (s && s.log) s.log.ring.length = 0
+    if (mountEl) { while (mountEl.firstChild) mountEl.removeChild(mountEl.firstChild) }
+  }
+
   function playSequence (id, opts) {
     var s = S()
     var seq = SEQUENCES[id]
@@ -1672,6 +1693,7 @@
     opts = opts || {}
 
     freeze()
+    if (seq.flush) flushConsole(s)
 
     var steps = (opts.reduced !== undefined ? opts.reduced : reducedMotion(s))
       ? (seq.reduced || seq.steps) : seq.steps
