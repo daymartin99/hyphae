@@ -1906,7 +1906,7 @@
     ['ending', 'irreversible'],
     { excludes: othersThan('bloom'), also: function (s) { return num(s.a3.upsilon) >= T().A3.BLOOM_Y } })
 
-  E('the_fruiting_body', 'The Fruiting Body', 3, '1.35e35 Χ + 3,600 Ψ (ϒ ≥ 0.97, Φ ≥ 0.985)',
+  E('the_fruiting_body', 'The Fruiting Body', 3, '1.32e35 Χ + 3,600 Ψ (ϒ ≥ 0.97, Φ ≥ 0.985)',
     function () { var A = T().A3; return { carbon: A.BODY_X, psi: A.BODY_PSI } },
     function (s) { return num(s.a3.upsilon) >= 0.90 && strains(s).length === 0 },
     function (s) { s.stats.endingsReached += 1; s.phase = 'dismantle' },
