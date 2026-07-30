@@ -1435,6 +1435,29 @@
     v.hero = hero
     bindPress(hero, onHero, { feel: 'extend', quiet: true })
     scroll.appendChild(hero)
+
+    // ── the ending bar: the take control, pinned the moment an ending is available ──
+    // The ending card lives panels deep in the VOID tab's scroll, and the most irreversible verb
+    // in the game must not be below the fold — EXTEND earned a pinned home for less (06 §0.1
+    // rule 2). This is the card's own 400 ms hold, in the bottom band, on every tab, for exactly
+    // as long as an ending (never the ENCYST concession) is available and untaken.
+    var endbar = btn('endbar hold')
+    endbar.appendChild(el('span', 'hold-fill'))
+    var endbarLab = el('span', 'hold-lab')
+    v.endbarTitle = el('span', 'endbar-title', '')
+    v.endbarNote = el('span', 'endbar-note', STR.endTake)
+    endbarLab.appendChild(v.endbarTitle)
+    endbarLab.appendChild(v.endbarNote)
+    endbar.appendChild(endbarLab)
+    endbar.hidden = true
+    v.endbarKey = ''
+    bindHold(endbar, function () {
+      var fin = FIN()
+      if (v.endbarKey && fin && fin.takeEnding) fin.takeEnding(v.endbarKey)
+    })
+    v.endbar = endbar
+    scroll.appendChild(endbar)
+
     v.tailEl = el('div', 'tail')
     scroll.appendChild(v.tailEl)
 
@@ -2255,7 +2278,29 @@
     setAttr(v.hero, 'aria-label', verb === 'settle'
       ? label + ', ' + C().fmt(num(s.res.spores)) + ' ' + GLYPH.spores
       : label)
+    paintEndbar(v, s)
     paintFab(v, s)
+  }
+
+  // The pinned take control. ENCYST is skipped for the same reason endingAvailable skips it: it is
+  // permanently "available" from void + 20:00 and it is a concession, not an ending. Once any
+  // ending has been taken the dismantle owns the screen and the bar goes with everything else.
+  function paintEndbar (v, s) {
+    var fin = FIN()
+    var pick = null
+    if (s && s.act >= 3 && fin && fin.endings && !(fin.ending && fin.ending(s) &&
+        fin.ending(s).key)) {
+      var list = fin.endings(s)
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].key === 'ENCYST') continue
+        if (list[i].available && !list[i].taken) { pick = list[i]; break }
+      }
+    }
+    show(v.endbar, !!pick)
+    if (!pick) { v.endbarKey = ''; return }
+    v.endbarKey = pick.key
+    setText(v.endbarTitle, pick.title)
+    setAttr(v.endbar, 'aria-label', pick.title + ', ' + STR.endTake)
   }
 
   // The FAB is PULSE and only PULSE (`06` §5.3). It is the one verb in Acts II and III that is

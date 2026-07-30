@@ -521,6 +521,28 @@ canvas{ display:block; }
 .hero--danger{ background:var(--negative); border-color:var(--negative);
                color:var(--text-on-rust); }
 
+/* The ending bar: the hero's shape in the hero's band, carrying the ending card's 400 ms hold.
+   Its accent is the signal's cold light, never rust — the same argument as the card's own wipe:
+   this is the one destructive commit in the build that is not a loss. */
+.endbar{
+  display:block; flex:0 0 auto;
+  width:62%; min-width:200px; max-width:280px;
+  min-height:64px; margin:var(--sp-16) auto var(--sp-12);
+  border-radius:var(--r-lg);
+  background:linear-gradient(180deg, var(--surface-2) 0%, var(--surface-1) 100%);
+  border:1px solid var(--signal);
+  box-shadow:inset 0 1px 0 var(--gloss);
+  color:var(--text-max);
+  text-align:center;
+  transform:translateZ(0);
+}
+.endbar .hold-fill{ background:var(--signal-wash); }
+.endbar-title{ display:block; font:var(--t-title); letter-spacing:.12em;
+               text-transform:uppercase; }
+.endbar-note{ display:block; margin-top:var(--sp-2);
+              font:var(--t-micro); letter-spacing:.10em; text-transform:uppercase;
+              color:var(--signal-text); }
+
 /* ══ FAB · 06 §5.3 ═════════════════════════════════════════════════════════ */
 
 .fab{
