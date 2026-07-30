@@ -1133,6 +1133,12 @@
         p.a2.regions.q[i] = (i % 9) - 4
         p.a2.regions.rival[i] = i === 7 ? -1 : 0
         p.a2.regions.terrain[i] = i % 6
+        // L0 must be non-zero: forest.js reads Σ L0 as "the board is seeded", and an
+        // act-2 save the game actually wrote always is. Leaving it zero makes the
+        // import's module-init pass re-seed the board and overwrite L and h, which
+        // would then (correctly) fail the round-trip checks below on fixture damage
+        // the game can never produce.
+        p.a2.regions.L0[i] = 1.02e10 * (1 + i / 97)
         p.a2.regions.L[i] = 1.15e10 * (1 + i / 61)
         p.a2.regions.h[i] = 0.28 + i * 1e-4
         p.a2.regions.flags[i] = i < 3 ? 0x07 : 0
@@ -1153,10 +1159,17 @@
       p.a3.strains[0].w[4] = 6.02e23
       ok(assertShape(p).length === 0, 'the fixture save does not conform to §3')
 
-      var b1 = exportB64(p)
-      ok(b1.indexOf('\n') < 0 && b1.indexOf('\r') < 0, 'exportB64 emitted a raw newline')
-      ok(/^[A-Za-z0-9_-]+$/.test(b1), 'exportB64 emitted a character a text field would eat')
-      ok(importB64(b1) === true, 'importB64 refused its own export: ' + lastError)
+      var b0 = exportB64(p)
+      ok(b0.indexOf('\n') < 0 && b0.indexOf('\r') < 0, 'exportB64 emitted a raw newline')
+      ok(/^[A-Za-z0-9_-]+$/.test(b0), 'exportB64 emitted a character a text field would eat')
+      ok(importB64(b0) === true, 'importB64 refused its own export: ' + lastError)
+      // The first import is allowed one settling pass: importB64 runs the module
+      // init()s (the D35 repair), and inits may fill what a hand-built fixture left
+      // unseeded — an empty pact book, unseeded act-1 markets. What they write
+      // becomes part of the save; from this export on, import→export must be the
+      // identity byte for byte, which is the D37 property real saves are held to.
+      var b1 = exportB64()
+      ok(importB64(b1) === true, 'importB64 refused a settled export: ' + lastError)
       var b2 = exportB64()
       ok(b1 === b2, 'export/import is not byte-identical (' + b1.length + ' vs ' + b2.length + ' chars)')
 

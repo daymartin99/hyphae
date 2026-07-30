@@ -1429,7 +1429,11 @@
       // A save written before this module existed has rival[] full of zeroes, which reads as
       // "Armillaria everywhere". −1 is the only honest value for empty ground.
       if (!generated(s) && r.rivalStr[i] <= 0) r.rival[i] = -1
-      if (r.flags[i] & RF_DISCOVERED) announceRival(s, i)
+      // A discovered rival already spoke in the run that wrote this save. Marking it
+      // contacted keeps "once, and never again" true across reloads — announcing it
+      // again here would re-fire its line and re-count stats.rivalContacts on every
+      // boot and every import, and an import must never mutate the save (D37).
+      if ((r.flags[i] & RF_DISCOVERED) && r.rival[i] >= 0) contacted[i] = 1
     }
     lastAct = s.act
     if (s.act === 2) enter(s)

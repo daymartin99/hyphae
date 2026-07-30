@@ -1213,8 +1213,12 @@
       ok(netAt(a.HUMUS_SWITCH - 0.02) < 0, 'a stand below the switch does not decline')
       ok(K > 0.5 && K < 1.5, 'the derived mycorrhizal bonus is out of range: ' + K)
       // Stability: driven from either side, h settles rather than oscillating.
+      // Both runs must start from the same seed: cold() imports, import re-inits
+      // every module (the D35 repair), and flush's weather walk is seeded from the
+      // save — two seeds would settle the two sides under two different climates
+      // and measure the weather, not the switch.
       var lo = settle(cold(12), 0.02, a.RHO_FLAT_MAX)
-      var hi = settle(cold(13), 0.98, a.RHO_FLAT_MAX)
+      var hi = settle(cold(12), 0.98, a.RHO_FLAT_MAX)
       ok(lo.stable, 'humus oscillates when driven up from 0.02')
       ok(hi.stable, 'humus oscillates when driven down from 0.98')
       near(lo.h, hi.h, 0.06, 'humus does not reach the same equilibrium from both sides')
