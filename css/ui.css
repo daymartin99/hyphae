@@ -389,10 +389,15 @@ canvas{ display:block; }
 .panels{ flex:1 1 0; min-height:var(--panels-min); padding-top:var(--sp-12);
          overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
          scroll-behavior:smooth; }
-/* A floating button may pass over a list mid-scroll; it may never park on the last row of one.
-   The stack owes the FAB its own height at the end, and only while the FAB is on screen. */
-.shell[data-fab="1"] .panels{ padding-bottom:calc(64px + var(--sp-24)); }
+/* The FAB's band is reserved, not shared: a floating button that parks over a list clips the
+   right-hand value of whatever row is under it — "standing" read as "standir", a band's richness
+   unreadable — and no scroll position should be able to put a row there. While the FAB is on
+   screen the tail grows to the FAB's own height plus its two gaps, so the scroller (and the
+   pinned hero band with it) ends above the button at every scroll position. */
 .tail{ flex:0 0 auto; height:calc(var(--sp-8) + env(safe-area-inset-bottom)); }
+.shell[data-fab="1"] .tail{
+  height:calc(64px + var(--sp-24) + var(--sp-8) + env(safe-area-inset-bottom));
+}
 
 /* ══ LEDGER / STATUS STRIP · 06 §5.1 ═══════════════════════════════════════ */
 
