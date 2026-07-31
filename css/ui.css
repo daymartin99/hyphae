@@ -92,7 +92,12 @@
   --col-max:420px; --gutter:16px; --tabbar-h:56px; --tap:44px;
   --rail:0px;            /* the atrium's vertical tab rail; zero until the tab bar is earned */
   --rail-w:72px;         /* what that rail measures once it has been earned */
-  --con-row:19px; --con-rows:5; --con-pad:6px;
+  /* Console metrics are rem so 200% text zoom scales the strip with everything
+     else — --console-h is built from --con-row, so the row height carries the
+     whole strip and the layout above yields per the --panels-min discipline.
+     1.1875rem/.8125rem are 19px/13px at the default root size. */
+  --con-row:1.1875rem; --con-rows:5; --con-pad:6px;
+  --con-size:.8125rem;
   --console-h:calc(var(--con-rows) * var(--con-row) + var(--con-pad) * 2 +
                    env(safe-area-inset-bottom));
   --plate-px:296px;      /* written by ui.js in one frame; never transitioned */
@@ -831,7 +836,7 @@ canvas{ display:block; }
   padding:var(--con-pad) var(--gutter);
   padding-bottom:calc(var(--con-pad) + env(safe-area-inset-bottom));
   background:var(--bg-sunk); border-top:1px solid var(--line-soft);
-  font-family:var(--font-mono); font-size:13px; line-height:var(--con-row);
+  font-family:var(--font-mono); font-size:var(--con-size); line-height:var(--con-row);
   color:var(--text-console); overflow:hidden;
 }
 .console-inner{ max-width:var(--col-max); margin:0 auto; }
