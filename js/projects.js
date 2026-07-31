@@ -573,8 +573,13 @@
     'Ask quietly and the floor gives more. (Half market impact)',
     ['rulechange'])
 
+  // Same discipline as `standing_order` below: the overstock is the meaning, the biomass floor is
+  // the reach — revealed at 14× the bank it read as a taunt rather than a tool.
   E('two_sided_book', 'The Two-Sided Book', 1, '7,200 g', { g: 7200 },
-    function (s) { return stat(s, 'purchases') >= 25 && anyPoolOverstocked(s, 12) },
+    function (s) {
+      return stat(s, 'purchases') >= 25 && anyPoolOverstocked(s, 12) &&
+        s.res.biomass >= T().A1.PROJECTS_BIOMASS_G
+    },
     function () { /* economy1.sell() is gated on this flag */ },
     'The floor will take things back, at a discount, and remember that you asked. (Unlocks selling)',
     ['verb', 'rulechange'])
@@ -619,8 +624,11 @@
     'Lignin is only a rumour of a wall. (Unlocks fallen logs)',
     ['rulechange'])
 
+  // Forty purchases arrive minutes into the act, when 15,000 g is ~29× the bank — an automation
+  // dangled a session away is noise, not a goal. The chore is real from purchase forty; the card
+  // waits until the price is inside ~4× reach, the band the reveal queue is built around.
   E('standing_order', 'Standing Order', 1, '15,000 g', { g: 15000 },
-    function (s) { return stat(s, 'purchases') >= 40 },
+    function (s) { return stat(s, 'purchases') >= 40 && s.res.biomass >= 4000 },
     function () { /* per-type price ceiling and floor stock; economy1 fills them */ },
     'It buys badly and it never sleeps, and you will take that trade. (Automated, 8% worse than you)',
     ['automation'])
@@ -687,8 +695,15 @@
     ['offline'],
     { needs: NEEDS.dielBonus })
 
+  // Market prices random-walk from the first tick, so `anyPriceOver` alone fires 12–15 seconds
+  // into a fresh game, on every seed measured — making a 38,000 g card the first project a
+  // brand-new player ever sees, four orders of magnitude past their ~22 g. A spike the player has
+  // never bought against is weather, not competition: the card means something once they are IN
+  // the market at scale and a 1.6× print costs them real sugar. 50,000 sugar through the floor is
+  // the reference player at ~36 minutes holding ~11,000 g — the card arrives greyed at ~3.3× reach,
+  // an ambition, not a taunt (UP's rule: reveal the locked thing once it means something).
   E('bacterial_antagonism', 'Bacterial Antagonism', 1, '38,000 g + 240 ⛬', { g: 38000, min: 240 },
-    function (s) { return anyPriceOver(s, 1.6) },
+    function (s) { return stat(s, 'sugarSpentOnMarket') >= 50000 && anyPriceOver(s, 1.6) },
     function () { /* leaf and needle fill at 0.78 × the printed price, for you only */ },
     'You poison the competition. It works. (-22% soft litter cost)',
     ['rulechange'])
@@ -757,16 +772,21 @@
     'You dissolve the rock yourself, slowly, with an acid you have always made. (+0.35 mineral/s)',
     ['rulechange'])
 
+  // The reputation gates cluster: rep grows fast enough mid-act that rungs 3–5 all cleared their
+  // rep thresholds in the same minute, putting a 160,000 g and a 400,000 g card on the board at
+  // 87× and 212× the player's holdings while they owned two patches. One greyed rung ahead is the
+  // ladder the player can read; three at once is a wall. Each rung now also waits for the rung
+  // below it to be claimed — the same order stepAlarm's failsafe already walks.
   E('patch_old_coppice', 'Patch: The Old Coppice', 1, '160,000 g + 1,800 ⛬',
     function (s) { return territoryPrice(s, 4) },
-    function (s) { return netRep(s) >= T().A1.PATCH_GATE_REP[4] },
+    function (s) { return patches(s) >= 4 && netRep(s) >= T().A1.PATCH_GATE_REP[4] },
     function (s) { claimPatch(s, 5) },
     'Cut a hundred years ago by someone who did not write it down. (+1 patch, stump-rich)',
     ['panel'])
 
   E('patch_oak_rise', 'Patch: The Oak Rise', 1, '400,000 g + 4,400 ⛬',
     function (s) { return territoryPrice(s, 5) },
-    function (s) { return netRep(s) >= T().A1.PATCH_GATE_REP[5] },
+    function (s) { return patches(s) >= 5 && netRep(s) >= T().A1.PATCH_GATE_REP[5] },
     function (s) { claimPatch(s, 6) },
     'The oak has been waiting, the way a bank waits. (+1 patch, +oak)',
     ['panel'])
@@ -897,13 +917,21 @@
 
   // Σ is hard-clamped at Sc (BIBLE §2.3), so an Act II price above the pool is not expensive, it is
   // impossible — no amount of waiting produces it. Sc = 260·(0.60+Σℓ)^0.85 and the act opens on one
-  // claimed stand, whose live interface tops out near 0.79 once it is fully colonised: a ceiling of
-  // 344 Σ. `chemotaxis` is what opens the map, so nothing else can raise Σℓ until it is bought, and
-  // 04's 400 Σ was therefore a permanent deadlock — measured, the pool plateaued at 343.3 Σ and the
-  // act stood still for the whole of a 700-minute run with the card on screen the entire time.
-  // 300 Σ is 0.87 of that ceiling: payable a few minutes in, once the first stand is most of the
-  // way alive, and not before.
-  E('chemotaxis', 'Chemotaxis', 2, '300 Σ', { sig: 300 },
+  // claimed stand. `chemotaxis` is what opens the map — the STANDS list and every density and
+  // advance control sit behind this flag — so nothing a PLAYER can see raises Σℓ until it is
+  // bought. 04's 400 Σ was a permanent deadlock (measured: 700 minutes at 343.3 Σ with the card on
+  // screen); the 300 Σ that replaced it was the same deadlock measured against the wrong ceiling.
+  // 343 Σ was a run in which the headless stand-in had already bought density on the opening stand
+  // through world.buyDensity — a control a human cannot reach, because the panel it lives on is
+  // gated on this very card. The ceiling a human actually faces is C24's opening exactly as
+  // act1.decide() writes it: one Loam stand (worldgen fixes ring 0) at d = 0.30 with its trees
+  // untouched, so Σℓ = 0.30·κ, κ the stand's species blend — 0.72 (pure Birch) at the theoretical
+  // floor, 0.79 measured on seed 7 — and Sc plateaus at 219–260 Σ, flat forever. Reproduced twice
+  // from fresh saves: 25 minutes at 223.3 Σ with chemotaxis reading 1.34× the pool and every other
+  // Σ card further away still. 200 Σ sits under the worst legal opening with ~9% headroom (the
+  // selftest constructs that opening and holds the door to it), and is still ~80 s of opening-rate
+  // Signal on the best one: payable a few minutes in, never before, and above all always.
+  E('chemotaxis', 'Chemotaxis', 2, '200 Σ', { sig: 200 },
     function (s) { return s.act === 2 },
     function () { /* opens FOREST: the 61-hex map, STANDS, and ADVANCE */ },
     'Sense the gradient. Go up it.',
@@ -2798,6 +2826,33 @@
       manageProjects(r2)
       ok(isSeen(r2, 'rhizomorph_cords'), 'a project triggered on a transient condition vanished')
       ok(r2.proj.bought.indexOf('rhizomorph_cords') < 0, 'seen leaked into bought')
+
+      // ── the Act II opening is never a softlock ─────────────────────────────
+      // Every Act II control that could raise Σℓ sits behind `chemotaxis`, so its Σ price must fit
+      // inside the WORST capacity the opening can deal: C24's one Loam stand at d = 0.30, trees
+      // untouched, and the lowest species blend worldgen can legally roll (Birch-dominant at the
+      // 0.95 mix cap over Oak, κ = 0.7265). Reproduced before the reprice: a fresh save plateaued
+      // 25 minutes at 223.3 Σ against a 300 Σ card, with no visible control that could move it.
+      // Guarded here by construction, against the real Sc through the real forest — priced with 5%
+      // headroom so a nudge to any of the terms in Sc fails CI before it strands a player.
+      if (HY.cognition && HY.cognition.Sc && HY.forest && HY.forest.totalInterface) {
+        var open2 = HY.state.newGame(28, null)
+        HY.state.init(open2)
+        init(open2)
+        open2.act = 2
+        var oreg = open2.a2.regions
+        oreg.flags[0] = RF_DISCOVERED | RF_CLAIMED
+        oreg.d[0] = 0.30
+        oreg.terrain[0] = 0                                    // Loam: worldgen fixes ring 0
+        oreg.sp0[0] = 2; oreg.sp1[0] = 0; oreg.w0[0] = 0.95    // Birch 0.95 / Oak 0.05, κ floor
+        oreg.T0[0] = 1e9; oreg.T[0] = 1e9
+        var openCap = num(HY.cognition.Sc(open2))
+        var chemo = priceOf(BY_ID.chemotaxis, open2)
+        ok(num(chemo.sig) > 0, 'chemotaxis lost its Σ price; the opening gate has no meaning')
+        ok(num(chemo.sig) <= openCap * 0.95,
+          'chemotaxis (' + num(chemo.sig) + ' Σ) does not fit the worst legal opening capacity (' +
+          openCap.toFixed(1) + ' Σ): the Act I → II transition can hard-softlock again')
+      }
     } catch (e) {
       f.push('threw: ' + (e && e.stack ? e.stack : e))
     }
