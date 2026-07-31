@@ -675,9 +675,12 @@
     'A price you can plan around beats a price that is right. It says so, in your own exudate.',
     ['trap', 'irreversible', 'rulechange'])
 
+  // Rep alone revealed this rung fifteen minutes before the rung UNDER it (whose trigger is its
+  // own biomass price) — the ladder read out of order. Same rule as rungs 4–6: the rung below
+  // must be claimed first, which is also the order stepAlarm's failsafe walks.
   E('patch_windthrow_gap', 'Patch: The Windthrow Gap', 1, '30,000 g + 260 ⛬',
     function (s) { return territoryPrice(s, 2) },
-    function (s) { return netRep(s) >= T().A1.PATCH_GATE_REP[2] },
+    function (s) { return patches(s) >= 2 && netRep(s) >= T().A1.PATCH_GATE_REP[2] },
     function (s) { claimPatch(s, 3) },
     'Where the wind did your work for you. (+1 patch, log-rich)',
     ['panel'])
