@@ -1,23 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
 <meta name="theme-color" content="#0B0D0C" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#EAE6D9" media="(prefers-color-scheme: light)">
 <meta name="color-scheme" content="dark light">
+<!-- Both spellings: iOS reads only the apple- one, and Chrome logs a
+     deprecation warning if the apple- one appears without the generic one. -->
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="A quiet incremental about a network that learns what it is.">
+<!-- Inline favicon: keeps the document self-contained and stops the browser's
+     implicit /favicon.ico probe from 404ing on hosts that only have our files. -->
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzBCMEQwQyIvPjxnIHN0cm9rZT0iI0U4RTFEMyIgc3Ryb2tlLXdpZHRoPSI3IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiPjxwYXRoIGQ9Ik0yNTYgNDQwViAyNjAiLz48cGF0aCBkPSJNMjU2IDMwMEwxNTAgMTk0Ii8+PHBhdGggZD0iTTI1NiAzMDBMMzYyIDE5NCIvPjxwYXRoIGQ9Ik0yNTYgMzcwTDE4NCAzMDAiLz48cGF0aCBkPSJNMjU2IDM3MEwzMjggMzAwIi8+PHBhdGggZD0iTTE1MCAxOTRMMTAyIDEyNiIvPjxwYXRoIGQ9Ik0xNTAgMTk0TDExMCAyMjAiLz48cGF0aCBkPSJNMzYyIDE5NEw0MTAgMTI2Ii8+PHBhdGggZD0iTTM2MiAxOTRMNDAyIDIyMCIvPjwvZz48Y2lyY2xlIGN4PSIxMDIiIGN5PSIxMjYiIHI9IjExIiBmaWxsPSIjRThFMUQzIi8+PGNpcmNsZSBjeD0iNDEwIiBjeT0iMTI2IiByPSIxMSIgZmlsbD0iI0U4RTFEMyIvPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI2MCIgcj0iMTAiIGZpbGw9IiNFOEUxRDMiLz48L3N2Zz4=">
 <title>HYPHAE</title>
-<!--MANIFEST-->
 <!--STYLES-->
+</head>
+<body>
 <div id="app"></div>
 <!--SCRIPTS-->
-<!--SW-->
 <script>
-  // The whole game is one file, so registration only needs a blob of the
-  // source the build inlined. Absent in dev, where the plain files are served.
-  if ('serviceWorker' in navigator && window.__SW_SOURCE && location.protocol !== 'file:') {
-    const url = URL.createObjectURL(new Blob([window.__SW_SOURCE], { type: 'text/javascript' }))
-    navigator.serviceWorker.register(url).catch(() => {})
+  // The PWA wiring points at sibling files the build writes next to this
+  // document: sw.js, manifest.webmanifest and the icon PNGs. They have to be
+  // real files — Chrome rejects blob: service workers outright and cannot
+  // resolve start_url or scope from a data: manifest — and real siblings can
+  // only exist over http(s). From file:// the document stays fully
+  // self-contained and skips the wiring, so one copied file still plays.
+  if (location.protocol === 'http:' || location.protocol === 'https:') {
+    const link = (rel, href, sizes) => {
+      const el = document.createElement('link')
+      el.rel = rel
+      el.href = href
+      if (sizes) el.setAttribute('sizes', sizes)
+      document.head.appendChild(el)
+    }
+    link('manifest', 'manifest.webmanifest')
+    // iOS ignores manifest icons entirely; the home screen wants a PNG named
+    // by this link, and the build renders one from the same mark.
+    link('apple-touch-icon', 'apple-touch-icon.png', '180x180')
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {})
+    }
   }
   window.HY && window.HY.boot && window.HY.boot()
 </script>
+</body>
+</html>

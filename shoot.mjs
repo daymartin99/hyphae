@@ -30,11 +30,27 @@ const OUT = resolve(process.argv[2] || join(ROOT, 'shots'))
 mkdirSync(OUT, { recursive: true })
 
 const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
-const html = readFileSync(join(ROOT, 'dist/index.html'))
 
-const server = createServer((_req, res) => {
-  res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
-  res.end(html)
+// Serve the whole dist directory, not just the document: the page registers
+// dist/sw.js and links dist/manifest.webmanifest, and a server that answered
+// every path with HTML would break that wiring and pollute the console log the
+// shots are judged against.
+const MIME = {
+  html: 'text/html; charset=utf-8',
+  js: 'text/javascript',
+  webmanifest: 'application/manifest+json',
+  png: 'image/png',
+}
+const server = createServer((req, res) => {
+  const name = req.url.split('?')[0].replace(/^\/+/, '') || 'index.html'
+  try {
+    const body = readFileSync(join(ROOT, 'dist', name))
+    res.writeHead(200, { 'content-type': MIME[name.split('.').pop()] || 'application/octet-stream' })
+    res.end(body)
+  } catch {
+    res.writeHead(404)
+    res.end()
+  }
 }).listen(0)
 const port = server.address().port
 

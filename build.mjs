@@ -1,7 +1,12 @@
 #!/usr/bin/env node
-// Bundles the game into a single self-contained HTML file with zero external
+// Bundles the game into one self-contained HTML file with zero external
 // requests, so it can be dropped anywhere: a static host, a file:// URL, or a
-// published artifact behind a strict CSP.
+// published artifact behind a strict CSP. Next to it the build writes the PWA
+// sidecar files — sw.js, manifest.webmanifest and two icon PNGs rendered from
+// the mark at build time — because Chrome rejects blob: service workers and
+// cannot resolve start_url or scope from a data: manifest, so offline support
+// and installability require real sibling files. The page only points at them
+// over http(s); a lone index.html copied to a file:// URL still plays.
 //
 // The source is deliberately plain <script> files sharing one global namespace
 // rather than ES modules, which makes "bundling" an ordered concatenation. No
@@ -27,15 +32,18 @@
 // and the shipped build must reach a byte-identical HY.state after the same
 // HY.debug.play(), which is what actually proves the two are the same program.
 //
-//   node game/build.mjs              → dist/index.html (minified) + dist/index.dev.html
+//   node game/build.mjs              → dist/{index.html, index.dev.html, sw.js,
+//                                       manifest.webmanifest, icon-512.png,
+//                                       apple-touch-icon.png}
 //   HY_MINIFY=0 node game/build.mjs  → dist/index.html unminified, for bisecting
 //
 // dist/index.dev.html is always written unminified, so any harness that wants
 // readable source and honest line numbers can point at it instead.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { deflateSync } from 'node:zlib'
 
 const ROOT = dirname(fileURLToPath(import.meta.url))
 const read = (p) => readFileSync(join(ROOT, p), 'utf8')
@@ -459,6 +467,14 @@ function renameLocals(toks, where) {
       property.add(t.v)
       continue
     }
+    // `{ get foo () {} }` — an accessor's name is a property even though the
+    // token before it is `get`/`set` rather than `{` or `,`. Renaming one made
+    // HY.loop.running vanish from the shipped build. Guarding on the two words
+    // alone can only over-protect (skip a legal rename), never miss one.
+    if (prev && prev.t === 'name' && (prev.v === 'get' || prev.v === 'set') && next && next.v === '(') {
+      property.add(t.v)
+      continue
+    }
     // Declarations.
     if (prev && prev.t === 'name' && isKeyword(toks, k - 1) &&
       (prev.v === 'var' || prev.v === 'let' || prev.v === 'const' || prev.v === 'function')) declared.add(t.v)
@@ -617,6 +633,110 @@ function minifyCSS(src) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ICON RENDERER
+//
+// iOS ignores manifest icons entirely and looks for a PNG named by an
+// apple-touch-icon link; Chrome will not call the page installable without a
+// manifest icon of at least 144 px it can decode. Both PNGs are rendered here
+// from the mark's geometry — the same nine strokes and three node dots the SVG
+// mark draws — so there is no binary asset checked in that could drift from the
+// vector. The renderer is a signed-distance rasterizer (round caps come free
+// from measuring distance to a segment) and the encoder writes the minimal PNG:
+// 8-bit RGB, filter 0, one zlib stream. No image library, per the build's rule.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MARK = {
+  view: 512,                 // the coordinate space the geometry is authored in
+  bg: [0x0B, 0x0D, 0x0C],    // soil-950, the manifest's background_color
+  fg: [0xE8, 0xE1, 0xD3],    // spore, the mark's line colour
+  stroke: 7,                 // the SVG mark's stroke-width
+  segs: [                    // trunk, laterals, branches, tips — root down
+    [256, 440, 256, 260], [256, 300, 150, 194], [256, 300, 362, 194],
+    [256, 370, 184, 300], [256, 370, 328, 300], [150, 194, 102, 126],
+    [150, 194, 110, 220], [362, 194, 410, 126], [362, 194, 402, 220],
+  ],
+  dots: [[102, 126, 11], [410, 126, 11], [256, 260, 10]],
+}
+
+const ICON_PX = 512          // manifest icon, also the splash-screen source
+const APPLE_PX = 180         // what iOS actually samples for the home screen
+// At 180 px the faithful 7-unit stroke is a 2.5 px hairline that disappears on
+// a home screen, so the small render thickens strokes and dots rather than
+// shipping an illegible faithful one.
+const APPLE_STROKE = 12
+const APPLE_DOT_SCALE = 1.4
+
+function segDistance(px, py, [x1, y1, x2, y2]) {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy)))
+  return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy))
+}
+
+function rasterizeMark(size, stroke, dotScale) {
+  const unitsPerPx = MARK.view / size
+  const rgb = Buffer.alloc(size * size * 3)
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const vx = (x + 0.5) * unitsPerPx
+      const vy = (y + 0.5) * unitsPerPx
+      // Signed distance to the nearest ink edge, in mark units.
+      let d = Infinity
+      for (const s of MARK.segs) d = Math.min(d, segDistance(vx, vy, s) - stroke / 2)
+      for (const [cx, cy, r] of MARK.dots) d = Math.min(d, Math.hypot(vx - cx, vy - cy) - r * dotScale)
+      // One-pixel anti-aliased edge: full ink half a pixel inside, none half
+      // a pixel outside.
+      const a = Math.max(0, Math.min(1, 0.5 - d / unitsPerPx))
+      const o = (y * size + x) * 3
+      for (let k = 0; k < 3; k++) rgb[o + k] = Math.round(MARK.bg[k] + (MARK.fg[k] - MARK.bg[k]) * a)
+    }
+  }
+  return rgb
+}
+
+const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
+  let c = n
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1
+  return c >>> 0
+})
+
+function crc32(buf) {
+  let crc = 0xFFFFFFFF
+  for (let i = 0; i < buf.length; i++) crc = CRC_TABLE[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8)
+  return (crc ^ 0xFFFFFFFF) >>> 0
+}
+
+function pngChunk(type, data) {
+  const out = Buffer.alloc(12 + data.length)
+  out.writeUInt32BE(data.length, 0)
+  out.write(type, 4, 'ascii')
+  data.copy(out, 8)
+  out.writeUInt32BE(crc32(out.subarray(4, 8 + data.length)), 8 + data.length)
+  return out
+}
+
+function encodePNG(size, rgb) {
+  // Each scanline carries a leading filter byte; 0 = unfiltered, and the
+  // deflate stream is left to find the redundancy.
+  const stride = size * 3
+  const raw = Buffer.alloc(size * (stride + 1))
+  for (let y = 0; y < size; y++) rgb.copy(raw, y * (stride + 1) + 1, y * stride, (y + 1) * stride)
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(size, 0)
+  ihdr.writeUInt32BE(size, 4)
+  ihdr[8] = 8  // bit depth
+  ihdr[9] = 2  // colour type: truecolour, no alpha — home-screen icons are opaque
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]),
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', deflateSync(raw, { level: 9 })),
+    pngChunk('IEND', Buffer.alloc(0)),
+  ])
+}
+
+const renderIcon = (size, stroke, dotScale) => encodePNG(size, rasterizeMark(size, stroke, dotScale))
+
+// ─────────────────────────────────────────────────────────────────────────────
 // BUILD
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -626,7 +746,7 @@ const ORDER = JSON.parse(read('order.json'))
 const MINIFY = process.env.HY_MINIFY !== '0'
 
 const shellSrc = read('shell.html')
-const swSrc = existsSync(join(ROOT, 'sw.js')) ? read('sw.js') : ''
+const swSrc = read('sw.js')
 const manifest = read('manifest.webmanifest')
 
 // The shell carries its own boot script; minify that too, and drop the blank
@@ -642,11 +762,6 @@ function assemble(minify) {
   // The file marker survives minification: it costs nothing next to a megabyte
   // and it is the only landmark left in a stack trace from the shipped build.
   const js = ORDER.js.map((f) => (minify ? `//${f}\n${minifyJS(read(f), f)}` : `/* ${f} */\n${read(f)}`)).join('\n;\n')
-  const sw = swSrc && minify ? minifyJS(swSrc, 'sw.js') : swSrc
-  // The service worker and manifest ride along as data: URLs so the single file
-  // still installs as a PWA when served from a host that only gives us one path.
-  const manifestText = minify ? JSON.stringify(JSON.parse(manifest)) : manifest
-  const manifestUrl = 'data:application/manifest+json;base64,' + Buffer.from(manifestText).toString('base64')
   const shell = minify ? minifyShell(shellSrc) : shellSrc
   if (minify) {
     // Hand the whole script to the engine's parser before anyone ships it. This
@@ -661,8 +776,6 @@ function assemble(minify) {
   return shell
     .replace('<!--STYLES-->', `<style>\n${css}\n</style>`)
     .replace('<!--SCRIPTS-->', `<script>\n${js}\n</script>`)
-    .replace('<!--MANIFEST-->', `<link rel="manifest" href="${manifestUrl}">`)
-    .replace('<!--SW-->', sw ? `<script>window.__SW_SOURCE=${JSON.stringify(sw)}</script>` : '')
 }
 
 mkdirSync(join(ROOT, 'dist'), { recursive: true })
@@ -676,11 +789,25 @@ writeFileSync(join(ROOT, 'dist/index.html'), out)
 const dev = MINIFY ? assemble(false) : out
 writeFileSync(join(ROOT, 'dist/index.dev.html'), dev)
 
+// The PWA sidecars the page points at over http(s). The service worker gets
+// the same parse gate the bundle does — a worker that fails to compile is a
+// worker Chrome silently never installs.
+const swOut = MINIFY ? minifyJS(swSrc, 'sw.js') : swSrc
+try {
+  new Function(swOut)
+} catch (e) {
+  throw new Error('minified sw.js does not parse: ' + e.message)
+}
+writeFileSync(join(ROOT, 'dist/sw.js'), swOut)
+writeFileSync(join(ROOT, 'dist/manifest.webmanifest'), MINIFY ? JSON.stringify(JSON.parse(manifest)) : manifest)
+writeFileSync(join(ROOT, 'dist/icon-512.png'), renderIcon(ICON_PX, MARK.stroke, 1))
+writeFileSync(join(ROOT, 'dist/apple-touch-icon.png'), renderIcon(APPLE_PX, APPLE_STROKE, APPLE_DOT_SCALE))
+
 const bytes = Buffer.byteLength(out)
 const kb = (bytes / 1024).toFixed(1)
 const devKb = (Buffer.byteLength(dev) / 1024).toFixed(1)
 console.log(
-  `built game/dist/index.html — ${kb} KB (${ORDER.js.length} modules, ${ORDER.css.length} stylesheets)` +
+  `built game/dist/index.html + PWA sidecars — ${kb} KB (${ORDER.js.length} modules, ${ORDER.css.length} stylesheets)` +
   (MINIFY ? `, minified from ${devKb} KB, ${(BUDGET_KB - bytes / 1024).toFixed(1)} KB under budget` : ', NOT minified (HY_MINIFY=0)')
 )
 if (bytes > BUDGET_KB * 1024) console.warn(`WARNING: bundle over ${BUDGET_KB} KB, first paint will suffer`)

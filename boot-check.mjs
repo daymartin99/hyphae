@@ -10,10 +10,25 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const ROOT = dirname(fileURLToPath(import.meta.url))
-const html = readFileSync(join(ROOT, 'dist/index.html'))
-const server = createServer((_q, r) => {
-  r.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
-  r.end(html)
+// Serve the whole dist directory, not just the document: the page registers
+// dist/sw.js and links dist/manifest.webmanifest, and a server that answered
+// every path with HTML would hide any breakage in that wiring from this check.
+const MIME = {
+  html: 'text/html; charset=utf-8',
+  js: 'text/javascript',
+  webmanifest: 'application/manifest+json',
+  png: 'image/png',
+}
+const server = createServer((q, r) => {
+  const name = q.url.split('?')[0].replace(/^\/+/, '') || 'index.html'
+  try {
+    const body = readFileSync(join(ROOT, 'dist', name))
+    r.writeHead(200, { 'content-type': MIME[name.split('.').pop()] || 'application/octet-stream' })
+    r.end(body)
+  } catch {
+    r.writeHead(404)
+    r.end()
+  }
 }).listen(0)
 const port = server.address().port
 
