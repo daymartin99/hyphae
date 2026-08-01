@@ -2249,9 +2249,10 @@
   }
 
   // A live verb is pinned in the bottom band, because 06 §0.1 rule 2 says the primary action is
-  // always there. A verb the act has finished with is not deleted — 06 §4.3 keeps EXTEND as the
-  // last row of the FOREST tab's scroll — but it stops holding 92 px of thumb country while the
-  // verbs that *are* live sit above the fold, which is what it did for the whole of Act II.
+  // always there. A verb the act has finished with is not kept around as a greyed memorial — a
+  // transition revokes the old loop, it does not exhibit its corpse. When there is no live verb
+  // (all of Act II, the void before an ending) the hero is not shown at all, so the parent it sits
+  // in only matters while it is live and pinned.
   function placeHero (v, pinned) {
     var want = pinned ? v.scroll : v.stack
     if (v.hero.parentNode === want) return
@@ -2279,9 +2280,10 @@
     show(v.heroCost, verb === 'settle')
     if (verb === 'settle') setText(v.heroCost, C().fmt(num(s.res.spores)) + ' ' + GLYPH.spores)
     placeHero(v, !!verb)
-    // In Act II and in the void the button is a memorial, and a memorial belongs on the tab whose
-    // subject it was. A live verb belongs on every tab, because it is the act's whole loop.
-    show(v.hero, verb ? true : v.tab === 'forest')
+    // Only a live verb is on the stage. Act II and the void have no floor to extend, so EXTEND is
+    // gone — not greyed at centre stage on the FOREST board, which is a dead verb the act revoked
+    // hours ago. The act's live verbs (SETTLE, PULSE, the ending) speak for themselves.
+    show(v.hero, !!verb)
     setData(v.hero, 'state', state)
     setAttr(v.hero, 'aria-label', verb === 'settle'
       ? label + ', ' + C().fmt(num(s.res.spores)) + ' ' + GLYPH.spores
