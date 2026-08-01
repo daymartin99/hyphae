@@ -81,6 +81,39 @@
   var TAP_MAX = 3.20             // g, the most one tap can ever lift
   var tapAt = -Infinity          // s, sim time of the last tap; not saved (§3 stores no tap phase)
 
+  // TURGOR. A hypha does not extend by deciding to. The cell behind the tip pumps solute, water
+  // follows it, pressure rises against the wall, and the wall — softened at exactly one point —
+  // yields. The front moves because something pushed it. That is the verb the player is performing,
+  // so the input is a hold: pressure while the thumb is down, extension when it is let go.
+  //
+  // RIPENESS IS NOT A NEW NUMBER. It is already in the four rows above: the mat refills in
+  // (TAP_MAX − TAP_FLOOR) / TAP_REGEN = 2.98 / 2.98 = 1.000 s exactly, so one second after the last
+  // extension there is nothing further settled to lift. Hold to there and the surge takes a full
+  // mat; hold past it and the only thing still moving is the clock. That is the diminishing return,
+  // and it is the floor's own arithmetic rather than a rule bolted onto it.
+  //
+  // What the pressure buys ON TOP of the mat is TURGOR_GAIN: the front travels further than a tap
+  // could and reaches litter a tap leaves behind, in litter and in thread alike — one multiplier,
+  // both outputs, because it is one push.
+  //
+  // The curve is a smoothstep and the shape is the whole argument. A cell wall is elastic: it takes
+  // the first pressure without giving anything, yields through the middle, and stiffens again as it
+  // approaches its limit. RESISTANCE, then travel, then the wall. Two consequences fall out of that
+  // and both are why this shape and not the obvious exponential:
+  //   · a short press is unambiguously a TAP — at a tenth of a second the surge is under 3%, so the
+  //     player who never holds is playing the game that shipped, to three decimal places;
+  //   · the best grams per second is AT ripeness, not before it. Under an exponential the optimum
+  //     sits at zero hold and the hold is a thing an optimiser learns to skip; under this one the
+  //     optimum is the threshold the button already shows and the thumb already feels.
+  //
+  // Rate at ripeness is 4.03 g/s. A masher at five taps a second gets 4.08 g/s and a steady thumb
+  // at 1.7/s gets 3.35 g/s: holding to the wall is as fast as mashing at a fifth of the presses,
+  // and a sixth of a minute faster than the tap most people actually use. Less effort at the same
+  // pace, which is the point — the tap band and the hold band both have to land inside D05
+  // (BIBLE §8.1) and both are asserted in the self-test below.
+  var TURGOR_RIPE_S = 1.000      // s of hold at which the wall is at pressure and the mat is full
+  var TURGOR_GAIN = 0.26         // × extra litter and extra thread at full pressure
+
   // Project effects that projects.js delegates here rather than expressing as a `mult` key.
   var SHEATH_HALVING = 0.50      // Hydrophobic Sheath: moistureMult' = 1 − 0.50·(1 − moistureMult)
   var NECROMASS_REFUND = 0.12    // Necromass Recycling: 12% of consumed mass returns to its pool
@@ -352,10 +385,26 @@
     return g > TAP_MAX ? TAP_MAX : g
   }
 
-  function onExtend () {
+  // Pressure as a fraction of the wall's limit: 0 at a tap, 1 at ripeness, never more. The button
+  // draws this same number every frame it is held, so the swell on screen IS the multiplier the
+  // simulation will pay out, not a picture of one.
+  function turgor (heldS) {
+    var u = num(heldS) / TURGOR_RIPE_S
+    if (!(u > 0)) return 0
+    if (u > 1) u = 1
+    return u * u * (3 - 2 * u)
+  }
+
+  // `heldS` is how long the thumb was down, in seconds, and it is optional: a caller that does not
+  // pass one is tapping, and a tap is this function exactly as it was written.
+  function onExtend (heldS) {
     var s = S()
     if (s.act !== 1) return false
-    var g = Math.min(tapLitter(s), totalSubstrate())
+    // The surge multiplies AFTER the mat's own cap, which is the whole claim: a pressurised front
+    // does not wait for litter to settle within reach, it goes and gets it.
+    var p = turgor(heldS)
+    var surge = 1 + TURGOR_GAIN * p
+    var g = Math.min(tapLitter(s) * surge, totalSubstrate())
     if (!(g > 0)) return false          // the console says so on its own poll; nothing here advises
     tapAt = num(s.t)
 
@@ -367,10 +416,12 @@
       C().setStock(s.res, 'minerals', num(s.res.minerals) + got.minerals)
       s.stats.mineralEarned = num(s.stats.mineralEarned) + got.minerals
     }
-    s.a1.hyphaeManual = num(s.a1.hyphaeManual) + A().HYPHAE_PER_TAP
+    s.a1.hyphaeManual = num(s.a1.hyphaeManual) + A().HYPHAE_PER_TAP * surge
     s.stats.taps += 1
 
-    feel('extend', { grams: got.grams })
+    // `turgor` rides along so the release can be heard as well as felt: one press is one extension
+    // however long it was held, and the difference between them belongs in the sound, not the count.
+    feel('extend', { grams: got.grams, turgor: p })
     fire('a1.first_tap')
     fire('a1.third_tap')
     return true
@@ -1085,6 +1136,44 @@
       ok(simulate({ tapRate: 1 }).firstTipAt / simulate({ tapRate: 5 }).firstTipAt < 1.45,
         'the tap still rewards mashing')
 
+      // ── turgor: the same verb, held ──────────────────────────────────────
+      near(turgor(0), 0, 0, 'a release with no hold is not exactly a tap')
+      near(turgor(-1), 0, 0, 'a negative hold is not a tap')
+      near(turgor(TURGOR_RIPE_S), 1, 1e-12, 'the wall is not at pressure at ripeness')
+      near(turgor(TURGOR_RIPE_S * 9), 1, 1e-12, 'pressure kept climbing past the wall')
+      ok(turgor(0.25) < 0.25, 'the wall gave at once — there is no resistance to push against')
+      near(turgor(TURGOR_RIPE_S / 2), 0.5, 1e-12, 'the curve is not symmetric about its middle')
+      for (i = 1; i < 20; i++) {
+        ok(turgor(i / 20) > turgor((i - 1) / 20), 'pressure did not rise monotonically')
+      }
+      // The surge is a multiplier on a full mat, and it is exactly the one turgor() draws.
+      cold(5)
+      s = S()
+      ok(onExtend(TURGOR_RIPE_S), 'a held extension did nothing')
+      near(num(s.res.biomass), TAP_MAX * (1 + TURGOR_GAIN) * A().ETA_B * DECOMP.leaf.etaB, 1e-9,
+        'a ripe release is not worth its gain over a tap')
+      near(num(s.a1.hyphaeManual), A().HYPHAE_PER_TAP * (1 + TURGOR_GAIN), 1e-12,
+        'the front did not travel further than a tap would')
+      ok(s.stats.taps === 1, 'a hold counted as more than one extension')
+      // Holding past ripeness pays nothing further, which is what makes holding forever a mistake
+      // the player can find on their own without ever being punished for it.
+      cold(5)
+      s = S()
+      onExtend(TURGOR_RIPE_S * 4)
+      near(num(s.res.biomass), TAP_MAX * (1 + TURGOR_GAIN) * A().ETA_B * DECOMP.leaf.etaB, 1e-9,
+        'a four-second hold paid more than a ripe one')
+      // D05 for the thumb that holds, across the band a real one lands in. The hold band and the
+      // tap band above are the same pass condition and neither may leave the window.
+      var hband = [0.35, 0.6, 1.0, 1.6], hi
+      for (hi = 0; hi < hband.length; hi++) {
+        br = simulate({ holdS: hband[hi], until: 90 })
+        within(br.firstTipAt, 28, 50, 'D05 holding ' + hband[hi] + ' s')
+      }
+      // The early game must not get slower for holding, or the verb is a tax dressed as a feature:
+      // one ripe release per second must beat a steady thumb at 1.7 taps a second.
+      ok(simulate({ holdS: 1.0 }).firstTipAt < simulate({ tapRate: 1.7 }).firstTipAt,
+        'holding to ripeness is slower than tapping')
+
       // ── the mineral gate: a wall with four tips of warning ───────────────
       cold(5)
       s = S()
@@ -1388,16 +1477,22 @@
 
   // A cold-start simulation at the sim rate the act actually runs at, with player R's thumb and a
   // buy-whenever-affordable policy. This is the only place in the module that models a player.
+  //
+  // `holdS` models the other thumb: a player who charges for that many seconds and releases, over
+  // and over. One press per (holdS) seconds, each paying the turgor curve at that duration — so
+  // `{ holdS: 1 }` is the ripeness rhythm and `{ tapRate: 3 }` is the masher, and D05 has to hold
+  // for both of them.
   function simulate (opts) {
     var s = cold(7)
     var dt = T().CLOCK.DT_A1
-    var tapRate = opts.tapRate
+    var holdS = num(opts.holdS)
+    var tapRate = holdS > 0 ? 1 / holdS : opts.tapRate
     var out = { firstTipAt: -1, boughtFirst: false, tipsAt90: 0, tipsAt120: 0 }
     var credit = 0, elapsed = 0
 
     while (elapsed < 121) {
       credit += tapRate * dt
-      while (credit >= 1) { credit -= 1; onExtend() }
+      while (credit >= 1) { credit -= 1; onExtend(holdS) }
       stepSeason(dt)
       stepEnvironment(dt)
       stepDecomposition(dt)
@@ -1461,6 +1556,10 @@
     get starving () { return isStarving() },
     DECOMP: DECOMP,
     tapLitter: tapLitter,
+    // The button holds the thumb; the floor owns what the pressure is worth. ui.js asks this every
+    // frame of a hold rather than keeping a curve of its own, so there is exactly one turgor curve
+    // in the build and the swell cannot drift from the payout.
+    turgor: turgor,
     __selftest: __selftest
   }
 })(window.HY = window.HY || {})
