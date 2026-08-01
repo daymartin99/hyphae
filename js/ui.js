@@ -4351,12 +4351,19 @@
 
   function buildCanopy (v, p) {
     var pv = panel('canopy', { title: STR.p_canopy })
+    // The note carries the one thing the player must understand before spending the spore bank —
+    // that every settle is carbon the void will later need, and the canopy does not refill. In the
+    // canopy the plate takes its band and the panel scroller is short (~185 px on a 390×844), so a
+    // note placed under the three-line readout card had its load-bearing second line fall below the
+    // fold: the player read "every one you settle is" and nothing after it. It leads the panel now,
+    // so the whole sentence is above the fold; the readout it used to sit under is echoed in the
+    // status strip anyway.
+    note(pv.body, STR.canopyNote)
     var head = row({})
     var craftN = statLine(head, STR.craft)
     var sporeN = statLine(head, STR.spores)
     var lamN = statLine(head, STR.surplus)
     pv.body.appendChild(head.el)
-    note(pv.body, STR.canopyNote)
 
     var bag = {}
     p.__sync = function (s) {
