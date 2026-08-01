@@ -70,9 +70,9 @@
   // its way into reach; a tap takes all of it plus `TAP_FLOOR`, and never more than `TAP_MAX` in
   // one go. So the yield of the n-th tap is a function of *when* it happened, not of how many
   // preceded it, and the litter rate is `f·TAP_FLOOR + TAP_REGEN` — 3.20 g/s at one tap a second
-  // and 3.76 g/s at five, a 1.18× spread across a 5× spread in effort. Measured first tip: 36.7 s
-  // at 1/s, 35.2 s at 2/s, 33.8 s at 3/s, 31.4 s at 5/s. All four inside D05's 28–50 s, and the
-  // measured one-thumb rate of 1.70/s lands on 35.8 s.
+  // and 3.76 g/s at five, a 1.18× spread across a 5× spread in effort. Measured first tip: 38.1 s
+  // at 1/s, 35.5 s at 2/s, 34.0 s at 3/s, 31.4 s at 5/s. All four inside D05's 28–50 s, and the
+  // measured one-thumb rate of 1.70/s lands on 36.5 s.
   //
   // THE FLOOR IS WHAT MASHING BUYS, and it was too big. `f·TAP_FLOOR` is the only term in the tap
   // rate that a faster thumb can move, so the floor alone sets the price of dexterity — and at
