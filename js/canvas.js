@@ -100,6 +100,7 @@
     STROKE_A: [0.20, 0.34, 0.72, 0.52],  // undiscovered, discovered, claimed, advancing
     BARRIER_INSET: 2.5, BARRIER_W: 2, BARRIER_DASH: [3, 2],
     RIVAL_R: 2.2, RIVAL_A: 0.75,
+    DRAIN_W: 3,              // px: wide enough to take a region's own 1.5 px outline with its face
     DOT_R: 1.1               // the undiscovered marker
   }
 
@@ -642,6 +643,7 @@
       net = regenerate(net.seed, surf.W, surf.H, net.n, 40)
       paths.length = 0
       pulses.length = 0
+      depthN = -1
     }
     mapDirty = true
     invalidate()
@@ -660,6 +662,8 @@
       net = newNet(want, surf.W, surf.H)
       paths.length = 0
       pulses.length = 0
+      // The conduction wave's root-to-tip distances belong to the network that was replaced.
+      depthN = -1
       clearNet()
     }
   }
@@ -1263,6 +1267,11 @@
   // Everything else a sequence asks for — panels fading, lists collapsing, a panel closing, the
   // screen clearing — is DOM, and `motion()` answers null for it so the host knows it is theirs.
   //
+  // What a motion owns is the PLATE, which is the canvas's whole world. Making the plate fill the
+  // viewport — 09 §4.1's "the canvas fills the viewport", and what the dismantle's cleared screen
+  // leaves behind before ENDING A — is a CSS size on an element this module does not own, and it
+  // belongs to the same host that runs panelsFade and closePanel.
+  //
   // A live motion owns the flux surface and paints the plate. The flux layer is already the one
   // that is cleared and redrawn every frame, it already sits above the append-only network, and
   // ui.js already calls drawFlux() from the single rAF — so a transition needs no second clock and
@@ -1365,7 +1374,7 @@
   // Each region's fill drains to the background colour, one ring per perRingMs, outermost first.
   // The map itself is left alone on the net canvas: draining to the background IS painting the
   // background over it, and doing it that way means the drain costs 61 fills and no re-render.
-  function drawMapDrain (ctx, u, o, keepCore) {
+  function drawMapDrain (ctx, u, o) {
     var s = S()
     var regions = s && s.a2 ? s.a2.regions : null
     if (!regions || !regions.q) return
@@ -1376,6 +1385,11 @@
     var j, ring, k, a, c
     ctx.save()
     ctx.fillStyle = rgba(pal.bg, 1)
+    // The region's own outline straddles the path, so half of it lies outside any fill of that
+    // path. Stroking the same path in the background colour takes the edge with the face — without
+    // it the drained rings keep a green wireframe and the core is not the last colour on screen.
+    ctx.strokeStyle = rgba(pal.bg, 1)
+    ctx.lineWidth = MAP.DRAIN_W
     for (j = 0; j < regions.q.length; j++) {
       ring = ringOf(regions, j)
       // The core is what the sequence holds on at 3.70 s, so it is never in the drain: `toRing` is
@@ -1390,9 +1404,9 @@
       ctx.save()
       ctx.translate(c.x, c.y)
       ctx.fill(hexPath)
+      ctx.stroke(hexPath)
       ctx.restore()
     }
-    if (keepCore !== true) { /* the core keeps its colour in both steps; see holdCore */ }
     ctx.restore()
     ctx.globalAlpha = 1
   }
@@ -1563,7 +1577,7 @@
       ms: function (o) { return o.ms > 0 ? o.ms : MOTION.HOLD_MS },
       // The drain, finished and standing still. The core is the only region with colour in it and
       // nothing moves for 1.2 s, which is the whole content of the beat.
-      draw: function (ctx, u, o) { drawMapDrain(ctx, 1, o, true) }
+      draw: function (ctx, u, o) { drawMapDrain(ctx, 1, o) }
     },
     hexLift: {
       ms: function (o) {
