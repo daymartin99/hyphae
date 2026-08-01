@@ -1673,6 +1673,8 @@
       if (num(s.res.canon) < cost) return false
       spend(s, 'canon', cost)
       a.conds.push(id)
+      // The policy editor prints the token, so the receipt says the token back (log.js §receipts).
+      if (HY.log && HY.log.bought) HY.log.bought(id)
       return true
     }
     if (kind === 'register') {
@@ -1681,6 +1683,7 @@
       if (num(s.res.canon) < cost) return false
       spend(s, 'canon', cost)
       a.regs.push(id)
+      if (HY.log && HY.log.bought) HY.log.bought(id)
       return true
     }
     if (kind === 'fidelity') {
@@ -1695,6 +1698,7 @@
       spend(s, 'canon', pay)
       s.mult.boughtFid = C().clamp(num(s.mult.boughtFid) + gain, 0, A().BOUGHT_FID_CAP)
       a.fidSpent = num(a.fidSpent) + pay
+      if (HY.log && HY.log.bought) HY.log.bought('fidelity')
       return true
     }
     return false

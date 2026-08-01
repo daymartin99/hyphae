@@ -2786,8 +2786,15 @@
     var capTxt = span(l1, 'row-num', '')
 
     var acts = el('div', 'row-actions')
-    acts.appendChild(actionButton(STR.sooner, function () { reorderPool(type, U.SOONER) }))
-    acts.appendChild(actionButton(STR.later, function () { reorderPool(type, U.LATER) }))
+    // At either end of the queue the swap has nowhere to go. That is a refusal, and a refusal is
+    // answered, never absorbed — the audit that followed the dead SELL toggle found every button
+    // below doing the same thing: calling a command that can decline and dropping the decline.
+    acts.appendChild(actionButton(STR.sooner, function (b) {
+      if (!reorderPool(type, U.SOONER)) refuse(b)
+    }))
+    acts.appendChild(actionButton(STR.later, function (b) {
+      if (!reorderPool(type, U.LATER)) refuse(b)
+    }))
     r.expander().appendChild(acts)
 
     return {
@@ -2983,6 +2990,14 @@
     span(l0, 'row-name', TYPE_NAME[type] || type)
     var side = btn('side-btn', STR.buy)
     setAttr(side, 'aria-pressed', 'false')
+    // economy1.sell() returns 0 until The Two-Sided Book is bought, so before that this toggle
+    // flipped, relabelled itself SELL, and then every button under it did nothing at all — the
+    // owner tapped it until he decided the game was broken. Selling is a verb he does not own yet,
+    // not a price he cannot yet afford: there is no number to save towards and nothing for a
+    // locked control to say. So it is withheld the way every other unearned verb in the build is
+    // (the +5 and MAX burst, the tab slots, the plate handle), and the card that grants it says
+    // "(Unlocks selling)" in as many words while he is still deciding to buy it.
+    show(side, false)
     l0.appendChild(side)
     var price = slot('row-num')
     l0.appendChild(price)
@@ -3002,6 +3017,14 @@
     l2.appendChild(burst)
     var buys = []
 
+    // The toggle is only on screen once the book is bought, so `mode.sell` cannot be true without
+    // it. This is the belt to that braces: no path through this row may spend a gesture and give
+    // nothing back, whatever a later gate decides.
+    function canSell () {
+      var s = liveState()
+      return !!(s && s.proj.flags.two_sided_book)
+    }
+
     function trade (grams, frac, source) {
       var s = liveState()
       var e = E1()
@@ -3011,7 +3034,7 @@
         var held = num(s.a1.sub[type])
         g = (grams === null || grams === undefined) ? held * frac : Math.min(grams, held)
         if (!(g > 0)) { refuse(source); return }
-        commit(function () { e.sell(type, g) })
+        if (!commit(function () { return e.sell(type, g) })) { refuse(source); return }
         if (view) flashSlot(view.ledgerRows[1].val, 'gain')
         return
       }
@@ -3042,13 +3065,15 @@
     buys.push({ el: bMax, kind: 'max', g: 0 })
 
     function flip () {
+      if (!canSell()) return
       mode.sell = !mode.sell
       setData(r.el, 'mode', mode.sell ? 'sell' : 'buy')
       setAttr(side, 'aria-pressed', mode.sell ? 'true' : 'false')
       setText(side, mode.sell ? STR.sell : STR.buy)
       setText(bMax, mode.sell ? STR.all : STR.max)
     }
-    bindPress(side, flip)
+    // The flip changes what all four buttons beneath it do, so it commits on release like they do.
+    bindPress(side, flip, { onUp: true })
     // 01 §12.1's promise: long-press is the secondary action, everywhere and only. The visible
     // toggle is the keyboard's route to the same place (06 §8.3).
     bindLongPress(r.el, flip)
@@ -3060,6 +3085,7 @@
         var e = E1()
         var mkt = s.a1.mkt[e.TYPES.indexOf(type)]
         var unit = e.unitPrice(type)
+        show(side, !!s.proj.flags.two_sided_book)
         setSlot(price, C().fmt(unit), GLYPH.sugar + '/g')
         setText(arrow, unit > lastPrice ? '▲' : unit < lastPrice ? '▼' : '·')
         setData(arrow, 'dir', unit > lastPrice ? 'up' : unit < lastPrice ? 'down' : 'flat')

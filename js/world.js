@@ -1108,6 +1108,7 @@
     r.d[i] = C().clamp(num(r.d[i]) + DENS_STEP * densityGainMult(i, s), 0, 1)
     stat(s, 'densityBuys', 1)
     feel('buy', { region: i })
+    if (HY.log && HY.log.bought) HY.log.bought('density')
     return true
   }
 

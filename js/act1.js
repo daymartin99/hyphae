@@ -412,6 +412,7 @@
     s.a1.tips = n + 1
     feel('buy', { what: 'tip', n: s.a1.tips })
     fire('a1.first_tip')
+    if (HY.log && HY.log.bought) HY.log.bought('tip')
     return true
   }
 

@@ -1604,6 +1604,10 @@
   // So a purchase says its own name. Only its name: no price, no effect, no tone glyph, no praise,
   // no comment. §3.5's four other bans are untouched and this one is not widened.
   //
+  // The name is quoted, not written, so §1.7's punctuation rules do not apply to it: `Peroxidase
+  // (Mn)` reaches the console with its brackets on, because a receipt that does not match the card
+  // the player pressed is not a receipt. What §1.7 governs is prose, and this line has none.
+  //
   // Once per distinct name per run. A project has a title of its own, so every project purchase
   // speaks; a tip, a litter pool or a density step is the same noun every time and speaks only the
   // first time, while the player is still learning what the word on the control means. After that
@@ -2459,8 +2463,32 @@
         for (i = 0; i < seen.length; i++) if (seen[i].id.indexOf('a2.') === 0) leaked = true
         ok(!leaked, 'an Act II line fired during Act I')
 
+        // Receipts. A named thing speaks once, immediately, lowercase in Act I, and a key resolves
+        // through BOUGHT while anything else is spoken as it was given.
+        init(live)
+        live.log.openingLines = 5
+        live.log.lastLineAt = -1e9
+        seen.length = 0
+        ok(bought('tip') === true, 'a purchase did not name itself')
+        ok(seen.length === 1 && seen[0].text === '[ a tip ]', 'receipt text: ' + seen[0].text)
+        ok(seen[0].channel === 'system', 'a receipt is not on the system channel')
+        ok(bought('tip') === false, 'a receipt repeated itself')
+        ok(bought('Osmotic Priming') === true, 'a project title did not become a receipt')
+        ok(seen[seen.length - 1].text === '[ osmotic priming ]',
+          'Act I receipt is not lowercase: ' + seen[seen.length - 1].text)
+        live.act = 2
+        ok(bought('Osmotic Priming') === true, 'Act II reprints the same name in its own register')
+        ok(seen[seen.length - 1].text === '[ Osmotic Priming ]',
+          'Act II receipt lost its case: ' + seen[seen.length - 1].text)
+        live.act = 1
+        ok(bought('') === false && bought(null) === false, 'a nameless purchase spoke')
+        // Two lines can be adjacent here on purpose: a receipt answers an input and does not wait
+        // for HARD_GAP, which is the whole reason it is emitted rather than queued.
+        ok(seen.length === 3, 'receipts did not all land: ' + seen.length)
+
         // freeze() flushes the queue empty and nothing from the game may interrupt.
         freeze()
+        ok(bought('fine deadfall') === false, 'a receipt spoke over a transition')
         seen.length = 0
         logFire('a1.windfall')
         live.t += 10

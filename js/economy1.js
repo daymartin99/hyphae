@@ -741,6 +741,10 @@
     s.stats.sugarSpentOnMarket += cost
     if (cost > s.stats.largestSinglePurchase) s.stats.largestSinglePurchase = cost
     say(s.stats.purchases >= 10 ? 'a1.tenth_buy' : 'a1.first_buy')
+    // The pool the player just bought into names itself once, the first time. `EXTEND` never
+    // speaks and neither does the tenth trade in leaf litter — after that the substrate readout is
+    // the confirmation, and the log's own once-per-name rule is what holds Standing Order silent.
+    if (HY.log && HY.log.bought) HY.log.bought(type)
     return grams
   }
 
