@@ -1753,6 +1753,46 @@
     return typeof navigator !== 'undefined' && !!navigator.vibrate
   }
 
+  // iOS Safari has never implemented the Vibration API, so every gate above is
+  // correct and every buzz on an iPhone is silently dropped. What Safari 17.4+
+  // does give is real system haptics on a switch control, and toggling one from
+  // script fires them — so on that platform the switch IS the vibration motor.
+  // One hidden control, reused: it is visually hidden rather than display:none
+  // because a control that is not rendered is not actuated either.
+  var hapSwitch = null
+
+  function canSwitchHaptic () {
+    var d = doc()
+    if (!d || typeof d.createElement !== 'function') return false
+    try { return 'switch' in d.createElement('input') } catch (e) { return false }
+  }
+
+  function switchHaptic () {
+    var d = doc()
+    if (!d || !d.body) return false
+    if (!hapSwitch) {
+      var input = d.createElement('input')
+      input.type = 'checkbox'
+      input.setAttribute('switch', '')
+      input.id = 'hy-hap'
+      input.tabIndex = -1
+      input.setAttribute('aria-hidden', 'true')
+      var label = d.createElement('label')
+      label.setAttribute('for', 'hy-hap')
+      label.setAttribute('aria-hidden', 'true')
+      var box = d.createElement('div')
+      box.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;' +
+        'opacity:0;pointer-events:none;overflow:hidden'
+      box.appendChild(input)
+      box.appendChild(label)
+      d.body.appendChild(box)
+      hapSwitch = { input: input, label: label }
+    }
+    // The toggle is the haptic; its state is meaningless and nothing reads it.
+    try { hapSwitch.label.click() } catch (e) { return false }
+    return true
+  }
+
   // H1 · duty cycle. Two ring buffers, no queue: a queued buzz arrives after the thing it
   // described. Excess is dropped.
   function hapticBudget (ms) {
@@ -1772,13 +1812,17 @@
   function haptic (ms) {
     if (!(ms > 0)) return false
     if (!hapticsOn() || reducedMotion() || scrolling) return false
-    if (!canVibrate()) return false
+    if (!canVibrate() && !canSwitchHaptic()) return false
     if (offlineMode) return false
     if (nowMs() - visibleAt < AUD.gov.gateAfterVisibleMs) return false
     var d = doc()
     if (d && d.hidden) return false
     var v = Math.max(AUD.hap.minMs, Math.round(ms * batteryScale))
     if (!hapticBudget(v)) return false
+    // Duration is not expressible on the switch path — iOS picks the weight —
+    // so the budget above still governs how OFTEN it can fire, which is the
+    // part that matters for not being annoying.
+    if (!canVibrate()) return switchHaptic()
     try { navigator.vibrate(v) } catch (e) { return false }
     return true
   }
@@ -3068,7 +3112,7 @@
     acceptOffer: acceptOffer,
     get mode () { return mode() },
     get available () { return !unavailable },
-    get hapticsAvailable () { return canVibrate() },
+    get hapticsAvailable () { return canVibrate() || canSwitchHaptic() },
 
     // the score for act transitions and endings (07 §6)
     score: score,
