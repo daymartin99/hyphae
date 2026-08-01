@@ -160,6 +160,7 @@
     delivered: 'delivered',
     shortfall: 'shortfall',
     suspended: 'suspended',
+    contractsN: '{n} contracts',
     atMost: '{v} at most, {n} seasons',
 
     claim: 'claim',
@@ -3168,6 +3169,61 @@
     }
   }
 
+  // A stand of a dozen birch signed at 0.00 ⛬/s is a dozen identical rows saying nothing twelve
+  // times (01 §7.3). Same-species active contracts collapse to one row carrying the count and the
+  // summed rate; the expander holds the individual contracts, each with its own exit and
+  // renegotiate, so nothing is hidden — it is folded. The row is keyed by species, so a contract
+  // leaving the group (suspended, severed) re-splits it without rebuilding what stayed.
+  function contractGroupRow () {
+    var r = row({ expand: true })
+    var l0 = r.line()
+    var name = span(l0, 'row-name', '')
+    var countTag = span(l0, 'row-sub', '')
+    var rateNum = slot('row-num')
+    l0.appendChild(rateNum)
+
+    var l1 = r.line()
+    span(l1, 'row-sub', STR.delivered)
+    var bar = meter('ascii', 0)
+    l1.appendChild(bar)
+    var left = span(l1, 'row-num', '')
+
+    var ex = r.expander()
+    var subList = el('div', 'sub-list')
+    ex.appendChild(subList)
+    var subBag = {}
+
+    return {
+      el: r.el,
+      sync: function (s, d) {
+        var label = SPECIES_NAME[d.species] || d.species
+        setText(name, label)
+        setText(countTag, interp(STR.contractsN, { n: d.contracts.length }))
+        // The two numbers that survive the fold: what the whole stand pays, and when the first of
+        // it expires. A contract that is nearest its term is the one the player would act on.
+        var i, rate = 0, soonest = Infinity, prog = 1
+        for (i = 0; i < d.contracts.length; i++) {
+          var c = d.contracts[i]
+          rate += num(c.mineralRate)
+          var endsIn = num(c.endT) - num(s.t)
+          if (endsIn < soonest) {
+            soonest = endsIn
+            var total = Math.max(1e-9, num(c.endT) - num(c.startT))
+            prog = fill((num(s.t) - num(c.startT)) / total)
+          }
+        }
+        setSlot(rateNum, C().fmt(rate), GLYPH.minerals + '/s')
+        bar.set(prog, '', Math.round(prog * 100) + ' percent of the nearest term')
+        setText(left, C().fmtTime(Math.max(0, soonest)))
+        r.label(label + ', ' + interp(STR.contractsN, { n: d.contracts.length }) + ', ' +
+          C().fmt(rate) + ' minerals per second')
+        // The folded contracts keep their full rows — delivered bar, shortfall, exit, renegotiate.
+        reconcile(subList, subBag, d.contracts, function (c2) { return c2.id },
+          function (c2) { return contractRow(c2.id) }, s)
+      }
+    }
+  }
+
   function solicitRow (id) {
     var r = row({})
     var l0 = r.line()
@@ -3358,9 +3414,38 @@
     p.__sync = function (s) {
       var e = E1()
       if (!e) return
-      reconcile(contractsEl, contractRows, s.a1.contracts,
-        function (c) { return c.id },
-        function (c) { return contractRow(c.id) }, s)
+      // Same-species ACTIVE contracts fold into one group row; a lone contract, and any that is
+      // suspended or otherwise off, stays a full row of its own. Order is preserved by first
+      // appearance so the list does not reshuffle under the thumb as contracts are signed.
+      var groups = {}
+      var display = []
+      s.a1.contracts.forEach(function (c) {
+        var tree = e.treeById(c.treeId)
+        var sp = tree ? tree.species : ('id' + c.treeId)
+        if (c.state === 'active' && !c.suspended) {
+          if (!groups[sp]) { groups[sp] = { type: 'grp', key: 'g:' + sp, species: sp, contracts: [] }; display.push(groups[sp]) }
+          groups[sp].contracts.push(c)
+        } else {
+          display.push({ type: 'one', key: 'c' + c.id, contract: c })
+        }
+      })
+      // A group of one is just a contract; render it as the plain row so a single birch never
+      // wears a "1 contracts" collar.
+      display = display.map(function (d) {
+        return (d.type === 'grp' && d.contracts.length === 1)
+          ? { type: 'one', key: 'c' + d.contracts[0].id, contract: d.contracts[0] }
+          : d
+      })
+      reconcile(contractsEl, contractRows, display,
+        function (d) { return d.key },
+        function (d) {
+          return d.type === 'grp'
+            ? contractGroupRow()
+            : (function () {
+              var rowApi = contractRow(d.contract.id)
+              return { el: rowApi.el, sync: function (st, dd) { rowApi.sync(st, dd.contract) } }
+            })()
+        }, s)
       reconcile(solicitsEl, solRows, e.solicitations ? e.solicitations() : [],
         function (o) { return 's' + o.id },
         function (o) { return solicitRow(o.id) }, s)
