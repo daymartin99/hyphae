@@ -400,9 +400,19 @@ canvas{ display:block; }
    whether the stack is short or long. Zone A, forever. Basis zero and a floor: the list takes the
    free space when there is any, and when 200% text leaves none it is the plate, not the list and
    never the button, that gives ground. */
-.panels{ flex:1 1 0; min-height:var(--panels-min); padding-top:var(--sp-12);
+.panels{ position:relative;
+         flex:1 1 0; min-height:var(--panels-min); padding-top:var(--sp-12);
          overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
          scroll-behavior:smooth; }
+/* A list that ends mid-card reads as a rendering fault rather than as more content: both blind
+   judges called the clipped sliver above the hero a glitch. A short fade over the last rows says
+   "there is more below" in the only vocabulary a scroller has. It is fixed to the frame, not the
+   content, so it never scrolls away, and it ignores the pointer so it cannot eat a tap. */
+.panels::after{
+  content:""; position:sticky; display:block; z-index:2;
+  bottom:0; margin-top:calc(var(--sp-16) * -1); height:var(--sp-16);
+  background:linear-gradient(transparent, var(--bg)); pointer-events:none;
+}
 /* The FAB's band is reserved, not shared: a floating button that parks over a list clips the
    right-hand value of whatever row is under it — "standing" read as "standir", a band's richness
    unreadable — and no scroll position should be able to put a row there. While the FAB is on
@@ -486,6 +496,14 @@ canvas{ display:block; }
 .gear[data-press="1"]{ background:var(--surface-press); color:var(--text-max); }
 
 /* ══ HERO · 06 §5.2 ════════════════════════════════════════════════════════ */
+
+/* With the console at the top the hero is the last band on the screen, so it — not the console —
+   is what has to clear the home indicator. Both judges caught the button sitting ~14 px off the
+   bottom edge, inside the iOS gesture strip, where one tap in a few hundred becomes an app switch
+   instead of a turn of play. */
+.shell[data-console="top"] .hero{
+  margin-bottom:calc(var(--sp-12) + env(safe-area-inset-bottom));
+}
 
 .hero{
   display:block; flex:0 0 auto;

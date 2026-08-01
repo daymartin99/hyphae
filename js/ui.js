@@ -1643,7 +1643,10 @@
     var q = w && w.location && typeof w.location.search === 'string' ? w.location.search : ''
     var m = /[?&]console=(top|bottom)/.exec(q)
     if (m) return m[1]
-    return recall('hyphae.console') === 'top' ? 'top' : 'bottom'
+    // Top by default. The console narrates the canvas, so it belongs beside it, and putting it
+    // there moves the hero to the foot of the screen where the thumb already rests — a tap's own
+    // reward printing under the hand that made it is the fault this settles.
+    return recall('hyphae.console') === 'bottom' ? 'bottom' : 'top'
   }
 
   // ───────────────────────────────────────────────────────────────────────────

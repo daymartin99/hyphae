@@ -627,7 +627,11 @@ function minifyCSS(src) {
   // itself by re-lexing and re-parsing; CSS has no parser to hand, so check the
   // single failure mode that is actually reachable. '(', '*' and '/' are
   // excluded before the operator because a unary sign is legal after them.
-  const badCalc = out.match(/calc\([^{};]*?(?:[^\s(*/,][+-]\s|\s[+-][^\s)])[^{};]*?\)/)
+  // Only a BINARY +/- needs its spaces, and it is binary only when a value precedes it. After an
+  // operator or an opening paren the sign is unary and legal tight — calc(var(--x)* -1) is fine,
+  // and an earlier version of this check called it broken. So both halves require a value char
+  // on the left: dropped-space-after (`A+ B`) and dropped-space-before (`A -B`).
+  const badCalc = out.match(/calc\([^{};]*?(?:[\w%)\]][+-]\s|[\w%)\]]\s[+-][^\s])[^{};]*?\)/)
   if (badCalc) throw new Error('CSS minifier broke a calc(): ' + badCalc[0])
   return out
 }
