@@ -553,6 +553,75 @@ canvas{ display:block; }
 .hero--danger{ background:var(--negative); border-color:var(--negative);
                color:var(--text-on-rust); }
 
+/* ── TURGOR · the hold that extends the front (01 §3.2, 07 §8.2) ────────────
+   A hypha extends because the cell behind the tip pushes water forward until the wall gives. The
+   button is that tip, so nothing here is a progress bar: there is no track, no bar, no edge running
+   left to right, and no percentage. There is a volume filling, a wall taking the strain, and a
+   release.
+
+   --turgor is written by ui.js on the frame, straight from act1's own curve, so what swells here is
+   the multiplier the floor is about to pay and not a picture of it. It is a raw number 0…1 and every
+   rule below reads it through calc(), which is why no rule below needs a duration: while the thumb
+   is down there is nothing to interpolate, the value is already this frame's truth. The transitions
+   are for the RELEASE, and they arm the instant data-charge returns to 0.
+
+   The scale is the whole physical story in one line. It begins at the pressed 0.972 — the wall
+   dents under the thumb, which is resistance — and passes back through its resting size to 1.016 at
+   the wall. The button gives, then inflates. */
+.hero{ --turgor:0; }
+.hero-turgor{
+  position:absolute; inset:0; border-radius:inherit; pointer-events:none;
+  /* Sap, not light: the positive wash is the dimmest green the palette owns and it is the same
+     colour the ledger flashes on a gain. The edge of the disc is soft over a third of its radius,
+     so what the eye sees is a volume filling rather than a shape arriving. */
+  background:radial-gradient(120% 150% at 50% 60%,
+             var(--positive-wash) 0%, var(--positive-wash) 42%, transparent 78%);
+  opacity:calc(var(--turgor) * .9);
+  transform:scale(calc(.34 + .66 * var(--turgor)));
+  transform-origin:50% 60%;
+}
+.hero{ position:relative; overflow:hidden; }
+.hero-lab, .hero-cost{ position:relative; }
+.hero[data-charge="1"]{
+  transform:scale(calc(.972 + .044 * var(--turgor)));
+  background:var(--surface-press);
+  border-color:var(--line);
+  transition:none;
+}
+/* The word takes the strain with the button. Tracking is this interface's own device for pressure
+   (06 §3.2) and four hundredths of an em across six letters is four pixels — felt, not read. */
+.hero[data-charge="1"] .hero-lab{ letter-spacing:calc(.12em + .04em * var(--turgor)); }
+/* THE WALL. A threshold is discrete or it is not a threshold: at ripeness the fill stops growing
+   (act1 clamps the curve, so this needs no rule at all), the edge firms to the colour every earned
+   thing in this game wears, and that is the entire announcement. There is no flash, no pulse and
+   nothing that would ask to be held longer — holding longer is the mistake this is warning against.
+   The tick the thumb feels at the same moment is ui.js's HAP_RIPE. */
+.hero[data-charge="1"][data-ripe="1"]{ border-color:var(--positive); }
+/* The release: the pressure discharges into the front over the same 220 ms every other release in
+   the build takes, on the same curve. --turgor is written back to 0 in the same frame, so this is
+   one transition and not an animation. */
+.hero[data-charge="0"],
+.hero[data-charge="0"] .hero-turgor,
+.hero[data-charge="0"] .hero-lab{
+  transition:transform var(--d-release) var(--ease-out),
+             opacity var(--d-release) var(--ease-out),
+             letter-spacing var(--d-release) var(--ease-out),
+             background-color var(--d-state) linear,
+             border-color var(--d-state) linear;
+}
+
+/* 06 §8.6. The swell is the decoration and the threshold is the information, so reduced motion
+   keeps the second and drops the first: ui.js writes --turgor as 0 or 1 and nothing at all, so the
+   fill appears at the wall and the button never changes size under the thumb. Written twice, as
+   every reduced-motion rule in this file is, because the OS hint is the default and the in-app
+   choice is the answer to it, in both directions. */
+@media (prefers-reduced-motion: reduce){
+  :root:not([data-motion="full"]) .hero[data-charge="1"]{ transform:scale(.972); }
+  :root:not([data-motion="full"]) .hero[data-charge="1"] .hero-lab{ letter-spacing:.12em; }
+}
+:root[data-motion="reduce"] .hero[data-charge="1"]{ transform:scale(.972); }
+:root[data-motion="reduce"] .hero[data-charge="1"] .hero-lab{ letter-spacing:.12em; }
+
 /* The ending bar: the hero's shape in the hero's band, carrying the ending card's 400 ms hold.
    Its accent is the signal's cold light, never rust — the same argument as the card's own wipe:
    this is the one destructive commit in the build that is not a loss. */

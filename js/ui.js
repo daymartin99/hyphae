@@ -49,6 +49,16 @@
     // The distance a finger may travel between down and up and still be a tap. Ten CSS pixels is
     // roughly where a phone's own scroll recogniser makes up its mind, so the two agree.
     PRESS_SLOP_PX: 10,
+    // A charging thumb rests for about a second and wanders while it does. Ten pixels is where a
+    // scroll recogniser makes up its mind about a *tap*; it is nowhere near where a held thumb has
+    // decided anything. Twenty-eight is roughly a thumb's own width of drift, and the browser's
+    // `pointercancel` — which arrives the moment it commits to scrolling — is still the authority.
+    // The cost of being wrong here is a free verb fired once, which is why it can afford to be
+    // generous where a purchase cannot.
+    CHARGE_SLOP_PX: 28,
+    // The tick when the wall reaches pressure. Below the press haptic on purpose: it is the quiet
+    // click of a thing being ready, not an event.
+    HAP_RIPE: 5,
     DESTRUCT_MS: 400,
     REPEAT_DELAY_MS: 500, REPEAT_MS_1: 167, REPEAT_MS_2: 83, REPEAT_ACCEL_MS: 1500,
     REPEAT_HAPTIC_EVERY: 3,
@@ -625,6 +635,13 @@
   // scroll), a scroll anywhere in the shell, or the pointer leaving the control. The owner bought
   // an adaptation with the first millimetre of a swipe up a panel of cards; a purchase that
   // commits before the finger has moved is not a purchase the player made.
+  //
+  // The CHARGE path (`charge`) is the commit path carrying one more fact: how long the thumb was
+  // down. It is a variant of the commit path rather than a second listener on the same node,
+  // because two listeners would be two opinions about whether a swipe happened, and the swipe is
+  // the thing that must not be got wrong. Its only difference is the slop radius — a thumb resting
+  // for a second wanders further than a thumb tapping — and it is `pointercancel` that remains the
+  // authority, because that is the browser saying it has decided this gesture is a scroll.
   // ───────────────────────────────────────────────────────────────────────────
 
   // True while the shell is being scrolled. Set by the capture-phase listener in `mount`, which
@@ -640,51 +657,83 @@
     // path they are on. The hero is the only caller that varies: EXTEND is eager and the two verbs
     // that replace it in Act III are not.
     var commitPath = false
+    var charging = false
+    var chargeAt = 0
     var sx = 0
     var sy = 0
+    // Held in seconds, and only for a charging press: every other caller's `fn` takes one argument
+    // and would not know what to do with a second.
+    function heldS () { return charging ? (nowMs() - chargeAt) / 1000 : 0 }
+    function endCharge (fired) {
+      if (!charging) return
+      charging = false
+      if (opts.onCharge) opts.onCharge(false, fired)
+    }
     function disarm () {
       if (!down) return
       down = false
       armed = false
+      endCharge(false)
       setData(mark, 'press', '0')
     }
     on(node, 'pointerdown', function (e) {
       if (e.button) return
       down = true
       armed = true
-      commitPath = typeof opts.onUp === 'function' ? !!opts.onUp() : !!opts.onUp
+      // Both decided once, at pointerdown, so the two halves of one gesture cannot disagree about
+      // which path they are on. A charging press is always a commit press.
+      charging = typeof opts.charge === 'function' ? !!opts.charge() : false
+      commitPath = charging || (typeof opts.onUp === 'function' ? !!opts.onUp() : !!opts.onUp)
       sx = e.clientX
       sy = e.clientY
+      chargeAt = nowMs()
       setData(mark, 'press', '1')
       if (!opts.quiet) haptic(U.HAP_PRESS, opts.feel || 'ui.press')
+      if (charging && opts.onCharge) opts.onCharge(true, false)
       if (!commitPath && fn) fn(e)
     })
     on(node, 'pointermove', function (e) {
       if (!armed || !commitPath) return
-      if (Math.hypot(e.clientX - sx, e.clientY - sy) <= U.PRESS_SLOP_PX) return
+      var slop = charging ? U.CHARGE_SLOP_PX : U.PRESS_SLOP_PX
+      if (Math.hypot(e.clientX - sx, e.clientY - sy) <= slop) return
       // The finger is travelling. Drop the arm and the pressed look with it, so the control stops
       // claiming it is about to do something.
       armed = false
+      endCharge(false)
       setData(mark, 'press', '0')
     })
     on(node, 'pointerup', function (e) {
       if (!down) return
       var go = armed && commitPath && !scrolling()
+      var held = heldS()
       down = false
       armed = false
+      endCharge(go)
       setData(mark, 'press', '0')
-      if (go && fn) fn(e)
+      if (go && fn) fn(e, held)
     })
     on(node, 'pointercancel', disarm)
     on(node, 'pointerleave', disarm)
-    // Keyboard parity: Space and Enter do exactly what the thumb does (06 §8.3).
+    // Keyboard parity: Space and Enter do exactly what the thumb does (06 §8.3) — including the
+    // holding, which is why a charging control fires on keyUP and a plain one on keydown.
     on(node, 'keydown', function (e) {
       if ((e.key !== ' ' && e.key !== 'Enter') || e.repeat) return
       e.preventDefault()
+      charging = typeof opts.charge === 'function' ? !!opts.charge() : false
+      chargeAt = nowMs()
       setData(mark, 'press', '1')
-      if (fn) fn(e)
+      if (charging && opts.onCharge) opts.onCharge(true, false)
+      else if (fn) fn(e)
     }, false)
-    on(node, 'keyup', function () { setData(mark, 'press', '0') })
+    on(node, 'keyup', function (e) {
+      setData(mark, 'press', '0')
+      // Only the key that started the charge may end it; a modifier lifted mid-hold is not a
+      // release of the verb.
+      if (!charging || (e.key !== ' ' && e.key !== 'Enter')) return
+      var held = heldS()
+      endCharge(true)
+      if (fn) fn(e, held)
+    })
     return node
   }
 
@@ -1486,6 +1535,10 @@
 
     // ── the hero: always the last element in the scroll, forever ──
     var hero = btn('hero')
+    // The volume the pressure fills. Built once at boot and never allocated on a press (07 §8.2's
+    // rule for the ripple, and for the same reason): the player presses this some hundreds of times
+    // an hour and an element per press is a collection pause per hundred presses.
+    hero.appendChild(el('span', 'hero-turgor'))
     v.heroLab = el('span', 'hero-lab', STR.extend)
     hero.appendChild(v.heroLab)
     // The cost line exists from boot and is empty until a verb has a price. SETTLE has one — the
@@ -1525,7 +1578,9 @@
     bindPress(hero, onHero, {
       feel: 'extend',
       quiet: true,
-      onUp: function () { return heroVerb(liveState()) !== 'extend' }
+      onUp: function () { return heroVerb(liveState()) !== 'extend' },
+      charge: chargeWanted,
+      onCharge: heroCharge
     })
     scroll.appendChild(hero)
     v.tailEl = el('div', 'tail')
@@ -1650,6 +1705,94 @@
   }
 
   // ───────────────────────────────────────────────────────────────────────────
+  // THE VERB · turgor or tap, an A/B on the same terms as the console's
+  //
+  // Universal Paperclips is grey chrome and an OS button, and that is honest for it: you are a
+  // machine, and clicking is what a machine's operator does. This is not that. A hypha extends
+  // because the cell behind the tip pushes water forward until the wall gives, so the input is a
+  // hold — pressure, resistance, release — and act1 owns what the pressure is worth.
+  //
+  // TAP is the shipped verb, unchanged, still in the build: a release with no hold is arithmetically
+  // the same extension it always was, so these are not two mechanics, they are one mechanic at two
+  // hold durations. That is also the accessibility answer, and it is not a concession — a player
+  // who cannot hold (a switch, a head pointer, a hand that will not rest still) taps their way
+  // through the whole game at the pace the game shipped with, and a player who holds trades four
+  // presses in five for the same pace. Nothing is behind the hold that is not behind the tap.
+  //
+  // The one real cost is that EXTEND leaves the eager path: it fires on release now, as every spend
+  // already does. The ~90 ms that buys back is repaid on the down edge, by a swell that starts
+  // under the thumb in the frame the thumb lands.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // { at, ripe } while a hold is building, else null. A gesture, never game state: it is not saved,
+  // and a reload mid-press is a press that did not happen.
+  var charge = null
+
+  function extendMode (mode) {
+    if (!view) return 'turgor'
+    if (mode === undefined) return view.shell.dataset.verb || 'turgor'
+    mode = mode === 'tap' ? 'tap' : 'turgor'
+    setData(view.shell, 'verb', mode)
+    store('hyphae.verb', mode)
+    return mode
+  }
+
+  function wantedExtendMode () {
+    var w = win()
+    var q = w && w.location && typeof w.location.search === 'string' ? w.location.search : ''
+    var m = /[?&]verb=(turgor|tap)/.exec(q)
+    if (m) return m[1]
+    return recall('hyphae.verb') === 'tap' ? 'tap' : 'turgor'
+  }
+
+  // The hold is offered only where there is a floor to push into. SETTLE spends spores and NEW
+  // GROWTH ends the run; neither is a thing you lean on.
+  function chargeWanted () {
+    return extendMode() === 'turgor' && heroVerb(liveState()) === 'extend' &&
+      !!(A1() && A1().turgor)
+  }
+
+  // The swell IS the multiplier. act1 owns the curve and this asks it every frame rather than
+  // keeping a copy of it, so the button cannot promise a pressure the floor will not pay.
+  function setTurgor (p) {
+    if (view) view.hero.style.setProperty('--turgor', p.toFixed(3))
+  }
+
+  function heroCharge (on) {
+    if (!view) return
+    if (on) {
+      charge = { at: nowMs(), ripe: false }
+      setTurgor(0)
+      setData(view.hero, 'ripe', '0')
+      setData(view.hero, 'charge', '1')
+      return
+    }
+    charge = null
+    // The pressure is not deleted, it is discharged: the stylesheet gives the fall its 220 ms the
+    // moment `charge` returns to 0 — the same release curve the press transform has always had.
+    setData(view.hero, 'charge', '0')
+    setData(view.hero, 'ripe', '0')
+    setTurgor(0)
+  }
+
+  // Driven from loop.js's frame, like everything else this module draws (BIBLE §4.2): no timer, no
+  // rAF of its own, and nothing at all to do on a frame with no thumb down.
+  function stepCharge () {
+    if (!charge || !view) return
+    var a = A1()
+    var p = a && a.turgor ? a.turgor((nowMs() - charge.at) / 1000) : 0
+    if (!charge.ripe && p >= 1) {
+      charge.ripe = true
+      setData(view.hero, 'ripe', '1')
+      haptic(U.HAP_RIPE, 'ripe')
+    }
+    // 06 §8.6. Under reduced motion the button still reports the two facts that decide the press —
+    // a hold is building, and the wall has been reached — and nothing between them moves. That is
+    // the meter's own reasoning: the state is information, the interpolation is decoration.
+    setTurgor(reducedMotion() ? (charge.ripe ? 1 : 0) : p)
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
   // MOUNT AND LAYOUT
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -1708,6 +1851,7 @@
     var s = liveState()
     setTheme(recall('hyphae.theme') || (s ? s.set.theme : 'auto'))
     consolePos(wantedConsolePos())
+    extendMode(wantedExtendMode())
     applyMotionAttr()
     if (recall('hyphae.verbose') === '1') verbose = true
     if (!hasTabular(d.body)) d.documentElement.dataset.numfont = 'mono'
@@ -1737,7 +1881,9 @@
 
     // loop.js owns the single rAF in the build; when it is present we ride in it and start none of
     // our own (BIBLE §4.2).
-    if (HY.loop && HY.loop.onFrame) HY.loop.onFrame(function () { render(liveState()) })
+    if (HY.loop && HY.loop.onFrame) {
+      HY.loop.onFrame(function () { stepCharge(); render(liveState()) })
+    }
 
     render(s)
     return view
@@ -1762,12 +1908,12 @@
     return null
   }
 
-  function onHero () {
+  function onHero (e, heldS) {
     var s = liveState()
     if (!s) return
     if (LOG() && LOG().notifyInput) LOG().notifyInput()
     var verb = heroVerb(s)
-    if (verb === 'extend' && A1() && A1().onExtend) A1().onExtend()
+    if (verb === 'extend' && A1() && A1().onExtend) A1().onExtend(heldS)
     else if (verb === 'settle' && HY.bloom) commit(function () { return HY.bloom.settle() })
     else if (verb === 'newgrowth' && HY.finale && HY.finale.newGrowth) HY.finale.newGrowth()
     // feel.js fires the extend haptic from act1's own call site; this is the fallback for a build
@@ -5738,6 +5884,9 @@
     announce: announce,
     // The console-placement A/B. No argument reads the live placement; 'top' or 'bottom' moves it.
     consolePos: consolePos,
+    // The verb A/B, on the same terms. No argument reads it; 'turgor' holds to build pressure and
+    // releases, 'tap' is the button the game shipped with. `?verb=tap` picks it on the way in.
+    extendMode: extendMode,
 
     // The rest of this module's own surface: the 10 Hz display slot loop.js schedules, the act
     // cinematic, the rotation hook, and the sheet the gear opens.

@@ -1536,9 +1536,27 @@
 
   var EVENTS = {
 
+    // `p.turgor` is 0 for a tap and 1 for a release at the wall (act1 owns the curve). A charged
+    // release is the same knock with more body behind it and a longer tail — the sound of a bigger
+    // volume of the same thing moving, not of a different event. The partial is untouched: the tap
+    // ladder is a phrase, and a held press is a note in it, not a key change.
     'tap.extend': { g: 0.100, s: 0.05, w: 0, h: 8, ioi: 55, play: function (t, p, o) {
+      var q = num(p.turgor)
+      if (!(q > 0)) q = 0
       knock(t, o.n === undefined ? tapPartial(1) : o.n,
-        { gain: o.g, send: o.s, nDecay: 55, bDecay: 90, Q: 3.2 })
+        // The send is left alone: WOOD's reverb band is a material property (07 §5.1 P5) and a
+        // louder knock is still wood. What lengthens is the body, which is the volume that moved.
+        { gain: o.g * (1 + 0.45 * q), send: o.s,
+          nDecay: 55 + 25 * q, bDecay: 90 + 70 * q, Q: 3.2 })
+    } },
+
+    // The wall. Fired the instant pressure reaches what the tip can hold, while the thumb is still
+    // down — the one moment in this gesture the player has to be told about without looking, since
+    // everything past it is a hold that is no longer buying anything. Quieter and shorter than the
+    // release it precedes, high in the ladder, and with an IOI long enough that a run of holds does
+    // not turn it into a metronome.
+    'tap.turgor': { g: 0.045, s: 0.02, w: 0, h: 5, ioi: 380, play: function (t, p, o) {
+      knock(t, o.n === undefined ? 12 : o.n, { gain: o.g, send: o.s, nDecay: 22, bDecay: 34, Q: 5.0 })
     } },
 
     // Reflex Arc advances the ladder by two, so holding produces a flatter phrase than tapping.
@@ -1712,6 +1730,7 @@
   // the table's keys; these are the aliases, in one place, rather than a rename across four files.
   var ALIAS = {
     extend: 'tap.extend', hold: 'tap.hold', tap: 'tap.ui', ui: 'tap.ui',
+    ripe: 'tap.turgor',
     deny: 'tap.deny', buy: 'buy.commit', tick: 'buy.tick', claim: 'claim.complete',
     season: 'season.turn', reveal: 'unlock.reveal', complete: 'project.complete',
     fill: 'market.fill', pulse: 'pulse.fire', flush: 'flush.release', fail: 'fail.event',
@@ -2811,6 +2830,10 @@
       for (e = 0; e < names.length; e++) {
         ok(EVENTS[names[e]].g <= 0.28, names[e] + ' peaks above the −13 dBFS ceiling of §5.1 P6')
       }
+      // A release at the wall is the loudest EXTEND there is, and it is still an EXTEND.
+      ok(EVENTS['tap.extend'].g * 1.45 <= 0.28, 'a charged extend peaks above the §5.1 P6 ceiling')
+      ok(EVENTS['tap.turgor'].h <= 30 && EVENTS['tap.turgor'].h < EVENTS['tap.extend'].h,
+        'the wall buzzes harder than the release it announces')
 
       // 7 · the tap ladder is a six-step phrase that resets after a pause.
       ladderI = 0; lastTapAt = 0
