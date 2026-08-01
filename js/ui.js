@@ -1822,7 +1822,13 @@
   // row's ARRIVAL on screen waits, and it waits for the release that is about to be the reason for
   // it. The row is stamped rather than detached so that the console's five-row window, its
   // nth-last-child fade and its trimming all keep working on a DOM that never lied about what is in
-  // it. Removing the stamp re-runs the row's own entrance animation, because the stylesheet
+  // it. Re-measured with driven touch over a run of 0.62 s holds, every line the console produced
+  // during a press: down 384 / line 963 / up 1033, down 2481 / line 2963 / up 3131, down 4581 /
+  // line 5063 / up 5231, down 11931 / line 12263 / up 12564. Four lines, all four emitted between
+  // 332 and 579 ms into a hold, all four ARRIVING in the same frame as the release — 0 ms after
+  // it, because releaseHeld() runs inside the pointerup that ends the charge. The same run in tap
+  // mode stamped nothing at all: the console there is untouched, exactly as it shipped.
+  // Removing the stamp re-runs the row's own entrance animation, because the stylesheet
   // suppresses that animation for exactly as long as the stamp is on.
   // ───────────────────────────────────────────────────────────────────────────
 

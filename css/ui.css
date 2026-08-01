@@ -600,7 +600,18 @@ canvas{ display:block; }
    the range above it: .34 → .92, the same ceiling as before. The floor is opacity only. Nothing is
    done to the scale, because what GROWS is the whole of the report and it still grows from .34 of
    the box in both axes — this only makes that growth visible from its first frame rather than its
-   fifteenth. It is scoped to the charge so that a button nobody is touching stays empty. */
+   fifteenth. It is scoped to the charge so that a button nobody is touching stays empty.
+
+   Measured on the built game, driven touch, sampled from screencast frames stamped at capture so
+   no screenshot's own latency can report the wrong millisecond — opacity and scale at 80 / 150 /
+   250 / 400 / 600 ms of hold: .360/.362, .401/.410, .497/.518, .680/.727, .918/.997. The INK is
+   opacity × area, and that is what the eye is following: .039 in the frame the thumb lands, then
+   1.7× that by 150 ms, 3.4× by 250 ms, 9.2× by 400 ms, 23× at the wall. On the glass, in the
+   middle of the ellipse, the green channel gains 1.1 / 3.4 / 7.5 / 12.1 levels over the frame the
+   press began — small at 150 ms and unmistakable by 400, which is the resistance-then-travel the
+   curve is shaped to say. The wall's own mark (data-ripe, and the border it firms) lands at
+   614–617 ms rather than 600: --turgor is written on the frame, so the latch can be one rAF late
+   and never early, which is the correct direction for a threshold nobody may overshoot. */
 .hero[data-charge="1"] .hero-turgor{ opacity:calc(.34 + .58 * var(--turgor)); }
 .hero{ position:relative; overflow:hidden; }
 .hero-lab, .hero-cost{ position:relative; }
