@@ -1113,6 +1113,29 @@ canvas{ display:block; }
                                          transition:background-color var(--d-act) linear,
                                                     border-color var(--d-act) linear; }
 
+/* ══ THE ENDING · 09 §5 ════════════════════════════════════════════════════
+   Once the strip has finished and an ending is running, the console stops being a console. Its
+   final text is not the machine addressing the player from a framed strip at the foot of the
+   screen — it is the game's last words, centred and bare, standing alone above the one button
+   left. The strip has already emptied everything else; this lifts what remains off the floor and
+   into the middle of the emptied screen, one line at a time, each fading as the next arrives. The
+   overlay passes no pointer events, so [ NEW GROWTH ] beneath it stays the only thing to press. */
+.shell[data-ending="1"] .console{
+  position:absolute; inset:0; z-index:40;
+  height:auto; padding:var(--sp-32) var(--gutter) 38vh;
+  display:flex; flex-direction:column; justify-content:center;
+  pointer-events:none;
+}
+.shell[data-ending="1"] .console-inner{ width:100%; max-width:var(--col-max); }
+.shell[data-ending="1"] .console-cur{ display:none; }
+/* A bare, centred line: no prompt gutter, no left rail, prose set larger and looser than the
+   console's own rows. The nth-last-child fade above still applies, so the newest line is the
+   brightest and the stanza dims behind it as it is spoken. */
+.console-line--ending{ display:block; text-align:center;
+                       font-size:15px; line-height:1.7; }
+.console-line--ending .console-gutter{ display:none; }
+.console-line--ending .console-text{ display:block; }
+
 /* ══ RESPONSIVE · 06 §4.7 ══════════════════════════════════════════════════ */
 
 /* A short phone (the 568 px floor) has the same five bands to fit as a tall one, and the strip

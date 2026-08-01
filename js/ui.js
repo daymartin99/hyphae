@@ -2041,11 +2041,18 @@
   // frame — and nothing else. The order is finale's, not ours.
   function dismantle (v, rev) {
     var d = rev.dismantle
+    var taken = !!(rev.ending && rev.ending.key)
     if (!d || !d.length) {
       if (v.shell.dataset.dismantle) delete v.shell.dataset.dismantle
+      if (v.shell.dataset.ending) delete v.shell.dataset.ending
       return
     }
-    setData(v.shell, 'dismantle', d.indexOf('strip') >= 0 ? 'strip' : String(d.length))
+    var strip = d.indexOf('strip') >= 0
+    setData(v.shell, 'dismantle', strip ? 'strip' : String(d.length))
+    // Once the strip has finished and an ending is running, the console stops being a console: its
+    // final text stands centred and alone, above the one remaining button (09 §5). The offer
+    // (ENDING C part one) is spoken while the shell is still whole, so it never trips this.
+    setData(v.shell, 'ending', taken && strip ? '1' : '0')
     for (var i = 0; i < d.length; i++) {
       if (DISMANTLE_TAB[d[i]]) unearnTab(DISMANTLE_TAB[d[i]])
     }

@@ -54,7 +54,7 @@
   // stores a one-character code so 200 lines cost 200 bytes of tone and not 200 objects.
   var TONE_GLYPH = { pos: '+', warn: '!', neg: '−', amb: '', nul: '' }
   var TONE_CODE = { pos: '+', warn: '!', neg: '-', amb: '~', nul: '.' }
-  var CODE_TONE = { '+': 'pos', '!': 'warn', '-': 'neg', '~': 'amb', '.': null }
+  var CODE_TONE = { '+': 'pos', '!': 'warn', '-': 'neg', '~': 'amb', '.': null, '=': null }
 
   var PROMPT_NEW = '>'
   var PROMPT_OLD = '·'
@@ -1036,6 +1036,9 @@
       // The dismantle has just emptied the screen (03 §20); the final text lands on an emptied
       // console too, not on the tail of the run's news.
       flush: 1,
+      // Every line of this ending is centred and bare (09 §5.1): no prompt, no cursor, one at a
+      // time on nothing. `centred` carries that to the blank caesura rows as well as the spoken.
+      centred: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.0, 'motion', { what: 'wheelConverge', ms: 1400 }),
@@ -1088,6 +1091,8 @@
       // The dismantle has just emptied the screen (03 §20); the final text lands on an emptied
       // console too, not on the tail of the run's news.
       flush: 1,
+      // Centred and bare (09 §5.2), like all three endings' final texts.
+      centred: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.0, 'motion', { what: 'wheelCollapse', ms: 2400, easing: 'linear' }),
@@ -1134,6 +1139,8 @@
       // The dismantle has just emptied the screen (03 §20); the final text lands on an emptied
       // console too, not on the tail of the run's news.
       flush: 1,
+      // Centred and bare (09 §5.3), like all three endings' final texts.
+      centred: 1,
       skipAfter: CONS.SKIP_AFTER,
       steps: [
         step(0.0, 'line', { text: 'You release the phase lock.' }),
@@ -1239,8 +1246,8 @@
   // EMISSION
   // ───────────────────────────────────────────────────────────────────────────
 
-  function ringPush (s, text, tone) {
-    var code = TONE_CODE[tone || 'nul'] || TONE_CODE.nul
+  function ringPush (s, text, tone, code) {
+    code = code || TONE_CODE[tone || 'nul'] || TONE_CODE.nul
     s.log.ring.push(code + text)
     var over = s.log.ring.length - T().LOG.RING
     if (over > 0) s.log.ring.splice(0, over)
@@ -1296,7 +1303,10 @@
   function emitRaw (s, id, text, tone, channel) {
     if (s) {
       s.log.lastLineAt = s.t
-      ringPush(s, text, tone)
+      // An ending's centred lines carry no tone and no prompt; they are marked in the ring with
+      // '=' so a repaint after a mid-ending reload re-centres them (09 §5) rather than reprinting
+      // them as ordinary console rows under a cursor.
+      ringPush(s, text, tone, channel === 'ending' ? '=' : null)
     }
     recent.push(s ? s.t : 0)
     deliver({ id: id || null, text: text, tone: tone || null, channel: channel || 'narrative' })
@@ -1758,10 +1768,14 @@
         }
         var text = interpolate(st.payload.text, soft.tokens, s, st.payload.tokenFormat)
         if (st.payload.id && s) markFired(s, st.payload.id)
-        emitRaw(s, st.payload.id || null, text, null, 'narrative')
+        // A centred ending line (09 §5) is staged bare: no prompt, no cursor, centred on the
+        // emptied screen. `centred` rides the step; the sequence-level flag carries it to the
+        // blank caesura rows between stanzas, which have no payload of their own.
+        var centred = st.payload.centred || soft.seq.centred
+        emitRaw(s, st.payload.id || null, text, null, centred ? 'ending' : 'narrative')
         soft.spoke = true
       } else if (st.kind === 'blank') {
-        emitRaw(s, null, '', null, 'narrative')
+        emitRaw(s, null, '', null, soft.seq.centred ? 'ending' : 'narrative')
         soft.spoke = true
       }
       if (soft.onStep) {
@@ -1836,29 +1850,37 @@
     var r = s.log.ring, i = Math.max(0, r.length - T().LOG.ROWS)
     for (; i < r.length; i++) {
       // The ring stores tone and text and nothing else. `amb` is the observation tone and no other
-      // line in the corpus carries it, so it is what tells a repainted row to keep its bare gutter.
-      var tone = CODE_TONE[r[i].charAt(0)] || null
-      render({ id: null, text: r[i].slice(1), tone: tone,
-        channel: tone === 'amb' ? 'observation' : null }, true)
+      // line in the corpus carries it, so it is what tells a repainted row to keep its bare gutter;
+      // '=' is the ending marker, and it tells a repainted row to stand centred and bare (09 §5).
+      var code = r[i].charAt(0)
+      var tone = CODE_TONE[code] || null
+      var channel = code === '=' ? 'ending' : (tone === 'amb' ? 'observation' : null)
+      render({ id: null, text: r[i].slice(1), tone: tone, channel: channel }, true)
     }
   }
 
   function render (line, quiet) {
     if (!mountEl || typeof document === 'undefined') return
     var s = S()
+    var ending = line.channel === 'ending'
     var prev = mountEl.lastChild
-    if (prev && prev.firstChild) prev.firstChild.textContent = PROMPT_OLD + ' '
+    // The prompt demotes the previous line to its `·` old-prompt — except in an ending, where the
+    // lines are bare and no cursor ever moves off one of them (09 §5).
+    if (prev && prev.firstChild && !ending) prev.firstChild.textContent = PROMPT_OLD + ' '
 
     var div = document.createElement('div')
     div.className = 'console-line'
+    if (ending) div.className += ' console-line--ending'
     if (line.tone) div.setAttribute('data-tone', line.tone)
 
     var gutter = document.createElement('span')
     gutter.className = 'console-gutter'
     // Observations arrive as the bottom line but do not carry the cursor: no glyph, no prompt.
-    // A player who is looking notices the game speaking without addressing them.
-    gutter.textContent = line.channel === 'observation'
-      ? '  '
+    // A player who is looking notices the game speaking without addressing them. An ending line is
+    // barer still — no gutter at all — because it is not the console addressing the player, it is
+    // the game's last words standing alone on an emptied screen.
+    gutter.textContent = (line.channel === 'observation' || ending)
+      ? ''
       : (PROMPT_NEW + ' ' + (TONE_GLYPH[line.tone] || ''))
 
     var body = document.createElement('span')
@@ -1875,8 +1897,20 @@
 
     // Rows, not messages, are the unit. A wrapped line consumes two rows and pushes an older line
     // off the top. A long line costs you history, not legibility.
-    var budget = T().LOG.ROWS * rowPx
+    //
+    // An ending is trimmed by LINE, not by row: its lines are set large, centred and loose (09 §5)
+    // so a pixel budget tuned to the console's own rows would keep only one and pull the paired
+    // sentences of ENDING B apart. Keeping the last ROWS lines holds a whole stanza on screen, with
+    // the nth-last-child fade dimming the report behind the sentence being spoken.
     var guard = 0
+    if (ending) {
+      while (mountEl.childNodes.length > T().LOG.ROWS && mountEl.firstChild) {
+        mountEl.removeChild(mountEl.firstChild)
+        if (++guard > T().LOG.RING) break
+      }
+      return
+    }
+    var budget = T().LOG.ROWS * rowPx
     while (mountEl.scrollHeight > budget && mountEl.firstChild && mountEl.childNodes.length > 1) {
       mountEl.removeChild(mountEl.firstChild)
       if (++guard > T().LOG.RING) break
