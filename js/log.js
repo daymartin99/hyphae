@@ -1566,7 +1566,11 @@
     var s = S()
     if (!s) return false
     var e = BY_ID[id]
-    if (!e) return false
+    // projects.js fires `project.<id>` on every purchase it makes and has done since the module
+    // landed. There is no catalog entry behind those ids and there must not be — there are 163 of
+    // them — so the call falls through to the receipt, which is assembled from the project's own
+    // title: the string that was printed on the card the player pressed.
+    if (!e) return id.indexOf(PROJECT_PREFIX) === 0 ? bought(projectTitle(id.slice(8))) : false
     if (e.act !== 0 && e.act !== s.act) return false
     if (e.once && firedHas(s, e.id)) return false
     // The guard is the executable half of the entry's own trigger string, so a caller that fires
@@ -1583,6 +1587,80 @@
     var s = S()
     if (!s) return false
     delayed.push({ id: id, tokens: tokens || null, at: s.t + (Number(delaySeconds) || 0) })
+    return true
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // PURCHASE RECEIPTS (09 §3.5, overruled by thirty minutes on a phone)
+  // ───────────────────────────────────────────────────────────────────────────
+  //
+  // 09 §3.5 forbids a purchase confirmation on the grounds that "the card vanishing from the list
+  // is the confirmation". That is true of a list which empties. This one does not empty: 04 §4.1
+  // promotes a queued project into the freed slot on the same frame and re-sorts the remainder by
+  // affordRatio, so the card does not vanish, it is *replaced* — under the thumb that is covering
+  // it, on a 390 px screen, while the ledger animates somewhere else. Thirty minutes of play ended
+  // with the player unable to name one thing he had bought.
+  //
+  // So a purchase says its own name. Only its name: no price, no effect, no tone glyph, no praise,
+  // no comment. §3.5's four other bans are untouched and this one is not widened.
+  //
+  // Once per distinct name per run. A project has a title of its own, so every project purchase
+  // speaks; a tip, a litter pool or a density step is the same noun every time and speaks only the
+  // first time, while the player is still learning what the word on the control means. After that
+  // the counter beside the control is the confirmation, which is the part of §3.5 that was right.
+  //
+  // Spoken outright rather than queued, for bootLine's reason: a receipt is the answer to an input,
+  // not news competing for a slot. Queued it would land a HARD_GAP late behind whatever the world
+  // happened to be saying, and as a priority-1 `system` line the first burst would drop it — which
+  // is precisely the failure being fixed.
+
+  // The nouns a receipt says when the thing bought has no title of its own. 09 is the source of
+  // truth for every human-readable string, so the words live here and a call site passes a key.
+  // Anything that is not a key is spoken as given, which is how 163 project titles reach the
+  // console without this table having to know any of them.
+  var BOUGHT = {
+    tip: 'a tip',
+    leaf: 'leaf litter',
+    needle: 'needle mat',
+    twig: 'fine deadfall',
+    bark: 'bark slough',
+    log: 'fallen log',
+    stump: 'heartwood stump',
+    carrion: 'carrion',
+    density: 'more of you in one place',
+    channel: 'a channel for accord',
+    fidelity: 'fidelity'
+  }
+
+  var PROJECT_PREFIX = 'project.'
+  var RECEIPT_MAX = 34      // chars of name: L6b holds a `system` line to 39 and `[  ]` costs five
+  var boughtSaid = {}       // receipts already spoken this run. News, so not persisted.
+
+  function projectTitle (id) {
+    var p = HY.projects && HY.projects.byId ? HY.projects.byId(id) : null
+    return p && p.title ? p.title : ''
+  }
+
+  function bought (name) {
+    var s = S()
+    if (!s) return false
+    var key = String(name === null || name === undefined ? '' : name)
+    var text = (BOUGHT[key] || key).replace(/\s+/g, ' ')
+    // Trimmed by hand: String.prototype.trim is fine everywhere this ships, but the collapse above
+    // can leave a single leading or trailing space and nothing else needs a regex.
+    if (text.charAt(0) === ' ') text = text.slice(1)
+    if (text.charAt(text.length - 1) === ' ') text = text.slice(0, -1)
+    if (!text) return false
+    // Act I is lowercase, always, a title included (09 §1.1). Acts II and III print the name as it
+    // is written on the control, because saying it back in the player's own words is the whole job.
+    if (s.act < 2) text = text.toLowerCase()
+
+    if (frozen || soft) return false            // a transition owns the console; this is not news
+    if (consoleOff(s)) return false
+    if (s.log.openingLines < 5) return false    // 09 §2.1 is absolute: the opening five go first
+    if (boughtSaid[text]) return false
+    boughtSaid[text] = 1
+    emitRaw(s, 'bought', '[ ' + text + ' ]', null, 'system')
     return true
   }
 
@@ -1959,6 +2037,7 @@
     obsSeen = {}
     obsRng = null
     signalT0 = null
+    boughtSaid = {}
     slowAcc = 0
     poolAct = -1
     firedSet = null
@@ -2230,6 +2309,32 @@
         ok(!/[A-Z]/.test(NEEDS[i].text), 'L5 needs.' + NEEDS[i].kind + ': capital letter')
         ok(NEEDS[i].text.charAt(0) !== '{', 'R1 needs.' + NEEDS[i].kind + ': token-initial')
       }
+    }
+
+    // ── Purchase receipts ────────────────────────────────────────────────────
+    // The receipt is `[ name ]` on the `system` channel, so every name it can ever say has to fit
+    // inside L6b's 39 characters with five spent on the brackets. Project titles are checked here
+    // rather than clipped at runtime, because a clipped title is a receipt that does not name the
+    // thing and the whole line exists to name the thing.
+    for (mk in BOUGHT) {
+      if (!Object.prototype.hasOwnProperty.call(BOUGHT, mk)) continue
+      ok(BOUGHT[mk].length <= RECEIPT_MAX,
+        'receipt bought.' + mk + ': ' + BOUGHT[mk].length + ' characters')
+      ok(!/[A-Z]/.test(BOUGHT[mk]), 'L5 bought.' + mk + ': capital in a name Act I must say')
+      ok(!/[!?;()…]/.test(BOUGHT[mk]), '§1.7 bought.' + mk + ': forbidden punctuation')
+      for (j = 0; j < BANNED_HARD.length; j++) {
+        ok(BOUGHT[mk].indexOf(BANNED_HARD[j]) < 0, 'L4 bought.' + mk + ': "' + BANNED_HARD[j] + '"')
+      }
+    }
+    if (HY.projects && HY.projects.CATALOG) {
+      var cat = HY.projects.CATALOG, worst = '', over = 0
+      for (i = 0; i < cat.length; i++) {
+        if (!cat[i].title) continue
+        if (cat[i].title.length > worst.length) worst = cat[i].title
+        if (cat[i].title.length > RECEIPT_MAX) over++
+      }
+      ok(over === 0, 'receipt: ' + over + ' project titles exceed ' + RECEIPT_MAX +
+        ' characters, longest "' + worst + '"')
     }
 
     // ── Numbers in prose ─────────────────────────────────────────────────────
@@ -2513,9 +2618,12 @@
     EMPTY: EMPTY,
     CONFIRM: CONFIRM,
 
+    BOUGHT: BOUGHT,
+
     manageLog: manageLog,
     logFire: logFire,
     logLater: logLater,
+    bought: bought,
     returnBurst: returnBurst,
     ringBuffer: ringBuffer,
     freeze: freeze,

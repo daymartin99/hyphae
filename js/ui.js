@@ -46,6 +46,9 @@
 
     // interaction (06 §5.5, §5.8, §5.11, §6.3)
     LONGPRESS_MS: 420, LONGPRESS_SLOP_PX: 10,
+    // The distance a finger may travel between down and up and still be a tap. Ten CSS pixels is
+    // roughly where a phone's own scroll recogniser makes up its mind, so the two agree.
+    PRESS_SLOP_PX: 10,
     DESTRUCT_MS: 400,
     REPEAT_DELAY_MS: 500, REPEAT_MS_1: 167, REPEAT_MS_2: 83, REPEAT_ACCEL_MS: 1500,
     REPEAT_HAPTIC_EVERY: 3,
@@ -610,31 +613,70 @@
 
   // ───────────────────────────────────────────────────────────────────────────
   // PRESS, LONG-PRESS, HOLD, REPEAT · 06 §6.3
-  // The press contract fires the action on `pointerdown`, which removes ~90 ms of perceived
-  // latency. It is used only where the action is neither destructive nor irreversible; a purchase
-  // fires on release (`onUp`), and a destruction needs the 400 ms hold below.
+  // The press contract has two paths and the difference between them is what a mistake costs.
+  //
+  // The EAGER path fires on `pointerdown`, which removes ~90 ms of perceived latency. It is for
+  // free, repeatable verbs — EXTEND, a tab, a toggle — where the player presses hundreds of times
+  // and a stray tap costs nothing.
+  //
+  // The COMMIT path (`onUp`) is for anything that spends, signs or destroys. It arms on down and
+  // fires on release, and it disarms when the gesture stops being a tap: PRESS_SLOP_PX of travel,
+  // a `pointercancel` (which is what the browser sends the instant it decides the gesture is a
+  // scroll), a scroll anywhere in the shell, or the pointer leaving the control. The owner bought
+  // an adaptation with the first millimetre of a swipe up a panel of cards; a purchase that
+  // commits before the finger has moved is not a purchase the player made.
   // ───────────────────────────────────────────────────────────────────────────
+
+  // True while the shell is being scrolled. Set by the capture-phase listener in `mount`, which
+  // hears every scroller in the tree, and held for SCROLL_QUIET_MS past the last scroll event.
+  function scrolling () { return !!(view && view.scrolling) }
 
   function bindPress (node, fn, opts) {
     opts = opts || {}
     var mark = opts.state || node
     var down = false
+    var armed = false
+    // Decided once, at pointerdown, so the two halves of one gesture cannot disagree about which
+    // path they are on. The hero is the only caller that varies: EXTEND is eager and the two verbs
+    // that replace it in Act III are not.
+    var commitPath = false
+    var sx = 0
+    var sy = 0
+    function disarm () {
+      if (!down) return
+      down = false
+      armed = false
+      setData(mark, 'press', '0')
+    }
     on(node, 'pointerdown', function (e) {
       if (e.button) return
       down = true
+      armed = true
+      commitPath = typeof opts.onUp === 'function' ? !!opts.onUp() : !!opts.onUp
+      sx = e.clientX
+      sy = e.clientY
       setData(mark, 'press', '1')
       if (!opts.quiet) haptic(U.HAP_PRESS, opts.feel || 'ui.press')
-      if (!opts.onUp && fn) fn(e)
+      if (!commitPath && fn) fn(e)
     })
-    function up (e) {
-      if (!down) return
-      down = false
+    on(node, 'pointermove', function (e) {
+      if (!armed || !commitPath) return
+      if (Math.hypot(e.clientX - sx, e.clientY - sy) <= U.PRESS_SLOP_PX) return
+      // The finger is travelling. Drop the arm and the pressed look with it, so the control stops
+      // claiming it is about to do something.
+      armed = false
       setData(mark, 'press', '0')
-      if (opts.onUp && fn) fn(e)
-    }
-    on(node, 'pointerup', up)
-    on(node, 'pointercancel', up)
-    on(node, 'pointerleave', up)
+    })
+    on(node, 'pointerup', function (e) {
+      if (!down) return
+      var go = armed && commitPath && !scrolling()
+      down = false
+      armed = false
+      setData(mark, 'press', '0')
+      if (go && fn) fn(e)
+    })
+    on(node, 'pointercancel', disarm)
+    on(node, 'pointerleave', disarm)
     // Keyboard parity: Space and Enter do exactly what the thumb does (06 §8.3).
     on(node, 'keydown', function (e) {
       if ((e.key !== ' ' && e.key !== 'Enter') || e.repeat) return
@@ -706,10 +748,17 @@
 
   // 06 §5.11. Auto-repeat exists because the player presses `+1` five times at minute one and the
   // row must not punish them for it. It stops the instant the purchase stops being possible.
+  //
+  // `+1` spends, so the single tap commits on release like every other purchase, and a swipe that
+  // begins on it buys nothing. The hold half still needs the down edge — that is what a hold is —
+  // so it runs on its own timer and tells the release half it has already been paid for.
   function bindRepeat (node, fn, stillOk) {
     var timer = null
     var t0 = 0
     var count = 0
+    var held = false
+    var sx = 0
+    var sy = 0
     function stop () {
       if (timer) clearTimeout(timer)
       timer = null
@@ -718,16 +767,28 @@
     function step () {
       if (!stillOk()) { stop(); return }
       fn()
+      held = true
       count += 1
       if (count % U.REPEAT_HAPTIC_EVERY === 0) haptic(U.HAP_REPEAT, 'ui.repeat')
       var fast = (nowMs() - t0) > (U.REPEAT_DELAY_MS + U.REPEAT_ACCEL_MS)
       timer = setTimeout(step, fast ? U.REPEAT_MS_2 : U.REPEAT_MS_1)
     }
     bindPress(node, function () {
+      if (held) return              // the hold already bought; a release must not add one more
       if (!stillOk()) { refuse(node); return }
       fn()
+    }, { onUp: true })
+    on(node, 'pointerdown', function (e) {
+      if (e.button) return
+      held = false
+      sx = e.clientX
+      sy = e.clientY
       t0 = nowMs()
       timer = setTimeout(step, U.REPEAT_DELAY_MS)
+    })
+    // A travelling finger is a scroll, not a hold, and it must not keep buying.
+    on(node, 'pointermove', function (e) {
+      if (timer && Math.hypot(e.clientX - sx, e.clientY - sy) > U.PRESS_SLOP_PX) stop()
     })
     on(node, 'pointerup', stop)
     on(node, 'pointercancel', stop)
@@ -1457,7 +1518,15 @@
     scroll.appendChild(endbar)
 
     v.hero = hero
-    bindPress(hero, onHero, { feel: 'extend', quiet: true })
+    // EXTEND is the one verb in the game that earns the eager path: free, pressed some hundreds of
+    // times, and worth nothing if it lags. The two verbs that replace it in the same slot are not
+    // free — SETTLE spends spores and NEW GROWTH ends the run — so the slot chooses its path from
+    // the verb it is currently wearing, once, at the moment the thumb lands.
+    bindPress(hero, onHero, {
+      feel: 'extend',
+      quiet: true,
+      onUp: function () { return heroVerb(liveState()) !== 'extend' }
+    })
     scroll.appendChild(hero)
     v.tailEl = el('div', 'tail')
     scroll.appendChild(v.tailEl)
@@ -1603,12 +1672,19 @@
     // The console's row budget is measured by its owner, against its own strings.
     if (LOG() && LOG().mount) LOG().mount(view.consoleInner)
 
-    on(view.scroll, 'scroll', function () {
-      setData(view.ledger, 'scrolled', view.scroll.scrollTop > 0 ? '1' : '0')
+    // `scroll` does not bubble, and the element that actually scrolls is the panel stack, not the
+    // frame around it — this listener sat on `.scroll-main` (overflow:hidden) and had never once
+    // fired, which left `view.scrolling` permanently false. Captured at the document, so it hears
+    // the stack, a sheet body, and any scroller a later panel introduces, with one listener.
+    d.addEventListener('scroll', function (e) {
+      if (!view) return
+      if (e.target === view.stack) {
+        setData(view.ledger, 'scrolled', view.stack.scrollTop > 0 ? '1' : '0')
+      }
       view.scrolling = true
       if (view.scrollT) clearTimeout(view.scrollT)
       view.scrollT = setTimeout(function () { view.scrolling = false }, U.SCROLL_QUIET_MS)
-    })
+    }, { capture: true, passive: true })
     var w = win()
     if (w) {
       on(w, 'resize', layout)
@@ -2827,12 +2903,12 @@
     bindPress(b5, function () {
       if (tipsAffordable() < 1) { refuse(b5); return }
       buyTips(U.BURST_5_AT)
-    })
+    }, { onUp: true })
     bindPress(bMax, function () {
       var n = tipsAffordable()
       if (n < 1) { refuse(bMax); return }
       buyTips(n)
-    })
+    }, { onUp: true })
 
     var l1 = r.line()
     span(l1, 'row-sub', STR.litterEaten)
@@ -2952,16 +3028,16 @@
     // nothing in particular next to a price quoted per gram.
     U.MARKET_BUY_G.forEach(function (g) {
       var b = btn('', C().fmtMass(g))
-      bindPress(b, function () { trade(g, null, b) })
+      bindPress(b, function () { trade(g, null, b) }, { onUp: true })
       burst.appendChild(b)
       buys.push({ el: b, kind: 'abs', g: g })
     })
     var bFrac = btn('', Math.round(U.MARKET_FRAC * 100) + '%')
-    bindPress(bFrac, function () { trade(null, U.MARKET_FRAC, bFrac) })
+    bindPress(bFrac, function () { trade(null, U.MARKET_FRAC, bFrac) }, { onUp: true })
     burst.appendChild(bFrac)
     buys.push({ el: bFrac, kind: 'frac', g: 0 })
     var bMax = btn('', STR.max)
-    bindPress(bMax, function () { trade(null, 1, bMax) })
+    bindPress(bMax, function () { trade(null, 1, bMax) }, { onUp: true })
     burst.appendChild(bMax)
     buys.push({ el: bMax, kind: 'max', g: 0 })
 
