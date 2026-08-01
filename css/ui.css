@@ -571,17 +571,31 @@ canvas{ display:block; }
 .hero{ --turgor:0; }
 .hero-turgor{
   position:absolute; inset:0; border-radius:inherit; pointer-events:none;
-  /* Sap, not light: the positive wash is the dimmest green the palette owns and it is the same
-     colour the ledger flashes on a gain. The edge of the disc is soft over a third of its radius,
-     so what the eye sees is a volume filling rather than a shape arriving. */
-  background:radial-gradient(120% 150% at 50% 60%,
-             var(--positive-wash) 0%, var(--positive-wash) 42%, transparent 78%);
-  opacity:calc(var(--turgor) * .9);
+  /* Sap, not light: the positive wash is the dimmest green the palette owns and the same colour
+     the ledger flashes on a gain.
+
+     The two 50%s are load-bearing and were found by looking. Any radius larger than half the box
+     means the fade has not finished by the time it reaches the element's own edge, and what renders
+     is a slab with four straight sides — a progress bar, drawn by accident. Inscribed in the box,
+     the ellipse is soft on every side, so it grows in BOTH axes from the middle and can never be
+     read as a bar filling from an end. */
+  background:radial-gradient(50% 50% at 50% 52%,
+             var(--positive-wash) 0%, var(--positive-wash) 30%, transparent 100%);
+  opacity:calc(var(--turgor) * .92);
   transform:scale(calc(.34 + .66 * var(--turgor)));
-  transform-origin:50% 60%;
+  transform-origin:50% 52%;
 }
 .hero{ position:relative; overflow:hidden; }
 .hero-lab, .hero-cost{ position:relative; }
+/* Measured, not assumed: with `touch-action:manipulation` Chrome fires `pointercancel` after about
+   seven pixels of vertical drift, so a one-second hold by a thumb that is not perfectly still is
+   cancelled by the browser before the wall is reached. Every hold gesture in the world has this
+   problem and this is its answer — the element declares that its gesture is not a scroll.
+   `pointercancel` stays the authority everywhere else, and the 28 px slop in bindPress still refuses
+   a real swipe that begins here (a 96 px drag buys nothing, measured). What is given up is the
+   ability to scroll the column by dragging THIS button; the panel stack directly above it is the
+   scroll surface, and it is most of the screen. Only in the turgor verb: the tap keeps what it had. */
+.shell[data-verb="turgor"] .hero{ touch-action:none; }
 .hero[data-charge="1"]{
   transform:scale(calc(.972 + .044 * var(--turgor)));
   background:var(--surface-press);

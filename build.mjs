@@ -553,7 +553,17 @@ function minifyJS(src, where) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Whitespace beside one of these is never load-bearing.
-const CSS_TIGHT = new Set(['{', '}', ';', ',', ')'])
+const CSS_TIGHT = new Set(['{', '}', ';', ','])
+
+// ')' is tight inside a declaration and GRAMMAR outside one. In a selector the space after a
+// closing paren is a descendant combinator, and dropping it welds two selectors into one:
+// `:root:not([data-motion="full"]) .hero` became `:root:not(…).hero`, which asks for a <html> with
+// class `hero` and matches nothing. Every reduced-motion override in the stylesheet is written that
+// way — the console stack, the meter fill, the ledger cap — so the whole of 06 §8.6 was being
+// minified out of the build while the source read correctly. Selector context is not "depth 0":
+// the rules inside an @media block are selectors at depth 1, which is exactly where those overrides
+// live, so the block stack below records what each brace opened rather than counting them.
+const CSS_TIGHT_IN_DECL = new Set([')'])
 
 // ...except beside these, where it is grammar. Inside calc() the + and -
 // operators MUST carry whitespace on both sides; `calc(a+ b)` is invalid and
@@ -565,14 +575,19 @@ const CSS_KEEP_SPACE = new Set(['+', '-', '>', '~'])
 function minifyCSS(src) {
   let out = ''
   let i = 0
-  let depth = 0
   let space = false // a whitespace run is pending; emit it only if it separates
   const n = src.length
+  // One entry per open brace: true if the prelude was an at-rule. The innermost tells us whether
+  // what we are reading now is a declaration or a selector.
+  const blocks = []
+  let atRule = false
+  const inDecl = () => blocks.length > 0 && blocks[blocks.length - 1] === false
+  const tight = (ch) => CSS_TIGHT.has(ch) || (inDecl() && CSS_TIGHT_IN_DECL.has(ch))
   const put = (s) => {
     if (space) {
       const a = out[out.length - 1]
       const grammatical = CSS_KEEP_SPACE.has(s[0]) || CSS_KEEP_SPACE.has(a)
-      const separating = !CSS_TIGHT.has(a) && a !== ':' && a !== '(' && !CSS_TIGHT.has(s[0])
+      const separating = !tight(a) && a !== ':' && a !== '(' && !tight(s[0])
       if (out.length && (grammatical || separating)) out += ' '
       space = false
     }
@@ -589,9 +604,17 @@ function minifyCSS(src) {
     }
     if (c === '"' || c === "'") { const j = scanString(src, i); put(src.slice(i, j)); i = j; continue }
     if (c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f') { space = true; i++; continue }
-    if (c === '{') { depth++; put(c); i++; continue }
+    if (c === '@') { atRule = true; put(c); i++; continue }
+    if (c === '{') {
+      put(c)
+      blocks.push(atRule)
+      atRule = false
+      i++
+      continue
+    }
     if (c === '}') {
-      depth = Math.max(0, depth - 1)
+      blocks.pop()
+      atRule = false
       space = false
       // The last declaration's semicolon is noise in front of the closing brace.
       if (out[out.length - 1] === ';') out = out.slice(0, -1)
@@ -599,8 +622,8 @@ function minifyCSS(src) {
       i++
       continue
     }
-    if (c === ';' || c === ',') { space = false; put(c); i++; continue }
-    if (c === ':' && depth > 0) {
+    if (c === ';' || c === ',') { if (c === ';') atRule = false; space = false; put(c); i++; continue }
+    if (c === ':' && inDecl()) {
       // Inside a block a colon is always a declaration colon. In a selector it
       // introduces a pseudo-class, where the space in `li :first-child` matters.
       space = false
@@ -633,6 +656,14 @@ function minifyCSS(src) {
   // on the left: dropped-space-after (`A+ B`) and dropped-space-before (`A -B`).
   const badCalc = out.match(/calc\([^{};]*?(?:[\w%)\]][+-]\s|[\w%)\]]\s[+-][^\s])[^{};]*?\)/)
   if (badCalc) throw new Error('CSS minifier broke a calc(): ' + badCalc[0])
+  // The other reachable failure, and the one that shipped: a descendant combinator eaten after a
+  // closing paren, welding `:not(…) .thing` into `:not(…).thing`. A class, id or attribute glued
+  // to a `)` cannot occur in a declaration value, so finding one means a selector lost a space.
+  // `*` is excluded because `calc(var(--a)* 2)` is legal and everywhere in this stylesheet.
+  const welded = out.match(/[^{};]{0,40}\)[.#[][^{};]{0,40}/)
+  if (welded && /\)[.#[][\w-]/.test(welded[0])) {
+    throw new Error('CSS minifier welded a descendant combinator: ' + welded[0])
+  }
   return out
 }
 
