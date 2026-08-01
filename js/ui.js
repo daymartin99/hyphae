@@ -5769,6 +5769,26 @@
       'strings interpolate through named slots')
     ok(TAB_SLOTS.length === T().UI.TAB_SLOTS, '06 §4.4: five tab slots are allocated at boot')
 
+    // The verb A/B. The hold and the tap must be the same code path at two durations, or the
+    // switch is comparing two games rather than two inputs — and a tap must remain a tap to the
+    // gram, which is act1's guarantee and this is the seam that could break it.
+    var a1 = A1()
+    if (a1 && a1.turgor) {
+      ok(a1.turgor(0) === 0, 'a release with no hold asks the floor for a surge')
+      ok(a1.turgor(9) === 1, 'the button can promise a pressure past the wall')
+      ok(U.CHARGE_SLOP_PX > U.PRESS_SLOP_PX,
+        'a held thumb is allowed no more drift than a tapping one')
+      ok(U.HAP_RIPE < U.HAP_PRESS, 'the wall buzzes harder than the press it happens inside')
+    }
+    if (view) {
+      var was = extendMode()
+      ok(extendMode('tap') === 'tap' && view.shell.dataset.verb === 'tap',
+        'the tap verb cannot be selected')
+      ok(chargeWanted() === false, 'the tap verb still charges')
+      ok(extendMode('nonsense') === 'turgor', 'an unknown verb is not the hold')
+      extendMode(was)
+    }
+
     // The display slot is the one clock the rate meters run on. loop.js schedules it at
     // DISPLAY_HZ and the rAF calls it too; if the two periods disagree the throttle drops
     // samples and every rate on screen is wrong by the ratio between them.
