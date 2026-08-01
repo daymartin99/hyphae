@@ -822,6 +822,11 @@
   var HUMUS_LOW = 0.20         // humus fraction
   var PEAK_SIGNAL_FRAC = 0.97  // × SrPeak
   var TEN_THOUSAND = 10000     // taps
+  // The Successor's fourteenth and last broadcast fires at succAge 1800 s — the [ CEDE ] line of
+  // SUCC(13, 1800). After it the Successor "does not speak again" (09 §5.3), so its channel is no
+  // longer live and the world may resume its idle observations. This is the boundary between the
+  // suppression window and the silence the observations are meant to fill.
+  var SUCC_LAST_S = 1800       // s after succBorn — the last broadcast; see SUCC(13, …)
   var signalT0 = null
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1522,7 +1527,12 @@
   function maybeObserve (s) {
     if (frozen || consoleOff(s) || !visible()) return
     if (soft) return                                       // no sequence or ending is live
-    if (F.succAge() >= 0) return                           // nor a Successor broadcast
+    // A Successor suppresses observations only while it is actually broadcasting (09 §7.1: "no
+    // Successor broadcast is live"). Its fourteen lines land across the first thirty minutes; after
+    // the last one it does not speak again (09 §5.3), and the void's second half was falling silent
+    // because the old gate treated the Successor's mere existence as a live broadcast forever.
+    var age = F.succAge()
+    if (age >= 0 && age < SUCC_LAST_S) return              // a Successor broadcast is still live
     var LG = T().LOG
     if (s.t - s.log.lastLineAt < CONS.OBS_QUIET) return
     if (s.t - lastInputT < CONS.OBS_HANDS_OFF) return
