@@ -3237,11 +3237,14 @@
     show(l2, false)
 
     var acts = el('div', 'row-actions')
-    acts.appendChild(actionButton(STR.renegotiate, function () {
-      if (E1()) commit(function () { E1().renegotiate(id) })
+    // `renegotiate` declines once a season, and again while the tree is still sulking; `exit`
+    // declines when the fee is unaffordable. Both used to return that decline into a discarded
+    // value, which is a button that does nothing and does not say so.
+    acts.appendChild(actionButton(STR.renegotiate, function (b) {
+      if (!E1() || !commit(function () { return E1().renegotiate(id) })) refuse(b)
     }))
-    acts.appendChild(actionButton(STR.exit, function () {
-      if (E1()) commit(function () { E1().exitContract(id) })
+    acts.appendChild(actionButton(STR.exit, function (b) {
+      if (!E1() || !commit(function () { return E1().exitContract(id) })) refuse(b)
     }))
     r.expander().appendChild(acts)
 
@@ -3334,11 +3337,11 @@
     var name = span(l0, 'row-name', '')
     var detail = span(l0, 'row-sub', '')
     var acts = el('div', 'row-actions')
-    acts.appendChild(actionButton(STR.accept, function () {
-      if (E1()) commit(function () { E1().acceptSolicitation(id) })
+    acts.appendChild(actionButton(STR.accept, function (b) {
+      if (!E1() || !commit(function () { return E1().acceptSolicitation(id) })) refuse(b)
     }))
-    acts.appendChild(actionButton(STR.decline, function () {
-      if (E1()) commit(function () { E1().declineSolicitation(id) })
+    acts.appendChild(actionButton(STR.decline, function (b) {
+      if (!E1() || !commit(function () { return E1().declineSolicitation(id) })) refuse(b)
     }))
     r.el.appendChild(acts)
     return {
@@ -4072,9 +4075,9 @@
       var fl = HY.flush
       if (!fl || !commit(function () { return fl.release(api.id) })) refuse(b)
     })
-    var holdBtn = actionButton(STR.hold, function () {
+    var holdBtn = actionButton(STR.hold, function (b) {
       var fl = HY.flush
-      if (fl && fl.hold) fl.hold(api.id, !api.held)
+      if (!fl || !fl.hold || !fl.hold(api.id, !api.held)) refuse(b)
     })
     acts.appendChild(relBtn)
     acts.appendChild(holdBtn)
@@ -4308,9 +4311,9 @@
       var pb = HY.pactbook
       if (!pb || !commit(function () { return pb.sign(api.id) })) refuse(b)
     }))
-    acts.appendChild(actionButton(STR.decline, function () {
+    acts.appendChild(actionButton(STR.decline, function (b) {
       var pb = HY.pactbook
-      if (pb && pb.declineOffer) pb.declineOffer(api.id)
+      if (!pb || !pb.declineOffer || !pb.declineOffer(api.id)) refuse(b)
     }))
     ex.appendChild(acts)
     var api = {
@@ -4897,7 +4900,7 @@
     regenBtn.appendChild(el('span', 'hold-lab', STR.regenome))
     bindHold(regenBtn, function () {
       var bl = BL()
-      if (bl) commit(function () { return bl.regenome() })
+      if (!bl || !commit(function () { return bl.regenome() })) refuse(regenBtn)
     })
     acts.appendChild(capBtn)
     acts.appendChild(regenBtn)
