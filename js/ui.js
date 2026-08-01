@@ -1716,8 +1716,12 @@
   // the same extension it always was, so these are not two mechanics, they are one mechanic at two
   // hold durations. That is also the accessibility answer, and it is not a concession — a player
   // who cannot hold (a switch, a head pointer, a hand that will not rest still) taps their way
-  // through the whole game at the pace the game shipped with, and a player who holds trades four
-  // presses in five for the same pace. Nothing is behind the hold that is not behind the tap.
+  // through the whole game at the pace the game shipped with — one press a second is unchanged to
+  // the gram. What the hold buys is measured and stated where it is tuned (act1 §TURGOR): 121.0
+  // g/min against 98.9 for a steady 1.7/s thumb, at three fifths of the presses. It is faster, not
+  // merely cheaper — an earlier comment here claimed parity and that claim did not survive being
+  // measured. Nothing is BEHIND the hold that is not behind the tap; the difference is pace alone,
+  // and the tap keeps the pace the act was balanced at.
   //
   // The one real cost is that EXTEND leaves the eager path: it fires on release now, as every spend
   // already does. The ~90 ms that buys back is repaid on the down edge, by a swell that starts
