@@ -1608,6 +1608,45 @@
   }
 
   // ───────────────────────────────────────────────────────────────────────────
+  // CONSOLE PLACEMENT · an A/B, not a preference
+  // 06 §5.7 puts the console in the bottom band, below the tab bar, and the shell is built that
+  // way. The owner plays with his eye at the top of the phone, on the growing canvas, and reports
+  // that the game's voice sits the wrong distance from the thing it is narrating. Both placements
+  // are in the build and either can be chosen at runtime, because the only way to settle a
+  // question like this one is to look at the two of them side by side.
+  //
+  // BOTTOM is the shell's last row, as designed. TOP moves the same node — the same DOM, the same
+  // log.js mount, no rebuild — inside the scrolling frame, directly under the plate. Nothing else
+  // is moved by hand: the frame is a flex column, so the five rows the console gives back at the
+  // foot of the shell go to the panel stack, and EXTEND rides down with them into the thumb zone.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  function consolePos (pos) {
+    if (!view) return 'bottom'
+    if (pos === undefined) return view.shell.dataset.console || 'bottom'
+    pos = pos === 'top' ? 'top' : 'bottom'
+    setData(view.shell, 'console', pos)
+    // The ledger is the anchor at the top and the announcer is the anchor at the foot. At stage 2
+    // the ledger carries `order:-1`, so inserting before it still lands the console under the
+    // plate rather than above it — one insertion point, correct in all three stages.
+    if (pos === 'top') view.scroll.insertBefore(view.console, view.ledger)
+    else view.shell.insertBefore(view.console, view.announcer)
+    store('hyphae.console', pos)
+    layout()
+    return pos
+  }
+
+  // `?console=top` so a screenshot run can pick a variant on the way in, without a first paint in
+  // the other one. The choice is remembered afterwards, the same way the theme is.
+  function wantedConsolePos () {
+    var w = win()
+    var q = w && w.location && typeof w.location.search === 'string' ? w.location.search : ''
+    var m = /[?&]console=(top|bottom)/.exec(q)
+    if (m) return m[1]
+    return recall('hyphae.console') === 'top' ? 'top' : 'bottom'
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
   // MOUNT AND LAYOUT
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -1665,6 +1704,7 @@
 
     var s = liveState()
     setTheme(recall('hyphae.theme') || (s ? s.set.theme : 'auto'))
+    consolePos(wantedConsolePos())
     applyMotionAttr()
     if (recall('hyphae.verbose') === '1') verbose = true
     if (!hasTabular(d.body)) d.documentElement.dataset.numfont = 'mono'
@@ -5693,6 +5733,8 @@
     setTheme: setTheme,
     setAct: setAct,
     announce: announce,
+    // The console-placement A/B. No argument reads the live placement; 'top' or 'bottom' moves it.
+    consolePos: consolePos,
 
     // The rest of this module's own surface: the 10 Hz display slot loop.js schedules, the act
     // cinematic, the rotation hook, and the sheet the gear opens.

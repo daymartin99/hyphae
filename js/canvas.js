@@ -141,6 +141,33 @@
     HZ: 1
   }
 
+  // The act transitions and the endings (09 §4, §5). Every number a sequence states travels in its
+  // own payload; these are the ones 09 leaves to the drawing, and 06 §7 is where a millisecond that
+  // belongs to the picture lives.
+  var MOTION = {
+    BINS: 6,                 // alpha buckets the conduction wave sorts its segments into
+    BAND_W: 0.17,            // body-lengths: half-width of the travelling luminance band
+    WAVE_BASE: 0.12,         // alpha the whole network holds between crests, × the envelope
+    PASSES: 8,               // 01 §11.4's root-to-tip traversals, when the payload omits them
+    PEAK: 0.55,              // 01 §11.4's peak alpha. Never full white, never inverting.
+    WAVE_HZ: 0.18,           // 01 §11.4's envelope
+    REDRAW_HZ: 8,            // 09 §4.1: "the drawn network is redrawn 8×/s"
+    WAVE_MS: 3600,           // 09 §4.1's own clock: the wave leaves at 0.40 and the cut is at 4.00
+    DRAIN_MS: 700,           // ms per ring of the ASCOSPORE map drain
+    HOLD_MS: 1200,
+    LIFT_MS: 1600,
+    LIFT_STAGGER_MS: 400,
+    LIFT_RISE: [4, 40],      // px, seeded per region
+    VOID_MS: 1200,           // 09 §4.3 gives ESCAPE's beat but not the ramp; this is the ramp
+    CONVERGE_MS: 1400,
+    COLLAPSE_MS: 2400,
+    COLLAPSE_AT: 0.35,       // fraction of ENDING B spent converging before the dot grows
+    WHITE_MS: 2600,
+    WHITE_HOLD_MS: 6000,
+    DOT_R: 3.2,
+    CROSSFADE_MS: 900
+  }
+
   // 06 §7.8. MED is BIBLE §6 M17's spelling of 06's MID; both are accepted by setTier.
   var TIERS = {
     HIGH:  { dpr: 2, fluxHz: 8, segCap: 3600, pulses: 24 },
@@ -801,6 +828,10 @@
     var d = doc()
     if (d && d.hidden) return
     if (typeof tMs !== 'number' || tMs !== tMs) tMs = nowMs()
+    // A transition owns the plate for as long as it is running (09 §4, §5). It is drawn from here
+    // because ui.js already calls this once per frame from the one rAF, so the only cinematic in
+    // the game needs no second clock and no second compositor.
+    if (drawMotion(tMs)) return
     var s = S()
     var hz = T().fluxHz
 
@@ -1037,48 +1068,62 @@
     for (var j = 0; j < n; j++) {
       var c = hexCentre(j, regions)
       if (!c) continue
-      var flags = regions.flags ? regions.flags[j] : 0
-      var discovered = !!(flags & 1)
-      var state = (flags & 4) ? 2 : ((flags & 8) ? 3 : (discovered ? 1 : 0))
       ctx.save()
       ctx.translate(c.x, c.y)
-      if (!discovered) {
-        ctx.fillStyle = rgba(pal.lineStrong, MAP.STROKE_A[0])
-        ctx.beginPath(); ctx.arc(0, 0, MAP.DOT_R, 0, Math.PI * 2); ctx.fill()
-        ctx.restore()
-        continue
-      }
-      var terr = regions.terrain ? regions.terrain[j] : 0
-      var fillA = MAP.TERRAIN_A[terr % MAP.TERRAIN_A.length]
-      // Colonisation is the second channel on terrain's fill density, so neither is hue-only.
-      var col = regions.col ? regions.col[j] : 0
-      ctx.globalAlpha = fillA * (0.45 + 0.55 * (col > 1 ? 1 : col < 0 ? 0 : col))
-      ctx.fillStyle = rgba(state >= 2 ? pal.signal : pal.surface2, 1)
-      ctx.fill(hexPath)
-      ctx.globalAlpha = MAP.STROKE_A[state]
-      ctx.lineWidth = state >= 2 ? 1.5 : 1
-      ctx.strokeStyle = rgba(state >= 2 ? pal.signal : pal.line, 1)
-      ctx.stroke(hexPath)
-
-      // Barriers are offset breaks: the blocked edge is redrawn inset and dashed, so the hex
-      // boundary itself never carries two meanings at once.
-      var bar = regions.barriers ? regions.barriers[j] : 0
-      if (bar) drawBarriers(ctx, bar, mapGeom.R)
-
-      if (regions.rival && regions.rival[j] >= 0) {
-        ctx.globalAlpha = MAP.RIVAL_A
-        ctx.fillStyle = rgba(pal.negative, 1)
-        ctx.beginPath(); ctx.arc(0, -mapGeom.R * 0.42, MAP.RIVAL_R, 0, Math.PI * 2); ctx.fill()
-      }
+      paintHex(ctx, regions, j, 1)
       ctx.restore()
     }
     own(nowMs() - t0)
   }
 
-  function drawBarriers (ctx, mask, R) {
+  // One region's face, drawn at the origin: terrain fill, state stroke, any barrier edges, any
+  // rival mark. `mul` scales every alpha in it, which is what lets the ASCOSPORE hex lift fade a
+  // region out without the transition having to know how a region is drawn.
+  function paintHex (ctx, regions, j, mul) {
+    var flags = regions.flags ? regions.flags[j] : 0
+    var discovered = !!(flags & 1)
+    var state = (flags & 4) ? 2 : ((flags & 8) ? 3 : (discovered ? 1 : 0))
+    if (!discovered) {
+      ctx.globalAlpha = MAP.STROKE_A[0] * mul
+      ctx.fillStyle = rgba(pal.lineStrong, 1)
+      ctx.beginPath(); ctx.arc(0, 0, MAP.DOT_R, 0, Math.PI * 2); ctx.fill()
+      return
+    }
+    var terr = regions.terrain ? regions.terrain[j] : 0
+    var fillA = MAP.TERRAIN_A[terr % MAP.TERRAIN_A.length]
+    // Colonisation is the second channel on terrain's fill density, so neither is hue-only.
+    var col = regions.col ? regions.col[j] : 0
+    ctx.globalAlpha = fillA * (0.45 + 0.55 * clamp01(col)) * mul
+    ctx.fillStyle = rgba(state >= 2 ? pal.signal : pal.surface2, 1)
+    ctx.fill(hexPath)
+    ctx.globalAlpha = MAP.STROKE_A[state] * mul
+    ctx.lineWidth = state >= 2 ? 1.5 : 1
+    ctx.strokeStyle = rgba(state >= 2 ? pal.signal : pal.line, 1)
+    ctx.stroke(hexPath)
+
+    // Barriers are offset breaks: the blocked edge is redrawn inset and dashed, so the hex
+    // boundary itself never carries two meanings at once.
+    var bar = regions.barriers ? regions.barriers[j] : 0
+    if (bar) drawBarriers(ctx, bar, mapGeom.R, mul)
+
+    if (regions.rival && regions.rival[j] >= 0) {
+      ctx.globalAlpha = MAP.RIVAL_A * mul
+      ctx.fillStyle = rgba(pal.negative, 1)
+      ctx.beginPath(); ctx.arc(0, -mapGeom.R * 0.42, MAP.RIVAL_R, 0, Math.PI * 2); ctx.fill()
+    }
+  }
+
+  // Axial ring index: the hex distance from the centre region, which is the order the ASCOSPORE
+  // drain runs in (09 §4.2, ring 4 inward).
+  function ringOf (regions, j) {
+    var q = regions.q[j], r = regions.r[j]
+    return (Math.abs(q) + Math.abs(r) + Math.abs(q + r)) / 2
+  }
+
+  function drawBarriers (ctx, mask, R, mul) {
     var inset = R - MAP.BARRIER_INSET
     ctx.save()
-    ctx.globalAlpha = 1
+    ctx.globalAlpha = mul === undefined ? 1 : mul
     ctx.lineWidth = MAP.BARRIER_W
     ctx.strokeStyle = rgba(pal.lineStrong, 1)
     if (ctx.setLineDash) ctx.setLineDash(MAP.BARRIER_DASH)
@@ -1195,6 +1240,422 @@
     }
     ctx.restore()
     own(nowMs() - t0)
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE ACT TRANSITIONS AND THE ENDINGS (09 §4, §5)
+  //
+  // log.js emits the sequences as steps; the ones of kind `motion` name a thing that has to happen
+  // on screen. The named steps this module owns are the ones that are made of drawing:
+  //
+  //   canvasFull    DECIDE's conduction wave              01 §11.4, 09 §4.1
+  //   mapDrain      the map desaturates ring 4 → ring 0   09 §4.2
+  //   holdCore      the core is the last colour left      09 §4.2
+  //   hexLift       the hexes rise and go                 09 §4.2
+  //   voidCanvas    ESCAPE's arc and twelve rings         09 §4.3
+  //   wheelConverge ENDING A's thirteen dots meet         09 §5.1
+  //   fillWhite     the bloom                             09 §5.1
+  //   holdWhite     six seconds of nothing                09 §5.1
+  //   wheelCollapse ENDING B's dot, and then only it      09 §5.2
+  //   cut           to black, no fade                     09 §4.1, §5
+  //   crossfade     the reduced-motion path               09 §4.2, §4.3
+  //
+  // Everything else a sequence asks for — panels fading, lists collapsing, a panel closing, the
+  // screen clearing — is DOM, and `motion()` answers null for it so the host knows it is theirs.
+  //
+  // A live motion owns the flux surface and paints the plate. The flux layer is already the one
+  // that is cleared and redrawn every frame, it already sits above the append-only network, and
+  // ui.js already calls drawFlux() from the single rAF — so a transition needs no second clock and
+  // no second compositor. When the motion's time is up it holds its last frame rather than handing
+  // the plate back: a transition that flickered back to the running game between two of its own
+  // steps would be the one visible seam in the only cinematic in the game.
+  //
+  // Everything seeded is seeded from the run seed through hash01, so a transition looks the same
+  // every time the same save reaches it. Under prefers-reduced-motion the motion is held at its
+  // last frame for its whole duration — the still picture, never a blank plate.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  var mo = null                       // the live motion, or null
+  var depth = null, depthN = -1       // per-node root-to-tip distance, 0 at the seed node
+
+  function plateR () {
+    // Half the plate diagonal: the radius at which a disc drawn from the centre has covered
+    // every corner, which is what "fills the canvas" means for a circle.
+    return Math.sqrt(surf.W * surf.W + surf.H * surf.H) / 2
+  }
+
+  function coverPlate (ctx, colour, alpha) {
+    ctx.globalAlpha = alpha
+    ctx.fillStyle = rgba(colour, 1)
+    ctx.fillRect(0, 0, surf.W, surf.H)
+    ctx.globalAlpha = 1
+  }
+
+  function buildDepth () {
+    if (!net) return
+    var maxG = 1, i
+    for (i = 0; i < net.n; i++) if (net.gen[i] > maxG) maxG = net.gen[i]
+    depth = new Float32Array(net.n)
+    for (i = 0; i < net.n; i++) depth[i] = net.gen[i] / maxG
+    depthN = net.n
+  }
+
+  // 01 §11.4: "a slow radial luminance wave (0.18 Hz, peak alpha 0.55, never full white, never
+  // inverting) travels root-to-tip, eight times" in 3.6 s. Eight passes in 3.6 s is 2.2 Hz, so
+  // 0.18 Hz cannot also be the pass rate and the two numbers are two different things: `passes` is
+  // the count of root-to-tip traversals, and `hz` is the envelope that swells the crest. At
+  // 0.18 Hz the envelope is a raised cosine that reaches full at 2.78 s and is still near full when
+  // the cut lands at 3.6 — it peaks once and never goes negative, which is what keeps this
+  // conduction rather than the strobe the teardown refused.
+  function drawConduction (ctx, u, o) {
+    if (!net || net.n < 2) return
+    if (depthN !== net.n) buildDepth()
+    var passes = o.passes > 0 ? o.passes : MOTION.PASSES
+    var peak = o.peakAlpha > 0 ? o.peakAlpha : MOTION.PEAK
+    var hz = o.hz > 0 ? o.hz : MOTION.WAVE_HZ
+    var env = 0.5 - 0.5 * Math.cos(Math.PI * 2 * hz * (mo.ms / 1000) * u)
+    var head = (u * passes) % 1
+    var w = MOTION.BAND_W
+    var bins = MOTION.BINS
+    var i, p, d, delta, a, b
+
+    ctx.save()
+    ctx.lineCap = 'round'
+    ctx.lineWidth = DRAW.WIDTHS[1]
+    ctx.strokeStyle = rgba(pal.hyphae, 1)
+
+    // The whole body glows faintly under the crest, so what travels reads as something moving
+    // through a thing that is there rather than as a light switching parts of it on.
+    ctx.globalAlpha = MOTION.WAVE_BASE * env
+    ctx.beginPath()
+    for (i = 1; i < net.n; i++) {
+      p = net.par[i]
+      if (p < 0) continue
+      ctx.moveTo(net.x[p], net.y[p]); ctx.lineTo(net.x[i], net.y[i])
+    }
+    ctx.stroke()
+
+    // One path per alpha bucket: six strokes for the crest regardless of how large the body is.
+    for (b = 0; b < bins; b++) {
+      ctx.globalAlpha = peak * env * (b + 1) / bins
+      ctx.lineWidth = DRAW.WIDTHS[1] + (b + 1) / bins
+      ctx.beginPath()
+      var any = false
+      for (i = 1; i < net.n; i++) {
+        p = net.par[i]
+        if (p < 0) continue
+        d = depth[i]
+        delta = d - head
+        // The band wraps: a pass that runs off the tips arrives at the root again.
+        if (delta > 0.5) delta -= 1
+        else if (delta < -0.5) delta += 1
+        if (delta < 0) delta = -delta
+        if (delta > w) continue
+        a = 1 - delta / w
+        if (Math.floor(a * bins) !== b && !(b === bins - 1 && a >= 1)) continue
+        ctx.moveTo(net.x[p], net.y[p]); ctx.lineTo(net.x[i], net.y[i])
+        any = true
+      }
+      if (any) ctx.stroke()
+    }
+    ctx.restore()
+    ctx.globalAlpha = 1
+  }
+
+  // Each region's fill drains to the background colour, one ring per perRingMs, outermost first.
+  // The map itself is left alone on the net canvas: draining to the background IS painting the
+  // background over it, and doing it that way means the drain costs 61 fills and no re-render.
+  function drawMapDrain (ctx, u, o, keepCore) {
+    var s = S()
+    var regions = s && s.a2 ? s.a2.regions : null
+    if (!regions || !regions.q) return
+    if (!mapGeom || mapDirty) { buildMapGeom(); mapDirty = false }
+    var from = o.fromRing === undefined ? MAP.RINGS : o.fromRing
+    var to = o.toRing === undefined ? 0 : o.toRing
+    var steps = Math.max(1, from - to)
+    var j, ring, k, a, c
+    ctx.save()
+    ctx.fillStyle = rgba(pal.bg, 1)
+    for (j = 0; j < regions.q.length; j++) {
+      ring = ringOf(regions, j)
+      // The core is what the sequence holds on at 3.70 s, so it is never in the drain: `toRing` is
+      // the ring the drain stops above, not the last ring it takes.
+      if (ring <= to) continue
+      k = from - ring
+      a = clamp01(u * steps - k)
+      if (a <= 0) continue
+      c = hexCentre(j, regions)
+      if (!c) continue
+      ctx.globalAlpha = a
+      ctx.save()
+      ctx.translate(c.x, c.y)
+      ctx.fill(hexPath)
+      ctx.restore()
+    }
+    if (keepCore !== true) { /* the core keeps its colour in both steps; see holdCore */ }
+    ctx.restore()
+    ctx.globalAlpha = 1
+  }
+
+  // 09 §4.2: each polygon translates up 4–40 px, seeded, while its alpha goes to zero over
+  // alphaMs, with a 0–400 ms per-region stagger. The drained plate is painted first, because the
+  // hexes that are lifting are the ones the net canvas is still holding in their old positions.
+  function drawHexLift (ctx, u, o) {
+    var s = S()
+    var regions = s && s.a2 ? s.a2.regions : null
+    coverPlate(ctx, pal.bg, 1)
+    if (!regions || !regions.q) return
+    if (!mapGeom || mapDirty) { buildMapGeom(); mapDirty = false }
+    var rise = o.risePx || MOTION.LIFT_RISE
+    var stag = o.staggerMs || [0, MOTION.LIFT_STAGGER_MS]
+    var fade = o.alphaMs > 0 ? o.alphaMs : MOTION.LIFT_MS
+    var elapsed = mo.ms * u
+    var j, c, h, st, local, f, alpha
+    ctx.save()
+    for (j = 0; j < regions.q.length; j++) {
+      c = hexCentre(j, regions)
+      if (!c) continue
+      h = hash01(mo.seed, j)
+      st = stag[0] + (stag[1] - stag[0]) * hash01(mo.seed ^ 0x5BF03635, j)
+      local = elapsed - st
+      if (local <= 0) { f = 0; alpha = 1 } else {
+        f = clamp01(local / fade)
+        alpha = 1 - f
+      }
+      if (alpha <= 0) continue
+      ctx.save()
+      ctx.translate(c.x, c.y - (rise[0] + (rise[1] - rise[0]) * h) * f)
+      paintHex(ctx, regions, j, alpha)
+      ctx.restore()
+    }
+    ctx.restore()
+    ctx.globalAlpha = 1
+  }
+
+  // 09 §4.3: "the VOID canvas fades in: one filled arc at radius 0, twelve empty rings."
+  function drawVoidIn (ctx, u, o) {
+    var rings = o.rings > 0 ? o.rings : 12
+    var arcs = o.arcs > 0 ? o.arcs : 1
+    var fit = Math.min(surf.W, surf.H) / VOID.SIZE
+    var cx = surf.W / 2, cy = surf.H / 2
+    var b, r
+    coverPlate(ctx, pal.bg, 1)
+    ctx.save()
+    ctx.lineCap = 'butt'
+    for (b = 0; b <= rings; b++) {
+      r = (VOID.R0 + VOID.STEP * b) * fit
+      if (r <= 0) continue
+      ctx.lineWidth = VOID.TRACK_W
+      ctx.globalAlpha = u
+      ctx.strokeStyle = rgba(pal.lineStrong, VOID.GAP_A)
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
+      if (b < arcs) {
+        ctx.lineWidth = VOID.W_MIN * fit
+        ctx.strokeStyle = rgba(pal.signal, 0.85)
+        ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
+      }
+    }
+    ctx.restore()
+    ctx.globalAlpha = 1
+  }
+
+  // The phase wheel, read live from finale. ENDING A's dots converge to one point on the rim;
+  // ENDING B's keep going past it, collapse to the centre, and then the dot grows until it is the
+  // whole plate (09 §5.1, §5.2). Both start from the wheel the player has been reading all act.
+  function phasesNow () {
+    var w = HY.finale && HY.finale.wheel ? HY.finale.wheel(S()) : null
+    return (w && w.phases && w.phases.length) ? w : null
+  }
+
+  function meanAngle (ph, mass) {
+    var sx = 0, sy = 0, b, m, th
+    for (b = 0; b < ph.length; b++) {
+      m = mass && mass[b] > 0 ? mass[b] : 1
+      th = Math.PI * 2 * (ph[b] - Math.floor(ph[b]))
+      sx += Math.cos(th) * m; sy += Math.sin(th) * m
+    }
+    return Math.atan2(sy, sx)
+  }
+
+  function drawWheelMotion (ctx, u, o, collapse) {
+    var w = phasesNow()
+    coverPlate(ctx, pal.bg, 1)
+    if (!w) return
+    var ph = w.phases, mass = w.mass
+    var cx = surf.W / 2, cy = surf.H / 2
+    var R = Math.min(WHEEL.R, Math.min(surf.W, surf.H) / 2 - WHEEL.DOT_R_MAX - 2)
+    var TAU = Math.PI * 2
+    var mean = meanAngle(ph, mass)
+    // Converge over the first COLLAPSE_AT of ENDING B and the whole of ENDING A. ENDING B's growth
+    // is linear and does not ease out (09 §5.2), so neither is the convergence it comes out of.
+    var span = collapse ? MOTION.COLLAPSE_AT : 1
+    var k = clamp01(u / span)
+    var grow = collapse ? clamp01((u - span) / (1 - span)) : 0
+    var b, th, ang, rad, px, py
+
+    ctx.save()
+    // The rim dims out as the dots leave it: what is left at the end is the dots, not the dial.
+    ctx.globalAlpha = (1 - k) * 0.7
+    ctx.strokeStyle = rgba(pal.line, 1)
+    ctx.lineWidth = 1
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.stroke()
+
+    rad = collapse ? R * (1 - k) : R
+    ctx.globalAlpha = 0.85
+    ctx.fillStyle = rgba(pal.signal, 1)
+    for (b = 0; b < ph.length; b++) {
+      th = TAU * (ph[b] - Math.floor(ph[b]))
+      // Shortest way round, so a dot at 350° and one at 10° meet between them and not across.
+      ang = th + wrapPi(mean - th) * k
+      px = cx + Math.cos(ang - Math.PI / 2) * rad
+      py = cy + Math.sin(ang - Math.PI / 2) * rad
+      ctx.beginPath(); ctx.arc(px, py, MOTION.DOT_R, 0, TAU); ctx.fill()
+    }
+    if (grow > 0) {
+      ctx.globalAlpha = 1
+      ctx.beginPath()
+      ctx.arc(cx, cy, MOTION.DOT_R + (plateR() - MOTION.DOT_R) * grow, 0, TAU)
+      ctx.fill()
+    }
+    ctx.restore()
+    ctx.globalAlpha = 1
+  }
+
+  function wrapPi (a) {
+    while (a > Math.PI) a -= Math.PI * 2
+    while (a < -Math.PI) a += Math.PI * 2
+    return a
+  }
+
+  // THE BLOOM. `--spore-000` is the game's white and the colour of the thing being released; there
+  // is no second, whiter white in the build, and a hard #FFF would be the one ink in nine hours
+  // that is not in the palette. From the centre it is a disc that grows to cover every corner;
+  // under reduced motion 09 §5.1 asks for an opacity ramp with no expansion instead.
+  function drawFillWhite (ctx, u, o) {
+    var cx = surf.W / 2, cy = surf.H / 2
+    coverPlate(ctx, pal.bg, 1)
+    if (o.from === 'opacity') { coverPlate(ctx, pal.spore, u); return }
+    ctx.save()
+    ctx.globalAlpha = 1
+    ctx.fillStyle = rgba(pal.spore, 1)
+    ctx.beginPath(); ctx.arc(cx, cy, plateR() * u, 0, Math.PI * 2); ctx.fill()
+    ctx.restore()
+    ctx.globalAlpha = 1
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+
+  var MOTIONS = {
+    canvasFull: {
+      ms: function (o) { return o.ms > 0 ? o.ms : MOTION.WAVE_MS },
+      hz: function (o) { return o.redrawHz > 0 ? o.redrawHz : MOTION.REDRAW_HZ },
+      draw: drawConduction
+    },
+    mapDrain: {
+      ms: function (o) {
+        var from = o.fromRing === undefined ? MAP.RINGS : o.fromRing
+        var to = o.toRing === undefined ? 0 : o.toRing
+        return Math.max(1, from - to) * (o.perRingMs > 0 ? o.perRingMs : MOTION.DRAIN_MS)
+      },
+      draw: drawMapDrain
+    },
+    holdCore: {
+      ms: function (o) { return o.ms > 0 ? o.ms : MOTION.HOLD_MS },
+      // The drain, finished and standing still. The core is the only region with colour in it and
+      // nothing moves for 1.2 s, which is the whole content of the beat.
+      draw: function (ctx, u, o) { drawMapDrain(ctx, 1, o, true) }
+    },
+    hexLift: {
+      ms: function (o) {
+        var stag = o.staggerMs || [0, MOTION.LIFT_STAGGER_MS]
+        return (o.alphaMs > 0 ? o.alphaMs : MOTION.LIFT_MS) + stag[1]
+      },
+      draw: drawHexLift
+    },
+    voidCanvas: {
+      ms: function (o) { return o.ms > 0 ? o.ms : MOTION.VOID_MS },
+      draw: drawVoidIn
+    },
+    wheelConverge: {
+      ms: function (o) { return o.ms > 0 ? o.ms : MOTION.CONVERGE_MS },
+      draw: function (ctx, u, o) { drawWheelMotion(ctx, u, o, false) }
+    },
+    wheelCollapse: {
+      ms: function (o) { return o.ms > 0 ? o.ms : MOTION.COLLAPSE_MS },
+      draw: function (ctx, u, o) { drawWheelMotion(ctx, u, o, true) }
+    },
+    fillWhite: {
+      ms: function (o) { return o.ms > 0 ? o.ms : MOTION.WHITE_MS },
+      draw: drawFillWhite
+    },
+    holdWhite: {
+      ms: function (o) { return o.ms > 0 ? o.ms : MOTION.WHITE_HOLD_MS },
+      // Six seconds of white and nothing else. The skip hint the payload describes is text, and
+      // there has never been text on a canvas in this game.
+      draw: function (ctx) { coverPlate(ctx, pal.spore, 1) }
+    },
+    cut: {
+      ms: function (o) { return o.ms > 0 ? o.ms : 0 },
+      // "Cut to black. No fade." The plate's own background is the black the rest of the game is
+      // drawn on, and it is still the right colour if the player has forced the light theme.
+      draw: function (ctx, u) { coverPlate(ctx, pal.bg, u) }
+    },
+    crossfade: {
+      ms: function (o) { return o.ms > 0 ? o.ms : MOTION.CROSSFADE_MS },
+      draw: function (ctx, u) { coverPlate(ctx, pal.bg, u) }
+    }
+  }
+
+  // Returns the motion's duration in ms, or null if this module does not own the name — which is
+  // how the host tells a drawn step from a DOM one without keeping a second copy of the list.
+  function motion (name, opts) {
+    var m = MOTIONS[name]
+    if (!m) return null
+    opts = opts || {}
+    var ms = m.ms(opts)
+    if (!(ms >= 0)) ms = 0
+    mo = {
+      name: name, opts: opts, draw: m.draw, ms: ms,
+      hz: m.hz ? m.hz(opts) : 0,
+      t0: nowMs(), last: 0, seed: seedOf()
+    }
+    lastFlux = 0
+    return ms
+  }
+
+  function motionActive () { return !!mo }
+
+  // Hands the plate back to the act. The last frame stays until something else draws over it,
+  // which for every act is the next frame of its own structural pass.
+  function stopMotion () {
+    var was = !!mo
+    mo = null
+    if (was) { invalidate(); if (surf.fluxCtx) surf.fluxCtx.clearRect(0, 0, surf.W, surf.H) }
+    return was
+  }
+
+  function drawMotion (tMs) {
+    if (!mo) return false
+    if (!surf.attached && !attach()) return true
+    var ctx = surf.fluxCtx
+    if (!ctx) return true
+    // The conduction wave is asked for at 8 Hz by its own payload and costs a pass over the whole
+    // network; every other motion is cheap and runs at the frame rate.
+    if (mo.hz > 0 && mo.last && tMs - mo.last < 1000 / mo.hz) return true
+    mo.last = tMs
+    var u = mo.ms > 0 ? (tMs - mo.t0) / mo.ms : 1
+    // Under reduced motion the still frame is the whole of the motion: the picture the sequence
+    // was going to arrive at, held for as long as the sequence gives it. Never a blank plate.
+    if (reduced) u = 1
+    if (!(u >= 0)) u = 0
+    if (u > 1) u = 1
+    var t0 = nowMs()
+    refreshPalette(false)
+    ctx.clearRect(0, 0, surf.W, surf.H)
+    mo.draw(ctx, u, mo.opts, mo)
+    ctx.globalAlpha = 1
+    own(nowMs() - t0)
+    return true
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1600,9 +2061,80 @@
     ok(parseColor('', 'fb') === 'fb', 'parseColor: empty must fall through to the fallback')
     ok(clamp01(2) === 1 && clamp01(-1) === 0 && clamp01(NaN) === 0, 'clamp01')
 
-    // 8 · the surface exists in full, and nothing throws without a DOM or without data.
+    // 8 · the transitions. Every `motion` step log.js can emit is either owned here or is DOM, and
+    // the durations this module reports have to agree with the clock 09 §4 and §5 authored — a
+    // wave that outlives its own cut is a transition with a seam in it.
+    var seqs = HY.log && HY.log.SEQUENCES ? HY.log.SEQUENCES : null
+    var DOM_STEPS = { panelsFade: 1, collapseList: 1, dimExcept: 1, closePanel: 1,
+      reduceToButton: 1, addSpore: 1, clearScreen: 1 }
+    if (seqs) {
+      var sk
+      for (sk in seqs) {
+        if (!Object.prototype.hasOwnProperty.call(seqs, sk)) continue
+        var lists = [seqs[sk].steps, seqs[sk].reduced]
+        for (var li = 0; li < lists.length; li++) {
+          if (!lists[li]) continue
+          for (var si = 0; si < lists[li].length; si++) {
+            var stp = lists[li][si]
+            if (stp.kind !== 'motion') continue
+            var what = stp.payload.what
+            var got = motion(what, stp.payload)
+            ok(got !== null || DOM_STEPS[what] === 1,
+              'motion: ' + sk + "'s " + what + ' is neither drawn here nor a DOM step')
+            if (got === null) continue
+            // The next motion is when the plate changes hands — a word or a line lands on top of
+            // whatever is drawn and does not take it — so that is the slot. A motion may not run
+            // past its slot, EXCEPT into a cut: a cut is allowed to take the stragglers, which is
+            // exactly what 09 §4.2 asks for when it lifts hexes on a 400 ms stagger over 1,600 ms
+            // and then goes black at 1,600.
+            var next = null, nextWhat = '', sj
+            for (sj = si + 1; sj < lists[li].length; sj++) {
+              if (lists[li][sj].kind !== 'motion' || lists[li][sj].at <= stp.at) continue
+              next = lists[li][sj].at
+              nextWhat = lists[li][sj].payload.what
+              break
+            }
+            if (next !== null && nextWhat !== 'cut') {
+              ok(got <= (next - stp.at) * 1000 + 1,
+                'motion: ' + sk + "'s " + what + ' runs ' + got + ' ms into a ' +
+                Math.round((next - stp.at) * 1000) + ' ms slot')
+            }
+          }
+        }
+      }
+      stopMotion()
+      ok(motion('nothingLikeThis') === null, 'motion: an unknown name must answer null')
+      ok(motion('fillWhite', { ms: 2600 }) === 2600, 'motion: fillWhite ignored its payload ms')
+      ok(motionActive() === true, 'motion: a started motion is not active')
+      ok(stopMotion() === true && motionActive() === false, 'motion: stopMotion did not release')
+      // The four beats 09 §4.2 times to the second, derived rather than tabulated.
+      ok(motion('mapDrain', { fromRing: 4, toRing: 0, perRingMs: 700 }) === 2800,
+        'motion: the ASCOSPORE drain is not 2.8 s')
+      ok(motion('hexLift', { alphaMs: 1600, staggerMs: [0, 400] }) === 2000,
+        'motion: the hex lift is not 2.0 s including its stagger')
+      stopMotion()
+    }
+    // Every motion must survive being drawn with no state, no map and no wheel behind it: a
+    // transition that throws is a game that stops on the one screen with no way back.
+    try {
+      for (var mn in MOTIONS) {
+        if (!Object.prototype.hasOwnProperty.call(MOTIONS, mn)) continue
+        motion(mn, {})
+        drawMotion(nowMs())
+        drawMotion(nowMs() + 1e6)
+      }
+      stopMotion()
+    } catch (merr) {
+      f.push('motion: ' + (merr && merr.message ? merr.message : merr))
+      stopMotion()
+    }
+    ok(Math.abs(wrapPi(Math.PI * 2.5) - Math.PI * 0.5) < 1e-9, 'wrapPi does not fold to ±π')
+    ok(Math.abs(wrapPi(-Math.PI * 2.5) + Math.PI * 0.5) < 1e-9, 'wrapPi is not symmetric')
+
+    // 9 · the surface exists in full, and nothing throws without a DOM or without data.
     var api = ['growNetwork', 'drawNet', 'ageWash', 'drawMap', 'drawVoid', 'drawWheel',
-               'drawForecast', 'setTier', 'drawFlux', 'init']
+               'drawForecast', 'setTier', 'drawFlux', 'init', 'motion', 'motionActive',
+               'stopMotion']
     for (var ai = 0; ai < api.length; ai++) {
       ok(typeof HY.canvas[api[ai]] === 'function', 'surface: ' + api[ai] + ' is missing')
     }
@@ -1627,6 +2159,14 @@
     drawWheel: drawWheel,
     drawForecast: drawForecast,
     setTier: setTier,
+
+    // The act transitions and the endings (09 §4, §5). `motion` answers the duration in ms of a
+    // step it owns and null for one it does not, so the sequence host can route a `motion` step
+    // without keeping its own list of which ones are drawn and which are DOM.
+    motion: motion,
+    motionActive: motionActive,
+    stopMotion: stopMotion,
+    MOTIONS: MOTIONS,
 
     // §6's generic module surface, plus the flux pass ui.js drives from the one rAF.
     init: init,

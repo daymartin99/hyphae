@@ -877,6 +877,33 @@ canvas{ display:block; }
 }
 @keyframes cur{ 0%,50%{opacity:1} 50.01%,100%{opacity:.12} }
 
+/* ── PLACEMENT A/B · the console at the top ────────────────────────────────
+   §5.7 places the console in the bottom band and everything above is built that way. The owner
+   plays with his eye at the top of the phone, on the canvas, and reports the game's voice is the
+   wrong distance from the thing it is narrating. Both placements are in the build; ui.js moves the
+   one node into the frame under the plate and stamps data-console on the shell, and the rules
+   below are the whole cost of that move. This is an A/B waiting on two blind critics, not a
+   setting — whichever wins, the other one leaves. */
+.shell[data-console="top"] .console{
+  /* Inside the frame now, so it is no longer the shell's last row and owns no part of the safe
+     area at the foot of the phone. The plate's own bottom edge is the line above it. */
+  height:calc(var(--con-rows) * var(--con-row) + var(--con-pad) * 2);
+  padding-bottom:var(--con-pad);
+  border-top:0; border-bottom:1px solid var(--line-soft);
+}
+.shell[data-console="top"] .console-cur{ bottom:var(--con-pad); }
+/* The FAB's offset was composed from the two bands that used to sit beneath it (see §5.3 above).
+   With the console gone from the foot there is one band left, and the button drops onto it. */
+.shell[data-console="top"] .fab{
+  bottom:calc(var(--tabbar-h) + var(--sp-24) + env(safe-area-inset-bottom));
+}
+/* The two states that repaint the console from elsewhere in the sheet. The ending lifts it off the
+   floor and into the middle of the screen: `absolute` would now resolve against the frame it has
+   been moved inside, so it is pinned to the viewport instead, and the border it grew goes with the
+   frame it is no longer wearing. */
+.shell[data-console="top"][data-ending="1"] .console{ position:fixed; border-bottom:0; }
+.shell[data-console="top"][data-dismantle="strip"] .console{ border-bottom-color:transparent; }
+
 /* ══ TAB BAR · 06 §4.4 ═════════════════════════════════════════════════════ */
 
 /* Five columns from boot; unearned slots are `visibility:hidden`, never `display:none`, so the
