@@ -70,48 +70,95 @@
   // its way into reach; a tap takes all of it plus `TAP_FLOOR`, and never more than `TAP_MAX` in
   // one go. So the yield of the n-th tap is a function of *when* it happened, not of how many
   // preceded it, and the litter rate is `f·TAP_FLOOR + TAP_REGEN` — 3.20 g/s at one tap a second
-  // and 4.08 g/s at five, a 1.28× spread across a 5× spread in effort. Measured first tip: 36.5 s
-  // at 1/s, 34.2 s at 2/s, 32.1 s at 3/s, 28.6 s at 5/s. All four inside D05's 28–50 s, and the
-  // measured one-thumb rate of 1.70/s lands on 34.8 s.
+  // and 3.76 g/s at five, a 1.18× spread across a 5× spread in effort. Measured first tip: 36.7 s
+  // at 1/s, 35.2 s at 2/s, 33.8 s at 3/s, 31.4 s at 5/s. All four inside D05's 28–50 s, and the
+  // measured one-thumb rate of 1.70/s lands on 35.8 s.
+  //
+  // THE FLOOR IS WHAT MASHING BUYS, and it was too big. `f·TAP_FLOOR` is the only term in the tap
+  // rate that a faster thumb can move, so the floor alone sets the price of dexterity — and at
+  // 0.22 g it paid a five-a-second masher 4.08 g/s, which was more than a held press at the wall
+  // could earn however it was tuned (see TURGOR below). Cutting it to 0.14 g and giving the 0.08
+  // back to TAP_REGEN keeps two identities exactly, because both are properties of the SUM:
+  //   · TAP_FLOOR + TAP_REGEN = TAP_MAX, so one press a second still lifts exactly a full mat and
+  //     every rate at or below 1/s is the number the game shipped with, unchanged;
+  //   · (TAP_MAX − TAP_FLOOR) / TAP_REGEN = 1.000 s, so the mat still refills in exactly one second.
+  // What moves is only the masher's edge, from 1.28× down to 1.18×, which is the direction this
+  // block already said it wanted: the button is not a dexterity test.
   //
   // The clock is simulated time, so the reservoir is deterministic, survives a reload without being
   // saved, and cannot be beaten by a faster device or a macro.
-  var TAP_FLOOR = 0.22           // g of litter every tap lifts, however recent the last one was
-  var TAP_REGEN = 2.98           // g/s settling into reach of the mat
+  var TAP_FLOOR = 0.14           // g of litter every tap lifts, however recent the last one was
+  var TAP_REGEN = 3.06           // g/s settling into reach of the mat
   var TAP_MAX = 3.20             // g, the most one tap can ever lift
   var tapAt = -Infinity          // s, sim time of the last tap; not saved (§3 stores no tap phase)
+
+  // How long a real thumb needs to lift off the glass and land again. Measured on the built game
+  // at 180–300 ms; 400 ms is the slow end of that band with margin, and it is deliberately the
+  // SLOW end — see TURGOR. This is a human constant, not a game one, which is why it is not in
+  // TUNE: nothing outside this file may retune a thumb.
+  var PRESS_LIFT_S = 0.400       // s between the release of one press and the landing of the next
+
+  // The mat is empty of new litter this long after a press (TAP_MAX − TAP_FLOOR) / TAP_REGEN.
+  var MAT_FULL_S = (TAP_MAX - TAP_FLOOR) / TAP_REGEN
 
   // TURGOR. A hypha does not extend by deciding to. The cell behind the tip pumps solute, water
   // follows it, pressure rises against the wall, and the wall — softened at exactly one point —
   // yields. The front moves because something pushed it. That is the verb the player is performing,
   // so the input is a hold: pressure while the thumb is down, extension when it is let go.
   //
-  // RIPENESS IS NOT A NEW NUMBER. It is already in the four rows above: the mat refills in
-  // (TAP_MAX − TAP_FLOOR) / TAP_REGEN = 2.98 / 2.98 = 1.000 s exactly, so one second after the last
-  // extension there is nothing further settled to lift. Hold to there and the surge takes a full
-  // mat; hold past it and the only thing still moving is the clock. That is the diminishing return,
-  // and it is the floor's own arithmetic rather than a rule bolted onto it.
+  // RIPENESS IS NOT A NEW NUMBER, but it is not MAT_FULL_S either, and that mistake is what this
+  // block used to get wrong. The old reasoning went: the mat refills in 1.000 s, so hold for 1.000 s
+  // and the surge takes a full mat. It is arithmetically true and it is the wrong second, because
+  // THE MAT DOES NOT KNOW THE THUMB IS DOWN. It refills from the last release, and a press cycle is
+  // not a hold — it is a hold plus a lift. By the time the thumb has come off, travelled, and landed
+  // again, PRESS_LIFT_S of the refill is already spent. Set the wall at MAT_FULL_S and the last
+  // PRESS_LIFT_S of every hold is bought after the mat has stopped filling: pure time, no litter.
+  // Measured on the built game with real thumbs, that is what it cost — releasing at 0.60 s paid
+  // 112.9 g/min and holding to the old 1.00 s wall paid 94.3, so the button's green edge marked a
+  // moment 14% worse than one the player could reach by letting go early. An interface that teaches
+  // worse play is the Universal Paperclips trap this project exists to beat, and it had shipped.
+  //
+  // So the wall is where the mat runs dry FOR A THUMB THAT HAS TO LIFT:
+  //     TURGOR_RIPE_S = MAT_FULL_S − PRESS_LIFT_S = 1.000 − 0.400 = 0.600 s
+  // and it is still not a new number — it is the same two rows of the tap table, minus the one
+  // fact about hands the old derivation left out. PRESS_LIFT_S is the SLOW end of the measured
+  // 180–300 ms band on purpose: the wall is optimal for every thumb at or faster than it, and a
+  // thumb slower than 400 ms merely holds a hair long. Erring the other way would put the optimum
+  // before the mark again for the fastest hands, which is the fault itself.
   //
   // What the pressure buys ON TOP of the mat is TURGOR_GAIN: the front travels further than a tap
   // could and reaches litter a tap leaves behind, in litter and in thread alike — one multiplier,
   // both outputs, because it is one push.
   //
-  // The curve is a smoothstep and the shape is the whole argument. A cell wall is elastic: it takes
-  // the first pressure without giving anything, yields through the middle, and stiffens again as it
-  // approaches its limit. RESISTANCE, then travel, then the wall. Two consequences fall out of that
-  // and both are why this shape and not the obvious exponential:
-  //   · a short press is unambiguously a TAP — at a tenth of a second the surge is under 3%, so the
-  //     player who never holds is playing the game that shipped, to three decimal places;
-  //   · the best grams per second is AT ripeness, not before it. Under an exponential the optimum
-  //     sits at zero hold and the hold is a thing an optimiser learns to skip; under this one the
-  //     optimum is the threshold the button already shows and the thumb already feels.
+  // THE CURVE IS A CUBIC AND THE SHAPE IS THE WHOLE ARGUMENT. A cell wall is elastic: it takes the
+  // first pressure without giving anything, yields through the middle, stiffens as it approaches
+  // its limit — and then it gives. RESISTANCE, then travel, then a wall that STOPS the press rather
+  // than fading it out. `2u² − u³` is the unique cubic that leaves the tap at rest (p(0) = p′(0) = 0,
+  // so a short press is unambiguously a tap: at a tenth of a second the surge is 1.3%, and the
+  // player who never holds is playing the game that shipped, to three decimal places) and meets the
+  // wall still travelling at unit speed (p(1) = p′(1) = 1). It accelerates to its fastest at two
+  // thirds and eases back by a quarter into the stop, which is the stiffening.
   //
-  // Rate at ripeness is 4.03 g/s. A masher at five taps a second gets 4.08 g/s and a steady thumb
-  // at 1.7/s gets 3.35 g/s: holding to the wall is as fast as mashing at a fifth of the presses,
-  // and a sixth of a minute faster than the tap most people actually use. Less effort at the same
-  // pace, which is the point — the tap band and the hold band both have to land inside D05
-  // (BIBLE §8.1) and both are asserted in the self-test below.
-  var TURGOR_RIPE_S = 1.000      // s of hold at which the wall is at pressure and the mat is full
+  // THAT TERMINAL SPEED IS LOAD-BEARING, not decoration. A smoothstep arrives at the wall with
+  // p′(1) = 0, so the last instant of the hold buys nothing at all while still costing time — under
+  // ANY constants the payoff peaks strictly before a smoothstep's wall. With this cubic the payoff
+  // is still climbing when the wall stops it, so the maximum is AT the mark rather than near it,
+  // and it is the mark for every thumb-lift gap in 0.15–0.40 s. The self-test sweeps it.
+  //
+  // MEASURED IN THE BUILT GAME, real thumbs, rate read between press boundaries so no window edge
+  // flatters a rhythm. Releasing at the wall pays 121.0 g/min at 1.0 presses a second. The masher
+  // at five presses a second gets 112.8, the steady one-thumb 1.7/s gets 98.9, a calm 1.28/s gets
+  // 97.2. So the honest claim is no longer "the same pace for fewer presses" — the hold is the
+  // FASTEST rhythm on the floor as well as the cheapest in presses: +7% on the masher for a fifth
+  // of the presses, +22% on a steady thumb for three fifths of them. First tip 30.1 s at the wall
+  // against 36.5 s for that steady thumb.
+  //
+  // The tap keeps the game it shipped with — one press a second is unchanged to the gram — so the
+  // player who cannot hold is not playing a slower game than the one that was balanced, only a
+  // slower one than the player who holds, which is what a verb worth learning means. The tap band
+  // and the hold band both have to land inside D05 (BIBLE §8.1); both are asserted below, along
+  // with the sweep that proves the mark is the optimum.
+  var TURGOR_RIPE_S = MAT_FULL_S - PRESS_LIFT_S   // s of hold at which the wall gives: 0.600
   var TURGOR_GAIN = 0.26         // × extra litter and extra thread at full pressure
 
   // Project effects that projects.js delegates here rather than expressing as a `mult` key.
@@ -387,12 +434,28 @@
 
   // Pressure as a fraction of the wall's limit: 0 at a tap, 1 at ripeness, never more. The button
   // draws this same number every frame it is held, so the swell on screen IS the multiplier the
-  // simulation will pay out, not a picture of one.
+  // simulation will pay out, not a picture of one. The clamp at 1 is the wall itself — the press
+  // is stopped, not eased to a halt, which is why the last term is −u³ and not −2u³.
   function turgor (heldS) {
     var u = num(heldS) / TURGOR_RIPE_S
     if (!(u > 0)) return 0
     if (u > 1) u = 1
-    return u * u * (3 - 2 * u)
+    return u * u * (2 - u)
+  }
+
+  // The steady litter rate of one RHYTHM: a press held `holdS`, a thumb that needs `gapS` to lift
+  // and land again, repeated. This is the number every strategy is ranked by — biomass, sugar and
+  // thread all scale with the same surge on the same press — and it is written from the same three
+  // constants `tapLitter` reads, so it cannot drift from what the button actually pays.
+  //
+  // It exists because the fault above was invisible without it: a model that leaves `gapS` out is
+  // a model of a thumb that teleports, and such a thumb really is paid best by holding to
+  // MAT_FULL_S. No hand is. The self-test sweeps this across the real band.
+  function pressRate (holdS, gapS) {
+    var period = num(holdS) + num(gapS)
+    if (!(period > 0)) return 0
+    var settled = TAP_FLOOR + TAP_REGEN * period
+    return (settled > TAP_MAX ? TAP_MAX : settled) * (1 + TURGOR_GAIN * turgor(holdS)) / period
   }
 
   // `heldS` is how long the thumb was down, in seconds, and it is optional: a caller that does not
@@ -1141,10 +1204,63 @@
       near(turgor(-1), 0, 0, 'a negative hold is not a tap')
       near(turgor(TURGOR_RIPE_S), 1, 1e-12, 'the wall is not at pressure at ripeness')
       near(turgor(TURGOR_RIPE_S * 9), 1, 1e-12, 'pressure kept climbing past the wall')
-      ok(turgor(0.25) < 0.25, 'the wall gave at once — there is no resistance to push against')
-      near(turgor(TURGOR_RIPE_S / 2), 0.5, 1e-12, 'the curve is not symmetric about its middle')
-      for (i = 1; i < 20; i++) {
-        ok(turgor(i / 20) > turgor((i - 1) / 20), 'pressure did not rise monotonically')
+      ok(turgor(TURGOR_RIPE_S * 0.25) < 0.25,
+        'the wall gave at once — there is no resistance to push against')
+      ok(TURGOR_GAIN * turgor(0.10) < 0.03,
+        'a tenth of a second is no longer a tap: the shipped game is not inside the held one')
+      for (i = 1; i <= 20; i++) {
+        ok(turgor(TURGOR_RIPE_S * i / 20) > turgor(TURGOR_RIPE_S * (i - 1) / 20),
+          'pressure did not rise monotonically')
+      }
+      // THE WALL STOPS THE PRESS, it does not fade it out. This is the structural guard on the
+      // whole section below: any curve that arrives at ripeness with zero slope — a smoothstep
+      // does — buys nothing with its last instant while still spending time on it, so the payoff
+      // peaks strictly BEFORE the mark under every possible tuning of every other constant. The
+      // cubic reaches the wall at unit speed (p′(1) = 1, i.e. 1/TURGOR_RIPE_S per second) and the
+      // clamp is what ends the press.
+      var slopeEps = 1e-4
+      ok((turgor(TURGOR_RIPE_S) - turgor(TURGOR_RIPE_S - slopeEps)) / slopeEps > 0.5 / TURGOR_RIPE_S,
+        'the curve eases to a halt at the wall — the optimum cannot be at the mark')
+      // And ripeness is derived, not typed: it is the tap table's own refill window less the one
+      // fact about hands. If someone edits the mat, the wall moves with it or this fails.
+      near(TURGOR_RIPE_S + PRESS_LIFT_S, (TAP_MAX - TAP_FLOOR) / TAP_REGEN, 1e-12,
+        'the wall is no longer the moment the mat runs dry for a thumb that has to lift')
+
+      // ── THE MARKED MOMENT IS THE OPTIMUM ────────────────────────────────
+      // The assertion that should always have been here. Sweep every release time a thumb could
+      // choose, in 0.05 s steps out to well past the wall, at every thumb-lift gap in the human
+      // band, and demand that the best of them is the one the button turns green on.
+      //
+      // The old assertion compared one hold against one tap rate with NO dead time between presses
+      // — a thumb that releases and is already pressing again in the same instant. That thumb is
+      // the only one for which the old 1.000 s wall was optimal, which is how a button that marked
+      // a moment 14% worse than releasing early passed its own test five times.
+      var gaps = [0.15, 0.20, 0.25, 0.30, 0.35, 0.40], gi, k, hh, bestH, bestR, r
+      for (gi = 0; gi < gaps.length; gi++) {
+        bestH = -1; bestR = -1
+        for (k = 0; k <= 40; k++) {
+          hh = k * 0.05
+          r = pressRate(hh, gaps[gi])
+          if (r > bestR) { bestR = r; bestH = hh }
+        }
+        near(bestH, TURGOR_RIPE_S, 1e-9,
+          'the best release is not the marked one at a ' + gaps[gi] + ' s lift')
+        // Not by a hair, either: a maximum inside the noise of a human release is not a maximum a
+        // player can act on. The nearest rival is always the pure tap at the same cadence.
+        ok(bestR > pressRate(0, gaps[gi]) * 1.02,
+          'the wall beats tapping only inside the noise at a ' + gaps[gi] + ' s lift')
+      }
+      // Locally, from both sides, at the modelled thumb: the mark is a peak and not a shoulder.
+      ok(pressRate(TURGOR_RIPE_S, PRESS_LIFT_S) > pressRate(TURGOR_RIPE_S - 0.05, PRESS_LIFT_S),
+        'the press was still worth more before the wall')
+      ok(pressRate(TURGOR_RIPE_S, PRESS_LIFT_S) > pressRate(TURGOR_RIPE_S + 0.05, PRESS_LIFT_S),
+        'holding past the wall still paid')
+      // And the hold is the fastest rhythm on the floor, against every tap rate a thumb produces —
+      // including the masher, who used to beat it. `pressRate(0, 1/f)` IS tapping at f a second.
+      var tapf = [1, 1.28, 1.7, 2, 3, 5], ti
+      for (ti = 0; ti < tapf.length; ti++) {
+        ok(pressRate(TURGOR_RIPE_S, PRESS_LIFT_S) > pressRate(0, 1 / tapf[ti]) * 1.05,
+          'holding to the wall does not beat ' + tapf[ti] + ' taps a second')
       }
       // The surge is a multiplier on a full mat, and it is exactly the one turgor() draws.
       cold(5)
@@ -1162,17 +1278,29 @@
       onExtend(TURGOR_RIPE_S * 4)
       near(num(s.res.biomass), TAP_MAX * (1 + TURGOR_GAIN) * A().ETA_B * DECOMP.leaf.etaB, 1e-9,
         'a four-second hold paid more than a ripe one')
-      // D05 for the thumb that holds, across the band a real one lands in. The hold band and the
-      // tap band above are the same pass condition and neither may leave the window.
-      var hband = [0.35, 0.6, 1.0, 1.6], hi
+      // D05 for the thumb that holds, across the band a real one lands in — every one of these
+      // costs its hold PLUS a PRESS_LIFT_S lift, because that is what a press is. The hold band and
+      // the tap band above are the same pass condition and neither may leave the window.
+      // 0.30 s is a third of the mark and 1.20 s is twice it: the wall is a mark to aim at, not a
+      // knife edge, and missing it by a factor of two in either direction must still be a game.
+      var hband = [0.30, TURGOR_RIPE_S, 0.90, 1.20], hi
       for (hi = 0; hi < hband.length; hi++) {
         br = simulate({ holdS: hband[hi], until: 90 })
         within(br.firstTipAt, 28, 50, 'D05 holding ' + hband[hi] + ' s')
       }
-      // The early game must not get slower for holding, or the verb is a tax dressed as a feature:
-      // one ripe release per second must beat a steady thumb at 1.7 taps a second.
-      ok(simulate({ holdS: 1.0 }).firstTipAt < simulate({ tapRate: 1.7 }).firstTipAt,
+      // The wall must also be the fastest opening, not merely a legal one: a player who finds the
+      // mark reaches the first tip before a player who holds either side of it, and before the
+      // steady thumb at 1.7 taps a second. This is the same claim the sweep makes, run through the
+      // whole act — season, moisture, buy policy and all — rather than through the rate alone.
+      ok(simulate({ holdS: TURGOR_RIPE_S }).firstTipAt < simulate({ tapRate: 1.7 }).firstTipAt,
         'holding to ripeness is slower than tapping')
+      ok(simulate({ holdS: TURGOR_RIPE_S }).firstTipAt < simulate({ holdS: 1.0 }).firstTipAt,
+        'over-holding past the wall reached the first tip sooner than the wall did')
+      // The thumb that cannot hold at all is not left behind: the tap path stays inside the window
+      // at every gap it can produce, which the tap band above asserts, and one press a second is
+      // the number the game shipped with to the gram (TAP_FLOOR + TAP_REGEN = TAP_MAX).
+      near(TAP_FLOOR + TAP_REGEN, TAP_MAX, 1e-12,
+        'one press a second no longer lifts exactly a full mat')
 
       // ── the mineral gate: a wall with four tips of warning ───────────────
       cold(5)
@@ -1479,14 +1607,20 @@
   // buy-whenever-affordable policy. This is the only place in the module that models a player.
   //
   // `holdS` models the other thumb: a player who charges for that many seconds and releases, over
-  // and over. One press per (holdS) seconds, each paying the turgor curve at that duration — so
-  // `{ holdS: 1 }` is the ripeness rhythm and `{ tapRate: 3 }` is the masher, and D05 has to hold
-  // for both of them.
+  // and over — so `{ holdS: TURGOR_RIPE_S }` is the ripeness rhythm and `{ tapRate: 3 }` is the
+  // masher, and D05 has to hold for both of them.
+  //
+  // THE PERIOD IS holdS + gapS, NEVER holdS. This function used to divide by the hold alone, which
+  // models a thumb that releases and is already pressing again in the same instant. No such thumb
+  // exists, and pretending otherwise is exactly why the mismarked wall survived five rounds of
+  // self-test: the impossible thumb is the only one for whom holding to MAT_FULL_S was optimal.
+  // `gapS` defaults to PRESS_LIFT_S and a caller may pass any value in the human band to probe it.
   function simulate (opts) {
     var s = cold(7)
     var dt = T().CLOCK.DT_A1
     var holdS = num(opts.holdS)
-    var tapRate = holdS > 0 ? 1 / holdS : opts.tapRate
+    var gapS = typeof opts.gapS === 'number' ? opts.gapS : PRESS_LIFT_S
+    var tapRate = holdS > 0 ? 1 / (holdS + gapS) : opts.tapRate
     var out = { firstTipAt: -1, boughtFirst: false, tipsAt90: 0, tipsAt120: 0 }
     var credit = 0, elapsed = 0
 
@@ -1560,6 +1694,9 @@
     // frame of a hold rather than keeping a curve of its own, so there is exactly one turgor curve
     // in the build and the swell cannot drift from the payout.
     turgor: turgor,
+    // The wall's own duration, so nothing outside this file has to write 0.600 down a second time.
+    // It is derived here (MAT_FULL_S − PRESS_LIFT_S) and moves when the tap table moves.
+    turgorRipeS: TURGOR_RIPE_S,
     __selftest: __selftest
   }
 })(window.HY = window.HY || {})

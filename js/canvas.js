@@ -87,9 +87,24 @@
     // Under reduced motion the flux layer is redrawn on a state change rather than a clock. A
     // pending structural batch this large, or a season boundary, is a state change; a sine is not.
     REDUCED_BATCH: 240,
-    REDUCED_FLUSH_S: 8       // s: content appearing at 0.125 Hz is not motion, and 06 §7's
+    REDUCED_FLUSH_S: 8,      // s: content appearing at 0.125 Hz is not motion, and 06 §7's
                              // season-only cadence would leave a cold-boot player looking at two
                              // pixels for six minutes, which is the one thing worse than motion.
+
+    // THE RELEASE (01 §3.2, 07 §8.2). The hold builds pressure in the button and this is where the
+    // pressure goes. One EXTEND is 0.020 m of thread, which is one twenty-fifth of a segment — the
+    // structural layer cannot answer a single press and never could, so the answer is drawn on the
+    // flux layer instead: the leading tips advance along their own headings, further for a fuller
+    // charge, and the push then dissolves rather than snapping back. A hypha does not retract, so
+    // what decays here is the probe's ink and never its length.
+    SURGE_N: 24,             // leading tips the release pushes. The rest of the front does not move
+    SURGE_PX: 3.2,           // px a release with no hold advances the front — a tap still goes
+    SURGE_SPAN: 9.4,         // px more at full pressure, so a ripe hold travels near four times it
+    SURGE_RISE: 150,         // ms of travel: the wall gives, the tip goes, it slows
+    SURGE_FALL: 520,         // ms over which the probe's ink hands its length back to the mat
+    SURGE_A: 0.55,           // probe alpha at full push — brighter than the mat, because it is new
+    SURGE_HEAD: 0.62,        // × that, for the head: the thread it laid is the louder half of this
+    SURGE_HZ: 30             // Hz a live surge borrows: 8 Hz draws a 150 ms push in one frame
   }
 
   var MAP = {
@@ -643,6 +658,7 @@
       net = regenerate(net.seed, surf.W, surf.H, net.n, 40)
       paths.length = 0
       pulses.length = 0
+      surge = null
       depthN = -1
     }
     mapDirty = true
@@ -662,6 +678,8 @@
       net = newNet(want, surf.W, surf.H)
       paths.length = 0
       pulses.length = 0
+      // A push in flight belonged to tips this network no longer has.
+      surge = null
       // The conduction wave's root-to-tip distances belong to the network that was replaced.
       depthN = -1
       clearNet()
@@ -811,6 +829,91 @@
   var paths = []
   var lastPulseSpawn = 0
 
+  // ── THE RELEASE · the one moment this surface answers the hand ─────────────
+  // `{ at, adv }` while a release is travelling, else null. A gesture's echo, never game state: it
+  // is not saved, it does not survive a new run, and a reload mid-push is a push that did not
+  // happen. The extension it draws is already recorded in `hyphaeManual`; this only makes the beat
+  // visible on the frame the thumb lifts, which is the beat the network was missing.
+  var surge = null
+  // Scratch for the per-node heading, module-level because this runs SURGE_N times a frame at
+  // 30 Hz and an array per node per frame is a collection pause per surge.
+  var dir = [0, 0]
+
+  function surgeRelease (p) {
+    // Reduced motion drops the button's own swell for exactly this reason and this follows it: the
+    // grams are banked either way, and 670 ms of travel is decoration. The FLOOR tier has no flux
+    // clock at all, so it has nothing to draw a push on.
+    if (reduced || T().fluxHz <= 0) return
+    var f = typeof p === 'number' && p === p ? (p < 0 ? 0 : (p > 1 ? 1 : p)) : 0
+    surge = { at: nowMs(), adv: FLUX.SURGE_PX + FLUX.SURGE_SPAN * f }
+  }
+
+  // The push at `tMs`, as a distance and an ink, or null when there is nothing travelling. It rises
+  // on an ease-out — the wall gives, the tip goes, it slows against what is in front of it — and
+  // then holds its length while the ink falls away on a square, which is a thing being absorbed
+  // rather than a thing being switched off.
+  function surgeAt (tMs) {
+    if (!surge) return null
+    var t = tMs - surge.at
+    if (t < 0) t = 0
+    if (t >= FLUX.SURGE_RISE + FLUX.SURGE_FALL) {
+      surge = null
+      lastFlux = 0            // one clean frame, so the last probe is cleared and not left standing
+      return null
+    }
+    if (t < FLUX.SURGE_RISE) {
+      var u = 1 - t / FLUX.SURGE_RISE
+      return { d: surge.adv * (1 - u * u * u), a: 1 }
+    }
+    var v = 1 - (t - FLUX.SURGE_RISE) / FLUX.SURGE_FALL
+    return { d: surge.adv, a: v * v }
+  }
+
+  // A tip's own heading, unit length: the direction its last segment was laid in, which is the
+  // direction turgor pushes it. The seed node has no parent and no history, so it goes up, which is
+  // where it was going to grow anyway.
+  function heading (i) {
+    var p = net.par[i]
+    var dx = p >= 0 ? net.x[i] - net.x[p] : 0
+    var dy = p >= 0 ? net.y[i] - net.y[p] : -1
+    var m = Math.sqrt(dx * dx + dy * dy)
+    if (!(m > 1e-6)) { dir[0] = 0; dir[1] = -1; return }
+    dir[0] = dx / m
+    dir[1] = dy / m
+  }
+
+  // One path for every probe and one fill for every head: two draw calls for the whole front. The
+  // head is the tip where it reached, drawn over the tip where it was — the pair IS the extension,
+  // and it is why nothing here is a burst, a spark or a ring.
+  function drawSurge (ctx, sg) {
+    var first = Math.max(0, net.n - FLUX.SURGE_N)
+    if (first >= net.n) return
+    var TAU = Math.PI * 2
+    var i
+    ctx.save()
+    ctx.globalAlpha = FLUX.SURGE_A * sg.a
+    ctx.strokeStyle = rgba(pal.hyphae, 1)
+    ctx.fillStyle = rgba(pal.hyphae, 1)
+    ctx.lineWidth = DRAW.WIDTHS[2]
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    for (i = first; i < net.n; i++) {
+      heading(i)
+      ctx.moveTo(net.x[i], net.y[i])
+      ctx.lineTo(net.x[i] + dir[0] * sg.d, net.y[i] + dir[1] * sg.d)
+    }
+    ctx.stroke()
+    ctx.globalAlpha = FLUX.SURGE_A * FLUX.SURGE_HEAD * sg.a
+    ctx.beginPath()
+    for (i = first; i < net.n; i++) {
+      heading(i)
+      ctx.moveTo(net.x[i] + dir[0] * sg.d + FLUX.TIP_R, net.y[i] + dir[1] * sg.d)
+      ctx.arc(net.x[i] + dir[0] * sg.d, net.y[i] + dir[1] * sg.d, FLUX.TIP_R, 0, TAU)
+    }
+    ctx.fill()
+    ctx.restore()
+  }
+
   function stateKey (s) {
     if (!s) return String(net ? net.n : 0)
     var fl = s.a2 && s.a2.flush ? s.a2.flush.length : 0
@@ -837,7 +940,11 @@
     // the game needs no second clock and no second compositor.
     if (drawMotion(tMs)) return
     var s = S()
-    var hz = T().fluxHz
+    // A live release borrows the flux clock. The tier's 8 Hz is one frame inside a 150 ms push, and
+    // the whole claim of the push is that the eye can follow it somewhere; the borrow is bounded by
+    // the surge's own 670 ms and by the fact that only a thumb can start one.
+    var sg = surgeAt(tMs)
+    var hz = sg ? FLUX.SURGE_HZ : T().fluxHz
 
     if (reduced || hz <= 0) {
       // Once per state change, never on a clock. A static frame is always present — this branch
@@ -857,6 +964,8 @@
     var tSec = tMs / 1000
 
     drawTips(ctx, tSec)
+    // After the tips, so the head sits over the tip it came from rather than under it.
+    if (sg) drawSurge(ctx, sg)
     if (s && s.act >= 2) stepPulses(ctx, tSec, s)
     // Fruiting bodies and fire are Act II objects. The a2 block survives the transition in memory
     // until the save is next written, and drawing from it in Act III would put mushrooms in space.
@@ -2075,6 +2184,28 @@
     ok(parseColor('', 'fb') === 'fb', 'parseColor: empty must fall through to the fallback')
     ok(clamp01(2) === 1 && clamp01(-1) === 0 && clamp01(NaN) === 0, 'clamp01')
 
+    // 7b · the release. Every claim the verb makes about this surface, checked against the
+    // envelope: a tap goes somewhere, a ripe hold goes further, the push never retracts, and the
+    // whole thing is over inside its own budget. The rest of the module is stateless about it, so
+    // the state it does keep is put back exactly as it was found.
+    var wasSurge = surge
+    var t0s = nowMs()
+    surge = { at: t0s, adv: FLUX.SURGE_PX }
+    var tapPush = surgeAt(t0s + FLUX.SURGE_RISE)
+    surge = { at: t0s, adv: FLUX.SURGE_PX + FLUX.SURGE_SPAN }
+    var ripePush = surgeAt(t0s + FLUX.SURGE_RISE)
+    ok(tapPush && tapPush.d > 0, 'surge: a release with no hold must still push the front somewhere')
+    ok(ripePush && ripePush.d > tapPush.d * 2,
+      'surge: a ripe hold must visibly out-travel a tap, not merely beat it')
+    var early = surgeAt(t0s + FLUX.SURGE_RISE * 0.5)
+    ok(early && early.d < ripePush.d && early.d > 0, 'surge: the push does not travel over the rise')
+    var late = surgeAt(t0s + FLUX.SURGE_RISE + FLUX.SURGE_FALL * 0.5)
+    ok(late && late.d >= ripePush.d - 1e-9, 'surge: the push retracted — a hypha never does')
+    ok(late && late.a < 1 && late.a > 0, 'surge: the ink did not fall away over the settle')
+    ok(surgeAt(t0s + FLUX.SURGE_RISE + FLUX.SURGE_FALL) === null && surge === null,
+      'surge: a push outlived its own envelope')
+    surge = wasSurge
+
     // 8 · the transitions. Every `motion` step log.js can emit is either owned here or is DOM, and
     // the durations this module reports have to agree with the clock 09 §4 and §5 authored — a
     // wave that outlives its own cut is a transition with a seam in it.
@@ -2181,6 +2312,10 @@
     motionActive: motionActive,
     stopMotion: stopMotion,
     MOTIONS: MOTIONS,
+
+    // The release. ui.js calls this at the instant a charge lifts and an extension was actually
+    // paid for, with the same 0…1 pressure the button drew and the floor priced.
+    surge: surgeRelease,
 
     // §6's generic module surface, plus the flux pass ui.js drives from the one rAF.
     init: init,

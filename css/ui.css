@@ -85,6 +85,10 @@
   --ease-in-out:cubic-bezier(.65,0,.35,1);
   --ease-press:cubic-bezier(.30,0,.10,1);
   --ease-organic:cubic-bezier(.34,.90,.24,1);
+  /* Expenditure, not decay: flat while the pressure is still there, steep once it is going. The
+     one curve in the build that is slower at its start than at its end, because it is the one
+     motion in the build that is a thing being spent rather than a thing arriving. */
+  --ease-spend:cubic-bezier(.5,.02,.72,.4);
   --d-press:70ms; --d-state:120ms; --d-fade:180ms; --d-release:220ms;
   --d-move:240ms; --d-reveal:320ms; --d-act:2600ms;
 
@@ -585,6 +589,19 @@ canvas{ display:block; }
   transform:scale(calc(.34 + .66 * var(--turgor)));
   transform-origin:50% 52%;
 }
+/* THE TOE. act1's curve is a smoothstep, which is flat at both ends on purpose — the wall does not
+   give at once — and multiplying that flat toe by .92 of the dimmest green the palette owns puts
+   the first half-second of the gesture under the noise floor of a phone at half brightness. At
+   250 ms the fill computes to .14 alpha of --chloro-800 on --surface-press; on a desk that is a
+   faint bloom and on a bus it is nothing at all. The resistance phase is the half of this gesture
+   that says the wall is TAKING THE STRAIN, and it was the half nobody could see.
+
+   So the volume is present at a legible alpha in the frame the thumb lands, and the swell spends
+   the range above it: .34 → .92, the same ceiling as before. The floor is opacity only. Nothing is
+   done to the scale, because what GROWS is the whole of the report and it still grows from .34 of
+   the box in both axes — this only makes that growth visible from its first frame rather than its
+   fifteenth. It is scoped to the charge so that a button nobody is touching stays empty. */
+.hero[data-charge="1"] .hero-turgor{ opacity:calc(.34 + .58 * var(--turgor)); }
 .hero{ position:relative; overflow:hidden; }
 .hero-lab, .hero-cost{ position:relative; }
 /* Measured, not assumed: with `touch-action:manipulation` Chrome fires `pointercancel` after about
@@ -611,17 +628,33 @@ canvas{ display:block; }
    nothing that would ask to be held longer — holding longer is the mistake this is warning against.
    The tick the thumb feels at the same moment is ui.js's HAP_RIPE. */
 .hero[data-charge="1"][data-ripe="1"]{ border-color:var(--positive); }
-/* The release: the pressure discharges into the front over the same 220 ms every other release in
-   the build takes, on the same curve. --turgor is written back to 0 in the same frame, so this is
-   one transition and not an animation. */
+/* The release: the button and the word come back over the same 220 ms every other release in the
+   build takes, on the same curve. --turgor is written back to 0 in the same frame, so this is one
+   transition and not an animation. */
 .hero[data-charge="0"],
-.hero[data-charge="0"] .hero-turgor,
 .hero[data-charge="0"] .hero-lab{
   transition:transform var(--d-release) var(--ease-out),
-             opacity var(--d-release) var(--ease-out),
              letter-spacing var(--d-release) var(--ease-out),
              background-color var(--d-state) linear,
              border-color var(--d-state) linear;
+}
+/* THE DISCHARGE. The wall and the fill are not the same event and were sharing one curve.
+   --ease-out is cubic-bezier(.22,1,.36,1), which is 60% travelled in its first fifth: the fill lost
+   15% inside one frame and was gone by 120 ms of its 220. That is not a discharge, it is a delete —
+   pressure that was being built for a second vanishing faster than the eye can follow it leaving.
+
+   Pressure is SPENT. It holds while the wall opens, and then it goes: --ease-spend is flat for its
+   first third and steep after, which is the shape of a thing being used up rather than switched
+   off. And it goes OUTWARD — the release scales the volume past the wall it was pushing against
+   instead of sucking it back to the centre, because a hypha's turgor leaves through the tip. The
+   button clips it, so what is seen is the wash swelling through the edge and thinning out, over
+   exactly as long as the button itself takes to come back. It is the same ellipse it always was:
+   nothing is spawned, nothing flashes, and nothing moves that was not already moving. */
+.hero[data-charge="0"] .hero-turgor{
+  transform:scale(1.14);
+  opacity:0;
+  transition:transform var(--d-release) var(--ease-spend),
+             opacity var(--d-release) var(--ease-spend);
 }
 
 /* 06 §8.6. The swell is the decoration and the threshold is the information, so reduced motion
@@ -956,6 +989,14 @@ canvas{ display:block; }
 .console-line:nth-last-child(3){ opacity:.44; }
 .console-line:nth-last-child(4){ opacity:.30; }
 .console-line:nth-last-child(5){ opacity:.20; }
+/* HELD FOR THE RELEASE. ui.js stamps a row that arrived while a charge was building; the stamp
+   comes off the moment the thumb lifts. The row is in the DOM the whole time — the five-row window,
+   the fade above and the trimming all keep counting it, and the live region has already spoken it —
+   so what waits is the sight of it and nothing else. Suppressing the entrance here rather than
+   deferring the class is what makes the reveal free: the animation has never started, so lifting
+   the stamp runs it from its first frame, on the release, which is the beat it belongs on. It sits
+   after the nth-last-child fade because it has the same weight and must win. */
+.console-line[data-held="1"]{ opacity:0; animation:none; }
 .console-line[data-tone="pos"]{ color:var(--positive-text); }
 .console-line[data-tone="warn"]{ color:var(--attention); }
 .console-line[data-tone="neg"]{ color:var(--negative-text); }

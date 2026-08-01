@@ -1773,14 +1773,24 @@
     setData(view.hero, 'charge', '0')
     setData(view.hero, 'ripe', '0')
     setTurgor(0)
+    // Whatever the console was holding back for this moment lands now. A charge that was cancelled
+    // rather than spent still frees it: the line is news, and news waits for a release, not for a
+    // successful one.
+    releaseHeld()
   }
 
   // Driven from loop.js's frame, like everything else this module draws (BIBLE §4.2): no timer, no
   // rAF of its own, and nothing at all to do on a frame with no thumb down.
   function stepCharge () {
-    if (!charge || !view) return
+    // Belt and braces on heroCharge's own release: a held line must never outlive the hold that is
+    // holding it, whatever ends the gesture.
+    if (!charge || !view) { releaseHeld(); return }
     var a = A1()
-    var p = a && a.turgor ? a.turgor((nowMs() - charge.at) / 1000) : 0
+    // The latch and the fill have to agree, because the fill is what the eye is reading. --turgor is
+    // written to three decimals, so a 999 ms hold prints "1.000" on a border that act1's clamp still
+    // calls 0.99999…: a button that looks full inside a grey wall. Round once, here, and let the one
+    // number the stylesheet gets be the same number the threshold is decided on.
+    var p = Math.round((a && a.turgor ? a.turgor((nowMs() - charge.at) / 1000) : 0) * 1000) / 1000
     if (!charge.ripe && p >= 1) {
       charge.ripe = true
       setData(view.hero, 'ripe', '1')
@@ -1790,6 +1800,44 @@
     // a hold is building, and the wall has been reached — and nothing between them moves. That is
     // the meter's own reasoning: the state is information, the interpolation is decoration.
     setTurgor(reducedMotion() ? (charge.ripe ? 1 : 0) : p)
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE PAYOFF ORDER · a line that lands mid-hold is not the hold's answer
+  //
+  // In the turgor verb the thumb is down for about three quarters of the wall clock, so an authored
+  // line lands INSIDE a hold far more often than after one. Measured: down at 11221, the line at
+  // 11439, up at 12355 — the console said its piece 218 ms into a press that ran another 900 ms,
+  // and by the time the release came there was nothing left for it to answer. The same line in tap
+  // mode landed 76 ms after the release and read as cause and effect, which is the entire reason
+  // the console was moved to the top of the screen in the first place.
+  //
+  // Nothing is delayed in the simulation and nothing is dropped. log.js emits on its own clock, the
+  // ring records the line, and the live region speaks it on time — a screen reader hears it when it
+  // happened, which is correct, because a screen reader is not watching a button swell. Only the
+  // row's ARRIVAL on screen waits, and it waits for the release that is about to be the reason for
+  // it. The row is stamped rather than detached so that the console's five-row window, its
+  // nth-last-child fade and its trimming all keep working on a DOM that never lied about what is in
+  // it. Removing the stamp re-runs the row's own entrance animation, because the stylesheet
+  // suppresses that animation for exactly as long as the stamp is on.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  var heldLines = []
+
+  function holdLine () {
+    // Only a live charge holds anything: in tap mode, and for every verb that is not EXTEND, the
+    // console is untouched and behaves exactly as it shipped.
+    if (!charge || !view || !view.consoleInner) return
+    var row = view.consoleInner.lastChild
+    if (!row || !row.dataset || row.dataset.held === '1') return
+    row.dataset.held = '1'
+    heldLines.push(row)
+  }
+
+  function releaseHeld () {
+    if (!heldLines.length) return
+    for (var i = 0; i < heldLines.length; i++) delete heldLines[i].dataset.held
+    heldLines.length = 0
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1858,6 +1906,9 @@
 
     // The console's row budget is measured by its owner, against its own strings.
     if (LOG() && LOG().mount) LOG().mount(view.consoleInner)
+    // log.js delivers to its subscribers immediately after it has rendered the row, so the row this
+    // hears about is the console's last child. That is the only fact this needs.
+    if (LOG() && LOG().onLine) LOG().onLine(holdLine)
 
     // `scroll` does not bubble, and the element that actually scrolls is the panel stack, not the
     // frame around it — this listener sat on `.scroll-main` (overflow:hidden) and had never once
@@ -1913,12 +1964,31 @@
     if (!s) return
     if (LOG() && LOG().notifyInput) LOG().notifyInput()
     var verb = heroVerb(s)
-    if (verb === 'extend' && A1() && A1().onExtend) A1().onExtend(heldS)
+    if (verb === 'extend' && A1() && A1().onExtend) extend(heldS)
     else if (verb === 'settle' && HY.bloom) commit(function () { return HY.bloom.settle() })
     else if (verb === 'newgrowth' && HY.finale && HY.finale.newGrowth) HY.finale.newGrowth()
     // feel.js fires the extend haptic from act1's own call site; this is the fallback for a build
     // in which it has not been concatenated yet.
     if (!FEEL()) haptic(U.HAP_PRESS, 'extend')
+  }
+
+  // EXTEND, and the one place the release becomes visible somewhere other than under the thumb.
+  //
+  // A hypha extends because the cell behind the tip pushes water forward until the wall gives, and
+  // the verb built that: pressure, resistance, a wall. What it did not have was the last beat — the
+  // tip going somewhere. It cannot come from the structural layer, because one press is 0.020 m of
+  // thread, a twenty-fifth of a single segment; twenty-five presses to move one node is not an
+  // answer to a hand. So the canvas draws the push itself, from the same 0…1 the button drew and the
+  // floor priced, and the mat then grows into it on its own clock.
+  //
+  // Only when the extension actually happened. A floor with nothing left to eat refuses the press,
+  // and a refusal that surges is a lie about the state of the litter.
+  function extend (heldS) {
+    var a = A1()
+    if (!a || !a.onExtend || !a.onExtend(heldS)) return false
+    var cv = CANVAS()
+    if (cv && cv.surge) cv.surge(a.turgor ? a.turgor(heldS) : 0)
+    return true
   }
 
   function tipsAffordable () {
@@ -5779,7 +5849,23 @@
       ok(U.CHARGE_SLOP_PX > U.PRESS_SLOP_PX,
         'a held thumb is allowed no more drift than a tapping one')
       ok(U.HAP_RIPE < U.HAP_PRESS, 'the wall buzzes harder than the press it happens inside')
+      // THE WALL LATCHES ON WHAT THE EYE IS READING. --turgor is written to three decimals, so a
+      // hold a fraction short of ripeness prints "1.000" — a full button inside a grey wall, for as
+      // long as the thumb stays down. The latch is decided on the rounded value for exactly this
+      // reason, and this is the hold that used to fall through the gap.
+      //
+      // The probe is taken from act1's own wall rather than written down here: the hold that falls
+      // through the gap is a fixed FRACTION of the charge, so a second copy of the duration would
+      // silently stop testing anything the first time act1 retunes it (it has).
+      var short = a1.turgor(a1.turgorRipeS * (1 - 0.0004))
+      ok(short < 1, 'the curve reached the wall early; this test can no longer see the gap')
+      ok(Math.round(short * 1000) / 1000 >= 1,
+        'the ripe latch and the fill must agree on what "full" is')
     }
+    // The release lands somewhere other than under the thumb, or it lands nowhere: the network is
+    // the only thing on screen that can answer an extension, and answering it is drawn work.
+    ok(!CANVAS() || typeof CANVAS().surge === 'function',
+      'the canvas cannot answer a release')
     if (view) {
       var was = extendMode()
       ok(extendMode('tap') === 'tap' && view.shell.dataset.verb === 'tap',
