@@ -153,6 +153,21 @@
   // of the presses, +22% on a steady thumb for three fifths of them. First tip 30.1 s at the wall
   // against 36.5 s for that steady thumb.
   //
+  // RE-MEASURED with driven touch (raw touchStart/Move/End with a resting thumb's drift, never a
+  // synthetic click), sweeping 0.30–1.60 s in 0.05 s steps at lifts of 0.20 / 0.30 / 0.40 s, five
+  // holds around the wall repeated four times each and INTERLEAVED so a slow half-minute of the
+  // machine cannot attach itself to one hold. The best release is 0.600 s at all three lifts:
+  //   lift 0.20 s — 116.4 / 120.7 / 123.2 / 119.6 / 119.5 g/min at 0.50 / 0.55 / 0.60 / 0.65 / 0.70
+  //   lift 0.30 s — 114.4 / 116.2 / 120.8 / 118.7 / 117.5
+  //   lift 0.40 s — 114.0 / 116.1 / 118.6 / 115.6 / 111.3
+  // Two things this pinned down that arithmetic alone does not. First, THE MARGIN IS NOT UNIFORM:
+  // the drop for over-holding by 0.05 s is 4.7% at a 0.40 s lift but 0.3% at 0.20 s, because only
+  // at the slow lift do the mat's cap and the wall land on the same instant. The mark is the peak
+  // everywhere; it is a KNIFE EDGE nowhere, which is the forgiveness this button wants. Second, the
+  // measurement is worthless unless the LIFT is delivered as accurately as the hold: a rig that
+  // asked for 0.40 s and delivered 0.417 s moved the optimum to 0.586 s and made 0.55 s tie the
+  // mark, because the wall is derived from the lift and inherits its error one-for-one.
+  //
   // The tap keeps the game it shipped with — one press a second is unchanged to the gram — so the
   // player who cannot hold is not playing a slower game than the one that was balanced, only a
   // slower one than the player who holds, which is what a verb worth learning means. The tap band
@@ -456,6 +471,28 @@
     if (!(period > 0)) return 0
     var settled = TAP_FLOOR + TAP_REGEN * period
     return (settled > TAP_MAX ? TAP_MAX : settled) * (1 + TURGOR_GAIN * turgor(holdS)) / period
+  }
+
+  // THE COLONY, PER GRAM — metres of thread the same rhythm lays for each gram of litter it lifts.
+  //
+  // This is the second thing the player is watching, and it is not the rate above. Thread is priced
+  // per PRESS and litter accumulates per elapsed SECOND, so the surge appears in BOTH and cancels:
+  // what is left is a function of the period alone. A rhythm faster than the mat's refill lifts
+  // less each press and therefore lays MORE thread per gram, and a rhythm at or slower than the
+  // refill lays the least — the floor's own trade, unchanged by whether the thumb held or tapped.
+  //
+  // It is written down because the hold could have broken it and did not. The wall's period is
+  // TURGOR_RIPE_S + PRESS_LIFT_S, which IS MAT_FULL_S, so a player who holds grows the colony at
+  // exactly the metres per gram of the one-press-a-second cadence the act was balanced at — the
+  // grams arrive faster, the picture does not fall behind them. Measured with driven touch, both
+  // taken at the same 60 g: 0.781 m holding to the wall, 0.765 m at one tap a second. Over three
+  // real minutes the two verbs laid 4.459 m and 4.574 m, a 2.5% spread on a plate that draws two
+  // segments to the metre — the same picture, and it is the same picture when looked at.
+  function threadPerGram (holdS, gapS) {
+    var period = num(holdS) + num(gapS)
+    if (!(period > 0)) return 0
+    var settled = TAP_FLOOR + TAP_REGEN * period
+    return A().HYPHAE_PER_TAP / (settled > TAP_MAX ? TAP_MAX : settled)
   }
 
   // `heldS` is how long the thumb was down, in seconds, and it is optional: a caller that does not
@@ -1255,6 +1292,26 @@
         'the press was still worth more before the wall')
       ok(pressRate(TURGOR_RIPE_S, PRESS_LIFT_S) > pressRate(TURGOR_RIPE_S + 0.05, PRESS_LIFT_S),
         'holding past the wall still paid')
+      // ── THE COLONY MUST NOT FALL BEHIND THE NUMBER ──────────────────────
+      // The rate above is only half of what the player is watching; the other half is the picture,
+      // and a verb that piles up grams while the network stops growing is the Paperclips failure in
+      // a different costume. Thread is per press and litter is per second, so the guard is that the
+      // wall's rhythm lays exactly the metres per gram of the cadence the act was balanced at.
+      near(threadPerGram(TURGOR_RIPE_S, PRESS_LIFT_S), threadPerGram(0, 1), 1e-12,
+        'holding to the wall grows the colony at a different rate per gram than a tap a second')
+      // Never below it, at any lift a hand produces — the surge cancels, so this can only fail if
+      // someone gives the hold its own thread multiplier and forgets the litter one, or moves the
+      // wall off the mat's refill. Both have been done to this file.
+      for (gi = 0; gi < gaps.length; gi++) {
+        ok(threadPerGram(TURGOR_RIPE_S, gaps[gi]) >= threadPerGram(0, 1) - 1e-12,
+          'the hold lays less thread per gram than the balanced tap at a ' + gaps[gi] + ' s lift')
+      }
+      // And the trade itself is real and belongs to the PERIOD, not to the verb: a thumb faster
+      // than the mat's refill buys thread with grams whether it holds or not.
+      ok(threadPerGram(0, 1 / 3) > threadPerGram(TURGOR_RIPE_S, PRESS_LIFT_S),
+        'a rhythm faster than the mat does not lay more thread per gram')
+      near(threadPerGram(0.2, 0.3), threadPerGram(0, 0.5), 1e-12,
+        'metres per gram depends on something other than the period')
       // And the hold is the fastest rhythm on the floor, against every tap rate a thumb produces —
       // including the masher, who used to beat it. `pressRate(0, 1/f)` IS tapping at f a second.
       var tapf = [1, 1.28, 1.7, 2, 3, 5], ti
