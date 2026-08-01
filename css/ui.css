@@ -1027,19 +1027,39 @@ canvas{ display:block; }
              color:var(--positive-text); font:var(--t-label); letter-spacing:.14em;
              text-transform:uppercase; }
 
-/* ══ ACT TRANSITION · 06 §6.6 ══════════════════════════════════════════════ */
+/* ══ THE ACT TRANSITION · 06 §6.6, 09 §4–§5 ═══════════════════════════════
+   The curtain is the surface a sequence's words stand on. It is raised for the whole of a
+   sequence and taken down when the sequence ends, so it is also the thing that says "a sequence
+   is running" — no attribute of its own is needed for that.
 
-.shell[data-transition="1"] .panels,
-.shell[data-transition="1"] .plate,
-.shell[data-transition="1"] .hero,
-.shell[data-transition="1"] .ledger{
-  opacity:.12; transition:opacity 1800ms linear;
-}
+   Every opacity a sequence asks for is written inline by ui.js instead of living here, because
+   09 gives each of the three transitions a different one (0.06, 0.35, 0.12) and they are the
+   sequence's numbers, not the sheet's. What a stylesheet has to own is only what a stylesheet
+   can: the shape of a word card, and the plate at full viewport. */
 .curtain{ position:absolute; inset:0; z-index:45; display:flex; flex-direction:column;
           align-items:center; justify-content:center; gap:var(--sp-16);
           padding:0 var(--gutter); pointer-events:none; }
 .curtain-line{ font:var(--t-display); letter-spacing:-.022em; color:var(--text-max);
                text-align:center; animation:reveal var(--d-reveal) var(--ease-organic) both; }
+/* STOP TASTING START KNOWING (09 §4.1): 34 px, +0.16em, centred, each fading in over its own
+   220 ms and then STAYING — all four are on screen together for the last 400 ms, which is why
+   this is a stack of cards and not one card replaced four times. Tracking adds its space after
+   the last letter as well as between, so the same amount is given back at the front and the word
+   sits where the eye expects. These four are the only full caps in three acts of prose (09 §1.1);
+   the uppercasing is done here so no string in the build carries them. */
+.curtain-word{ font:var(--t-display);   /* 2.125rem = the 34 px 09 §4.1 asks for, already declared */
+               letter-spacing:.16em; text-indent:.16em; text-transform:uppercase;
+               color:var(--text-max); text-align:center;
+               animation:curtain-word-in var(--d-fade) linear both; }
+@keyframes curtain-word-in{ from{ opacity:0 } to{ opacity:1 } }
+/* 09 §5.1's one concession during the six seconds of white: a hint, bottom centre, 0.3 opacity,
+   and the only thing that appears. It is set in the plate's own ink rather than the shell's,
+   because the only screen it is ever shown on is the bloom. */
+.curtain-hint{ position:absolute; inset-inline:0;
+               bottom:calc(var(--sp-32) + env(safe-area-inset-bottom));
+               text-align:center; font:var(--t-meta); color:var(--canvas-bg);
+               opacity:0; transition:opacity var(--d-act) linear; }
+.curtain-hint[data-on="1"]{ opacity:.3; }
 
 /* ══ ACT II / III ADDITIONS ════════════════════════════════════════════════
    Nothing here is a second component vocabulary. Every block below is either a canvas box that
@@ -1171,6 +1191,25 @@ canvas{ display:block; }
                        font-size:15px; line-height:1.7; }
 .console-line--ending .console-gutter{ display:none; }
 .console-line--ending .console-text{ display:block; }
+
+/* ══ THE PLATE AT FULL VIEWPORT · 09 §4.1, §5 ══════════════════════════════
+   canvas.js draws every motion of every sequence onto the flux surface and says, in as many
+   words, that the SIZE of that surface is not its business: "the canvas fills the viewport" is a
+   CSS box on an element this module built, and so is the empty screen the dismantle leaves behind
+   for ENDING A. This is that box. It is written for the motions whose subject is the whole screen
+   — the conduction wave, the cut, the void, the wheel, the bloom — and never for the three that
+   are the map doing something inside its own window (09 §4.2).
+
+   It comes after the dismantle block on purpose: the strip fades the plate out at the end of the
+   run, and the ending is then painted on it, so the later rule has to be this one. It passes no
+   pointer events, because the last thing on screen under it is [ NEW GROWTH ]. */
+.shell[data-fullplate="1"] .plate{
+  position:fixed; inset:0; width:auto; height:auto; max-width:none; z-index:0;
+  margin:0; border:0; border-radius:0; opacity:1; pointer-events:none;
+  transform:none; transition:none;
+}
+.shell[data-fullplate="1"] .plate > canvas{ inset:0; width:100%; height:100%; transform:none; }
+.shell[data-fullplate="1"] .plate-toggle{ display:none; }
 
 /* ══ RESPONSIVE · 06 §4.7 ══════════════════════════════════════════════════ */
 
