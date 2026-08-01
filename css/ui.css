@@ -355,11 +355,20 @@ canvas{ display:block; }
   --plate-open:min(var(--plate-full), var(--plate-seed));
   --wall-h:var(--wall-seed);
 }
-/* Anchored to the floor and cut off at the top, because that is where the network is rooted: the
-   crop takes from the empty sky. The box is --plate-full at every moment, so opening the window
-   moves no pixels the renderer has already drawn. */
+/* Anchored to the floor and cut off at the top, because that is where the network is rooted. The
+   canvas fills the OPEN window, not the full box: the colony's attractors are normalised (u,v in
+   [0,1] scaled by W×H), so a shorter band re-derives the same topology stretched to fit rather
+   than being cropped. This matters most at the seed, where the window is ~17 dvh but the box was
+   30 — the network grows up and out from bottom-centre, and with the old full-box canvas ~44% of
+   that upward growth sat above the fold for the whole early game (it never was "empty sky"). It
+   fits its band now; opening the window re-derives the net into the taller band, which reads as
+   the colony filling the space it was just given. */
 .plate > canvas{ position:absolute; inset-inline:0; bottom:0;
-                 width:100%; height:var(--plate-full); }
+                 width:100%; height:100%; }
+/* The Act II collapse is the one place the full box is kept: the thin strip shows the MIDDLE of
+   the whole map (top:50% centre-crop), so it needs the box at --plate-full to have a middle to
+   show, and collapsing must move no pixel and fire no resize. */
+.shell[data-plate="min"] .plate > canvas{ height:var(--plate-full); }
 
 /* Stage 2 is the only stage whose strip comes FIRST (06 §4.3's stage-2 frame). In Act I the plate
    is the game and the ledger is a caption under it; from Act II the numbers are the game and the
