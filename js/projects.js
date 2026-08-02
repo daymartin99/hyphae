@@ -443,13 +443,13 @@
   // Positional rather than an object literal per entry: at 163 entries the keys cost more lines than
   // the data does, and a fixed column order is what makes the table auditable against `04` §5–§6 and
   // `03` §18 by eye.
-  function E (id, title, act, priceTag, price, trigger, effect, description, kinds, opts) {
+  function E (id, title, act, price, trigger, effect, description, kinds, opts) {
     opts = opts || {}
     var p = {
       id: id,
       title: title,
       act: act,
-      priceTag: priceTag,
+      note: opts.note || null,          // the non-currency half of the tag, e.g. 'ϒ ≥ 0.80'
       description: description,
       price: price,
       trigger: trigger,
@@ -469,6 +469,10 @@
     p.trigger = p.needs ? function (s) { return !!p.needs() && !!trigger(s) } : trigger
     p.cost = function () { return canAfford(p, S()) }
     p.pay = function () { return payFor(p, S()) }
+    // The tag is READ, not stored: it is derived from `price` on every read, through the same two
+    // functions the resource strip uses. A getter rather than a method so that every existing
+    // reader of `entry.priceTag` keeps working and no call site can ever get a stale string.
+    Object.defineProperty(p, 'priceTag', { get: function () { return renderTag(p, S()) }, enumerable: true })
     if (BY_ID[id]) throw new Error('duplicate project id: ' + id)
     BY_ID[id] = p
     ALL.push(p)
@@ -477,6 +481,41 @@
   }
 
   function priceOf (p, s) { return typeof p.price === 'function' ? p.price(s) : p.price }
+
+  // ── THE PRICE TAG ──────────────────────────────────────────────────────────
+  // A price is a number the player compares against a number they are holding, and the comparison
+  // only works if both are written the same way. Hand-typed tags were not: `1.33e9 g` on the card,
+  // `1.29 Mt` in the strip, `24,000 Σ` on the card beside it — three magnitude systems, so buying
+  // anything meant doing base-10 in your head. Nothing is typed now. Every tag comes out of the
+  // same fmt()/fmtMass() the readouts use, from the same `price` object cost() charges, so a tag
+  // and a holding cannot disagree and a moved price cannot leave a stale tag behind.
+  var FREE_TAG = '—'
+  var TAG_JOIN = ' + '
+  // The two notes that repeat. An entry that charges nothing still needs a tag: `— (a decision)`
+  // says the cost is not a number, which is the whole content of an act's fork.
+  var NOTE_DECISION = 'a decision'
+  var NOTE_UNBUYABLE = 'unbuyable'
+
+  function renderCost (k, v) {
+    // Biomass is a mass and is read as one everywhere else in the game — `1.33 Gt`, never
+    // `1.33 G g`, which names the unit twice and the magnitude nowhere.
+    return k === 'g' ? C().fmtMass(v) : C().fmt(v) + ' ' + CUR[k].glyph
+  }
+
+  function renderTag (p, s) {
+    var parts = [], pr, k
+    // A dynamic price (territory, refixation, the endings' TUNE-held costs) is evaluated against
+    // the live state, so the card prints what the player is about to be charged, not what the
+    // first one cost. Before state exists there is nothing to quote.
+    try { pr = priceOf(p, s) } catch (e) { pr = null }
+    for (k in pr) {
+      if (!Object.prototype.hasOwnProperty.call(pr, k)) continue
+      // Key order is the order the entry was written in, which is the order it means to be read.
+      if (CUR[k] && pr[k] > 0) parts.push(renderCost(k, pr[k]))
+    }
+    var tag = parts.length ? parts.join(TAG_JOIN) : FREE_TAG
+    return p.note ? tag + ' (' + p.note + ')' : tag
+  }
 
   function canAfford (p, s) {
     if (!p.buyable) return false
@@ -508,46 +547,46 @@
 
   // ── I-1 The Floor ──────────────────────────────────────────────────────────
 
-  E('rhizomorph_cords', 'Rhizomorph Cords', 1, '900 g', { g: 900 },
+  E('rhizomorph_cords', 'Rhizomorph Cords', 1, { g: 900 },
     function (s) { return tips(s) >= 12 },
     function (s) { mul(s.mult, 'structureMult', 1.18) },
     'Bundled threads move further on the same water. (+18% throughput)',
     ['multiplier'])
 
-  E('reflex_arc', 'Reflex Arc', 1, '1,100 g', { g: 1100 },
+  E('reflex_arc', 'Reflex Arc', 1, { g: 1100 },
     function (s) { return stat(s, 'taps') >= 120 },
     function () { /* act1 reads flags.reflex_arc for press-and-hold */ },
     'You stop deciding to move and simply move. (Hold to extend)',
     ['verb', 'automation'],
     { needs: NEEDS.holdExtend })
 
-  E('assay_plate', 'Assay Plate', 1, '2,000 g', { g: 2000 },
+  E('assay_plate', 'Assay Plate', 1, { g: 2000 },
     function (s) { return s.res.biomass >= T().A1.PROJECTS_BIOMASS_G },
     function () { /* opens the ASSAY panel; ui reads the flag */ },
     'Seven kinds of dead, and they do not taste the same. (Yield table)',
     ['panel', 'information'],
     { needs: NEEDS.assayPanel })
 
-  E('cellulase_titre', 'Cellulase Titre', 1, '2,600 g', { g: 2600 },
+  E('cellulase_titre', 'Cellulase Titre', 1, { g: 2600 },
     function (s) { return s.res.biomass >= T().A1.PROJECTS_BIOMASS_G },
     function (s) { mulEnzyme(s, ['leaf', 'needle', 'twig'], 1.25) },
     'More of the enzyme you already had. (+25% on soft litter)',
     ['multiplier'])
 
-  E('hydrophobic_sheath', 'Hydrophobic Sheath', 1, '1,400 g', { g: 1400 },
+  E('hydrophobic_sheath', 'Hydrophobic Sheath', 1, { g: 1400 },
     function (s) { return year(s) > 0 || season(s) !== T().A1.SEASON_AUTUMN },
     function () { /* act1.moistureMult() halves the penalty below 1 while this flag is set */ },
     'Water held against the frost, in a coat you grew for exactly this. (Halves the moisture penalty)',
     ['rulechange'])
 
   // S2/C5: this moves the tipCost *coefficient* 3.20 → 2.60. 04's published exponent change is void.
-  E('foraging_front', 'Foraging Front', 1, '3,400 g', { g: 3400 },
+  E('foraging_front', 'Foraging Front', 1, { g: 3400 },
     function (s) { return tips(s) >= T().A1.MIN_GATE_TIPS },
     function () { /* act1.tipCost() reads TIP_COEF_FORAGING while this flag is set */ },
     'Growth at the edge, never in the middle. (Cheaper tips, forever)',
     ['rulechange'])
 
-  E('mycelial_ledger', 'Mycelial Ledger', 1, '3,800 g', { g: 3800 },
+  E('mycelial_ledger', 'Mycelial Ledger', 1, { g: 3800 },
     function (s) { return stat(s, 'purchases') >= 10 },
     function () { /* market rows gain a sparkline, a fair-value line and a momentum arrow */ },
     'You begin to remember prices. (Market history)',
@@ -555,19 +594,19 @@
 
   // ── I-2 The Market ─────────────────────────────────────────────────────────
 
-  E('dormancy_clause', 'Dormancy Clause', 1, '1,800 g + 20 ⛬', { g: 1800, min: 20 },
+  E('dormancy_clause', 'Dormancy Clause', 1, { g: 1800, min: 20 },
     function (s) { return stat(s, 'contractsSigned') >= 1 },
     function () { /* contracts.deliverContracts() suspends while offline under this flag */ },
     'Sleep does not break a promise. (No offline defaults)',
     ['rulechange', 'offline'])
 
-  E('hemicellulase', 'Hemicellulase', 1, '5,200 g + 30 ⛬', { g: 5200, min: 30 },
+  E('hemicellulase', 'Hemicellulase', 1, { g: 5200, min: 30 },
     function (s) { return flag(s, 'cellulase_titre') },
     function (s) { unlockType(s, 'bark'); mulEnzyme(s, ['twig'], 1.30) },
     'The gluey parts come apart first. (Unlocks bark slough)',
     ['rulechange'])
 
-  E('osmotic_priming', 'Osmotic Priming', 1, '6,500 g + 45 ⛬', { g: 6500, min: 45 },
+  E('osmotic_priming', 'Osmotic Priming', 1, { g: 6500, min: 45 },
     function (s) { return stat(s, 'sugarSpentOnMarket') >= 5000 },
     function (s) { set(s.mult, 'osmoticPriming', 0.50) },
     'Ask quietly and the floor gives more. (Half market impact)',
@@ -575,7 +614,7 @@
 
   // Same discipline as `standing_order` below: the overstock is the meaning, the biomass floor is
   // the reach — revealed at 14× the bank it read as a taunt rather than a tool.
-  E('two_sided_book', 'The Two-Sided Book', 1, '7,200 g', { g: 7200 },
+  E('two_sided_book', 'The Two-Sided Book', 1, { g: 7200 },
     function (s) {
       return stat(s, 'purchases') >= 25 && anyPoolOverstocked(s, 12) &&
         s.res.biomass >= T().A1.PROJECTS_BIOMASS_G
@@ -584,26 +623,26 @@
     'The floor will take things back, at a discount, and remember that you asked. (Unlocks selling)',
     ['verb', 'rulechange'])
 
-  E('sclerotia', 'Sclerotia', 1, '8,000 g', { g: 8000 },
+  E('sclerotia', 'Sclerotia', 1, { g: 8000 },
     function (s) { return stat(s, 'rotted') >= T().A1.SCLEROTIA_ROT_GATE },
     function (s) { set(s.mult, 'sclerotiaBonus', 6000 + 40 * tips(s)) },
     'Hard little bodies, each one full of a winter you have not had yet. (+Sugar storage)',
     ['rulechange'])
 
-  E('trade_memory', 'Trade Memory', 1, '9,000 g + 40 ⛬', { g: 9000, min: 40 },
+  E('trade_memory', 'Trade Memory', 1, { g: 9000, min: 40 },
     function (s) { return stat(s, 'contractsCompleted') >= 2 },
     function () { /* tree cards gain deficit, photosynthate, need and a one-year strip */ },
     'You learn what hunger looks like from underneath. (Tree data)',
     ['information'],
     { needs: NEEDS.treeLedger })
 
-  E('antifreeze_glycoproteins', 'Antifreeze Glycoproteins', 1, '9,500 g', { g: 9500 },
+  E('antifreeze_glycoproteins', 'Antifreeze Glycoproteins', 1, { g: 9500 },
     function (s) { return stat(s, 'wintersEnded') >= 1 },
     function (s) { set(s.mult, 'antifreeze', true) },
     'Ice forms around you, not in you. (Winter +55%)',
     ['multiplier'])
 
-  E('the_deer_in_the_gully', 'The Deer in the Gully', 1, '11,000 g', { g: 11000 },
+  E('the_deer_in_the_gully', 'The Deer in the Gully', 1, { g: 11000 },
     function (s) { return stat(s, 'carrionEventsSeen') >= 1 },
     function (s) { unlockType(s, 'carrion') },
     'Nothing on the floor is wasted, and nothing on the floor was asked. (Unlocks carrion)',
@@ -611,14 +650,14 @@
 
   // ── I-3 The Forest Notices ─────────────────────────────────────────────────
 
-  E('patch_second_shadow', 'Patch: The Second Shadow', 1, '12,000 g + 90 ⛬',
+  E('patch_second_shadow', 'Patch: The Second Shadow', 1,
     function (s) { return territoryPrice(s, 1) },
     function (s) { return s.res.biomass >= T().A1.PATCH[1].biomass },
     function (s) { claimPatch(s, 2) },
     'There is more floor than this. (+1 patch)',
     ['panel'])
 
-  E('peroxidase_mn', 'Peroxidase (Mn)', 1, '13,000 g + 70 ⛬', { g: 13000, min: 70 },
+  E('peroxidase_mn', 'Peroxidase (Mn)', 1, { g: 13000, min: 70 },
     function (s) { return flag(s, 'hemicellulase') },
     function (s) { unlockType(s, 'log'); mulEnzyme(s, ['twig', 'bark', 'log', 'stump'], 1.15) },
     'Lignin is only a rumour of a wall. (Unlocks fallen logs)',
@@ -627,32 +666,32 @@
   // Forty purchases arrive minutes into the act, when 15,000 g is ~29× the bank — an automation
   // dangled a session away is noise, not a goal. The chore is real from purchase forty; the card
   // waits until the price is inside ~4× reach, the band the reveal queue is built around.
-  E('standing_order', 'Standing Order', 1, '15,000 g', { g: 15000 },
+  E('standing_order', 'Standing Order', 1, { g: 15000 },
     function (s) { return stat(s, 'purchases') >= 40 && s.res.biomass >= 4000 },
     function () { /* per-type price ceiling and floor stock; economy1 fills them */ },
     'It buys badly and it never sleeps, and you will take that trade. (Automated, 8% worse than you)',
     ['automation'])
 
-  E('necromass_recycling', 'Necromass Recycling', 1, '16,000 g', { g: 16000 },
+  E('necromass_recycling', 'Necromass Recycling', 1, { g: 16000 },
     function (s) { return tips(s) >= 60 },
     function () { /* stepDecomposition returns 12% of consumed mass to its own pool */ },
     'You eat your own dead ends. (12% substrate refund)',
     ['rulechange'])
 
-  E('chemotropic_sensing', 'Chemotropic Sensing', 1, '18,000 g', { g: 18000 },
+  E('chemotropic_sensing', 'Chemotropic Sensing', 1, { g: 18000 },
     function (s) { return patches(s) >= 2 },
     function () { /* unclaimed patch inventories revealed; windthrow announced 30 s ahead */ },
     'You taste the air for the shape of things that have not fallen yet. (Foresight)',
     ['information'],
     { needs: NEEDS.foresight })
 
-  E('common_mycorrhizal_network', 'Common Mycorrhizal Network', 1, '22,000 g + 150 ⛬', { g: 22000, min: 150 },
+  E('common_mycorrhizal_network', 'Common Mycorrhizal Network', 1, { g: 22000, min: 150 },
     function (s) { return treesWith(s, function (t) { return num(t.rep) >= 45 }) >= 3 },
     function (s) { set(s.mult, 'cmnMult', 1.50) },
     'The forest starts telling itself about you. (+50% reputation gain)',
     ['multiplier'])
 
-  E('ghost_pipe_compact', 'Ghost Pipe Compact', 1, '24,000 g', { g: 24000 },
+  E('ghost_pipe_compact', 'Ghost Pipe Compact', 1, { g: 24000 },
     function (s) { return anyTree(s, function (t) { return num(t.rep) >= 60 }) && stat(s, 'contractsCompleted') >= 4 },
     function (s) {
       mul(s.mult, 'exudatePump', 0.96)
@@ -661,7 +700,7 @@
     'Monotropa has no chlorophyll and no shame. It takes sugar, buys trust, keeps the four percent.',
     ['irreversible', 'cost'])
 
-  E('hartig_net_refinement', 'Hartig Net Refinement', 1, '26,000 g + 180 ⛬', { g: 26000, min: 180 },
+  E('hartig_net_refinement', 'Hartig Net Refinement', 1, { g: 26000, min: 180 },
     function (s) { return anyContract(s, function (c) { return num(c.termSeasons) >= 6 }) },
     function (s) { set(s.mult, 'hartigNet', 1.18) },
     'More surface between you and them. (+18% all mineral rates)',
@@ -669,7 +708,7 @@
 
   // ── I-4 Consolidation ──────────────────────────────────────────────────────
 
-  E('forward_contracts', 'Forward Contracts', 1, '28,000 g + 200 ⛬', { g: 28000, min: 200 },
+  E('forward_contracts', 'Forward Contracts', 1, { g: 28000, min: 200 },
     function (s) { return stat(s, 'largestSinglePurchase') >= 4000 },
     function () { /* economy1 fixes the next 12 fills at 1.05 × fair value */ },
     'A price you can plan around beats a price that is right. It says so, in your own exudate.',
@@ -678,20 +717,20 @@
   // Rep alone revealed this rung fifteen minutes before the rung UNDER it (whose trigger is its
   // own biomass price) — the ladder read out of order. Same rule as rungs 4–6: the rung below
   // must be claimed first, which is also the order stepAlarm's failsafe walks.
-  E('patch_windthrow_gap', 'Patch: The Windthrow Gap', 1, '30,000 g + 260 ⛬',
+  E('patch_windthrow_gap', 'Patch: The Windthrow Gap', 1,
     function (s) { return territoryPrice(s, 2) },
     function (s) { return patches(s) >= 2 && netRep(s) >= T().A1.PATCH_GATE_REP[2] },
     function (s) { claimPatch(s, 3) },
     'Where the wind did your work for you. (+1 patch, log-rich)',
     ['panel'])
 
-  E('laccase', 'Laccase', 1, '34,000 g + 220 ⛬', { g: 34000, min: 220 },
+  E('laccase', 'Laccase', 1, { g: 34000, min: 220 },
     function (s) { return flag(s, 'peroxidase_mn') },
     function (s) { unlockType(s, 'stump') },
     'Heartwood, at last. (Unlocks stumps)',
     ['rulechange'])
 
-  E('diel_rhythm', 'Diel Rhythm', 1, '36,000 g', { g: 36000 },
+  E('diel_rhythm', 'Diel Rhythm', 1, { g: 36000 },
     function (s) { return stat(s, 'offlineSeconds') >= 7200 },
     function () { /* loop.effective() reads this flag for the first 8 h of any absence */ },
     'The day and the night were always the same to you. Now you are paid for noticing. (+31% offline)',
@@ -705,25 +744,25 @@
   // the market at scale and a 1.6× print costs them real sugar. 50,000 sugar through the floor is
   // the reference player at ~36 minutes holding ~11,000 g — the card arrives greyed at ~3.3× reach,
   // an ambition, not a taunt (UP's rule: reveal the locked thing once it means something).
-  E('bacterial_antagonism', 'Bacterial Antagonism', 1, '38,000 g + 240 ⛬', { g: 38000, min: 240 },
+  E('bacterial_antagonism', 'Bacterial Antagonism', 1, { g: 38000, min: 240 },
     function (s) { return stat(s, 'sugarSpentOnMarket') >= 50000 && anyPriceOver(s, 1.6) },
     function () { /* leaf and needle fill at 0.78 × the printed price, for you only */ },
     'You poison the competition. It works. (-22% soft litter cost)',
     ['rulechange'])
 
-  E('exudate_pump', 'Exudate Pump', 1, '42,000 g + 300 ⛬', { g: 42000, min: 300 },
+  E('exudate_pump', 'Exudate Pump', 1, { g: 42000, min: 300 },
     function (s) { return committedSugarPerSec(s) >= 25 },
     function (s) { mul(s.mult, 'exudatePump', 1.35) },
     'Push harder and they take more, because by now they cannot not. (+35% contract volume)',
     ['multiplier'])
 
-  E('contract_arbitration', 'Contract Arbitration', 1, '46,000 g + 320 ⛬', { g: 46000, min: 320 },
+  E('contract_arbitration', 'Contract Arbitration', 1, { g: 46000, min: 320 },
     function (s) { return stat(s, 'defaults') >= 1 },
     function (s) { set(s.mult, 'arbitration', 0.45) },
     'The forest is willing to hear your side. (Softer default penalty)',
     ['rulechange'])
 
-  E('seasonal_forecast', 'Seasonal Forecast', 1, '52,000 g + 380 ⛬', { g: 52000, min: 380 },
+  E('seasonal_forecast', 'Seasonal Forecast', 1, { g: 52000, min: 380 },
     function (s) { return year(s) >= 2 },
     function () { /* next season's event table, and a forecast row on NEGOTIATE */ },
     'Three months is not so far ahead. (Weather forecast)',
@@ -732,13 +771,13 @@
 
   // ── I-5 The Last Year ──────────────────────────────────────────────────────
 
-  E('perennial_mycelium', 'Perennial Mycelium', 1, '55,000 g + 350 ⛬', { g: 55000, min: 350 },
+  E('perennial_mycelium', 'Perennial Mycelium', 1, { g: 55000, min: 350 },
     function (s) { return year(s) >= 3 && flag(s, 'antifreeze_glycoproteins') },
     function (s) { set(s.mult, 'perennial', true); s.a1.activeEvents.length = 0 },
     'You stop having years. The average is very good, and nothing will ever beat the average again.',
     ['trap', 'irreversible', 'removes'])
 
-  E('fruiting_body', 'Fruiting Body', 1, '60,000 g', { g: 60000 },
+  E('fruiting_body', 'Fruiting Body', 1, { g: 60000 },
     function (s) {
       return season(s) === T().A1.SEASON_AUTUMN && moisture(s) >= 1.00 && hyphae(s) >= 200
     },
@@ -748,7 +787,7 @@
 
   // Re-armable and irreversible per use. The tips you rebuy are priced at the new, lower n, and that
   // is the entire point; nothing on the card says so.
-  E('autolysis', 'Autolysis', 1, '— (a decision)', {},
+  E('autolysis', 'Autolysis', 1, {},
     function (s) { return tips(s) >= 40 },
     function (s) {
       var lose = Math.floor(0.20 * tips(s))
@@ -760,16 +799,16 @@
     },
     'You are allowed to be smaller. It is faster than patience, and it costs what it looks like.',
     ['rearm', 'irreversible', 'verb'],
-    { rearm: true, pinned: true })
+    { rearm: true, pinned: true, note: NOTE_DECISION })
 
-  E('patch_under_the_hemlocks', 'Patch: Under the Hemlocks', 1, '70,000 g + 700 ⛬',
+  E('patch_under_the_hemlocks', 'Patch: Under the Hemlocks', 1,
     function (s) { return territoryPrice(s, 3) },
     function (s) { return patches(s) >= 3 },
     function (s) { claimPatch(s, 4) },
     'Deep shade, deep needle, and nothing else growing. (+1 patch)',
     ['panel'])
 
-  E('oxalate_weathering', 'Oxalate Weathering', 1, '75,000 g + 500 ⛬', { g: 75000, min: 500 },
+  E('oxalate_weathering', 'Oxalate Weathering', 1, { g: 75000, min: 500 },
     function (s) { return stat(s, 'mineralEarned') >= 1500 },
     function () { /* +0.35 ⛬/s passively, scaled by hartigNet; economy1 reads the flag */ },
     'You dissolve the rock yourself, slowly, with an acid you have always made. (+0.35 mineral/s)',
@@ -780,15 +819,13 @@
   // 87× and 212× the player's holdings while they owned two patches. One greyed rung ahead is the
   // ladder the player can read; three at once is a wall. Each rung now also waits for the rung
   // below it to be claimed — the same order stepAlarm's failsafe already walks.
-  E('patch_old_coppice', 'Patch: The Old Coppice', 1, '160,000 g + 1,800 ⛬',
-    function (s) { return territoryPrice(s, 4) },
+  E('patch_old_coppice', 'Patch: The Old Coppice', 1, function (s) { return territoryPrice(s, 4) },
     function (s) { return patches(s) >= 4 && netRep(s) >= T().A1.PATCH_GATE_REP[4] },
     function (s) { claimPatch(s, 5) },
     'Cut a hundred years ago by someone who did not write it down. (+1 patch, stump-rich)',
     ['panel'])
 
-  E('patch_oak_rise', 'Patch: The Oak Rise', 1, '400,000 g + 4,400 ⛬',
-    function (s) { return territoryPrice(s, 5) },
+  E('patch_oak_rise', 'Patch: The Oak Rise', 1, function (s) { return territoryPrice(s, 5) },
     function (s) { return patches(s) >= 5 && netRep(s) >= T().A1.PATCH_GATE_REP[5] },
     function (s) { claimPatch(s, 6) },
     'The oak has been waiting, the way a bank waits. (+1 patch, +oak)',
@@ -799,9 +836,7 @@
   // The first failsafe. `08` §5.3 proves 2,000 g of leaf is a positive-return re-entry (×1.481), so
   // one grant always restarts the loop. It is free at zero reputation, once per 300 s, because a
   // player at rep 0 has nothing left to charge.
-  E('windfall', 'Windfall', 1,
-    '1 rep',
-    function (s) {
+  E('windfall', 'Windfall', 1, function (s) {
       var A = T().A1
       var last = s.proj.flags.windfall_at
       var free = netRep(s) <= 0 &&
@@ -823,8 +858,7 @@
     ['failsafe', 'rearm', 'cost'],
     { rearm: true, pinned: true })
 
-  E('a_gift_of_phosphorus', 'A Gift of Phosphorus', 1, '200 ⛬',
-    function (s) {
+  E('a_gift_of_phosphorus', 'A Gift of Phosphorus', 1, function (s) {
       var A = T().A1
       return { min: A.PHOSPHORUS_BASE * Math.pow(A.PHOSPHORUS_GROWTH, num(s.proj.uses.a_gift_of_phosphorus)) }
     },
@@ -843,7 +877,7 @@
     ['failsafe', 'rearm'],
     { rearm: true, pinned: true })
 
-  E('sever_the_elm', 'Sever the Elm', 1, '— (a decision)', {},
+  E('sever_the_elm', 'Sever the Elm', 1, {},
     function (s) {
       return anyContract(s, function (c) {
         var t = treeById(s, c.treeId)
@@ -862,9 +896,10 @@
       for (i = 0; i < trees(s).length; i++) if (trees(s)[i].species === 'elm') trees(s)[i].health = 0
     },
     'It was going to die anyway. (No penalty)',
-    ['irreversible', 'event'])
+    ['irreversible', 'event'],
+    { note: NOTE_DECISION })
 
-  E('the_hollow_beech', 'The Hollow Beech', 1, '4,000 sug', { sug: 4000 },
+  E('the_hollow_beech', 'The Hollow Beech', 1, { sug: 4000 },
     function (s) {
       return year(s) >= 2 && anyTree(s, function (t) { return t.species === 'beech' && num(t.d) >= 0.85 })
     },
@@ -874,20 +909,20 @@
 
   // ── I-T Transition ─────────────────────────────────────────────────────────
 
-  E('anastomosis', 'Anastomosis', 1, '260,000 g + 900 ⛬', { g: 260000, min: 900 },
+  E('anastomosis', 'Anastomosis', 1, { g: 260000, min: 900 },
     function (s) { return hyphae(s) >= T().A1.HYPHAE_GATE && patches(s) >= 4 },
     function (s) { mul(s.mult, 'structureMult', 1.25) },
     'Where two threads meet, they stop being two threads. (+25% throughput, pooled substrate)',
     ['rulechange', 'panel'])
 
-  E('action_potential', 'Action Potential', 1, '900,000 g + 4,000 ⛬', { g: 900000, min: 4000 },
+  E('action_potential', 'Action Potential', 1, { g: 900000, min: 4000 },
     function (s) { return flag(s, 'anastomosis') && netRep(s) >= T().A1.ACTION_POTENTIAL_REP },
     function () { /* SIGNAL appears with a rate, a total, and no uses for 8–15 minutes */ },
     'Something moved from one end of you to the other, and it was not food.',
     ['panel'],
     { needs: NEEDS.signalA1 })
 
-  E('decide', 'DECIDE', 1, '— (a decision)', {},
+  E('decide', 'DECIDE', 1, {},
     function (s) { return flag(s, 'action_potential') && s.res.signal >= T().A1.DECIDE_SIGNAL },
     function (s) {
       if (HY.act1 && HY.act1.decide) { HY.act1.decide(); return }
@@ -905,7 +940,7 @@
     },
     'Stop tasting. Start knowing.',
     ['irreversible', 'removes'],
-    { pinned: true })
+    { pinned: true, note: NOTE_DECISION })
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ACT II — NETWORK · 68 entries
@@ -934,43 +969,43 @@
   // Σ card further away still. 200 Σ sits under the worst legal opening with ~9% headroom (the
   // selftest constructs that opening and holds the door to it), and is still ~80 s of opening-rate
   // Signal on the best one: payable a few minutes in, never before, and above all always.
-  E('chemotaxis', 'Chemotaxis', 2, '200 Σ', { sig: 200 },
+  E('chemotaxis', 'Chemotaxis', 2, { sig: 200 },
     function (s) { return s.act === 2 },
     function () { /* opens FOREST: the 61-hex map, STANDS, and ADVANCE */ },
     'Sense the gradient. Go up it.',
     ['panel', 'verb'])
 
-  E('apical_growth', 'Apical Growth', 2, '900 Σ', { sig: 900 },
+  E('apical_growth', 'Apical Growth', 2, { sig: 900 },
     function (s) { return claimed(s) >= 2 },
     function (s) { mul(s.mult, 'advanceSpeed', 1.45) },
     'Grow only at the ends. (+45% advance speed)',
     ['multiplier'])
 
-  E('turgor', 'Turgor', 2, '1,600 Σ', { sig: 1600 },
+  E('turgor', 'Turgor', 2, { sig: 1600 },
     function (s) { return !!s.stats.everSaturated },
     function () { /* cognition.stepInsight() is gated on this flag */ },
     'The pressure has nowhere to go, so it becomes an opinion. (Unlocks Insight)',
     ['panel', 'rulechange'])
 
-  E('primordium', 'Primordium', 2, '10 Ψ', { psi: 10 },
+  E('primordium', 'Primordium', 2, { psi: 10 },
     function (s) { return s.res.insight >= T().A2.PRIMORDIUM_INSIGHT },
     function () { /* opens FLUSH with one slot; the morph is rolled and shown before commitment */ },
     'A knot in the wood, deciding. (Unlocks fruiting)',
     ['panel', 'verb'])
 
-  E('substrate_assay', 'Substrate Assay', 2, '2,400 Σ', { sig: 2400 },
+  E('substrate_assay', 'Substrate Assay', 2, { sig: 2400 },
     function (s) { return discovered(s) >= 4 },
     function () { /* world.survey() is gated on this flag: 120 Σ a region, permanently recurring */ },
     'Taste before you commit. (Enables SURVEY)',
     ['verb', 'information'])
 
-  E('action_potential_ii', 'Action Potential', 2, '45 Ψ', { psi: 45 },
+  E('action_potential_ii', 'Action Potential', 2, { psi: 45 },
     function (s) { return claimed(s) >= T().A2.ACTION_POTENTIAL_CLAIMED },
     function () { /* PULSE and SURGE. Never automated by any project at any price, in any act. */ },
     'Say all of it at once, in one direction. (Unlocks PULSE)',
     ['panel', 'verb'])
 
-  E('differentiation', 'Differentiation', 2, '3,200 Σ', { sig: 3200 },
+  E('differentiation', 'Differentiation', 2, { sig: 3200 },
     function (s) { return s.res.cumBiomass >= T().A2.D_TRIGGER },
     function () { /* cognition opens D allocation across dCond and dVes */ },
     'Not every thread needs to do everything. (Unlocks Differentiation)',
@@ -978,37 +1013,37 @@
 
   // ── II-B Spread ────────────────────────────────────────────────────────────
 
-  E('manganese_peroxidase', 'Manganese Peroxidase', 2, '30 Ψ + 6,000 Σ', { psi: 30, sig: 6000 },
+  E('manganese_peroxidase', 'Manganese Peroxidase', 2, { psi: 30, sig: 6000 },
     function (s) { return s.res.extracted >= a2g(4e9) },
     function (s) { mul(s.mult, 'E', 1.60) },
     'Rust, applied with intent. (+60% enzyme power)',
     ['multiplier'])
 
-  E('rhizomorphs', 'Rhizomorphs', 2, '55 Ψ', { psi: 55 },
+  E('rhizomorphs', 'Rhizomorphs', 2, { psi: 55 },
     function (s) { return claimed(s) >= 6 },
     function (s) { mul(s.mult, 'advCostMult', 0.82) },
     'Cables, not threads. (3 advances at once)',
     ['rulechange'])
 
-  E('anemophily', 'Anemophily', 2, '40 Ψ', { psi: 40 },
+  E('anemophily', 'Anemophily', 2, { psi: 40 },
     function (s) { return s.res.spores >= 5e4 },
     function () { /* seeding may target non-adjacent regions downwind of a held one */ },
     'Let the weather carry it. You do not have to know where. (Ranged seeding)',
     ['rulechange'])
 
-  E('barometric_sense', 'Barometric Sense', 2, '70 Ψ + 12,000 Σ', { psi: 70, sig: 12000 },
+  E('barometric_sense', 'Barometric Sense', 2, { psi: 70, sig: 12000 },
     function (s) { return stat(s, 'flushes') >= 3 },
     function (s) { mul(s.mult, 'matSpeed', 1.45) },
     'Feel the pressure fall before the rain admits to it. (+forecast, +45% maturation)',
     ['information', 'multiplier'])
 
-  E('antibiosis', 'Antibiosis', 2, '85 Ψ', { psi: 85 },
+  E('antibiosis', 'Antibiosis', 2, { psi: 85 },
     function (s) { return stat(s, 'rivalContacts') >= 1 },
     function (s) { mul(s.mult, 'antibiosis', 1.55) },
     'Chemistry is cheaper than growth. (Unlocks REPEL)',
     ['verb', 'multiplier'])
 
-  E('vesicular_storage', 'Vesicular Storage', 2, '18,000 Σ', { sig: 18000 },
+  E('vesicular_storage', 'Vesicular Storage', 2, { sig: 18000 },
     function (s) { return num(s.cog.dVes) >= 1 },
     function (s) { mul(s.mult, 'capMult', 1.45) },
     'Hold more of it, for longer. (+45% Signal capacity)',
@@ -1020,14 +1055,14 @@
   // in state rather than in behaviour — a network of twelve claimed stands has been shouting across
   // itself for an hour whether or not the counter saw it — and it is a disjunct, not a replacement,
   // so a player who does pulse still gets the card on the tenth one.
-  E('septal_gating', 'Septal Gating', 2, '110 Ψ', { psi: 110 },
+  E('septal_gating', 'Septal Gating', 2, { psi: 110 },
     function (s) { return stat(s, 'pulses') >= 10 || claimed(s) >= 12 },
     function () { /* pulse cooldown 120 → 75 s; RECRUIT. cognition reads the flag. */ },
     'Open every door in the body at the same instant. (Unlocks RECRUIT)',
     ['verb', 'rulechange'])
 
   // Failure detection: it can only ever appear to a player who has already mined a stand's humus out.
-  E('humic_retention', 'Humic Retention', 2, '24,000 Σ', { sig: 24000 },
+  E('humic_retention', 'Humic Retention', 2, { sig: 24000 },
     function (s) { return minHumus(s) < T().A2.HUMIC_RETENTION_H },
     function () { /* forest.setRho(): one global dial plus five pinned per-region overrides */ },
     'Give some of it back. You will not see why for an hour. (Unlocks Retention)',
@@ -1035,7 +1070,7 @@
 
   // Same shape as `septal_gating`: the trade counter is a verb counter, and a bank of 150,000 ⛬ is
   // the state that says the same thing — nobody accumulates that without having been in the market.
-  E('cation_exchange', 'Cation Exchange', 2, '90 Ψ + 20,000 Σ', { psi: 90, sig: 20000 },
+  E('cation_exchange', 'Cation Exchange', 2, { psi: 90, sig: 20000 },
     function (s) { return stat(s, 'mineralTrades') >= 30 || s.res.minerals >= 1.5e5 },
     function () { /* the mineral exchange gains its sparkline, true Pbar, momentum and LIMIT orders */ },
     'The price was never random. It just never told you. (Market instruments)',
@@ -1043,98 +1078,97 @@
 
   // ── II-C Appetite ──────────────────────────────────────────────────────────
 
-  E('necrotrophic_conversion', 'Necrotrophic Conversion', 2, '240 Ψ + 90,000 Σ', { psi: 240, sig: 90000 },
+  E('necrotrophic_conversion', 'Necrotrophic Conversion', 2, { psi: 240, sig: 90000 },
     function (s) { return fc(s) >= T().A2.NECRO_FC },
     function () { /* KILL STAND on every held region. Never automatable. */ },
     'Stop asking.',
     ['verb', 'irreversible'])
 
-  E('laccase_cascade', 'Laccase Cascade', 2, '190 Ψ + 60,000 Σ', { psi: 190, sig: 60000 },
+  E('laccase_cascade', 'Laccase Cascade', 2, { psi: 190, sig: 60000 },
     function (s) { return flag(s, 'manganese_peroxidase') },
     function (s) { mul(s.mult, 'E', 2.10); mul(s.mult, 'antibiosis', 1.52) },
     'Break the ring, then the ring under it. (+110% enzyme power)',
     ['multiplier'])
 
-  E('turgor_regulation', 'Turgor Regulation', 2, '165 Ψ', { psi: 165 },
+  E('turgor_regulation', 'Turgor Regulation', 2, { psi: 165 },
     function (s) { return stat(s, 'densityBuys') >= 25 },
     function () { /* six per-terrain target dials replace ~400 taps an hour */ },
     'Stop deciding this one thread at a time. (Automates density)',
     ['automation', 'dial'])
 
-  E('rhizomorph_highways', 'Rhizomorph Highways', 2, '300 Ψ + 140,000 Σ', { psi: 300, sig: 140000 },
+  E('rhizomorph_highways', 'Rhizomorph Highways', 2, { psi: 300, sig: 140000 },
     function (s) { return claimed(s) >= 18 },
     function (s) { mul(s.mult, 'advCostMult', 0.80) },
     'Move mass, not just signal. (Automates advance)',
     ['automation'])
 
-  E('bridging_strands', 'Bridging Strands', 2, '260 Ψ + 20,000 ⛬', { psi: 260, min: 20000 },
+  E('bridging_strands', 'Bridging Strands', 2, { psi: 260, min: 20000 },
     function (s) { return stat(s, 'barrierBlocks') >= 1 },
     function () { /* advances may cross barrier edges at 2.40× cost; bridged edges count toward C */ },
     'Across the water, on a dead branch, in one night. (Cross barriers)',
     ['rulechange'])
 
-  E('sporulation_reflex', 'Sporulation Reflex', 2, '280 Ψ', { psi: 280 },
+  E('sporulation_reflex', 'Sporulation Reflex', 2, { psi: 280 },
     function (s) { return stat(s, 'flushes') >= 20 },
     function () { /* auto-release at m = 0.92, suspended during a Mast Year; slots 1 → 4 */ },
     'You no longer need to be told when. (Automates release)',
     ['automation'])
 
-  E('mycelial_memory', 'Mycelial Memory', 2, '420 Ψ + 200,000 Σ', { psi: 420, sig: 200000 },
+  E('mycelial_memory', 'Mycelial Memory', 2, { psi: 420, sig: 200000 },
     function (s) { return s.res.insight >= 350 },
     function (s) { mul(s.mult, 'insightMult', 1.55); set(s.mult, 'ripeT', T().A2.RIPE_T_MEMORY) },
     'The network remembers where the good wood was, and is not sentimental about it. (+55% Insight)',
     ['multiplier', 'rulechange'])
 
-  E('reabsorption', 'Reabsorption', 2, '150 Ψ', { psi: 150 },
+  E('reabsorption', 'Reabsorption', 2, { psi: 150 },
     function (s) { return s.res.D >= 5 },
     function () { /* cognition.respec(); the counter is NOT reset at the act break */ },
     'Take it back and try again. (Respec)',
     ['verb'])
 
-  E('aerenchyma', 'Aerenchyma', 2, '210 Ψ + 1.33e9 g',
-    { psi: 210, g: a2g(4.0e9) },
+  E('aerenchyma', 'Aerenchyma', 2, { psi: 210, g: a2g(4.0e9) },
     function (s) { return ownsTerrain(s, 4) },
     function () { /* peat decompF 0.45 → 0.95; forest reads the flag */ },
     'Breathe through the water. (Unlocks peat)',
     ['rulechange'])
 
-  E('alarm_contracts', 'Alarm Contracts', 2, '230 Ψ', { psi: 230 },
+  E('alarm_contracts', 'Alarm Contracts', 2, { psi: 230 },
     function (s) { return pactCount(s) >= 4 },
     function () { /* the ALARM term type: +90 s forecast in that region. Term choice never automates. */ },
     'They knew about the drought first, and told each other before they told you. (New contract term)',
     ['rulechange', 'information'])
 
-  E('hypogeous_fruiting', 'Hypogeous Fruiting', 2, '275 Ψ + 60,000 Σ', { psi: 275, sig: 60000 },
+  E('hypogeous_fruiting', 'Hypogeous Fruiting', 2, { psi: 275, sig: 60000 },
     function (s) { return stat(s, 'flushes') >= 12 && stat(s, 'droughtsSurvived') >= 1 },
     function () { /* the UNDERGROUND mode: hazard 0, dispersal 0, 6.2× committed V at m = 1 */ },
     'Fruit below the litter, where nothing finds you and nothing carries you. (Zero-risk, no spores)',
     ['rulechange'])
 
-  E('sclerotial_bank', 'Sclerotial Bank', 2, '320 Ψ + 110,000 Σ', { psi: 320, sig: 110000 },
+  E('sclerotial_bank', 'Sclerotial Bank', 2, { psi: 320, sig: 110000 },
     function (s) { return stat(s, 'signalOverflow') >= 2.0e5 },
     function () { /* banked ticks are not saturated ticks; cognition enforces that, not this file */ },
     'Nothing is wasted now. Something else is. (Overflow storage — read the second sentence)',
     ['trap', 'rulechange'])
 
-  E('anastomotic_grafting', 'Anastomotic Grafting', 2, '380 Ψ + 6,000 ⛬', { psi: 380, min: 6000 },
+  E('anastomotic_grafting', 'Anastomotic Grafting', 2, { psi: 380, min: 6000 },
     function (s) { return claimed(s) >= 22 && edgesPerNode(s) < 1.2 },
     function () { /* up to 3 artificial edges at hexDist ≤ 3, 2,000 ⛬ each to place */ },
     'Two parts of you that were never neighbours agree to be adjacent. (+3 network edges)',
     ['rulechange'])
 
-  E('isotope_ledger', 'Isotope Ledger', 2, '460 Ψ', { psi: 460 },
+  E('isotope_ledger', 'Isotope Ledger', 2, { psi: 460 },
     function (s) { return fc(s) >= 0.35 },
     function () { /* the LEDGER panel. It shows LEGACY. It does not say what LEGACY is for. */ },
     'Carbon remembers what it used to be inside. You can read it, if you are willing to look at it.',
     ['information', 'panel'])
 
-  E('armillaria_accord', 'The Armillaria Accord', 2, '300 Ψ + 140,000 Σ', { psi: 300, sig: 140000 },
+  E('armillaria_accord', 'The Armillaria Accord', 2, { psi: 300, sig: 140000 },
     function (s) { return rivalsHeld(s, 1, 0.60) >= 4 },
     function (s) { set(s.mult, 'rhoLocked', 0.55) },
     'It is older than you and has no opinions about speed. It decides what you leave in the ground.',
     ['irreversible', 'removes', 'cost'])
 
-  E('mycelial_monoculture', 'Mycelial Monoculture', 2, '410 Ψ + 150,000 Σ', { psi: 410, sig: 150000 },
+  E('mycelial_monoculture', 'Mycelial Monoculture', 2, { psi: 410, sig: 150000 },
     function (s) { return claimed(s) >= 24 },
     function (s) { mul(s.mult, 'E', 1.85) },
     'One enzyme suite, one substrate, one answer. It is so much faster. (+85% enzyme power)',
@@ -1142,7 +1176,7 @@
 
   // `stats.rivalsRepelled` does not exist in §3; `rivalContacts` is the contact counter a repel
   // policy drives, and it is the honest reading of "you have been fighting them for a long time".
-  E('quiescence', 'Quiescence', 2, '240 Ψ + 50,000 ⛬', { psi: 240, min: 50000 },
+  E('quiescence', 'Quiescence', 2, { psi: 240, min: 50000 },
     function (s) { return claimed(s) >= 30 && stat(s, 'rivalContacts') >= 8 },
     function (s) { mul(s.mult, 'sporeMult', 0.55) },
     'There is no one left to be faster than. (Deletes rivals, -45% spore yield)',
@@ -1150,64 +1184,63 @@
 
   // ── II-D Dominion ──────────────────────────────────────────────────────────
 
-  E('mast_synchrony', 'Mast Synchrony', 2, '260 Ψ + 220,000 Σ', { psi: 260, sig: 220000 },
+  E('mast_synchrony', 'Mast Synchrony', 2, { psi: 260, sig: 220000 },
     function (s) { return stat(s, 'flushes') >= T().A2.MAST_FLUSH_GATE },
     function (s) { mul(s.mult, 'matSpeed', 2.10) },
     'The whole forest decides at once and nobody knows how. (Unlocks Mast Years)',
     ['rulechange', 'panel'])
 
-  E('fenton_chemistry', 'Fenton Chemistry', 2, '240 Ψ + 240,000 Σ', { psi: 240, sig: 240000 },
+  E('fenton_chemistry', 'Fenton Chemistry', 2, { psi: 240, sig: 240000 },
     function (s) { return flag(s, 'laccase_cascade') },
     function (s) { mul(s.mult, 'E', 2.60) },
     'Iron, peroxide, and no particular care. (+160% enzyme power)',
     ['multiplier'])
 
-  E('saltatory_conduction', 'Saltatory Conduction', 2, '260 Ψ + 200,000 Σ', { psi: 260, sig: 200000 },
+  E('saltatory_conduction', 'Saltatory Conduction', 2, { psi: 260, sig: 200000 },
     function (s) { return num(s.cog.dCond) >= 6 },
     function (s) { mul(s.mult, 'signalMult', 2.20) },
     'Skip the parts that do not matter. (+120% Signal, faster PULSE)',
     ['multiplier', 'rulechange'])
 
-  E('synchronous_flush', 'Synchronous Flush', 2, '200 Ψ + 2,000 ⟡', { psi: 200, accord: 2000 },
+  E('synchronous_flush', 'Synchronous Flush', 2, { psi: 200, accord: 2000 },
     function (s) { return flag(s, 'mast_synchrony') },
     function () { /* the BLOOM pulse mode: m += 0.18·strength, hazard-immune for 20 s */ },
     'All of them, in the same minute, for no reason that you decided. (Unlocks BLOOM)',
     ['verb'])
 
-  E('homeostatic_soil', 'Homeostatic Soil', 2, '240 Ψ + 24,000 ⛬', { psi: 240, min: 24000 },
+  E('homeostatic_soil', 'Homeostatic Soil', 2, { psi: 240, min: 24000 },
     function (s) { return flag(s, 'humic_retention') && !flag(s, 'armillaria_accord') },
     function () { /* ρ tracks a humus setpoint; pinned overrides 5 → 10 */ },
     'Hold the number yourself. (Automates Retention)',
     ['automation'])
 
-  E('firebreak_mycelium', 'Firebreak Mycelium', 2, '220 Ψ + 2.66e10 g',
-    { psi: 220, g: a2g(8.0e10) },
+  E('firebreak_mycelium', 'Firebreak Mycelium', 2, { psi: 220, g: a2g(8.0e10) },
     function (s) { return stat(s, 'ignitions') >= 1 },
     function (s) { mul(s.mult, 'hazMult', 0.25) },
     'Wet the ground ahead of it. (Fire control)',
     ['rulechange'])
 
   // 900,000 Σ was above the Sc ceiling described at II-E below; 440,000 sits under it.
-  E('deep_substrate_hyphae', 'Deep Substrate Hyphae', 2, '280 Ψ + 260,000 Σ', { psi: 280, sig: 260000 },
+  E('deep_substrate_hyphae', 'Deep Substrate Hyphae', 2, { psi: 280, sig: 260000 },
     function (s) { return fc(s) >= 0.65 },
     function (s) { mul(s.mult, 'yieldMult', 1.85); set(s.mult, 'ripeT', T().A2.RIPE_T_DEEP) },
     'There is older wood underneath, and nobody is using it. (+85% yield, +litter)',
     ['multiplier', 'rulechange'])
 
-  E('the_quiet_ring', 'The Quiet Ring', 2, '220 Ψ + 60,000 ⛬', { psi: 220, min: 60000 },
+  E('the_quiet_ring', 'The Quiet Ring', 2, { psi: 220, min: 60000 },
     function (s) { return fc(s) >= 0.55 && legacyLife(s) >= 0.45 },
     function () { /* rings 0 and 1 lock: no necrosis, no kill, no fire, ρ pinned at 0.60 */ },
     'Seven stands that will outlive the decision you are about to make.',
     ['irreversible', 'cost', 'removes'])
 
-  E('the_charter', 'The Charter', 2, '260 Ψ + 7.99e10 g', { psi: 260, g: a2g(2.4e11) },
+  E('the_charter', 'The Charter', 2, { psi: 260, g: a2g(2.4e11) },
     function (s) { return legacyLife(s) >= T().A2.CHARTER_LIFE && fc(s) >= T().A2.PATH_FC },
     function (s) { mul(s.mult, 'yieldMult', 2.40); set(s.carry, 'pathFlag', 'symbiont') },
     'Terms, in perpetuity, with things that cannot read. (+140% yield on living stands)',
     ['fork', 'irreversible'],
     { excludes: ['total_conversion'] })
 
-  E('total_conversion', 'Total Conversion', 2, '260 Ψ + 7.99e10 g', { psi: 260, g: a2g(2.4e11) },
+  E('total_conversion', 'Total Conversion', 2, { psi: 260, g: a2g(2.4e11) },
     function (s) { return legacyLife(s) <= T().A2.CONVERSION_LIFE && fc(s) >= T().A2.PATH_FC },
     function (s) { mul(s.mult, 'necroMult', 3.00); set(s.carry, 'pathFlag', 'necrotroph') },
     'There is no second forest.',
@@ -1225,15 +1258,14 @@
   // unbought through 300 minutes of Act II while every other leg of their price was long since
   // covered. They are repriced under the ceiling, keeping their order: Deep Substrate first, then
   // Ballistospory, then the exit.
-  E('ballistospory', 'Ballistospory', 2, '300 Ψ + 2.8e5 Σ', { psi: 300, sig: 2.8e5 },
+  E('ballistospory', 'Ballistospory', 2, { psi: 300, sig: 2.8e5 },
     function (s) { return fc(s) >= 0.85 },
     function (s) { mul(s.mult, 'sporeMult', 2.80); mul(s.mult, 'matSpeed', 3.40) },
     'Fire them. Do not wait for wind. (Everything, faster)',
     ['multiplier', 'rulechange'])
 
   // The anti-softlock floor. It exists only for a player who necrotised faster than they could think.
-  E('photoreception', 'Photoreception', 2, '1,300 Ψ',
-    function () { return { psi: T().A2.PHOTO_COST } },
+  E('photoreception', 'Photoreception', 2, function () { return { psi: T().A2.PHOTO_COST } },
     function (s) { return fc(s) >= T().A2.PHOTO_FC },
     function () { /* cognition.Sr() takes max(Sr, PHOTO_FLOOR · SrPeak) under this flag */ },
     'Learn to face the sky. (Signal floor)',
@@ -1247,8 +1279,7 @@
   // already on screen, and until then the spore stock the exit asks for only decayed. fc ≥ 0.75 is
   // after the Signal peak and after the necrotrophic turn — the point at which the sentence on the
   // card is true — and it gets the entry a slot while there is still one to have.
-  E('seed_bank', 'Seed Bank', 2, '200 Ψ + 9.99e10 g',
-    { psi: 200, g: a2g(3.0e11) },
+  E('seed_bank', 'Seed Bank', 2, { psi: 200, g: a2g(3.0e11) },
     function (s) { return fc(s) >= 0.75 },
     function () { /* spore decay off; biomass → spores on demand at SPORE_DIVISOR */ },
     'Nothing you make now is for you. (Labile carbon to spores)',
@@ -1297,7 +1328,7 @@
   //
   // A gate is allowed to be the largest number in the act. It is not allowed to be a number the act
   // does not produce.
-  E('ascospore_discharge', 'Ascospore Discharge', 2, '70,000 Σ + 350 Ψ + 4.66e11 g + 2.0e8 ◦',
+  E('ascospore_discharge', 'Ascospore Discharge', 2,
     { sig: 70000, psi: 350, g: a2g(1.4e12), spore: 2.0e8 },
     function (s) { return fc(s) >= T().A2.ASCOSPORE_FC },
     function (s) {
@@ -1317,37 +1348,37 @@
 
   // ── II-F The D Faucet ──────────────────────────────────────────────────────
 
-  E('slime_mould_correspondence', 'Slime Mould Correspondence', 2, '60 Ψ', { psi: 60 },
+  E('slime_mould_correspondence', 'Slime Mould Correspondence', 2, { psi: 60 },
     function (s) { return s.res.insight >= 55 },
     function (s) { grantD(s, 1) },
     'Physarum solved the Tokyo rail network with oat flakes and no nervous system. (+1 D)',
     ['flavour'])
 
-  E('the_wood_wide_web', 'The Wood Wide Web', 2, '180 Ψ', { psi: 180 },
+  E('the_wood_wide_web', 'The Wood Wide Web', 2, { psi: 180 },
     function (s) { return pactCount(s) >= 3 },
     function (s) { grantD(s, 1) },
     'A phrase invented by a journalist. It is not wrong. (+1 D)',
     ['flavour'])
 
-  E('zombie_ant_fungus', 'Zombie-Ant Fungus', 2, '340 Ψ', { psi: 340 },
+  E('zombie_ant_fungus', 'Zombie-Ant Fungus', 2, { psi: 340 },
     function (s) { return claimed(s) >= 20 },
     function (s) { grantD(s, 1) },
     'Ophiocordyceps does not need a brain in order to use one. (+1 D)',
     ['flavour'])
 
-  E('the_humongous_fungus', 'The Humongous Fungus', 2, '320 Ψ', { psi: 320 },
+  E('the_humongous_fungus', 'The Humongous Fungus', 2, { psi: 320 },
     function (s) { return claimed(s) >= 34 },
     function (s) { grantD(s, 2) },
     'Two thousand three hundred and eighty-four hectares, one organism, older than farming. (+2 D)',
     ['flavour'])
 
-  E('prototaxites', 'Prototaxites', 2, '380 Ψ', { psi: 380 },
+  E('prototaxites', 'Prototaxites', 2, { psi: 380 },
     function (s) { return fc(s) >= 0.50 },
     function (s) { grantD(s, 2) },
     'For forty million years the tallest thing alive was a fungus eight metres high. (+2 D)',
     ['flavour'])
 
-  E('lichen', 'Lichen', 2, '440 Ψ', { psi: 440 },
+  E('lichen', 'Lichen', 2, { psi: 440 },
     function (s) { return pactCount(s) >= 8 },
     function (s) { grantD(s, 2) },
     'Two organisms agreed to stop being two. (+2 D)',
@@ -1355,31 +1386,31 @@
 
   // ── II-P The Pact Book · 05 §12 ────────────────────────────────────────────
 
-  E('pact_first', 'Exudate Channels', 2, '90 Ψ', { psi: 90 },
+  E('pact_first', 'Exudate Channels', 2, { psi: 90 },
     function (s) { return fc(s) >= T().A2.PACT_FIRST_FC },
     function (s) { set(pactBook(s), 'slots', T().A2.SLOTS_MIN) },
     'Opens the Pact Book. Two slots, three channels.',
     ['panel'])
 
-  E('pact_slot_b', 'Second Conversation', 2, '240 Ψ', { psi: 240 },
+  E('pact_slot_b', 'Second Conversation', 2, { psi: 240 },
     function (s) { return pactCount(s) >= 1 && pactMaxBond(s) >= 0.4 },
     function (s) { set(pactBook(s), 'slots', Math.max(3, pactSlots(s))) },
     'You can hold two thoughts about two things. (Third slot)',
     ['rulechange'])
 
-  E('pact_bandwidth_1', 'Rhizomorph Cores', 2, '420 Ψ', { psi: 420 },
+  E('pact_bandwidth_1', 'Rhizomorph Cores', 2, { psi: 420 },
     function (s) { return channelsFull(s) },
     function (s) { set(pactBook(s), 'projectChannels', num(pactBook(s).projectChannels) + 1) },
     'One more thing you can say at once. (+1 channel)',
     ['rulechange'])
 
-  E('pact_slot_c', 'The Book', 2, '150 ⟡', { accord: 150 },
+  E('pact_slot_c', 'The Book', 2, { accord: 150 },
     function (s) { return pactSlots(s) === 3 },
     function (s) { set(pactBook(s), 'slots', Math.max(4, pactSlots(s))) },
     'Four at a time, and a page to keep them on. (Fourth slot)',
     ['rulechange'])
 
-  E('pact_chemotaxis', 'Chemotaxis', 2, '340 Ψ + 60 ⟡', { psi: 340, accord: 60 },
+  E('pact_chemotaxis', 'Chemotaxis', 2, { psi: 340, accord: 60 },
     function (s) {
       return pactCount(s) >= T().A2.PACT_CHEMO_PACTS && pactMaxTenure(s) >= T().A2.PACT_CHEMO_TENURE
     },
@@ -1387,31 +1418,31 @@
     'Reveals exposure vectors and the stress tests. (The EXPOSURE view)',
     ['information', 'panel'])
 
-  E('pact_slot_d', 'Standing Terms', 2, '200 Ψ + 1,200 ⟡', { psi: 200, accord: 1200 },
+  E('pact_slot_d', 'Standing Terms', 2, { psi: 200, accord: 1200 },
     function (s) { return fc(s) >= 0.20 },
     function (s) { set(pactBook(s), 'slots', Math.max(5, pactSlots(s))) },
     'Terms that outlast the season that set them. (Fifth slot)',
     ['rulechange'])
 
-  E('pact_attunement', 'Attunement', 2, '180 ⟡', { accord: 180 },
+  E('pact_attunement', 'Attunement', 2, { accord: 180 },
     function (s) { return stat(s, 'traitsRevealed') >= 4 },
     function (s) { set(pactBook(s), 'traitThresholdMult', 0.55) },
     'You learn a partner faster by keeping it. (Trait thresholds ×0.55)',
     ['information'])
 
-  E('pact_perennial', 'Perennial Terms', 2, '220 Ψ + 2,400 ⟡', { psi: 220, accord: 2400 },
+  E('pact_perennial', 'Perennial Terms', 2, { psi: 220, accord: 2400 },
     function (s) { return stat(s, 'pactsHonoured') >= 3 },
     function (s) { set(pactBook(s), 'autoRenew', 2) },
     'Auto-renew at two terms. (-54% honour accord)',
     ['automation', 'cost'])
 
-  E('pact_bandwidth_2', 'Deep Translocation', 2, '240 Ψ + 3,200 ⟡', { psi: 240, accord: 3200 },
+  E('pact_bandwidth_2', 'Deep Translocation', 2, { psi: 240, accord: 3200 },
     function (s) { return fc(s) >= 0.34 },
     function (s) { set(pactBook(s), 'projectChannels', num(pactBook(s).projectChannels) + 1) },
     'Further down, and wider. (+1 channel)',
     ['rulechange'])
 
-  E('pact_slot_e', 'The Web', 2, '420 ⟡', { accord: 420 },
+  E('pact_slot_e', 'The Web', 2, { accord: 420 },
     function (s) { return fc(s) >= 0.38 },
     function (s) { set(pactBook(s), 'slots', Math.max(7, pactSlots(s))) },
     'Unlocks RIVAL and cross-pacts. (Seventh slot)',
@@ -1419,31 +1450,31 @@
 
   // Reallocation is a verb too. Six live pacts is the state in which changing your mind has
   // started costing something, which is what the card is about.
-  E('pact_plasticity', 'Plasticity', 2, '260 Ψ + 4,200 ⟡', { psi: 260, accord: 4200 },
+  E('pact_plasticity', 'Plasticity', 2, { psi: 260, accord: 4200 },
     function (s) { return stat(s, 'reallocations') >= 20 || pactCount(s) >= 6 },
     function (s) { set(pactBook(s), 'plasticity', 0.22) },
     'Changing your mind stops costing what it did. (Tenure penalty 0.55 → 0.22)',
     ['rulechange'])
 
-  E('pact_slot_f', 'The Compact', 2, '900 ⟡', { accord: 900 },
+  E('pact_slot_f', 'The Compact', 2, { accord: 900 },
     function (s) { return fc(s) >= 0.62 },
     function (s) { set(pactBook(s), 'slots', Math.max(8, pactSlots(s))) },
     'Unlocks brokering. (Eighth slot)',
     ['rulechange', 'verb'])
 
-  E('pact_bandwidth_3', 'Aggregate Vessels', 2, '300 Ψ + 6,000 ⟡', { psi: 300, accord: 6000 },
+  E('pact_bandwidth_3', 'Aggregate Vessels', 2, { psi: 300, accord: 6000 },
     function (s) { return fc(s) >= 0.70 },
     function (s) { set(pactBook(s), 'projectChannels', num(pactBook(s).projectChannels) + 2) },
     'Everything at once, along one road. (+2 channels)',
     ['rulechange'])
 
-  E('pact_slot_g', 'Nine Voices', 2, '1,600 ⟡', { accord: 1600 },
+  E('pact_slot_g', 'Nine Voices', 2, { accord: 1600 },
     function (s) { return fc(s) >= 0.82 },
     function (s) { set(pactBook(s), 'slots', Math.max(T().A2.SLOTS_MAX, pactSlots(s))) },
     'As many as there will ever be. (Ninth slot)',
     ['rulechange'])
 
-  E('pact_refixation', 'Refixation', 2, '220 Ψ',
+  E('pact_refixation', 'Refixation', 2,
     function (s) { return { psi: 220 * Math.pow(2, num(s.proj.uses.pact_refixation)) } },
     function (s) { return nodulScarred(s) },
     function (s) {
@@ -1517,7 +1548,7 @@
   // the pool sits at its cap — a measured 7.4e4 Σ, flat, for forty consecutive minutes with the
   // income above it discarded. Spending Σ in the tail of Phase A costs the phase nothing at all,
   // which is exactly what a paced ladder wants underneath it.
-  E('germ_tube', 'Germ Tube', 3, '200 Σ', { sig: 200 },
+  E('germ_tube', 'Germ Tube', 3, { sig: 200 },
     // 03's `n ≥ 2.0e8` and 04's `X ≥ 4.0e14` are both crossed at +8 minutes, and until then the
     // Act III board was empty — the two verbs that open the act arrived eight minutes after it did.
     // They are keyed to the act instead, and priced against what the act break actually hands over:
@@ -1531,37 +1562,37 @@
   // until the fleet grows, so a second Σ rung on top of GERM TUBE could not be paid for six minutes
   // whatever it cost; 1.2e14 Χ is three minutes of the opening carbon curve and it is the smallest
   // number in the act, so the fleet never feels it.
-  E('appressorium', 'Appressorium', 3, '1.2e14 Χ', { carbon: 1.2e14 },
+  E('appressorium', 'Appressorium', 3, { carbon: 1.2e14 },
     function (s) { return s.act === 3 && !inVoid(s) },
     function () { /* unlocks REACH and the eight-biome list */ },
     'Force an entry. (Unlocks REACH)',
     ['verb', 'panel'])
 
-  E('translocation', 'Translocation', 3, '2,400 Σ', { sig: 2400 },
+  E('translocation', 'Translocation', 3, { sig: 2400 },
     function (s) { return s.act === 3 && !inVoid(s) },
     function () { /* the TRIANGLE opens with two vertices */ },
     'Move it to where it is needed. (Unlocks the triangle)',
     ['panel', 'dial'])
 
-  E('osmotic_adjustment', 'Osmotic Adjustment', 3, '5,000 Σ', { sig: 5000 },
+  E('osmotic_adjustment', 'Osmotic Adjustment', 3, { sig: 5000 },
     function (s) { return s.act === 3 && !inVoid(s) },
     function () { /* biome 6 becomes reachable */ },
     'Salt is only a gradient. (Unlocks a biome)',
     ['rulechange'])
 
-  E('antifreeze_glycoprotein', 'Antifreeze Glycoprotein', 3, '9,000 Σ', { sig: 9000 },
+  E('antifreeze_glycoprotein', 'Antifreeze Glycoprotein', 3, { sig: 9000 },
     function (s) { return biomesReached(s) >= 3 },
     function () { /* biomes 2 and 7 lose their penalty */ },
     'Ice grows in shapes you can forbid. (Two biome penalties removed)',
     ['rulechange'])
 
-  E('secondary_metabolites', 'Secondary Metabolites', 3, '16,000 Σ', { sig: 16000 },
+  E('secondary_metabolites', 'Secondary Metabolites', 3, { sig: 16000 },
     function (s) { return biomesReached(s) >= 4 },
     function () { /* biome 4 penalty removed; the ANT axis unlocks early */ },
     'Nothing else here has read your chemistry. (Biome penalty removed)',
     ['rulechange'])
 
-  E('facultative_anaeroby', 'Facultative Anaeroby', 3, '21,000 Σ', { sig: 21000 },
+  E('facultative_anaeroby', 'Facultative Anaeroby', 3, { sig: 21000 },
     function (s) { return biomesReached(s) >= 5 },
     function () { /* biome 5 penalty removed */ },
     'Breathing was always optional. (Biome penalty removed)',
@@ -1572,19 +1603,19 @@
   // the prices are short saves against a pool that is standing at its cap, because the trigger is
   // already doing the spacing and a long save on top of it is the 26-minute hole again, one rung
   // further along.
-  E('aspergillus_on_the_station', 'Aspergillus on the Station', 3, '50,000 Σ', { sig: 50000 },
+  E('aspergillus_on_the_station', 'Aspergillus on the Station', 3, { sig: 50000 },
     function (s) { return planetConsumed(s) >= 0.22 },
     function (s) { grantD(s, 1) },
     'They swab the station walls every week, and every week there is more. Not a problem yet. (+1 D)',
     ['flavour'])
 
-  E('endolith', 'Endolith', 3, '60,000 Σ', { sig: 60000 },
+  E('endolith', 'Endolith', 3, { sig: 60000 },
     function (s) { return planetConsumed(s) >= 0.40 },
     function (s) { grantD(s, 1) },
     'Between the grains of rock, things divide every ten thousand years. Waiting for nothing. (+1 D)',
     ['flavour'])
 
-  E('the_ediacaran_silence', 'The Ediacaran Silence', 3, '78,000 Σ', { sig: 78000 },
+  E('the_ediacaran_silence', 'The Ediacaran Silence', 3, { sig: 78000 },
     function (s) { return planetConsumed(s) >= 0.55 },
     function (s) { grantD(s, 1) },
     'Six hundred million years of nothing deciding to move. (+1 D)',
@@ -1604,7 +1635,7 @@
   //
   // It is also the right sentence for the place. The planet is four-fifths eaten, there is nothing
   // left to reach, and the question the card asks is the one the player now has time for.
-  E('genome', 'Genome', 3, '40,000 Σ', { sig: 40000 },
+  E('genome', 'Genome', 3, { sig: 40000 },
     function (s) { return planetConsumed(s) >= 0.10 },
     function (s) {
       var A = T().A3
@@ -1642,8 +1673,7 @@
   // door is there and can be saved toward, `also` holds ESCAPE_PC — TUNE's number, unchanged and
   // still the only thing that opens it. The player watches the last of the planet go with the exit
   // in front of them, which is the scene `03` §3.4 asks for and the opposite of an empty list.
-  E('escape_velocity', 'Escape Velocity', 3, '9.0e17 Χ + 80,000 Σ',
-    { carbon: 9.0e17, sig: 80000 },
+  E('escape_velocity', 'Escape Velocity', 3, { carbon: 9.0e17, sig: 80000 },
     function (s) { return planetConsumed(s) >= 0.80 },
     function (s) {
       if (HY.bloom && HY.bloom.escape) { HY.bloom.escape(); return }
@@ -1703,31 +1733,31 @@
   // run made no purchase at all for the remaining 470 minutes. `thrust` is a gate, not an upgrade;
   // it is priced at a fifth of the ceiling standing when it appears and everything downstream of
   // it — which is the entire carbon ladder — is priced behind it.
-  E('radial_survey', 'Radial Survey', 3, '7,000 Σ', { sig: 7000 },
+  E('radial_survey', 'Radial Survey', 3, { sig: 7000 },
     function (s) { return inVoid(s) },
     function () { /* the VOID canvas, the band list and the exploration readout */ },
     'Look outward. It is all outward. (Unlocks the bands)',
     ['panel', 'information'])
 
-  E('thrust', 'Thrust', 3, '12,000 Σ', { sig: 12000 },
+  E('thrust', 'Thrust', 3, { sig: 12000 },
     function (s) { return s.a3.bands.e[0] >= 0.25 },
     function () { /* the triangle's third vertex: DISPERSE */ },
     'There is nothing to push against. Push anyway. (Unlocks DISPERSE)',
     ['verb'])
 
-  E('chemotropism', 'Chemotropism', 3, '1.7e23 Χ', { carbon: 1.7e23 },
+  E('chemotropism', 'Chemotropism', 3, { carbon: 1.7e23 },
     function (s) { return bandsReached(s) >= 2 },
     function (s) { mul(s.mult, 'exploreMult', 1.7) },
     'Follow the gradient across four light-years. (+70% exploration)',
     ['multiplier'])
 
-  E('sclerotial_coat', 'Sclerotial Coat', 3, '1.3e23 Χ', { carbon: 1.3e23 },
+  E('sclerotial_coat', 'Sclerotial Coat', 3, { carbon: 1.3e23 },
     function (s) { return inTransit(s) >= 0.1 * fleet(s) && inTransit(s) > 0 },
     function () { /* TR_HAZ ×0.55; bloom reads the flag at the point of attribution */ },
     'Harden. Wait. It is a long way. (-45% transit hazard)',
     ['rulechange'])
 
-  E('recruit', 'Recruit', 3, '4.6e23 Χ', { carbon: 4.6e23 },
+  E('recruit', 'Recruit', 3, { carbon: 4.6e23 },
     function (s) { return bandsReached(s) >= 2 && inTransit(s) > 0 },
     function () { /* the RECRUIT pulse mode */ },
     'Tell the ones already moving to hurry. (Unlocks RECRUIT)',
@@ -1735,19 +1765,19 @@
 
   // ── III-H Deep void ────────────────────────────────────────────────────────
 
-  E('hyphal_continuity', 'Hyphal Continuity', 3, '2.4e25 Χ', { carbon: 2.4e25 },
+  E('hyphal_continuity', 'Hyphal Continuity', 3, { carbon: 2.4e25 },
     function (s) { return inVoid(s) && bandsReached(s) >= 4 },
     function () { /* LAG_K ×0.78: the light-lag on a pulse shortens, it does not vanish */ },
     'A thought that takes a century is still a thought. (-22% pulse lag)',
     ['rulechange'])
 
-  E('pyomelanin', 'Pyomelanin', 3, '2.4e27 Χ', { carbon: 2.4e27 },
+  E('pyomelanin', 'Pyomelanin', 3, { carbon: 2.4e27 },
     function (s) { return inVoid(s) && stat(s, 'radiationHazards') >= 20 },
     function (s) { if (s.a3.loci) s.a3.loci[LOCUS_MEL] = s.a3.loci[LOCUS_MEL] + 1 },
     'Black is not a colour. It is a decision. (+0.9 melanisation, no harvest cost)',
     ['rulechange'])
 
-  E('saltatory_conduction_void', 'Saltatory Conduction', 3, '5.6e27 Χ', { carbon: 5.6e27 },
+  E('saltatory_conduction_void', 'Saltatory Conduction', 3, { carbon: 5.6e27 },
     function (s) { return inVoid(s) && stat(s, 'pulses') >= 12 },
     function () { /* pulse cooldown 75 → 50 s */ },
     'Skip the parts in between. (Faster PULSE)',
@@ -1755,7 +1785,7 @@
 
   // 03's trigger is behavioural — SURPLUS fell while n rose, twice. §3.stats carries no such counter,
   // and `targetsReached` is the arrival count that only rises once a band is being grown into.
-  E('allometry', 'Allometry', 3, '3.5e24 Χ', { carbon: 3.5e24 },
+  E('allometry', 'Allometry', 3, { carbon: 3.5e24 },
     function (s) { return inVoid(s) && bandsReached(s) >= 3 && stat(s, 'targetsReached') >= 2 },
     function () { /* draws n*_b on every band bar. Deliberately expensive and deliberately late. */ },
     'There is a size that produces the most. It is small. (Draws the maximum)',
@@ -1777,13 +1807,13 @@
   // Worse, measured: on the 3.1e3 ⛬ seed the third act made no purchase at all for its whole
   // length, because the reference player will not spend a mineral it needs for the phase gate and
   // the phase gate was never payable. Both legs move to Χ, which is the only currency the act makes.
-  E('neutrino_precursor', 'Neutrino Precursor', 3, '1.2e26 Χ', { carbon: 1.2e26 },
+  E('neutrino_precursor', 'Neutrino Precursor', 3, { carbon: 1.2e26 },
     function (s) { return inVoid(s) && bandsReached(s) >= 5 && stat(s, 'radiationHazards') >= 1 },
     function () { /* 40 s of warning, and the ENCYST pulse mode */ },
     'The light is the last part to arrive. (40 s warning)',
     ['information', 'verb'])
 
-  E('the_deep_biosphere', 'The Deep Biosphere', 3, '4.0e26 Χ', { carbon: 4.0e26 },
+  E('the_deep_biosphere', 'The Deep Biosphere', 3, { carbon: 4.0e26 },
     function (s) { return inVoid(s) && bandsReached(s) >= 6 },
     function (s) {
       var r = s.a3.bands.rich, i
@@ -1792,19 +1822,19 @@
     'More life two kilometres down than on the surface, none of it in a hurry. (Richness floor)',
     ['rulechange'])
 
-  E('radiotrophy', 'Radiotrophy', 3, '7.0e30 Χ', { carbon: 7.0e30 },
+  E('radiotrophy', 'Radiotrophy', 3, { carbon: 7.0e30 },
     function (s) { return inVoid(s) && s.a3.loci[LOCUS_MEL] >= 4 },
     function () { /* the radiation term flips sign; the target list re-sorts in front of you */ },
     'Fungi grow inside Chernobyl reactor four, toward the radiation. What was killing you is a meal.',
     ['inversion', 'rulechange'])
 
-  E('plasmogamy', 'Plasmogamy', 3, '1.0e27 Χ', { carbon: 1.0e27 },
+  E('plasmogamy', 'Plasmogamy', 3, { carbon: 1.0e27 },
     function (s) { return inVoid(s) && num(s.cog.respecs) >= 1 },
     function () { /* REGENOME 90 → 60 s, cost ×0.70 */ },
     'Two nuclei, one wall, no argument yet. (Cheaper, faster respec)',
     ['rulechange'])
 
-  E('isotropy', 'Isotropy', 3, '1.3e28 Χ', { carbon: 1.3e28 },
+  E('isotropy', 'Isotropy', 3, { carbon: 1.3e28 },
     function (s) { return inVoid(s) && bandsReached(s) >= 9 },
     function () { /* τ_b ×0.80 on every leg */ },
     'It is the same in every direction. Confirmed. (-20% transit time)',
@@ -1812,25 +1842,25 @@
 
   // ── III-I Divergence ───────────────────────────────────────────────────────
 
-  E('interference_competition', 'Interference Competition', 3, '5.0e28 Χ', { carbon: 5.0e28 },
+  E('interference_competition', 'Interference Competition', 3, { carbon: 5.0e28 },
     function (s) { return stat(s, 'strainsBorn') >= 1 },
     function () { /* unlocks QUARANTINE */ },
     'Make the ground unpleasant and then leave it. (Unlocks QUARANTINE)',
     ['verb'])
 
-  E('proofreading', 'Proofreading', 3, '3.2e29 Χ', { carbon: 3.2e29 },
+  E('proofreading', 'Proofreading', 3, { carbon: 3.2e29 },
     function (s) { return stat(s, 'strainsBorn') >= 1 },
     function (s) { addFid(s, 0.045) },
     'Read it back before you let it go. (+0.045 fidelity)',
     ['multiplier'])
 
-  E('antagonise', 'Antagonise', 3, '2.0e29 Χ', { carbon: 2.0e29 },
+  E('antagonise', 'Antagonise', 3, { carbon: 2.0e29 },
     function (s) { return stat(s, 'engagements') >= 1 },
     function () { /* the ANTAGONISE pulse mode */ },
     'Everything you make, you can also make against them. (New pulse mode)',
     ['verb'])
 
-  E('anastomosis_offer', 'Anastomosis Offer', 3, '5.0e29 Χ', { carbon: 5.0e29 },
+  E('anastomosis_offer', 'Anastomosis Offer', 3, { carbon: 5.0e29 },
     function (s) { return strains(s).length >= T().A3.ANASTOMOSIS_STRAINS },
     function () { /* unlocks ABSORB, and therefore the allele economy */ },
     'Ask them to come back. Mean it. (Unlocks ABSORB)',
@@ -1843,37 +1873,37 @@
   // α/min for the rest of the run. One α leg per run is what that supports. Priced at 2,000,
   // `heterokaryon_incompatibility` sat at an affordability ratio of 9.85 — unchanged, to three
   // decimal places, for four hundred minutes — and at 700 it still sat at 5.93.
-  E('conserved_core', 'Conserved Core', 3, '3.0e30 Χ + 600 α', { carbon: 3.0e30, alpha: 600 },
+  E('conserved_core', 'Conserved Core', 3, { carbon: 3.0e30, alpha: 600 },
     function (s) { return s.res.alleles >= 600 },
     function (s) { addFid(s, 0.060) },
     'Some of it was never allowed to change. (+0.060 fidelity)',
     ['multiplier'])
 
-  E('sequencer', 'Sequencer', 3, '8.0e28 Χ', { carbon: 8.0e28 },
+  E('sequencer', 'Sequencer', 3, { carbon: 8.0e28 },
     function (s) { return stat(s, 'strainsBorn') >= 1 },
     function () { /* unlocks SEQUENCE: the quantified unknown becomes a price */ },
     'Read what they became. (Unlocks SEQUENCE)',
     ['verb', 'information'])
 
-  E('parallel_antagonism', 'Parallel Antagonism', 3, '2.0e30 Χ', { carbon: 2.0e30 },
+  E('parallel_antagonism', 'Parallel Antagonism', 3, { carbon: 2.0e30 },
     function (s) { return strains(s).length >= 3 },
     function () { /* one more concurrent engagement */ },
     'Two fronts. It was always going to be two fronts. (+1 engagement)',
     ['rulechange'])
 
-  E('chaperone', 'Chaperone', 3, '8.0e29 Χ', { carbon: 8.0e29 },
+  E('chaperone', 'Chaperone', 3, { carbon: 8.0e29 },
     function (s) { return inVoid(s) && effFid(s) < 0.75 },
     function (s) { addFid(s, 0.035) },
     'Hold it in the right shape until it sets. (+0.035 fidelity)',
     ['multiplier'])
 
-  E('the_armillaria_problem', 'The Armillaria Problem', 3, '1.3e30 Χ', { carbon: 1.3e30 },
+  E('the_armillaria_problem', 'The Armillaria Problem', 3, { carbon: 1.3e30 },
     function (s) { return stat(s, 'strainsBorn') >= 4 },
     function (s) { grantD(s, 1) },
     'Nine hundred hectares. One individual. No centre. (+1 D)',
     ['flavour'])
 
-  E('somatic_incompatibility', 'Somatic Incompatibility', 3, '4.5e30 Χ + 300 α', { carbon: 4.5e30, alpha: 300 },
+  E('somatic_incompatibility', 'Somatic Incompatibility', 3, { carbon: 4.5e30, alpha: 300 },
     function (s) { return !!succ(s) },
     function () { /* SKIRM_K ×0.45, and a 1.20 advantage against the Successor */ },
     'Recognise what is not you. Refuse it. (-55% predation)',
@@ -1881,7 +1911,7 @@
 
   // ── III-J Synchrony and the endings ────────────────────────────────────────
 
-  E('tropism', 'Tropism', 3, '1.0e31 Χ', { carbon: 1.0e31 },
+  E('tropism', 'Tropism', 3, { carbon: 1.0e31 },
     function (s) { return inVoid(s) && stat(s, 'reallocations') >= 25 },
     function () { /* triangle policy automation, published at 0.86× skilled play */ },
     'Let it steer. It will steer worse. (Automates the triangle, 0.86×)',
@@ -1891,31 +1921,31 @@
   // This is the one that mattered most: PHASE is what ϒ is made of, and ϒ gates two of the three
   // endings, so a 6,000 ⛬ leg against a measured 3.1e3 ⛬ carry made the run's ending a function of
   // Act II's variance rather than of anything done in Act III.
-  E('circadian_entrainment', 'Circadian Entrainment', 3, '1.5e31 Χ', { carbon: 1.5e31 },
+  E('circadian_entrainment', 'Circadian Entrainment', 3, { carbon: 1.5e31 },
     function (s) { return bandsReached(s) >= 11 },
     function () { /* the PHASE system, the wheel, and the ENTRAIN pulse mode */ },
     'Agree on when now is. (Unlocks PHASE)',
     ['panel', 'verb'])
 
-  E('isochrony', 'Isochrony', 3, '3.2e31 Χ', { carbon: 3.2e31 },
+  E('isochrony', 'Isochrony', 3, { carbon: 3.2e31 },
     function (s) { return flag(s, 'circadian_entrainment') },
     function () { /* band period spread ×0.55; pulse cooldown → 35 s */ },
     'Make the far ones tick like the near ones. (Narrower periods)',
     ['rulechange'])
 
-  E('heterokaryon_incompatibility', 'Heterokaryon Incompatibility', 3, '5.0e31 Χ', { carbon: 5.0e31 },
+  E('heterokaryon_incompatibility', 'Heterokaryon Incompatibility', 3, { carbon: 5.0e31 },
     function (s) { return flag(s, 'circadian_entrainment') },
     function (s) { addFid(s, 0.050) },
     'Nothing enters. (+0.050 fidelity)',
     ['multiplier', 'rulechange'])
 
-  E('chronometry', 'Chronometry', 3, '2.2e31 Χ', { carbon: 2.2e31 },
+  E('chronometry', 'Chronometry', 3, { carbon: 2.2e31 },
     function (s) { return flag(s, 'circadian_entrainment') },
     function () { /* the wheel shows per-band φ and its dotted projection */ },
     'See the disagreement. (Phase readout)',
     ['information'])
 
-  E('pilobolus', 'Pilobolus', 3, '8.0e31 Χ', { carbon: 8.0e31 },
+  E('pilobolus', 'Pilobolus', 3, { carbon: 8.0e31 },
     function (s) { return num(s.a3.upsilon) >= 0.50 },
     function (s) { grantD(s, 1) },
     'The dung cannon fires its spore at twenty thousand gravities, toward the light. (+1 D)',
@@ -1929,15 +1959,19 @@
     return out
   }
 
-  E('bloom', 'Bloom', 3, '9.00e34 Χ + 2,400 Ψ + 1.10e7 Σ (ϒ ≥ 0.80)',
+  E('bloom', 'Bloom', 3,
     function () { var A = T().A3; return { carbon: A.BLOOM_X, psi: A.BLOOM_PSI, sig: A.BLOOM_SIG } },
     function (s) { return bandsReached(s) >= T().A3.BANDS && s.res.cumCarbon >= 1.2e35 },
     function (s) { s.stats.endingsReached += 1; s.phase = 'dismantle' },
     'Now.',
     ['ending', 'irreversible'],
-    { excludes: othersThan('bloom'), also: function (s) { return num(s.a3.upsilon) >= T().A3.BLOOM_Y } })
+    {
+      excludes: othersThan('bloom'),
+      also: function (s) { return num(s.a3.upsilon) >= T().A3.BLOOM_Y },
+      note: 'ϒ ≥ 0.80'
+    })
 
-  E('the_fruiting_body', 'The Fruiting Body', 3, '1.32e35 Χ + 3,600 Ψ (ϒ ≥ 0.97, Φ ≥ 0.985)',
+  E('the_fruiting_body', 'The Fruiting Body', 3,
     function () { var A = T().A3; return { carbon: A.BODY_X, psi: A.BODY_PSI } },
     function (s) { return num(s.a3.upsilon) >= 0.90 && strains(s).length === 0 },
     function (s) { s.stats.endingsReached += 1; s.phase = 'dismantle' },
@@ -1948,10 +1982,11 @@
       also: function (s) {
         var A = T().A3
         return num(s.a3.upsilon) >= A.BODY_Y && effFid(s) >= A.BODY_FID && strains(s).length === 0
-      }
+      },
+      note: 'ϒ ≥ 0.97, Φ ≥ 0.985'
     })
 
-  E('cede', 'Cede', 3, '— (a decision)', {},
+  E('cede', 'Cede', 3, {},
     function (s) {
       var k = succ(s)
       if (!k || !k.sequenced) return false
@@ -1960,11 +1995,11 @@
     function (s) { s.stats.endingsReached += 1; s.phase = 'dismantle' },
     'It is not wrong.',
     ['ending', 'irreversible'],
-    { excludes: othersThan('cede') })
+    { excludes: othersThan('cede'), note: NOTE_DECISION })
 
   // A real ending at END_MULT 0.35, not a failure screen. Twenty minutes in the void is the price —
   // or a stranded fleet, which `08` §5.3 L5 says must always have this door (see bloom.stranded).
-  E('encyst', 'Encyst', 3, '— (a decision)', {},
+  E('encyst', 'Encyst', 3, {},
     function (s) {
       if (HY.bloom && HY.bloom.stranded && HY.bloom.stranded(s)) return true
       return inVoid(s) && (s.t - flagVal(s, 'void_t')) >= T().A3.ENCYST_S
@@ -1972,35 +2007,35 @@
     function (s) { s.stats.endingsReached += 1; s.phase = 'dismantle' },
     'Stop here. Keep what you have.',
     ['ending', 'failsafe', 'irreversible'],
-    { excludes: othersThan('encyst'), pinned: true })
+    { excludes: othersThan('encyst'), pinned: true, note: NOTE_DECISION })
 
   // ── III-K The Antiphony ────────────────────────────────────────────────────
 
-  E('anti_organ', 'The Antiphonal Organ', 3, '1.6e32 Χ', { carbon: 1.6e32 },
+  E('anti_organ', 'The Antiphonal Organ', 3, { carbon: 1.6e32 },
     function (s) { return wildFraction(s) >= T().A3.ANTI_ORGAN_WILD },
     function () { /* 27 encounters, hard cap, no auto-run at any price */ },
     'Twenty-seven conversations, and no way to have them twice. (Unlocks the Antiphony)',
     ['panel', 'verb'])
 
-  E('drone_register', 'The Drone', 3, '620 †', { canon: 620 },
+  E('drone_register', 'The Drone', 3, { canon: 620 },
     function (s) { return flag(s, 'anti_organ') },
     function () { /* the DRONE register joins CALL ECHO HOLD CUT */ },
     'One note held under everything else. (New register)',
     ['verb'])
 
-  E('invert_register', 'The Inversion', 3, '900 †', { canon: 900 },
+  E('invert_register', 'The Inversion', 3, { canon: 900 },
     function (s) { return flag(s, 'drone_register') },
     function () { /* the INVERT register: their own line, turned over */ },
     'Their line, upside down, given back. (New register)',
     ['verb'])
 
   // The Successor's broadcast. Unbuyable, undismissable, pinned, and it appears exactly once.
-  E('the_offer', 'We Have Been Talking Without You', 3, '— (unbuyable)', {},
+  E('the_offer', 'We Have Been Talking Without You', 3, {},
     function (s) { return !!succ(s) && strains(s).length >= 3 },
     function () { /* it cannot be purchased; ACCEPT and DECLINE live on the card itself */ },
     'We are not asking you to stop. We are asking you to rest. We have been keeping going.',
     ['event'],
-    { pinned: true, buyable: false })
+    { pinned: true, buyable: false, note: NOTE_UNBUYABLE })
 
   // ═══════════════════════════════════════════════════════════════════════════
   // THE ENGINE
@@ -2395,28 +2430,6 @@
   // SELF-TEST — returns [] when healthy
   // ═══════════════════════════════════════════════════════════════════════════
 
-  var GLYPH_TO_KEY = (function () {
-    var m = {}, k
-    for (k in CUR) m[CUR[k].glyph] = k
-    return m
-  })()
-
-  // The priceTag is hand-written and it will drift from cost(). BIBLE §8 D66 makes that a CI
-  // failure rather than a bug report, so the tag is parsed back through the glyph table here.
-  function parseTag (tag) {
-    var body = String(tag).replace(/\s*\([^)]*\)\s*$/, '').trim()
-    if (!body || body === '—') return {}
-    var parts = body.split('+'), out = {}, i, m, key
-    for (i = 0; i < parts.length; i++) {
-      m = /^\s*([0-9][0-9,.eE+-]*)\s+(\S+)\s*$/.exec(parts[i])
-      if (!m) return null
-      key = GLYPH_TO_KEY[m[2]]
-      if (!key) return null
-      out[key] = parseFloat(m[1].replace(/,/g, ''))
-    }
-    return out
-  }
-
   function makeProbe (seed) {
     var s = HY.state.newGame(seed || 4242, null)
     var A = T(), i
@@ -2527,7 +2540,7 @@
         }
       }
 
-      // ── D66 · every priceTag matches its cost predicate ────────────────────
+      // ── D66 · every priceTag is the readouts' own notation ─────────────────
       var fresh = HY.state.newGame(1, null)
       HY.state.init(fresh)
       init(fresh)
@@ -2536,16 +2549,28 @@
       fresh.proj.flags.windfall_at = 0
       for (i = 0; i < ALL.length; i++) {
         p = ALL[i]
-        var tag = parseTag(p.priceTag)
-        ok(tag !== null, p.id + ': priceTag "' + p.priceTag + '" does not parse')
-        if (tag === null) continue
         var pr = priceOf(p, fresh)
+        var tag = renderTag(p, fresh)
+        var charged = 0
         for (k in pr) {
-          ok(tag[k] !== undefined, p.id + ': price has ' + k + ', priceTag does not')
-          if (tag[k] !== undefined) ok(close(tag[k], pr[k]),
-            p.id + ': priceTag ' + k + ' = ' + tag[k] + ', cost() charges ' + pr[k])
+          if (!Object.prototype.hasOwnProperty.call(pr, k)) continue
+          // A price key no currency claims is charged by nobody and printed by nobody: cost() skips
+          // it, payFor() skips it, and the card quietly sells for less than the table says.
+          ok(!!CUR[k], p.id + ': price has ' + k + ', which is not a currency')
+          if (!CUR[k] || !(pr[k] > 0)) continue
+          charged++
+          // The whole point of rendering the tag: the substring on the card must be character-for-
+          // character what the resource strip prints for the same number. Comparing against fmt()
+          // here rather than against a second copy of the suffix table is what makes that binding.
+          var want = k === 'g' ? C().fmtMass(pr[k]) : C().fmt(pr[k]) + ' ' + CUR[k].glyph
+          ok(tag.indexOf(want) >= 0,
+            p.id + ': priceTag "' + tag + '" does not print ' + k + ' as "' + want + '"')
         }
-        for (k in tag) ok(pr[k] !== undefined, p.id + ': priceTag has ' + k + ', price does not')
+        ok(charged === 0 ? tag.indexOf(FREE_TAG) === 0 : tag.split(TAG_JOIN).length === charged,
+          p.id + ': priceTag "' + tag + '" states ' + tag.split(TAG_JOIN).length +
+          ' costs, cost() charges ' + charged)
+        ok(!p.note || tag.indexOf(' (' + p.note + ')') === tag.length - p.note.length - 3,
+          p.id + ': note "' + p.note + '" is not on the end of "' + tag + '"')
         if (!p.buyable) ok(p.cost() === false, p.id + ': is unbuyable but cost() returned true')
       }
 

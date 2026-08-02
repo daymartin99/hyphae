@@ -3234,7 +3234,7 @@
 
       var a = A1()
       var u = a && a.utilisation ? a.utilisation() : 0
-      setSlot(utilNum, String(Math.round(fill(u) * 100)), '%')
+      setPct(utilNum, u)
       utilBar.set(u, u >= T().A1.UTIL_ALARM ? 'warn' : '',
         Math.round(fill(u) * 100) + ' percent of what falls', T().A1.UTIL_ALARM)
 
@@ -3464,7 +3464,7 @@
       burst.appendChild(b)
       buys.push({ el: b, kind: 'abs', g: g })
     })
-    var bFrac = btn('', Math.round(U.MARKET_FRAC * 100) + '%')
+    var bFrac = btn('', pct(U.MARKET_FRAC))
     bindPress(bFrac, function () { trade(null, U.MARKET_FRAC, bFrac) }, { onUp: true })
     burst.appendChild(bFrac)
     buys.push({ el: bFrac, kind: 'frac', g: 0 })
@@ -4150,7 +4150,13 @@
   // unlabelled figures would be a spreadsheet of a forest, which is the one thing it must not be.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function pct (f) { return Math.round(fill(f) * 100) + '%' }
+  // `%` is a unit like any other and obeys §3.3: the number in the mantissa, the sign in the unit
+  // span, one real space between. It was written glued here and spaced at the utilisation readout,
+  // so `consumed 2%` and `utilisation 46 %` were one measurement printed two ways on two panels.
+  // `pctNum` is what a slot takes; `pct` is the whole string, for prose and aria labels.
+  function pctNum (f) { return String(Math.round(fill(f) * 100)) }
+  function pct (f) { return pctNum(f) + ' %' }
+  function setPct (n, f) { setSlot(n, pctNum(f), '%') }
 
   // Maturity is canopy-driven (`02` §7.4), so the stand with the most shade over it is the one a
   // primordium should be knotted under. There is never a reason to choose otherwise, which is why
@@ -4221,20 +4227,20 @@
       var w = HY.world
       if (!f) return
       var fc = f.forestConsumed ? num(f.forestConsumed(s)) : 0
-      setSlot(eaten, pct(fc), '')
+      setPct(eaten, fc)
       eatenBar.set(fc, fc > 0.88 ? 'warn' : 'signal', pct(fc) + ' ' + STR.consumed)
       var n = w && w.claimedCount ? w.claimedCount() : 0
       setSlot(held, interp(STR.stands, { n: n }), '')
       setSlot(iface, C().fmt(f.totalInterface ? num(f.totalInterface(s)) : 0), '')
       setSlot(conn, (w && w.connectivity ? num(w.connectivity()) : 1).toFixed(2), '×')
-      pv.setCount(pct(fc))
+      pv.setCount(pctNum(fc), '%')
       show(dial, !!rev.retention)
       if (rev.retention && f.globalRho) {
         var g2 = num(f.globalRho(s)) / T().A2.RHO_MAX
         // Seeded once, from the simulation's own value, and never written again: the thumb owns
         // the control after that, and a 10 Hz writeback would fight the drag.
         if (!dial.__seeded) { dial.__seeded = 1; dial.setValue(Math.round(g2 * U.SLIDER_STEPS)) }
-        dial.setReadout(pct(g2), '', STR.retention + ' ' + pct(g2))
+        dial.setReadout(pctNum(g2), '%', STR.retention + ' ' + pct(g2))
         // The dial's whole reason to exist is the stand nearest the humus switch, so the note is
         // that number and not an average — an average hides exactly the stand that is failing.
         dial.setNote(STR.humus + ' ' + (f.minHumus ? num(f.minHumus(s)).toFixed(2) : STR.nothing))
@@ -4391,7 +4397,7 @@
       if (!rev.insight) return
       var rp = num(g.ripeness(s))
       setSlot(ins, C().fmt(num(s.res.insight)), GLYPH.insight)
-      setSlot(ripe, pct(rp), '')
+      setPct(ripe, rp)
       // Ripeness is the whole Insight economy: it only climbs while the pool is *full*, which is a
       // failure state everywhere else in the genre. The bar says so by filling only when saturated.
       ripeBar.set(rp, g.saturated(s) ? 'signal' : '', STR.ripeness + ' ' + pct(rp))
@@ -4507,7 +4513,7 @@
         setText(mode, c.held ? STR.hold : '')
         setSlot(yieldN, C().fmt(c.now), GLYPH.spores)
         mBar.set(c.m, c.risk > 0.02 ? 'warn' : '', STR.maturity + ' ' + pct(c.m))
-        setSlot(riskN, pct(1 - c.survive), '')
+        setPct(riskN, 1 - c.survive)
         setText(bestTxt, interp(STR.bestIn, { v: secs(c.bestIn) }) + ' · ' +
           C().fmt(c.best) + ' ' + GLYPH.spores)
         setText(holdBtn, c.held ? STR.resume : STR.hold)
@@ -4669,7 +4675,7 @@
         setSlot(rateN, c.rateText || C().fmt(c.rate), '')
         pips.set(c.chMax > 0 ? c.ch / c.chMax : 0, '', c.ch + ' of ' + c.chMax + ' ' + STR.channels)
         strain.set(c.strain, c.warn ? 'warn' : 'signal', STR.strain + ' ' + pct(c.strain))
-        setSlot(strainN, pct(c.strain), '')
+        setPct(strainN, c.strain)
         setData(strainN, 'tone', c.warn ? 'warn' : '')
         setData(r.el, 'live', c.warn ? 'warn' : '1')
         setSlot(bondN, c.bond.toFixed(2), '×' + c.bondMult.toFixed(2))
@@ -5420,12 +5426,12 @@
       // The readout is the normalised share, not the raw slider step: three sliders of twenty are
       // a ratio, and printing the step would print a number the simulation never sees.
       for (k = 0; k < 3; k++) {
-        bars[k].setReadout(pct(a[k]), '', labels[k] + ' ' + pct(a[k]))
+        bars[k].setReadout(pctNum(a[k]), '%', labels[k] + ' ' + pct(a[k]))
       }
       bars[0].setNote(C().fmt((h - sub) * a[0]) + ' ' + GLYPH.carbon + '/s ' + STR.replicate)
       bars[1].setNote(C().fmt((h - sub) * a[1]) + ' ' + GLYPH.carbon + '/s ' + STR.disperse)
       bars[2].setNote(C().fmt((h - sub) * a[2]) + ' ' + GLYPH.carbon + '/s ' + STR.bank)
-      pv.setCount(pct(a[0]) + ' / ' + pct(a[1]) + ' / ' + pct(a[2]))
+      pv.setCount(pctNum(a[0]) + ' / ' + pctNum(a[1]) + ' / ' + pctNum(a[2]), '%')
     }
     p.view = pv
     return pv
@@ -5456,7 +5462,8 @@
       set: function (r) {
         bar.set(r.frac, r.frac > 0.4 ? 'warn' : '', hazard.name.toLowerCase() + ' ' + pct(r.frac))
         setSlot(n, r.count > 0 ? C().fmt(r.count) : STR.nothing, '')
-        setSlot(share, r.count > 0 ? pct(r.frac) : '', '')
+        if (r.count > 0) setPct(share, r.frac)
+        else setSlot(share, '', '')
         setData(share, 'tone', r.frac > 0.4 ? 'warn' : '')
         show(q, r.count > 0)
       }
@@ -5624,7 +5631,7 @@
       if (s.a3 && s.a3.succ) list.push(s.a3.succ)
       setSlot(nStrain, String(list.length), '')
       var share = dv.strainShare ? num(dv.strainShare(s)) : 0
-      setSlot(shareN, pct(share), '')
+      setPct(shareN, share)
       shareBar.set(share, share > 0.5 ? 'bad' : (share > 0.25 ? 'warn' : ''),
         STR.theirMass + ' ' + pct(share))
       setSlot(driftN, (dv.driftFraction ? num(dv.driftFraction(s)) : 0).toFixed(3), '')
