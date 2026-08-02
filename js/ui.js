@@ -4193,9 +4193,15 @@
   // span, one real space between. It was written glued here and spaced at the utilisation readout,
   // so `consumed 2%` and `utilisation 46 %` were one measurement printed two ways on two panels.
   // `pctNum` is what a slot takes; `pct` is the whole string, for prose and aria labels.
-  function pctNum (f) { return String(Math.round(fill(f) * 100)) }
-  function pct (f) { return pctNum(f) + ' %' }
-  function setPct (n, f) { setSlot(n, pctNum(f), '%') }
+  // `d` is decimal places, for the fractions a whole percent cannot carry: fidelity lives in
+  // 0.30–0.9975 and rounding it would print its ceiling as a flat `100 %`, a number the player
+  // would act on and the game never reaches. Omitted, every existing caller keeps whole percents.
+  function pctNum (f, d) {
+    var v = fill(f) * 100
+    return d > 0 ? v.toFixed(d) : String(Math.round(v))
+  }
+  function pct (f, d) { return pctNum(f, d) + ' %' }
+  function setPct (n, f, d) { setSlot(n, pctNum(f, d), '%') }
 
   // Maturity is canopy-driven (`02` §7.4), so the stand with the most shade over it is the one a
   // primordium should be knotted under. There is never a reason to choose otherwise, which is why
@@ -4282,7 +4288,9 @@
         dial.setReadout(pctNum(g2), '%', STR.retention + ' ' + pct(g2))
         // The dial's whole reason to exist is the stand nearest the humus switch, so the note is
         // that number and not an average — an average hides exactly the stand that is failing.
-        dial.setNote(STR.humus + ' ' + (f.minHumus ? num(f.minHumus(s)).toFixed(2) : STR.nothing))
+        // `humus 0.11` sat directly under this dial's own `RETENTION 13 %` — two fractions of
+        // one, one line apart, in two notations.
+        dial.setNote(STR.humus + ' ' + (f.minHumus ? pct(num(f.minHumus(s))) : STR.nothing))
       }
     }
     p.view = pv
@@ -4359,7 +4367,7 @@
         col.set(c.col, '', STR.colonising + ' ' + pct(c.col))
         dens.set(c.d, '', STR.density + ' ' + pct(c.d))
         setMass(litterVal, c.L)
-        setSlot(humusVal, c.h.toFixed(2), '')
+        setPct(humusVal, c.h)
         show(advBtn, !c.claimed && !!c.advance)
         show(densBtn, !!c.density)
         show(killBtn, !!c.claimed && !c.necrotized && !!(view && view.rev && view.rev.necro))
@@ -4501,12 +4509,12 @@
       var fl = HY.flush
       if (!fl || !fl.weather) return
       var w = fl.weather()
-      setSlot(wet, w.W.toFixed(2), '')
+      setPct(wet, w.W)
       wetBar.set(w.W, w.W < 0.25 ? 'warn' : '', STR.moisture + ' ' + w.W.toFixed(2))
-      setSlot(windN, w.windSpeed.toFixed(2), '')
-      setSlot(grazeN, w.graze.toFixed(2), '')
+      setPct(windN, w.windSpeed)
+      setPct(grazeN, w.graze)
       setSlot(mastN, w.mast ? STR.on : STR.nothing, '')
-      pv.setCount(w.W.toFixed(2))
+      pv.setCount(pctNum(w.W), '%')
     }
     p.view = pv
     return pv
@@ -5400,7 +5408,7 @@
       // directly above it is quoted in the same currency.
       setSlot(massN, C().fmt(num(bl.craftMass(s))), GLYPH.carbon)
       var fid = num(bl.effFid(s))
-      setSlot(fidN, fid.toFixed(3), '')
+      setPct(fidN, fid, 1)
       fidBar.set(fid, fid < 0.9 ? 'warn' : 'signal', STR.fidelity + ' ' + fid.toFixed(3))
       var cost = num(bl.nextLocusCost(s))
       setSlot(costN, C().fmt(cost), GLYPH.insight)
@@ -5680,7 +5688,7 @@
       setPct(shareN, share)
       shareBar.set(share, share > 0.5 ? 'bad' : (share > 0.25 ? 'warn' : ''),
         STR.theirMass + ' ' + pct(share))
-      setSlot(driftN, (dv.driftFraction ? num(dv.driftFraction(s)) : 0).toFixed(3), '')
+      setPct(driftN, dv.driftFraction ? num(dv.driftFraction(s)) : 0)
       reconcile(pv.body, bag, list, function (e) { return e.id }, strainRow, s)
       pv.setCount(list.length)
       if (list.length) pv.unempty()
