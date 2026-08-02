@@ -157,6 +157,7 @@
     eaten: 'eaten {n}',
 
     moisture: 'moisture',
+    left: 'left',
     warmth: 'warmth',
     year: 'year {n}',
 
@@ -3593,11 +3594,18 @@
       setText(seasonTxt, SEASON_LABEL[s.a1.season])
       setText(yearTxt, interp(STR.year, { n: s.a1.year + 1 }))
       var left = (1 - num(s.a1.seasonPhase)) * T().CLOCK.SEASON_S
-      setSlot(phaseNum, C().fmtTime(left), '')
+      // R7: a duration says what it is counting. Bare, this row read `summer  year 5  0:53`,
+      // where the same formatter's other two readouts on screen say `1:32 to empty` and
+      // `full in 7:01` — a countdown to nothing named is the one number nobody can act on.
+      setSlot(phaseNum, C().fmtTime(left), STR.left)
       phase.set(num(s.a1.seasonPhase), '',
         SEASON_LABEL[s.a1.season] + ', ' + C().fmtTime(left) + ' left')
-      setSlot(moist, C().fmt(num(s.a1.moisture)) + ' ×' +
-        C().fmt(a && a.moistureMult ? a.moistureMult() : 1), '')
+      // The level is the number; the multiplier it yields is a dim qualifier of that number,
+      // exactly as the pact book's `0.82 ×1.20` already has it. Left in the mantissa the `×` drew
+      // bright and leading, one line above WARMTH's dim, trailing `1.15 ×` — one operator, two
+      // type styles, on one card.
+      setSlot(moist, C().fmt(num(s.a1.moisture)),
+        '×' + C().fmt(a && a.moistureMult ? a.moistureMult() : 1))
       setSlot(warm, C().fmt(a && a.tempMult ? a.tempMult() : 1), '×')
       show(evRow.el, s.a1.activeEvents.length > 0)
       if (s.a1.activeEvents.length) {
