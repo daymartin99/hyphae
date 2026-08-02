@@ -3671,11 +3671,17 @@
     span(l1, 'row-sub', STR.delivered)
     var bar = meter('ascii', 0)
     l1.appendChild(bar)
-    var left = span(l1, 'row-num', '')
+    // R7 again: a duration says what it is counting. Both of these were bare — the term ran out
+    // as `0:00` beside a delivery bar, and the shortfall counted down to a default in an unnamed
+    // `0:18` — while the season row two panels up already reads `3:53 left` and the strip reads
+    // `0:44 to empty`. Same formatter, same screen, and these two were the ones saying nothing.
+    var left = slot('row-num')
+    l1.appendChild(left)
 
     var l2 = r.line()
     var shortLab = span(l2, 'row-sub', '')
-    var shortNum = span(l2, 'row-num', '')
+    var shortNum = slot('row-num')
+    l2.appendChild(shortNum)
     show(l2, false)
 
     var acts = el('div', 'row-actions')
@@ -3701,7 +3707,7 @@
         var total = Math.max(1e-9, num(c.endT) - num(c.startT))
         var done = fill((num(s.t) - num(c.startT)) / total)
         bar.set(done, '', Math.round(done * 100) + ' percent of the term')
-        setText(left, C().fmtTime(Math.max(0, num(c.endT) - num(s.t))))
+        setSlot(left, C().fmtTime(Math.max(0, num(c.endT) - num(s.t))), STR.left)
         // The shortfall budget is 5% of one season's delivery — about eighteen seconds of
         // non-payment — and it is counted down in seconds on screen.
         var budget = num(c.sugarRate) * T().CLOCK.SEASON_S * T().A1.SHORTFALL_FRAC
@@ -3709,7 +3715,8 @@
         show(l2, sh > 0)
         if (sh > 0) {
           setText(shortLab, STR.shortfall)
-          setText(shortNum, C().fmtTime(Math.max(0, budget - sh) / Math.max(1e-9, c.sugarRate)))
+          setSlot(shortNum, C().fmtTime(Math.max(0, budget - sh) / Math.max(1e-9, c.sugarRate)),
+            STR.left)
           setData(shortNum, 'tone', 'warn')
         }
         r.label(label + ', ' + C().fmt(num(c.sugarRate)) + ' sugar per second for ' +
@@ -3735,7 +3742,10 @@
     span(l1, 'row-sub', STR.delivered)
     var bar = meter('ascii', 0)
     l1.appendChild(bar)
-    var left = span(l1, 'row-num', '')
+    // Same countdown, same rule as the single rows this one folds: `3:35` beside a delivery bar
+    // is the nearest term running out, and it has to say so.
+    var left = slot('row-num')
+    l1.appendChild(left)
 
     var ex = r.expander()
     var subList = el('div', 'sub-list')
@@ -3763,7 +3773,7 @@
         }
         setSlot(rateNum, C().fmt(rate), GLYPH.minerals + '/s')
         bar.set(prog, '', Math.round(prog * 100) + ' percent of the nearest term')
-        setText(left, C().fmtTime(Math.max(0, soonest)))
+        setSlot(left, C().fmtTime(Math.max(0, soonest)), STR.left)
         r.label(label + ', ' + interp(STR.contractsN, { n: d.contracts.length }) + ', ' +
           C().fmt(rate) + ' minerals per second')
         // The folded contracts keep their full rows — delivered bar, shortfall, exit, renegotiate.
