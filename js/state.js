@@ -11,7 +11,7 @@
   // getter that builds the cold-boot save on first touch.
 
   var DEFAULT_SEED = 0x9E3779B9   // §3's literal; also the value core.rng() falls back to
-  var CURRENT = 2                 // §3 `v`. Bump on ANY key rename, removal or addition.
+  var CURRENT = 3                 // §3 `v`. Bump on ANY key rename, removal or addition.
 
   // The seven Act I substrate pools, in the order §3 writes them. This is a vocabulary, not a
   // tuning table — the per-type economics (k, etaB, etaS, price, cap, fall) belong to economy1.
@@ -283,6 +283,10 @@
 
       a1: {
         tips: 0,
+        // Cuts taken, not tips lost: the concentration multiplier is a function of how many times
+        // the front has been cut back, and act1 derives it rather than storing a second number
+        // that could disagree with this one.
+        deadheads: 0,
         hyphaeManual: 0,
         season: A1.BOOT_SEASON,
         seasonPhase: A1.BOOT_SEASON_PHASE,
@@ -486,7 +490,8 @@
       },
 
       a1: {
-        tips: 'num', hyphaeManual: 'num', season: 'num', seasonPhase: 'num', year: 'num',
+        tips: 'num', deadheads: 'num', hyphaeManual: 'num',
+        season: 'num', seasonPhase: 'num', year: 'num',
         moisture: 'num', weatherMoistMod: 'num', weatherFallMod: numArray(TYPES.length, false),
         sub: poolsCheck, consumptionOrder: 'arr', unlockedTypes: 'arr', mkt: mktCheck,
         patches: 'num', claimInFlight: 'objOrNull', netRep: 'num',
@@ -770,6 +775,12 @@
     fillDefaults(sv, newGame(sv.seed, sv.meta))
   }
 
+  // v2 predates deadheading's own counter. Same shape of change as v1 -> v2 and the same one-line
+  // migration: a save written before the verb existed has taken no cuts.
+  function m2to3 (sv) {
+    fillDefaults(sv, newGame(sv.seed, sv.meta))
+  }
+
   function migrate (save, from) {
     var v = isNum(from) ? from : (isNum(save.v) ? save.v : 0)
     if (v > CURRENT) return save     // never downgrade; load() and importB64() have already refused
@@ -781,6 +792,9 @@
         /* falls through */
       case 1:
         m1to2(save)
+        /* falls through */
+      case 2:
+        m2to3(save)
         /* falls through */
       default:
         break

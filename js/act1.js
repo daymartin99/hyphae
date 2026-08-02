@@ -567,6 +567,75 @@
     return true
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // DEADHEADING — the only thing in the game that costs tissue
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // Everything else the player buys is paid for out of the labile pool, and the colony on the
+  // canvas goes on growing through every purchase — which is why the headline number no longer
+  // falls for one. This is the exception, and it is the reason the exception is worth having: a
+  // cut takes a fifth of the front off, the mass laid down to build those tips leaves the
+  // organism, and the canvas thins with it because it draws from `a1.tips`. The number falls, the
+  // picture agrees, and the player did it on purpose.
+  //
+  // The tissue is priced at the tips' own build cost — the grams that were paid for exactly those
+  // rungs of the ladder — because that is the mass standing there. Any other figure would be a
+  // loss with no referent on screen.
+  function pruneCount (state) {
+    var s = state || S(), a = A()
+    var n = s.a1.tips
+    if (n < a.PRUNE_MIN_TIPS) return 0
+    var k = Math.ceil(n * a.PRUNE_FRAC)
+    // Never cut below the mineral gate. A cut that leaves the colony unable to hold the rung it
+    // has already climbed is not a concentration, it is a demolition.
+    if (n - k < a.PRUNE_MIN_TIPS) k = n - a.PRUNE_MIN_TIPS
+    return k > 0 ? k : 0
+  }
+
+  function pruneTissue (state) {
+    var s = state || S()
+    var k = pruneCount(s), n = s.a1.tips, g = 0, i
+    for (i = n - k; i < n; i++) g += tipCost(i, s)
+    return g
+  }
+
+  // Permanent, and capped. PRUNE_CONC is set above what E(n) loses across one cut — n^0.50 makes
+  // four fifths of the tips 0.894 of the column — so the first cut is worth taking; the ceiling
+  // arrives at the fourth, before the tip count has been cut to nothing.
+  function concentration (state) {
+    var s = state || S(), a = A()
+    var c = 1 + a.PRUNE_CONC * num(s.a1.deadheads)
+    return c > a.PRUNE_CONC_MAX ? a.PRUNE_CONC_MAX : c
+  }
+
+  function canDeadhead (state) {
+    var s = state || S()
+    return s.act === 1 && pruneCount(s) > 0 && concentration(s) < A().PRUNE_CONC_MAX
+  }
+
+  function deadhead () {
+    var s = S()
+    if (!canDeadhead(s)) return false
+    var k = pruneCount(s)
+    var g = pruneTissue(s)
+    s.a1.tips -= k
+    s.a1.deadheads = num(s.a1.deadheads) + 1
+    // The size falls by the whole of it, and `cumBiomass` is untouched: the colony did lay that
+    // mass down, and Act II's ladders are lifetime thresholds that must not fall back through
+    // themselves. `state.standing()` is what subtracts this.
+    s.res.pruned = num(s.res.pruned) + g
+    // Autolysis. A senescing hypha is emptied before it is abandoned, and what comes back is
+    // spendable rather than structural — so it lands in the labile pool and NOT in cumBiomass,
+    // which counts what was produced and never what was recycled.
+    var back = g * A().PRUNE_SALVAGE
+    if (back > 0) C().setStock(s.res, 'biomass', num(s.res.biomass) + back)
+    // A cut is a commit, not an extension: the same sound the interface makes for every other
+    // thing the player decides to spend. What it costs is on the strip, not in the mix.
+    feel('buy', { what: 'deadhead', n: k })
+    fire('a1.deadhead')
+    return true
+  }
+
   function hyphae (state) {
     var s = state || S(), a = A()
     return a.HYPHAE_PER_TIP * s.a1.tips +
@@ -636,7 +705,7 @@
     var s = state || S()
     if (s.act !== 1) return 0
     var v = A().TIP_THROUGHPUT * s.a1.tips *
-      enzymeStructure(s) * num(s.mult.prestigeGrowth) *
+      enzymeStructure(s) * concentration(s) * num(s.mult.prestigeGrowth) *
       num(s.mult.patchMult) *
       moistureMult(s) * tempMult(s)
     if (s.a1.claimInFlight) v *= A().CLAIM_THROUGHPUT
@@ -1708,6 +1777,11 @@
     tipCost: tipCost,
     tipMineralCost: tipMineralCost,
     buyTip: buyTip,
+    deadhead: deadhead,
+    canDeadhead: canDeadhead,
+    pruneCount: pruneCount,
+    pruneTissue: pruneTissue,
+    concentration: concentration,
     throughputPerSec: throughputPerSec,
     stepDecomposition: stepDecomposition,
     stepSeason: stepSeason,

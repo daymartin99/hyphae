@@ -111,7 +111,7 @@
     Q: 24,                   // quantisation: a channel that has not moved 1/24 repaints nothing
     WARM_MAX: 0.34,          // fraction of --hyphae-rich mixed in at a full enzyme suite
     MELAN_MAX: 0.44,         // fraction of --hyphae-melanin mixed in at a saturated MEL locus
-    CORD_W: 0.72,            // × WIDTHS at full cord: the trunk stroke goes 1.15 px → 1.98 px
+    CORD_W: 0.60,            // × WIDTHS at full cord: the trunk stroke goes 1.15 px → 1.84 px
     CORD_A: 0.11,            // + ALPHA at full cord: 0.35 → 0.46, under contrast mode's 0.55
     CORD_GEN: 2.0,           // × the generation bucket boundaries at full cord
     FORK_JIT: 1.7,           // × JITTER at a full front

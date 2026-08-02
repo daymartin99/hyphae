@@ -305,6 +305,13 @@
     'it grows while you are not looking at it',
     { pred: function (s) { return s.a1.tips >= 1 } })
 
+  // Repeatable, because deadheading is: four cuts are available across the act and each one is a
+  // decision the player made rather than a threshold they crossed. R1 register, and it reports the
+  // trade without having an opinion about it (09 §1.0 rule 2).
+  L(1, 'a1.deadhead', 'world', null, '@deadhead',
+    'the oldest threads are given up. the rest are fed better.',
+    { once: false })
+
   L(1, 'a1.sugar_reveal', 'narrative', null, 'tips >= 3',
     'you have been making this the whole time',
     { pred: function (s) { return s.a1.tips >= T().A1.REVEAL_SUGAR_TIPS } })

@@ -86,6 +86,18 @@
       ETA_B: 0.50,             // fraction of litter mass → biomass (K06)
       ETA_S: 0.20,             // fraction of litter mass → sugar (K06)
       RESPIRED: 0.30,          // fraction of litter mass respired and gone (§3.6 conservation)
+      // deadheading — the only thing in the game that costs tissue
+      // A cut gives up a fifth of the front and the mass that was laid down to build it, and pays
+      // a permanent concentration multiplier on what is left. The tips have to be re-bought at the
+      // same prices they cost the first time, so the multiplier is the whole of the return and the
+      // regrowth is the whole of the price: PRUNE_CONC is deliberately larger than the throughput
+      // E(n) loses across one cut (n^0.50 makes 0.80 of the tips 0.894 of the column), so one cut
+      // is worth taking and five are not — the ceiling lands before the tip count does.
+      PRUNE_MIN_TIPS: 24,       // tips, the mineral gate; below it a cut is just losing tips
+      PRUNE_FRAC: 0.20,         // share of the standing tip count taken in one cut
+      PRUNE_SALVAGE: 0.25,      // of the tissue removed, the fraction that autolyses back to labile
+      PRUNE_CONC: 0.14,         // × throughput per cut, permanent, on the tips that remain
+      PRUNE_CONC_MAX: 1.56,     // the concentration ceiling: four cuts, and the fourth is marginal
       // the mineral gate — the spine of the act
       MIN_WARN_TIPS: 20,        // tips, the greyed 0 ⛬ forecast on GROW TIP
       MIN_GATE_TIPS: 24,        // tips, first tip that costs a mineral (≈11:48)
