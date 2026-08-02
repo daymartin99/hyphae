@@ -4799,7 +4799,7 @@
       if (h) {
         setSlot(chN, h.channels + ' / ' + h.channelCap, '')
         setSlot(accN, C().fmt(h.accord), GLYPH.accord)
-        setSlot(costN, C().fmt(h.cost), 'g/s')
+        setSlot(costN, C().fmt(h.cost), GLYPH.biomass + '/s')
       }
       var list = pb.list()
       reconcile(pv.body, bag, list, function (c) { return c.id }, function () {
