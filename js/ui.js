@@ -242,7 +242,7 @@
     ripeness: 'ripeness',
     insight: 'insight',
     vesicles: 'vesicles',
-    unspent: '{n} unspent',
+    unspent: 'unspent',
     allocate: 'spend',
     pulse: 'pulse',
     ready: 'ready',
@@ -4130,7 +4130,7 @@
       var held = num(s.res.signal)
       var target = T().A1.DECIDE_SIGNAL
       setSlot(val, C().fmt(held), GLYPH.signal)
-      pv.setCount(C().fmt(held))
+      pv.setCount(C().fmt(held), GLYPH.signal)
       // Signal arrives with no uses at all for eight to fifteen minutes. The bar is drawn only once
       // it is close enough to the gate to be a plan rather than a mystery.
       var near = rev.decide || held >= target * U.SIGNAL_METER_AT
@@ -4391,7 +4391,7 @@
         C().fmt(held) + ' of ' + C().fmt(cap) + ' ' + STR.capacity)
       setSlot(rateN, '+' + C().fmt(sr), GLYPH.signal + '/s')
       setSlot(fills, g.saturated(s) ? STR.saturated : interp(STR.fillsIn, { v: secs(g.fillsIn(s)) }), '')
-      pv.setCount(C().fmt(held))
+      pv.setCount(C().fmt(held), GLYPH.signal)
 
       show(r2.el, !!rev.insight)
       if (!rev.insight) return
@@ -4432,7 +4432,10 @@
       var g = HY.cognition
       if (!g) return
       var un = num(g.unallocated(s))
-      setSlot(free, interp(STR.unspent, { n: un }), GLYPH.diff)
+      // The unit belongs to the number, not to the end of the phrase: `3 unspent D` strands the
+      // glyph on a word it does not measure. Same shape as the ledger's `45.3 sug/s owed` —
+      // number, unit, then the state word.
+      setSlot(free, String(un), GLYPH.diff + ' ' + STR.unspent)
       setSlot(condN, String(num(s.cog.dCond)), '')
       setSlot(vesN, String(num(s.cog.dVes)), '')
       pv.setCount(un > 0 ? String(un) : '')
@@ -5154,7 +5157,7 @@
       setAttr(cv, 'aria-label', STR.upsilon + ' ' + w.upsilon.toFixed(3) + '. ' +
         (far >= 0 ? interp(STR.band, { n: far }) + ' is ' + fd.toFixed(2) + ' turns from the rest.'
           : ''))
-      pv.setCount(w.upsilon.toFixed(2))
+      pv.setCount(w.upsilon.toFixed(2), GLYPH.upsilon)
     }
     p.view = pv
     return pv
@@ -5461,7 +5464,9 @@
       name: hazard.name,
       set: function (r) {
         bar.set(r.frac, r.frac > 0.4 ? 'warn' : '', hazard.name.toLowerCase() + ' ' + pct(r.frac))
-        setSlot(n, r.count > 0 ? C().fmt(r.count) : STR.nothing, '')
+        // What starvation took is craft, and it is counted in craft: bare, it read `11.9 G`, the
+        // same offer of an SI prefix as a substance that the strip's CRAFT row was making.
+        setSlot(n, r.count > 0 ? C().fmt(r.count) : STR.nothing, r.count > 0 ? GLYPH.craft : '')
         if (r.count > 0) setPct(share, r.frac)
         else setSlot(share, '', '')
         setData(share, 'tone', r.frac > 0.4 ? 'warn' : '')
