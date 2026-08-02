@@ -937,7 +937,12 @@
     // that takes hyphae away is a mechanic that takes branches away, and this is where the picture
     // is made to agree with the number without either side knowing about the other.
     var raw = targetRaw(hyphaeM)
-    if (net.live - raw >= SHED.MIN) { shedTo(raw); return 0 }
+    // …and only while the colony is still a colony. `hyphae` reaching zero is not a loss inside a
+    // life, it is DECIDE deleting the body, and that is not shed branch by branch — the transition
+    // conducts through the whole network and then cuts, and the next network arrives with the next
+    // seed. Unzipping the mat to nothing on the frames before that would take the cinematic's
+    // subject away from it.
+    if (raw > GROW.MIN_TARGET && net.live - raw >= SHED.MIN) { shedTo(raw); return 0 }
 
     var want = targetFor(hyphaeM)
     if (net.live >= want) return 0
@@ -2687,6 +2692,12 @@
     for (var ri = 0; ri < 40 && sh.live < before; ri++) grow(sh)
     ok(sh.live > before - went, 'shed: the colony could not regrow into what it had shed')
     ok(shedTo(sh.live + 10) === 0, 'shed: a target above the live count shed something anyway')
+    // DECIDE zeroes tips, patches and the manual term in one transaction, so the frames between it
+    // and the act flip ask this surface for a colony of nothing. It must refuse: the transition
+    // conducts through the body it is about to cut, and cannot conduct through two nodes.
+    var wasLive = sh.live
+    growNetwork(0)
+    ok(sh.live === wasLive, 'shed: hyphae reaching zero unzipped the body DECIDE was about to cut')
     ok(shedMetres(0) === 0 && shedMetres(-3) === 0, 'shed: a non-loss shed something')
     ok(shedMetres(20) === Math.round(20 * GROW.SEG_PER_M) ||
        shedMetres(0.4) === 0, 'shed: metres are not converted at SEG_PER_M')
