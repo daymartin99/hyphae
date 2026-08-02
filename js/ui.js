@@ -1196,6 +1196,20 @@
     return s
   }
 
+  // A button whose label ends in a price is two runs, not one string. `.act-btn` uppercases —
+  // 06 §5.2 wants buttons to shout — and a price swept into that run comes out changed: RAISE CAP
+  // painted its `400 α` as `400 Α`, a capital alpha, and REGENOME's `1.00 k Χ` would come out
+  // `1.00 K Χ`. The word still shouts; the number goes in a `num` span, which does not.
+  function setBtnPrice (node, word, value) {
+    if (!node.__word) {
+      node.textContent = ''
+      node.__word = span(node, '', '')
+      node.__price = span(node, 'num', '')
+    }
+    setText(node.__word, value ? word + ' · ' : word)
+    setText(node.__price, value || '')
+  }
+
   function actionButton (label, fn, opts) {
     var b = btn('act-btn', label)
     bindPress(b, function (e) {
@@ -3458,14 +3472,19 @@
     }
 
     // The two fixed sizes are masses, and they carry their unit: `1.00 k` alone is a quantity of
-    // nothing in particular next to a price quoted per gram.
+    // nothing in particular next to a price quoted per gram. The mass goes in a `num` span rather
+    // than straight into the button, because `.burst > button` uppercases and a plain text node
+    // painted these `1.00 KG` and `10.0 KG` — kelvin-grams, on the one row where the player is
+    // comparing a mass against a price per gram.
     U.MARKET_BUY_G.forEach(function (g) {
-      var b = btn('', C().fmtMass(g))
+      var b = btn('')
+      span(b, 'num', C().fmtMass(g))
       bindPress(b, function () { trade(g, null, b) }, { onUp: true })
       burst.appendChild(b)
       buys.push({ el: b, kind: 'abs', g: g })
     })
-    var bFrac = btn('', pct(U.MARKET_FRAC))
+    var bFrac = btn('')
+    span(bFrac, 'num', pct(U.MARKET_FRAC))
     bindPress(bFrac, function () { trade(null, U.MARKET_FRAC, bFrac) }, { onUp: true })
     burst.appendChild(bFrac)
     buys.push({ el: bFrac, kind: 'frac', g: 0 })
@@ -5375,12 +5394,11 @@
       setSlot(costN, C().fmt(cost), GLYPH.insight)
       setSlot(capN, num(s.a3.lociBought) + ' / ' + num(s.a3.lociCap), '')
       var capCost = dv && dv.capCost ? num(dv.capCost(s)) : Infinity
-      setText(capBtn, STR.raiseCap + ' · ' + C().fmt(capCost) + ' ' + GLYPH.alleles)
+      setBtnPrice(capBtn, STR.raiseCap, C().fmt(capCost) + ' ' + GLYPH.alleles)
       setData(capBtn, 's', num(s.res.alleles) >= capCost ? 'afford' : 'want')
       var rw = !!bl.rewriting(s)
-      setText(regenBtn.lastChild, rw
-        ? interp(STR.rewriting, { v: secs(num(s.a3.regenomeAt) - num(s.t)) })
-        : STR.regenome + ' · ' + C().fmt(num(bl.regenomeCost(s))) + ' ' + GLYPH.carbon)
+      if (rw) setBtnPrice(regenBtn.lastChild, interp(STR.rewriting, { v: secs(num(s.a3.regenomeAt) - num(s.t)) }), '')
+      else setBtnPrice(regenBtn.lastChild, STR.regenome, C().fmt(num(bl.regenomeCost(s))) + ' ' + GLYPH.carbon)
       setData(regenBtn, 's', !rw && num(s.res.carbon) >= num(bl.regenomeCost(s))
         ? 'afford' : 'want')
       for (var k = 0; k < rows.length; k++) rows[k].sync(s)

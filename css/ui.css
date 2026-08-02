@@ -766,9 +766,10 @@ canvas{ display:block; }
               color:var(--text-secondary); }
 .panel-count{ margin-inline-start:auto; font:var(--t-micro); letter-spacing:.10em;
               text-transform:uppercase; color:var(--text-tertiary); }
-/* An uppercased unit is a different unit: the craft glyph `n` came out of this chip as `N`, which
-   is newtons, and `sug` as `SUG`. The words in the chip are still uppercase; the unit is not. */
-.panel-count .unit{ text-transform:none; }
+/* An uppercased unit is a different unit — the craft glyph `n` came out of this chip as `N`, which
+   is newtons, and `sug` as `SUG`. The rule that fixes it now lives once, at the foot of this
+   sheet, on `.num`/`.mant`/`.unit`, because the same chip also paints `209 k Σ` as `209 K Σ` and
+   that `k` is in the mantissa, where a rule on the unit span alone could never reach it. */
 .panel-body{ padding-top:var(--sp-8); }
 .panel-empty{ padding:var(--sp-12) var(--gutter); font:var(--t-meta);
               color:var(--text-tertiary); text-align:center; }
@@ -1529,5 +1530,16 @@ canvas{ display:block; }
 
 .num,[data-num]{ font-variant-numeric:tabular-nums slashed-zero;
                  font-feature-settings:"tnum" 1,"zero" 1; }
+
+/* A NUMBER IS NEVER UPPERCASED, ANYWHERE. Not a style preference — an uppercased unit is a
+   different unit, and an uppercased SI prefix is a different magnitude or a different quantity
+   entirely. Every one of these was on a phone screen: `1.00 kg` painted `1.00 KG` on the market's
+   buy button (K is kelvin), `209 k Σ` painted `209 K Σ` in THE MIND's header (kilo painted as
+   kelvin, against `209 k Σ` in the strip one thumb away), `100 rep` painted `100 REP` in THE
+   UNDERSTORY's (against `100 rep` in the tree row below it), and `400 α` painted `400 Α` on RAISE
+   CAP, which is a capital alpha. The words around them still shout; the number does not. This
+   supersedes the narrower `.panel-count .unit` rule, which reached the unit span only and so
+   never covered a prefix or a unit sitting in the mantissa. */
+.num,.mant,.unit{ text-transform:none; }
 :root[data-numfont="mono"] .num,
 :root[data-numfont="mono"] [data-num]{ font-family:var(--font-mono); }
