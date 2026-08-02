@@ -67,7 +67,88 @@
     ALPHA: 0.35,                 // structural stroke alpha, dark theme
     ALPHA_LIGHT: 0.42,
     ALPHA_CONTRAST: 0.55,
-    PALETTE_MS: 1000             // ms between token re-reads; a theme flip forces one immediately
+    PALETTE_MS: 1000,            // ms between token re-reads; a theme flip forces one immediately
+    // A repaint restrokes the whole mat, and the mat carries its own history: the season wash
+    // (below) is a per-node age, not a bitmap accident, so a repaint must reproduce it. Six alpha
+    // bins is the whole cost of that — three widths × six bins is eighteen stroke() calls for a
+    // network of any size, against the three an incremental append costs.
+    AGE_BINS: 6,
+    AGE_FLOOR: 0.40              // the oldest growth never fades past this fraction of its ink
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE FORM — what the colony has become, drawn
+  //
+  // Everything above draws *a* colony. Until this table nothing drew *this* colony: forty projects
+  // and eight loci moved every number on the screen and not one pixel of the organism, in a game
+  // whose entire claim is that you are a living thing rather than a machine. Eufloria's seedlings
+  // wear their stats; ours wear nothing.
+  //
+  // Five channels fix that, and each is a real consequence of the thing that drives it rather than
+  // a badge stuck on the side:
+  //
+  //   warmth  A white-rot mat on fresh leaf litter is bone white. One that has cracked lignin and
+  //           is oxidising the phenolics out of it goes ochre. So a broadening enzyme suite mixes
+  //           the stroke a fraction of the way toward --hyphae-rich and no further.
+  //   cord    Rhizomorphs are hyphae aggregated into cords. Structure widens every stroke, pushes
+  //           the generation buckets outward so cord runs further from the inoculation before it
+  //           thins to filament, and raises the mat's opacity, because a thicker mat is denser.
+  //   fork    A fed front branches more and wanders more. This one is *grown*, not painted: it is
+  //           the attractor density and the per-segment jitter, so the shape of the colony —
+  //           not merely its colour — is a record of what it could afford.
+  //   tips    The glow at the front is the tips you actually own, not a fixed sixty.
+  //   melan   Act III's MEL locus is melanin, and melanin is dark. It is the one channel here that
+  //           makes the organism less bright rather than more, and it takes the warmth with it.
+  //
+  // 06 §0.1 rule 7 — hue is never the sole carrier — is respected by construction: warmth never
+  // arrives without cord, none of this carries information the numbers do not already state, and
+  // the whole range is inside the spore/amber/soil lane of 06 §2.1. Nothing glows. Nothing is
+  // saturated. The alpha ceiling is below the one `prefers-contrast: more` already ships.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  var FORM = {
+    MS: 400,                 // ms between derivations: a purchase lands inside half a second
+    Q: 24,                   // quantisation: a channel that has not moved 1/24 repaints nothing
+    WARM_MAX: 0.34,          // fraction of --hyphae-rich mixed in at a full enzyme suite
+    MELAN_MAX: 0.44,         // fraction of --hyphae-melanin mixed in at a saturated MEL locus
+    CORD_W: 0.72,            // × WIDTHS at full cord: the trunk stroke goes 1.15 px → 1.98 px
+    CORD_A: 0.11,            // + ALPHA at full cord: 0.35 → 0.46, under contrast mode's 0.55
+    CORD_GEN: 2.0,           // × the generation bucket boundaries at full cord
+    FORK_JIT: 1.7,           // × JITTER at a full front
+    FORK_DENS: 0.95,         // + × the attractor pool at a full front
+    TIP_MIN: 4,              // glowing tips at cold boot: a young colony is a few points of light
+    TIP_R_K: 0.45,           // + × TIP_R at full cord
+    // The inputs, and the value of each at which its channel is full.
+    TYPES_FULL: 7,           // 01's seven substrate pools
+    ENZ_FULL: 2.2,           // mean enzymeK at which breadth is saturated
+    STRUCT_FULL: 1.50,       // mult.structureMult tops out at 1.475 on the shipped ladder
+    PROJ_FULL: 26,           // projects bought at which cord is saturated
+    TIPS_FULL: 96,           // hyphal tips at which the front is as busy as it is ever drawn
+    PATCH_FULL: 8,           // patches at which the front is as wide as it is ever grown
+    LOCUS_FULL: 6            // an Act III locus value at which its trait is fully expressed
+  }
+
+  // ── SHEDDING · when tissue is genuinely lost ───────────────────────────────
+  //
+  // THE CONTRACT, for whoever owns the deadheading mechanic: this surface does not need to be told
+  // that a prune happened, and there is no key to write. The canvas has always grown toward
+  // floor(hyphae · 2) nodes. Take metres away and it sheds the branches those metres were, on the
+  // next frame, on its own — so senescence, a frost, a default and a deliberate cull are all drawn
+  // correctly the moment they debit the number. `HY.canvas.shed(metres)` exists only for a mechanic
+  // that wants the loss on screen on the instant it fires rather than on the next frame.
+  //
+  // What goes is the fringe: whole terminal runs, newest leaf first, each unzipped back to the
+  // first fork so a branch is shed as a branch and never as a scatter of dots. The mat restrokes
+  // without them in the same frame — they are gone, not dimmed — and their ghost falls away on the
+  // flux layer in rust, which is the one colour 06 §2.1 gives to loss.
+  var SHED = {
+    MIN: 6,                  // nodes: below three metres nothing is shed, so noise cannot prune
+    MS: 1100,                // ms the ghost takes to let go
+    HZ: 20,                  // Hz the flux layer borrows while one is falling
+    A: 0.50,                 // ghost alpha at the instant of the loss
+    DRIFT: 7,                // px the shed tissue falls as it fades. It is not switched off.
+    GHOST_MAX: 600           // segments kept for the ghost; a larger shed still sheds, it is
+                             // simply not drawn falling in its entirety
   }
 
   var FLUX = {
@@ -217,9 +298,95 @@
   }
 
   // ───────────────────────────────────────────────────────────────────────────
+  // THE FORM, DERIVED
+  //
+  // Read from the save at 2.5 Hz and quantised, so a channel that has not moved a twenty-fourth of
+  // its range costs nothing at all. When one has moved, the whole mat is restroked in the next
+  // frame — which is the point: the answer to a purchase is the organism changing, not the next
+  // segment being slightly different from the last.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  var MEL_LOCUS = 4          // §3's locus order is BAL GER MYC SPO MEL DOR FID ANT, fixed forever
+
+  var form = { at: 0, key: '', warm: 0, cord: 0, fork: 0, melan: 0, tips: FORM.TIP_MIN }
+
+  function norm (v, lo, hi) {
+    if (typeof v !== 'number' || v !== v) return 0
+    return clamp01((v - lo) / (hi - lo))
+  }
+
+  function quant (v) { return Math.round(clamp01(v) * FORM.Q) / FORM.Q }
+
+  function readForm (force) {
+    var t = nowMs()
+    if (!force && t - form.at < FORM.MS) return
+    form.at = t
+
+    var s = S()
+    var warm = 0, cord = 0, fork = 0, melan = 0, tips = FORM.TIP_MIN
+    if (s) {
+      var m = s.mult || {}
+      var a1 = s.a1 || {}
+
+      // BREADTH → warmth. Two halves, because a suite is both how many substrates it opens and how
+      // hard it works them: the seven pools of 01 §5, and the mean of the per-type enzymeK the
+      // catalog sharpens. A colony that has unlocked carrion and cracked lignin is not eating what
+      // it ate at boot, and it should not be the colour it was at boot.
+      var kn = 0, ks = 0, kk
+      for (kk in m.enzymeK) {
+        if (typeof m.enzymeK[kk] === 'number') { ks += m.enzymeK[kk]; kn++ }
+      }
+      warm = 0.5 * norm(a1.unlockedTypes ? a1.unlockedTypes.length : 0, 1, FORM.TYPES_FULL) +
+             0.5 * norm(kn ? ks / kn : 1, 1, FORM.ENZ_FULL)
+
+      // STRUCTURE → cord. The ladder, and the catalog behind it: a colony twenty-six projects deep
+      // is built differently from one that has bought two, whatever those two happened to be.
+      cord = 0.6 * norm(m.structureMult, 1, FORM.STRUCT_FULL) +
+             0.4 * norm(s.proj && s.proj.bought ? s.proj.bought.length : 0, 0, FORM.PROJ_FULL)
+
+      // THE FRONT → fork. What the colony can afford to be: tips, and the ground under them.
+      fork = 0.65 * norm(a1.tips, 0, FORM.TIPS_FULL) +
+             0.35 * norm(a1.patches, 1, FORM.PATCH_FULL)
+
+      // MEL → melanin. The one locus that changes what the organism looks like rather than what it
+      // earns, which is exactly why it is the one drawn.
+      var loci = s.a3 && s.a3.loci
+      if (loci && loci.length > MEL_LOCUS) melan = norm(loci[MEL_LOCUS], 0, FORM.LOCUS_FULL)
+
+      tips = FORM.TIP_MIN + (typeof a1.tips === 'number' && a1.tips > 0 ? a1.tips : 0)
+    }
+
+    // The glow at the front is flux only and moves every time a tip is bought, so it is deliberately
+    // outside the key: it costs nothing and it must never trigger a repaint of the structure.
+    form.tips = tips > FLUX.TIP_N ? FLUX.TIP_N : tips
+
+    var key = quant(warm) + '|' + quant(cord) + '|' + quant(fork) + '|' + quant(melan)
+    if (key === form.key) return
+    form.key = key
+    form.warm = quant(warm); form.cord = quant(cord)
+    form.fork = quant(fork); form.melan = quant(melan)
+    if (net) applyForm(net)
+    // The colony is what it now is. One repaint, on the frame after the purchase.
+    invalidate()
+  }
+
+  // The mat's ink: bone-white, pulled a capped fraction toward richness and then toward melanin.
+  // Melanin is applied second and is the larger pull, because a melanised mat is not a warm one.
+  function mix (a, b, f) {
+    return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]
+  }
+
+  function formStroke () {
+    var c = pal.hyphae
+    if (form.warm > 0) c = mix(c, pal.rich, FORM.WARM_MAX * form.warm)
+    if (form.melan > 0) c = mix(c, pal.melanin, FORM.MELAN_MAX * form.melan)
+    return [Math.round(c[0]), Math.round(c[1]), Math.round(c[2])]
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
   // THE NETWORK MODEL — seeded space colonisation with a bounded frontier (06 §7.2)
   //
-  // Pure function of (seed, n, W, H). No DOM, no clock, no Math.random.
+  // Pure function of (seed, n, W, H, form). No DOM, no clock, no Math.random.
   // ───────────────────────────────────────────────────────────────────────────
 
   var net = null
@@ -237,7 +404,20 @@
       par: new Int32Array(GROW.CAP),
       gen: new Uint8Array(GROW.CAP),
       fslot: new Int32Array(GROW.CAP),     // frontier slot, or −1 once evicted
-      n: 0, drawn: 0, steps: 0,
+      // The three arrays the mat needs to be more than a bitmap. `epoch` is the season count at a
+      // node's birth, so a repaint can reproduce the ageing the wash has applied rather than
+      // throwing the player's history away every time the ink changes. `childN` is what makes a
+      // terminal run findable in one backward pass, which is what a shed walks. `lost` is tissue
+      // that is gone: never drawn, never grown from, never counted.
+      epoch: new Uint8Array(GROW.CAP),
+      childN: new Uint8Array(GROW.CAP),
+      lost: new Uint8Array(GROW.CAP),
+      n: 0, live: 0, wash: 0, drawn: 0, steps: 0,
+      // The form the colony is growing at, captured onto the network so grow() stays a pure
+      // function of what it is handed. A regeneration after a resize replays at the form the
+      // organism has NOW, which is the organism it now is — the alternative is a picture of a
+      // colony the player stopped being an hour ago.
+      jit: GROW.JITTER, dens: 1,
       frontier: new Int32Array(GROW.FRONTIER),
       fCount: 0, fHead: 0,
       accX: new Float32Array(GROW.FRONTIER),
@@ -253,9 +433,17 @@
       cellN: new Uint8Array(GW * GH),
       cellW: new Uint8Array(GW * GH)       // ring cursor: each cell indexes its most recent nodes
     }
+    applyForm(n)
     appendNode(n, W / 2, H - GROW.SEED_INSET, -1, 0)
-    spawnAttractors(n, A0)
+    spawnAttractors(n, Math.round(A0 * n.dens))
     return n
+  }
+
+  // The two growth parameters the form owns. Split out because a purchase must be able to change
+  // the character of what grows next without regenerating what is already there.
+  function applyForm (o) {
+    o.jit = GROW.JITTER * (1 + FORM.FORK_JIT * form.fork)
+    o.dens = 1 + FORM.FORK_DENS * form.fork
   }
 
   function clampI (v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v) }
@@ -307,6 +495,11 @@
     if (o.n >= GROW.CAP) return -1
     var i = o.n
     o.x[i] = px; o.y[i] = py; o.par[i] = parent; o.gen[i] = g
+    o.epoch[i] = o.wash < 255 ? o.wash : 255
+    o.childN[i] = 0
+    o.lost[i] = 0
+    o.live++
+    if (parent >= 0 && o.childN[parent] < 255) o.childN[parent]++
 
     // The index is a per-cell ring of the most recent BUCKET nodes. Overflow is dropped from the
     // index, never from the network (06 §7.2) — and dropping the *oldest* is what keeps the query
@@ -369,6 +562,11 @@
         var base = c * GROW.BUCKET
         for (var k = 0; k < cn; k++) {
           var i = o.cell[base + k]
+          // Shed tissue is out of the index in every sense that matters: it cannot consume an
+          // attractor and it cannot be grown from. Leaving it in `bestAny` would leave a permanent
+          // dead zone where the colony had been, and a colony that can never reclaim what it cut
+          // is a colony that can only ever get smaller.
+          if (o.lost[i]) continue
           var dx = px - o.x[i], dy = py - o.y[i]
           var d2 = dx * dx + dy * dy
           if (d2 < bestAny) { bestAny = d2; _bAny = i }
@@ -413,7 +611,7 @@
       var m = Math.sqrt(dx * dx + dy * dy)
       if (!(m > 0)) continue
       dx /= m; dy /= m
-      var th = Math.atan2(dy, dx) + (hash01(o.seed, o.n) * 2 - 1) * GROW.JITTER
+      var th = Math.atan2(dy, dx) + (hash01(o.seed, o.n) * 2 - 1) * o.jit
       var L = segLen(o.n)
       var nx = o.x[i] + Math.cos(th) * L
       var ny = o.y[i] + Math.sin(th) * L
@@ -422,7 +620,8 @@
     }
 
     // 3 · replenish.
-    if (o.aCount < o.A0 * GROW.REPLENISH_AT) spawnAttractors(o, Math.round(o.A0 * GROW.REPLENISH_ADD))
+    var pool = o.A0 * o.dens
+    if (o.aCount < pool * GROW.REPLENISH_AT) spawnAttractors(o, Math.round(pool * GROW.REPLENISH_ADD))
     o.steps++
     return added
   }
@@ -463,7 +662,8 @@
   // The stylesheet is the only authority on colour; these are the resolved dark primitives of
   // 06 §2.2 and exist purely so a headless or pre-first-paint call has something finite to write.
   // Every real draw calls refreshPalette() first, and the first such call always re-reads.
-  var pal = { at: 0, hyphae: [232, 225, 211], bg: [7, 9, 6], signal: [98, 195, 154],
+  var pal = { at: 0, hyphae: [232, 225, 211], rich: [245, 210, 143], melanin: [122, 131, 113],
+              bg: [7, 9, 6], signal: [98, 195, 154],
               tertiary: [122, 131, 113], spore: [239, 235, 221], negative: [162, 75, 50],
               attention: [217, 154, 43], line: [44, 51, 41], lineStrong: [58, 66, 54],
               surface1: [21, 25, 20], surface2: [27, 32, 26], text: [232, 225, 211] }
@@ -496,6 +696,11 @@
     var cs = getComputedStyle(d.documentElement)
     function tok (name, fb) { return parseColor(cs.getPropertyValue(name), fb) }
     pal.hyphae = tok('--hyphae-stroke', pal.hyphae)
+    // The two ends the mat's ink can be pulled toward as the organism becomes something. Both are
+    // bound in the stylesheet per theme and per act, so the pull is correct in the void and on
+    // paper without this module knowing which one it is in.
+    pal.rich = tok('--hyphae-rich', pal.rich)
+    pal.melanin = tok('--hyphae-melanin', pal.melanin)
     pal.bg = tok('--canvas-bg', pal.bg)
     pal.signal = tok('--signal', pal.signal)
     pal.tertiary = tok('--text-tertiary', pal.tertiary)
@@ -526,9 +731,13 @@
     reduced = !!(m && m.matches)
   }
 
+  // A thicker mat is a denser mat, so cord raises the ink as well as the width. The ceiling is
+  // 0.46 against the 0.55 `prefers-contrast: more` already ships, so this can only ever improve
+  // the 3 : 1 the contrast ledger of 06 §2.6 holds the stroke to.
   function strokeAlpha () {
-    if (contrast) return DRAW.ALPHA_CONTRAST
-    return lightTheme ? DRAW.ALPHA_LIGHT : DRAW.ALPHA
+    var base = contrast ? DRAW.ALPHA_CONTRAST : (lightTheme ? DRAW.ALPHA_LIGHT : DRAW.ALPHA)
+    var a = base + FORM.CORD_A * form.cord
+    return a > 1 ? 1 : a
   }
 
   function T () { return TIERS[tier] || TIERS.MED }
@@ -655,10 +864,11 @@
     if (!net) {
       net = newNet(seedOf(), surf.W, surf.H)
     } else if (geomChanged) {
-      net = regenerate(net.seed, surf.W, surf.H, net.n, 40)
+      net = regenerate(net.seed, surf.W, surf.H, net.live, 40)
       paths.length = 0
       pulses.length = 0
       surge = null
+      shedGhost = null
       depthN = -1
     }
     mapDirty = true
@@ -678,8 +888,9 @@
       net = newNet(want, surf.W, surf.H)
       paths.length = 0
       pulses.length = 0
-      // A push in flight belonged to tips this network no longer has.
+      // A push in flight, or tissue in the act of falling, belonged to a network that is gone.
       surge = null
+      shedGhost = null
       // The conduction wave's root-to-tip distances belong to the network that was replaced.
       depthN = -1
       clearNet()
@@ -703,10 +914,16 @@
   // GROWTH — driven by the game, not by the clock (06 §7.3)
   // ───────────────────────────────────────────────────────────────────────────
 
-  function targetFor (hyphaeM) {
+  // The colony the metres ask for, before the render tier has its say. Kept separate because a
+  // tier demotion lowers segCap and must never be read as tissue having been lost.
+  function targetRaw (hyphaeM) {
     var m = typeof hyphaeM === 'number' && hyphaeM === hyphaeM ? hyphaeM : 0
     var want = Math.floor(m * GROW.SEG_PER_M)
-    if (want < GROW.MIN_TARGET) want = GROW.MIN_TARGET
+    return want < GROW.MIN_TARGET ? GROW.MIN_TARGET : want
+  }
+
+  function targetFor (hyphaeM) {
+    var want = targetRaw(hyphaeM)
     var cap = Math.min(T().segCap, GROW.CAP)
     return want > cap ? cap : want
   }
@@ -714,8 +931,16 @@
   function growNetwork (hyphaeM) {
     if (!net) { attach(); ensureNet() } else ensureNet()
     if (!net) return 0
+    readForm(false)
+
+    // TISSUE LOST. See SHED above for the contract: the metres are the whole of it. A mechanic
+    // that takes hyphae away is a mechanic that takes branches away, and this is where the picture
+    // is made to agree with the number without either side knowing about the other.
+    var raw = targetRaw(hyphaeM)
+    if (net.live - raw >= SHED.MIN) { shedTo(raw); return 0 }
+
     var want = targetFor(hyphaeM)
-    if (net.n >= want) return 0
+    if (net.live >= want) return 0
 
     // A sudden jump — a patch claim is 30 m and therefore 60 nodes, an offline return can be 800 —
     // is throttled into a visible growth event of about two and a half seconds rather than a jump.
@@ -724,7 +949,7 @@
     var budget = reduced ? GROW.CAP : GROW.NEW_MAX
     var t0 = nowMs()
     var added = 0, guard = 0
-    while (net.n < want && added < budget && guard++ < 64) {
+    while (net.live < want && added < budget && guard++ < 64) {
       var k = grow(net)
       added += k
       if (k === 0 && net.aCount === 0) break
@@ -732,6 +957,100 @@
       if (nowMs() - t0 > BUDGET.FRAME_MS) break
     }
     return added
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE SHED — the one thing that is not append-only (see SHED, above)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // The ghost of what was just let go: `{ at, seg }`, or null. Not game state — it is not saved,
+  // it does not survive a reload, and a shed the player did not see still happened, because the
+  // loss is recorded in the metres and the metres are what this surface reads.
+  var shedGhost = null
+
+  // Take the colony down to `want` live nodes by shedding whole terminal runs, newest leaf first,
+  // each unzipped back to the first fork. A branch is shed as a branch. The inoculation point at
+  // index 0 is never shed: a colony that has lost everything is still a colony that started here.
+  //
+  // Shed nodes stay in the arrays — the network is append-only in its *storage*, which is what the
+  // spatial hash and the parent chain depend on — but they leave the frontier, leave the index's
+  // answers, and are never drawn again. The consequence to know about: `n` keeps climbing while
+  // `live` does not, so a colony that has shed hard reaches CAP holding fewer nodes than CAP. With
+  // CAP at 4,000 against a MED segCap of 2,400 there is 1,600 nodes of shed headroom before that
+  // bites, and the failure mode at the end of it is a colony that stops growing, not one that
+  // breaks.
+  function shedTo (want) {
+    var o = net
+    if (!o) return 0
+    var drop = o.live - (want > 0 ? want : 0)
+    if (drop <= 0) return 0
+    var seg = []
+    var gone = 0
+    for (var i = o.n - 1; i >= 1 && gone < drop; i--) {
+      if (o.lost[i] || o.childN[i] !== 0) continue
+      var j = i
+      while (j >= 1 && gone < drop && !o.lost[j] && o.childN[j] === 0) {
+        var p = o.par[j]
+        o.lost[j] = 1
+        o.live--
+        gone++
+        if (p >= 0) {
+          if (o.childN[p] > 0) o.childN[p]--
+          if (seg.length < SHED.GHOST_MAX * 4) seg.push(o.x[p], o.y[p], o.x[j], o.y[j])
+        }
+        // Out of the frontier, and its accumulator with it: a slot the spawn pass may reach later
+        // in this same step must not spawn a child off tissue that is no longer there.
+        var f = o.fslot[j]
+        if (f >= 0) {
+          o.frontier[f] = -1; o.fslot[j] = -1
+          o.accX[f] = 0; o.accY[f] = 0; o.accN[f] = 0
+        }
+        j = p
+      }
+    }
+    if (!gone) return 0
+    // The mat restrokes without them on the next frame. Shed tissue is gone, not dimmed — the
+    // dimming would say "dying", and by the time the number has moved it has already died.
+    invalidate()
+    // Under reduced motion the loss is the repaint and nothing else: a fall is motion, and the
+    // branches being absent is the information.
+    if (!reduced && T().fluxHz > 0 && seg.length) {
+      shedGhost = { at: nowMs(), seg: Float32Array.from(seg) }
+    }
+    return gone
+  }
+
+  // The public door, for a mechanic that wants the loss on screen on the instant it fires rather
+  // than on the next frame. `metres` is tissue lost, in the same metres `hyphae` is counted in.
+  function shedMetres (metres) {
+    if (!net) return 0
+    var m = typeof metres === 'number' && metres === metres ? metres : 0
+    var drop = Math.round(m * GROW.SEG_PER_M)
+    if (drop <= 0) return 0
+    return shedTo(net.live - drop)
+  }
+
+  // Rust, falling. Two draw calls, bounded by GHOST_MAX, and a monotone fade — nothing here
+  // changes luminance more than once, which is what 06 §0.1 rule 6 is actually asking for.
+  function drawShed (ctx, tMs) {
+    if (!shedGhost) return
+    var u = (tMs - shedGhost.at) / SHED.MS
+    if (u >= 1) { shedGhost = null; lastFlux = 0; return }
+    var fall = SHED.DRIFT * u * u
+    var a = SHED.A * (1 - u) * (1 - u)
+    var seg = shedGhost.seg
+    ctx.save()
+    ctx.globalAlpha = a
+    ctx.strokeStyle = rgba(pal.negative, 1)
+    ctx.lineWidth = DRAW.WIDTHS[2] * (1 + FORM.CORD_W * form.cord)
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    for (var k = 0; k + 3 < seg.length; k += 4) {
+      ctx.moveTo(seg[k], seg[k + 1] + fall)
+      ctx.lineTo(seg[k + 2], seg[k + 3] + fall)
+    }
+    ctx.stroke()
+    ctx.restore()
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -745,6 +1064,9 @@
     sampleFrame()
     if (!surf.attached && !attach()) return
     if (!net) { ensureNet(); if (!net) return }
+    // A purchase changes what this draws, so what it draws is re-derived before it decides whether
+    // there is anything to draw at all: a form change sets `repaint` and there always is.
+    readForm(false)
     // In Act II the hex map owns this surface and restrokes the network itself, behind the hexes.
     // Appending here as well would draw every new segment twice, at twice the alpha.
     var st = S()
@@ -763,37 +1085,101 @@
     var t0 = nowMs()
     var ctx = surf.netCtx
     refreshPalette(false)
-    ctx.save()
-    ctx.strokeStyle = rgba(pal.hyphae, 1)
-    ctx.globalAlpha = strokeAlpha()
-    ctx.lineCap = 'round'
-    // One path per line-width bucket: three strokes, regardless of batch size. Thicker near the
-    // origin, finer at the tips — anatomically correct and the cheapest possible depth cue.
-    for (var b = 0; b < 3; b++) {
-      ctx.lineWidth = DRAW.WIDTHS[b]
-      ctx.beginPath()
-      var any = false
-      for (var i = net.drawn; i < net.n; i++) {
-        var p = net.par[i]
-        if (p < 0) continue
-        if (bucketOf(net.gen[i]) !== b) continue
-        ctx.moveTo(net.x[p], net.y[p])
-        ctx.lineTo(net.x[i], net.y[i])
-        any = true
-      }
-      if (any) ctx.stroke()
-    }
-    ctx.restore()
+    strokeRange(ctx, net.drawn, net.n)
     net.drawn = net.n
     own(nowMs() - t0)
   }
 
-  function bucketOf (g) { return g < DRAW.GEN_B0 ? 0 : (g < DRAW.GEN_B1 ? 1 : 2) }
+  // Two scratch classifications, filled in one pass and then read by the width × age passes below.
+  // Without them each of those passes would recompute a bucket and a Math.pow per node, and a full
+  // repaint of 3,600 segments would do it eighteen times over.
+  var bkOf = new Uint8Array(GROW.CAP)
+  var agOf = new Uint8Array(GROW.CAP)
+  var washPow = new Float32Array(256)
+
+  // Stroke [from, to) of the network as the colony currently is.
+  //
+  // The form enters here and nowhere else in the structure: the ink is mixed once, every width is
+  // scaled by cord, and the generation boundaries move outward with it so cord runs further from
+  // the inoculation before it thins to filament. A colony with the structure ladder behind it is
+  // therefore not merely a brighter version of one without — it is a differently *shaped* thing,
+  // thick where the other was already fine.
+  //
+  // The second axis is age. 06 §7.4 ages the buffer with a bitmap wash per season, which is
+  // beautiful and which any repaint destroys; `epoch` records the wash count at each node's birth,
+  // so a repaint reproduces the same history from the model instead of losing it. Three widths ×
+  // six age bins is eighteen stroke() calls for a network of any size, and one bin when nothing has
+  // aged yet, which is every incremental append.
+  function strokeRange (ctx, from, to) {
+    if (from >= to) return
+    var cordW = 1 + FORM.CORD_W * form.cord
+    var gspan = 1 + (FORM.CORD_GEN - 1) * form.cord
+    var gb0 = DRAW.GEN_B0 * gspan
+    var gb1 = DRAW.GEN_B1 * gspan
+    var wash = C() ? C().TUNE.UI.AGE_WASH : 0.045
+    var span = 1 - DRAW.AGE_FLOOR
+    var i, k
+
+    // The wash multipliers, once. A node aged more than 255 seasons is clamped by `epoch` itself.
+    var maxAge = 0
+    for (i = from; i < to; i++) {
+      k = net.wash - net.epoch[i]
+      if (k > maxAge) maxAge = k
+    }
+    var bins = maxAge > 0 ? DRAW.AGE_BINS : 1
+    if (bins > 1) {
+      for (k = 0; k <= maxAge && k < 256; k++) {
+        var mul = Math.pow(1 - wash, k)
+        if (mul < DRAW.AGE_FLOOR) mul = DRAW.AGE_FLOOR
+        washPow[k] = Math.round((1 - mul) / span * (bins - 1))
+      }
+    }
+    for (i = from; i < to; i++) {
+      bkOf[i] = bucketOf(net.gen[i], gb0, gb1)
+      agOf[i] = bins > 1 ? washPow[Math.min(net.wash - net.epoch[i], 255)] : 0
+    }
+
+    var base = strokeAlpha()
+    ctx.save()
+    ctx.strokeStyle = rgba(formStroke(), 1)
+    ctx.lineCap = 'round'
+    for (var b = 0; b < 3; b++) {
+      ctx.lineWidth = DRAW.WIDTHS[b] * cordW
+      for (var q = 0; q < bins; q++) {
+        ctx.globalAlpha = base * (1 - span * q / (bins > 1 ? bins - 1 : 1))
+        ctx.beginPath()
+        var any = false
+        for (i = from; i < to; i++) {
+          if (bkOf[i] !== b || agOf[i] !== q) continue
+          var p = net.par[i]
+          // Shed tissue is not drawn, and neither is a segment hanging off it.
+          if (p < 0 || net.lost[i] || net.lost[p]) continue
+          ctx.moveTo(net.x[p], net.y[p])
+          ctx.lineTo(net.x[i], net.y[i])
+          any = true
+        }
+        if (any) ctx.stroke()
+      }
+    }
+    ctx.restore()
+  }
+
+  // Thicker near the origin, finer at the tips — anatomically correct and the cheapest possible
+  // depth cue. The boundaries are arguments because cord moves them and the self-test does not.
+  function bucketOf (g, b0, b1) {
+    if (!(b0 > 0)) b0 = DRAW.GEN_B0
+    if (!(b1 > 0)) b1 = DRAW.GEN_B1
+    return g < b0 ? 0 : (g < b1 ? 1 : 2)
+  }
 
   // Because the buffer is never cleared, it is aged with a single wash at each season boundary.
   // Over sixteen seasons the oldest growth decays to 0.955^16 = 0.48 of its alpha while recent
   // growth is at full strength: the network visibly remembers when you grew.
   function ageWash () {
+    // The wash is applied twice over: once to the bitmap, which is what the player sees now, and
+    // once to the model, which is what a repaint reads. Without the second the first is an accident
+    // of the buffer and every theme flip, resize or purchase would erase the player's history.
+    if (net && net.wash < 255) net.wash++
     if (!surf.netCtx) return
     var w = C() ? C().TUNE.UI.AGE_WASH : 0.045
     var ctx = surf.netCtx
@@ -890,14 +1276,17 @@
     if (first >= net.n) return
     var TAU = Math.PI * 2
     var i
+    var ink = rgba(formStroke(), 1)
+    var r = FLUX.TIP_R * (1 + FORM.TIP_R_K * form.cord)
     ctx.save()
     ctx.globalAlpha = FLUX.SURGE_A * sg.a
-    ctx.strokeStyle = rgba(pal.hyphae, 1)
-    ctx.fillStyle = rgba(pal.hyphae, 1)
-    ctx.lineWidth = DRAW.WIDTHS[2]
+    ctx.strokeStyle = ink
+    ctx.fillStyle = ink
+    ctx.lineWidth = DRAW.WIDTHS[2] * (1 + FORM.CORD_W * form.cord)
     ctx.lineCap = 'round'
     ctx.beginPath()
     for (i = first; i < net.n; i++) {
+      if (net.lost[i]) continue
       heading(i)
       ctx.moveTo(net.x[i], net.y[i])
       ctx.lineTo(net.x[i] + dir[0] * sg.d, net.y[i] + dir[1] * sg.d)
@@ -906,18 +1295,20 @@
     ctx.globalAlpha = FLUX.SURGE_A * FLUX.SURGE_HEAD * sg.a
     ctx.beginPath()
     for (i = first; i < net.n; i++) {
+      if (net.lost[i]) continue
       heading(i)
-      ctx.moveTo(net.x[i] + dir[0] * sg.d + FLUX.TIP_R, net.y[i] + dir[1] * sg.d)
-      ctx.arc(net.x[i] + dir[0] * sg.d, net.y[i] + dir[1] * sg.d, FLUX.TIP_R, 0, TAU)
+      ctx.moveTo(net.x[i] + dir[0] * sg.d + r, net.y[i] + dir[1] * sg.d)
+      ctx.arc(net.x[i] + dir[0] * sg.d, net.y[i] + dir[1] * sg.d, r, 0, TAU)
     }
     ctx.fill()
     ctx.restore()
   }
 
   function stateKey (s) {
-    if (!s) return String(net ? net.n : 0)
+    if (!s) return net ? net.n + '/' + net.live : '0'
     var fl = s.a2 && s.a2.flush ? s.a2.flush.length : 0
-    return net.n + '|' + s.act + '|' + (s.a1 ? s.a1.tips : 0) + '|' + fl + '|' + (starving() ? 1 : 0)
+    return net.n + '/' + net.live + '|' + s.act + '|' + (s.a1 ? s.a1.tips : 0) + '|' + fl +
+      '|' + (starving() ? 1 : 0) + '|' + form.key
   }
 
   function starving () {
@@ -944,7 +1335,9 @@
     // the whole claim of the push is that the eye can follow it somewhere; the borrow is bounded by
     // the surge's own 670 ms and by the fact that only a thumb can start one.
     var sg = surgeAt(tMs)
-    var hz = sg ? FLUX.SURGE_HZ : T().fluxHz
+    // A shed borrows the clock too, on the same terms and for the same reason: 8 Hz would draw a
+    // 1.1 s fall in nine frames, and tissue letting go in nine frames is a slideshow.
+    var hz = sg ? FLUX.SURGE_HZ : (shedGhost ? SHED.HZ : T().fluxHz)
 
     if (reduced || hz <= 0) {
       // Once per state change, never on a clock. A static frame is always present — this branch
@@ -962,8 +1355,11 @@
     ctx.clearRect(0, 0, surf.W, surf.H)
     refreshPalette(false)
     var tSec = tMs / 1000
+    readForm(false)
 
     drawTips(ctx, tSec)
+    // Under the tips: what has been let go is behind what is still there.
+    drawShed(ctx, tMs)
     // After the tips, so the head sits over the tip it came from rather than under it.
     if (sg) drawSurge(ctx, sg)
     if (s && s.act >= 2) stepPulses(ctx, tSec, s)
@@ -976,20 +1372,28 @@
     own(nowMs() - t0)
   }
 
+  // The glow at the front is the tips the player actually owns, walked back from the newest live
+  // node — four at cold boot, sixty at the ceiling. A young colony is a few points of light and a
+  // mature one has a busy, crowded front, which is the difference a fixed sixty was hiding. The
+  // arc grows with cord for the same reason the strokes do: it is the same tissue.
   function drawTips (ctx, tSec) {
     var starve = starving()
-    var col = starve ? pal.tertiary : pal.hyphae
-    var first = Math.max(0, net.n - FLUX.TIP_N)
+    var col = starve ? pal.tertiary : formStroke()
+    var want = form.tips
+    var r = FLUX.TIP_R * (1 + FORM.TIP_R_K * form.cord)
     var TAU = Math.PI * 2
+    var shown = 0
     ctx.fillStyle = rgba(col, 1)
-    for (var i = first; i < net.n; i++) {
+    for (var i = net.n - 1; i >= 0 && shown < want; i--) {
+      if (net.lost[i]) continue
+      shown++
       var a
       if (starve) a = FLUX.TIP_STARVE_A
       else if (reduced) a = FLUX.TIP_STATIC_A
       else a = FLUX.TIP_A + FLUX.TIP_AMP * Math.sin(TAU * tSec / FLUX.TIP_PERIOD + i * FLUX.TIP_SPREAD)
       ctx.globalAlpha = a
       ctx.beginPath()
-      ctx.arc(net.x[i], net.y[i], FLUX.TIP_R, 0, TAU)
+      ctx.arc(net.x[i], net.y[i], r, 0, TAU)
       ctx.fill()
     }
     ctx.globalAlpha = 1
@@ -1004,7 +1408,10 @@
     if (tip < 1) tip = net.n - 1
     var chain = []
     var i = tip, guard = 0
-    while (i >= 0 && guard++ < GROW.CAP) { chain.push(i); i = net.par[i] }
+    while (i >= 0 && guard++ < GROW.CAP) {
+      if (net.lost[i]) return null      // a route through tissue that is gone is a route that is gone
+      chain.push(i); i = net.par[i]
+    }
     if (chain.length < FLUX.PULSE_PATH_MIN) return null
     chain.reverse()
     return Int32Array.from(chain)
@@ -1161,15 +1568,22 @@
     // the structural layer is redrawn beneath it at the alpha of 06 §7.6.
     ctx.save()
     ctx.clearRect(0, 0, surf.W, surf.H)
+    // Under the hexes it is the same organism, in the same ink and at the same weight it has
+    // earned — at 12% of it. The age bins are not run here: at this alpha they are invisible and
+    // this pass is a full restroke at 4 Hz rather than an append.
+    readForm(false)
+    var cordW = 1 + FORM.CORD_W * form.cord
+    var gspan = 1 + (FORM.CORD_GEN - 1) * form.cord
     ctx.globalAlpha = MAP.NET_ALPHA
-    ctx.strokeStyle = rgba(pal.hyphae, 1)
+    ctx.strokeStyle = rgba(formStroke(), 1)
     ctx.lineCap = 'round'
     for (var b = 0; b < 3; b++) {
-      ctx.lineWidth = DRAW.WIDTHS[b]
+      ctx.lineWidth = DRAW.WIDTHS[b] * cordW
       ctx.beginPath()
       for (var i = 1; i < net.n; i++) {
         var p = net.par[i]
-        if (p < 0 || bucketOf(net.gen[i]) !== b) continue
+        if (p < 0 || net.lost[i] || net.lost[p]) continue
+        if (bucketOf(net.gen[i], DRAW.GEN_B0 * gspan, DRAW.GEN_B1 * gspan) !== b) continue
         ctx.moveTo(net.x[p], net.y[p]); ctx.lineTo(net.x[i], net.y[i])
       }
       ctx.stroke()
@@ -1440,7 +1854,8 @@
     ctx.save()
     ctx.lineCap = 'round'
     ctx.lineWidth = DRAW.WIDTHS[1]
-    ctx.strokeStyle = rgba(pal.hyphae, 1)
+    // The last thing the colony does in Act I is conduct, and it does it as the colony it became.
+    ctx.strokeStyle = rgba(formStroke(), 1)
 
     // The whole body glows faintly under the crest, so what travels reads as something moving
     // through a thing that is there rather than as a light switching parts of it on.
@@ -1448,7 +1863,7 @@
     ctx.beginPath()
     for (i = 1; i < net.n; i++) {
       p = net.par[i]
-      if (p < 0) continue
+      if (p < 0 || net.lost[i] || net.lost[p]) continue
       ctx.moveTo(net.x[p], net.y[p]); ctx.lineTo(net.x[i], net.y[i])
     }
     ctx.stroke()
@@ -1461,7 +1876,7 @@
       var any = false
       for (i = 1; i < net.n; i++) {
         p = net.par[i]
-        if (p < 0) continue
+        if (p < 0 || net.lost[i] || net.lost[p]) continue
         d = depth[i]
         delta = d - head
         // The band wraps: a pass that runs off the tips arrives at the root again.
@@ -2206,6 +2621,78 @@
       'surge: a push outlived its own envelope')
     surge = wasSurge
 
+    // 7c · THE FORM. Every channel must actually reach the drawing, in the direction claimed, and
+    // none of them may leave the palette lane or the contrast floor 06 §2.6 holds the stroke to.
+    // A form that is derived and then ignored is the bug this whole section exists to prevent.
+    var wasForm = { key: form.key, warm: form.warm, cord: form.cord, fork: form.fork,
+                    melan: form.melan, tips: form.tips }
+    form.warm = 0; form.cord = 0; form.fork = 0; form.melan = 0
+    var bare = formStroke(), bareA = strokeAlpha(), bareW = 1 + FORM.CORD_W * form.cord
+    form.warm = 1
+    var rich = formStroke()
+    ok(rich[0] !== bare[0] || rich[1] !== bare[1] || rich[2] !== bare[2],
+      'form: a full enzyme suite left the stroke exactly the colour it was at cold boot')
+    ok(rich[2] < bare[2] && rich[0] >= bare[0] - 1,
+      'form: warmth must take blue out of the stroke, not put it in')
+    // The mix is capped short of the token: the network warms, it never becomes an amber object.
+    ok(Math.abs(rich[2] - pal.rich[2]) > 4,
+      'form: warmth reached --hyphae-rich; the cap is what keeps this inside the palette')
+    form.warm = 0; form.melan = 1
+    var dark = formStroke()
+    var lum = function (c) { return c[0] * 0.2126 + c[1] * 0.7152 + c[2] * 0.0722 }
+    ok(lum(dark) < lum(bare),
+      'form: melanin must darken the organism — it is the one channel that takes light away')
+    form.melan = 0; form.cord = 1
+    ok(strokeAlpha() > bareA, 'form: cord did not thicken the ink')
+    ok(strokeAlpha() <= 1, 'form: cord pushed the stroke alpha past opaque')
+    ok(1 + FORM.CORD_W * form.cord > bareW * 1.5, 'form: cord did not widen the stroke')
+    ok(bucketOf(DRAW.GEN_B0 + 1, DRAW.GEN_B0 * FORM.CORD_GEN, DRAW.GEN_B1 * FORM.CORD_GEN) === 0 &&
+       bucketOf(DRAW.GEN_B0 + 1) === 1,
+      'form: cord did not push the generation buckets outward — cord must run further than filament')
+    form.cord = 0; form.fork = 1
+    var bushy = newNet(0x0F0F0F0F, W, H)
+    form.fork = 0
+    var sparse = newNet(0x0F0F0F0F, W, H)
+    ok(bushy.jit > sparse.jit && bushy.dens > sparse.dens,
+      'form: a full front did not change how the colony grows, only how it is painted')
+    for (var gi = 0; gi < 40; gi++) { grow(bushy); grow(sparse) }
+    ok(bushy.aCount + bushy.n !== sparse.aCount + sparse.n,
+      'form: two colonies with the same seed and different fronts grew identically')
+    ok(quant(0.5) === 0.5 && quant(2) === 1 && quant(-1) === 0, 'form: quant does not clamp')
+    ok(norm(5, 0, 10) === 0.5 && norm(NaN, 0, 10) === 0, 'form: norm is wrong or NaN-blind')
+    form.key = wasForm.key; form.warm = wasForm.warm; form.cord = wasForm.cord
+    form.fork = wasForm.fork; form.melan = wasForm.melan; form.tips = wasForm.tips
+
+    // 7d · THE SHED. Tissue that is lost has to leave the picture, leave the frontier, and leave
+    // the colony able to grow back into where it was. The inoculation point is never shed.
+    var sh = regenerate(0xDEADBEEF, W, H, 400, 0)
+    var wasNet = net
+    net = sh
+    var before = sh.live
+    var went = shedTo(sh.live - 60)
+    ok(went >= 60, 'shed: asked for 60 nodes and got ' + went)
+    ok(sh.live === before - went, 'shed: the live count does not agree with what was shed')
+    ok(sh.n === before, 'shed: the storage moved; the parent chain and the hash depend on it')
+    ok(sh.lost[0] === 0, 'shed: the inoculation point was shed — a colony always started somewhere')
+    var orphan = 0, fLost = 0, sn
+    for (sn = 1; sn < sh.n; sn++) {
+      // A lost node may not have a live child: a branch is shed from its tip inward, whole.
+      if (sh.lost[sn] && sh.childN[sn] > 0) orphan++
+      if (sh.lost[sn] && sh.fslot[sn] >= 0) fLost++
+    }
+    ok(orphan === 0, 'shed: ' + orphan + ' shed nodes still carry live children')
+    ok(fLost === 0, 'shed: ' + fLost + ' shed nodes are still on the frontier and can still grow')
+    ok(repaint === true, 'shed: the mat was not restroked; the branches would still be on screen')
+    // And it grows back. A colony that can only ever get smaller is not a living thing.
+    for (var ri = 0; ri < 40 && sh.live < before; ri++) grow(sh)
+    ok(sh.live > before - went, 'shed: the colony could not regrow into what it had shed')
+    ok(shedTo(sh.live + 10) === 0, 'shed: a target above the live count shed something anyway')
+    ok(shedMetres(0) === 0 && shedMetres(-3) === 0, 'shed: a non-loss shed something')
+    ok(shedMetres(20) === Math.round(20 * GROW.SEG_PER_M) ||
+       shedMetres(0.4) === 0, 'shed: metres are not converted at SEG_PER_M')
+    net = wasNet
+    shedGhost = null
+
     // 8 · the transitions. Every `motion` step log.js can emit is either owned here or is DOM, and
     // the durations this module reports have to agree with the clock 09 §4 and §5 authored — a
     // wave that outlives its own cut is a transition with a seam in it.
@@ -2317,6 +2804,11 @@
     // paid for, with the same 0…1 pressure the button drew and the floor priced.
     surge: surgeRelease,
 
+    // The shed. OPTIONAL — see SHED at the top of this file. Any mechanic that debits `hyphae` is
+    // already drawn correctly on the next frame without calling anything; this is only for one
+    // that wants the branches to come off on the instant it fires. `metres` is tissue lost.
+    shed: shedMetres,
+
     // §6's generic module surface, plus the flux pass ui.js drives from the one rAF.
     init: init,
     drawFlux: drawFlux,
@@ -2324,7 +2816,9 @@
     invalidate: invalidate,
 
     get tier () { return tier },
-    get nodes () { return net ? net.n : 0 },
+    get nodes () { return net ? net.live : 0 },
+    get grown () { return net ? net.n : 0 },
+    get form () { return { warm: form.warm, cord: form.cord, fork: form.fork, melan: form.melan, tips: form.tips } },
     get frameP95 () { return frames.p95 },
     get costP95 () { return ownCost.p95 },
     __selftest: __selftest
