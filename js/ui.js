@@ -4483,9 +4483,12 @@
       // glyph on a word it does not measure. Same shape as the ledger's `45.3 sug/s owed` —
       // number, unit, then the state word.
       setSlot(free, String(un), GLYPH.diff + ' ' + STR.unspent)
-      setSlot(condN, String(num(s.cog.dCond)), '')
-      setSlot(vesN, String(num(s.cog.dVes)), '')
-      pv.setCount(un > 0 ? String(un) : '')
+      // The two rows under it are the same substance, spent. They read `conduction 10` and
+      // `vesicles 5` — bare, directly beneath a row that names the unit — so one panel counted
+      // Differentiation two ways and only the unspent third of it said what it was counting.
+      setSlot(condN, String(num(s.cog.dCond)), GLYPH.diff)
+      setSlot(vesN, String(num(s.cog.dVes)), GLYPH.diff)
+      pv.setCount(un > 0 ? String(un) : '', GLYPH.diff)
       setData(condBtn, 's', un > 0 ? 'afford' : 'want')
       setData(vesBtn, 's', un > 0 ? 'afford' : 'want')
     }
