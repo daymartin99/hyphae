@@ -185,7 +185,10 @@
     claim: 'claim',
     claiming: 'claiming',
     places: '{n} / {k}',
-    needsStanding: 'standing {n}',
+    // Reputation, named. This read `standing 22` — a bare count, in a panel whose own rows say
+    // `standing` to mean a *state* (a tree is standing, a stand is standing), two panels from the
+    // tree list where the same quantity reads `100 rep`.
+    needsStanding: 'needs {n} rep',
 
     short: '{n} short',
     toEmpty: 'to empty',
