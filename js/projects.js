@@ -44,11 +44,17 @@
   // from it any more — the tag is generated from `price` through the same two formatters the
   // resource strip uses — so BIBLE §8 D66 now asks the question that survives: that what a card
   // prints is character-for-character what the strip prints for the same number.
+  //
+  // `write` is the second half of that: not every stock is WRITTEN the same way. Biomass is a mass
+  // and reads as one (`1.33 kt`). Reputation is a small whole count and the tree list prints it as
+  // one (`42 rep`), so a price of `1.00 rep` would be the same two-notation fault, one stock down.
+  // Everything else takes fmt(), which is the resource strip's default. This table is the only
+  // place the mapping lives; renderCost and D66 both read it rather than keeping a second copy.
   var CUR = {
-    g:      { glyph: 'g',   get: function (s) { return s.res.biomass },  set: function (s, v) { C().setStock(s.res, 'biomass', v) } },
+    g:      { glyph: 'g',   write: 'mass',  get: function (s) { return s.res.biomass },  set: function (s, v) { C().setStock(s.res, 'biomass', v) } },
     sug:    { glyph: 'sug', get: function (s) { return s.res.sugar },    set: function (s, v) { C().setStock(s.res, 'sugar', v) } },
     min:    { glyph: '⛬',   get: function (s) { return s.res.minerals }, set: function (s, v) { C().setStock(s.res, 'minerals', v) } },
-    rep:    { glyph: 'rep', get: function (s) { return s.a1.netRep },    set: function (s, v) { C().setStock(s.a1, 'netRep', v, T().A1.REP_MAX) } },
+    rep:    { glyph: 'rep', write: 'whole', get: function (s) { return s.a1.netRep },    set: function (s, v) { C().setStock(s.a1, 'netRep', v, T().A1.REP_MAX) } },
     sig:    { glyph: 'Σ',   get: function (s) { return s.res.signal },   set: function (s, v) { C().setStock(s.res, 'signal', v) } },
     psi:    { glyph: 'Ψ',   get: function (s) { return s.res.insight },  set: function (s, v) { C().setStock(s.res, 'insight', v) } },
     spore:  { glyph: '◦',   get: function (s) { return s.res.spores },   set: function (s, v) { C().setStock(s.res, 'spores', v) } },
@@ -499,9 +505,12 @@
   var NOTE_UNBUYABLE = 'unbuyable'
 
   function renderCost (k, v) {
-    // Biomass is a mass and is read as one everywhere else in the game — `1.33 Gt`, never
-    // `1.33 G g`, which names the unit twice and the magnitude nowhere.
-    return k === 'g' ? C().fmtMass(v) : C().fmt(v) + ' ' + CUR[k].glyph
+    var c = CUR[k]
+    // fmtMass carries its own unit — `1.33 Gt`, never `1.33 G g`, which names the unit twice and
+    // the magnitude nowhere.
+    if (c.write === 'mass') return C().fmtMass(v)
+    if (c.write === 'whole') return String(Math.round(v)) + ' ' + c.glyph
+    return C().fmt(v) + ' ' + c.glyph
   }
 
   function renderTag (p, s) {
@@ -2564,7 +2573,12 @@
           // The whole point of rendering the tag: the substring on the card must be character-for-
           // character what the resource strip prints for the same number. Comparing against fmt()
           // here rather than against a second copy of the suffix table is what makes that binding.
-          var want = k === 'g' ? C().fmtMass(pr[k]) : C().fmt(pr[k]) + ' ' + CUR[k].glyph
+          // Spelled out rather than routed through renderCost: comparing renderCost with itself
+          // would pass whatever it did. This compares it with core's own formatters — the ones the
+          // resource strip calls — so the card and the strip can only agree by actually agreeing.
+          var want = CUR[k].write === 'mass' ? C().fmtMass(pr[k])
+            : CUR[k].write === 'whole' ? String(Math.round(pr[k])) + ' ' + CUR[k].glyph
+              : C().fmt(pr[k]) + ' ' + CUR[k].glyph
           ok(tag.indexOf(want) >= 0,
             p.id + ': priceTag "' + tag + '" does not print ' + k + ' as "' + want + '"')
         }
