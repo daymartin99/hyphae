@@ -1982,9 +1982,14 @@
     // A player who is looking notices the game speaking without addressing them. An ending line is
     // barer still — no gutter at all — because it is not the console addressing the player, it is
     // the game's last words standing alone on an emptied screen.
+    // The tone glyph is a gutter MARK, not the first character of the sentence: every other mark
+    // here (`>`, `·`) is followed by a space, so the glyph is too. Without it `!` fuses to the
+    // opening word — "> !sugar you do not spend" reads as a token the corpus never defines. The
+    // gutter is `white-space:pre`, so the trailing space survives to the screen.
+    var mark = TONE_GLYPH[line.tone] || ''
     gutter.textContent = (line.channel === 'observation' || ending)
       ? ''
-      : (PROMPT_NEW + ' ' + (TONE_GLYPH[line.tone] || ''))
+      : (PROMPT_NEW + ' ' + (mark ? mark + ' ' : ''))
 
     var body = document.createElement('span')
     body.className = 'console-text'
