@@ -183,7 +183,7 @@
 
     short: '{n} short',
     toEmpty: 'to empty',
-    owed: 'g/s owed',
+    owed: 'owed',
     nothing: '—',
     seasons: '{n} seasons',
 
@@ -406,6 +406,14 @@
     spores: '◦', accord: '⟡', diff: 'D',
     carbon: 'Χ', alleles: 'α', canon: '†', upsilon: 'ϒ'
   }
+  // Sugar is a mass in grams (BIBLE §2.1) — and so is biomass, so grams cannot be sugar's notation.
+  // The Litter Market quotes a price PER GRAM OF SUBSTRATE, and `0.11 g/g` names neither side of
+  // that ratio. Every other stock in the strip prints its glyph rather than its unit — `Σ`, `Ψ`,
+  // `⛬` — so sugar prints `sug`, in one notation, everywhere it is a quantity: stock, cap, rate,
+  // contract volume, market price, shortfall. The readout the player buys against and the price
+  // they buy at now name the same substance the same way.
+  var SUG = GLYPH.sugar
+  var SUG_S = SUG + '/s'
   // 03 §9.2's eight axes, in BIBLE §3's order forever, with the word each one actually means. The
   // three-letter key is what every other module calls the locus; nobody should have to learn it.
   var AXIS_NAME = {
@@ -2411,7 +2419,7 @@
         r.el.parentNode.insertBefore(r.sub, r.el.nextSibling)
       }
       show(r.sub, true)
-      setText(r.sub, '− ' + C().fmt(rot) + ' g/s (' + STR.rot + ')')
+      setText(r.sub, '− ' + C().fmt(rot) + ' ' + SUG_S + ' (' + STR.rot + ')')
       return
     }
     if (r.sub) show(r.sub, false)
@@ -2538,8 +2546,11 @@
       setText(r1.lab, STR.sugar)
       var cap = A1() && A1().sugarCap ? A1().sugarCap() : 0
       var held = num(s.res.sugar)
-      setRaw(r1.val, C().fmt(held) + ' / ' + C().fmt(cap), '')
-      setRate(r1.rate, rateOf(v, 'sugar'), 'g/s')
+      // The pair carries the unit. Without it this row read `520 / 790` bare while the market two
+      // panels down quoted `0.11 sug/g` — the one readout the buy decision is made against was the
+      // one place the substance was never named.
+      setRaw(r1.val, C().fmt(held) + ' / ' + C().fmt(cap), SUG)
+      setRate(r1.rate, rateOf(v, 'sugar'), SUG_S)
       show(r1.cap, true)
       var f = cap > 0 ? held / cap : 0
       r1.cap.style.setProperty('--v', fill(f).toFixed(4))
@@ -2567,7 +2578,7 @@
       setText(r3.lab, STR.netSugar)
       var e = E1()
       var ns = e && e.netSugar ? e.netSugar() : 0
-      setRate(r3.val, ns, 'g/s')
+      setRate(r3.val, ns, SUG_S)
       // When the net goes negative the line gains a countdown. That single row is Act I's
       // unsold-inventory sawtooth (01 §5A.6).
       if (ns < 0) {
@@ -2578,7 +2589,7 @@
         // The word "net" is only meaningful next to what was netted off. While the balance is
         // positive the second slot carries the committed outflow rather than an em dash.
         var owed = e && e.bookState ? num(e.bookState().committed) : 0
-        if (owed > 0) setSlot(r3.rate, C().fmt(owed), STR.owed)
+        if (owed > 0) setSlot(r3.rate, C().fmt(owed), SUG_S + ' ' + STR.owed)
         else setSlot(r3.rate, STR.nothing, '')
         setData(r3.rate, 'sign', 'zero')
       }
@@ -3619,7 +3630,7 @@
         var c = E1().contractById(id)
         var tree = c ? E1().treeById(c.treeId) : null
         setText(name, tree ? (SPECIES_NAME[tree.species] || tree.species) : '')
-        setText(detail, C().fmt(num(so.volume)) + ' g/s · ' +
+        setText(detail, C().fmt(num(so.volume)) + ' ' + SUG_S + ' · ' +
           interp(STR.seasons, { n: so.termSeasons }))
       }
     }
@@ -3703,12 +3714,12 @@
       if (!tree) return
       var t = readTerms(s, tree)
       var mineralRate = e1.offer(tree, t.volume, t.term, t.collateral, t.exclusive)
-      volume.setReadout(C().fmt(t.volume), 'g/s', C().fmt(t.volume) + ' grams per second')
+      volume.setReadout(C().fmt(t.volume), SUG_S, C().fmt(t.volume) + ' sugar per second')
       term.setReadout(String(t.term), '', interp(STR.seasons, { n: t.term }))  // no suffix
       coll.setReadout(C().fmtMass(t.collateral), '', C().fmtMass(t.collateral))
-      volume.setNote(C().fmt(e1.maxIntake(tree)) + ' g/s ' + STR.max)
+      volume.setNote(C().fmt(e1.maxIntake(tree)) + ' ' + SUG_S + ' ' + STR.max)
       term.setNote(STR.max + ' ' + e1.maxTerm(tree))
-      setSlot(payNum, C().fmt(t.volume), 'g/s')
+      setSlot(payNum, C().fmt(t.volume), SUG_S)
       setSlot(getNum, C().fmt(mineralRate), GLYPH.minerals + '/s')
       setSlot(totNum, C().fmt(mineralRate * t.term * T().CLOCK.SEASON_S), GLYPH.minerals)
       var book = e1.bookState()
@@ -3720,7 +3731,7 @@
       setData(signBtn, 'state', ok ? 'idle' : 'locked')
       var ct = ok ? null : e1.counter(tree, t.volume, t.term, t.exclusive)
       setText(counterTxt, ct
-        ? interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' g/s', n: ct.maxTerm })
+        ? interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm })
         : '')
       show(counterLine, !!ct)
     }
@@ -3739,7 +3750,7 @@
         // Refusal is a counter-offer, never a wall: the largest legal position today.
         var ct = e1.counter(tree, t.volume, t.term, t.exclusive)
         if (ct) {
-          announce(interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' g/s', n: ct.maxTerm }))
+          announce(interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm }))
         }
         return
       }
@@ -5012,6 +5023,19 @@
 
   // ── THE ENDINGS ────────────────────────────────────────────────────────────
 
+  // An ending condition is the last number the game ever asks the player to read, and every row of
+  // it was printing a bare pair: `1.10 M / 3.00 M` over four rows that are four different
+  // substances. `finale.js` names the quantity in the row's label, not in its value, so the unit
+  // is attached here, by id. Anything absent from the table is a count, and a count takes no unit
+  // because the label already says what is being counted.
+  var COND_UNIT = {
+    upsilon: GLYPH.upsilon, carbon: GLYPH.carbon,
+    insight: GLYPH.insight, signal: GLYPH.signal
+  }
+  // Two rows are durations, not magnitudes: `3.60 k s` is not a readable age. They render on the
+  // clock formatter instead, which is the one place a pair is not two mantissas.
+  var COND_TIME = { age: 1, void: 1 }
+
   function condRow (host) {
     var n = el('div', 'cond')
     var mark = span(n, 'cond-mark', '·')
@@ -5027,7 +5051,11 @@
         setText(lab, String(c.label).toLowerCase())
         // A condition is a pair, always: what you have and what it wants. One of the two alone is
         // a number with nothing to compare it to.
-        setSlot(val, C().fmt(c.have) + ' / ' + C().fmt(c.want), '')
+        if (COND_TIME[c.id]) {
+          setRaw(val, C().fmtTime(c.have) + ' / ' + C().fmtTime(c.want), '')
+          return
+        }
+        setRaw(val, C().fmt(c.have) + ' / ' + C().fmt(c.want), COND_UNIT[c.id] || '')
       }
     }
   }
@@ -5184,7 +5212,9 @@
       if (!bl) return
       var len = num(bl.genomeLength(s))
       setSlot(lenN, String(len), '')
-      setSlot(massN, C().fmt(num(bl.craftMass(s))), '')
+      // A mass is never a bare number: this is grams of carbon per craft, and the surplus row
+      // directly above it is quoted in the same currency.
+      setSlot(massN, C().fmt(num(bl.craftMass(s))), GLYPH.carbon)
       var fid = num(bl.effFid(s))
       setSlot(fidN, fid.toFixed(3), '')
       fidBar.set(fid, fid < 0.9 ? 'warn' : 'signal', STR.fidelity + ' ' + fid.toFixed(3))
