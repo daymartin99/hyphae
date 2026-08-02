@@ -406,10 +406,14 @@
   var ORDINAL = ['1st', '2nd', '3rd', '4th', '5th', '6th', '7th']
 
   // Currency glyphs, from BIBLE §2.1. One name, one symbol, one unit.
+  // `craft: 'n'` is 09 §6.4's row for CRAFT and 03 §5.2's "Act III's craft counter, `n`". It is
+  // here because a count still needs a unit: without one the strip read `CRAFT 252 G` over
+  // `+127 M /s`, where `G` is giga — the SI prefix standing alone where the unit should be, which
+  // is the one place a magnitude can be mistaken for a substance.
   var GLYPH = {
     biomass: 'g', sugar: 'sug', minerals: '⛬', signal: 'Σ', insight: 'Ψ',
     spores: '◦', accord: '⟡', diff: 'D',
-    carbon: 'Χ', alleles: 'α', canon: '†', upsilon: 'ϒ'
+    carbon: 'Χ', alleles: 'α', canon: '†', upsilon: 'ϒ', craft: 'n'
   }
   // Sugar is a mass in grams (BIBLE §2.1) — and so is biomass, so grams cannot be sugar's notation.
   // The Litter Market quotes a price PER GRAM OF SUBSTRATE, and `0.11 g/g` names neither side of
@@ -419,6 +423,9 @@
   // they buy at now name the same substance the same way.
   var SUG = GLYPH.sugar
   var SUG_S = SUG + '/s'
+  // The Litter Market's own unit. Named once so the live print and the fair line cannot be quoted
+  // in different notations: two prices for the same substrate, one row apart, must read the same.
+  var SUG_G = SUG + '/g'
   // 03 §9.2's eight axes, in BIBLE §3's order forever, with the word each one actually means. The
   // three-letter key is what every other module calls the locus; nobody should have to learn it.
   var AXIS_NAME = {
@@ -868,9 +875,21 @@
 
   // ───────────────────────────────────────────────────────────────────────────
   // NUMBER SLOTS · 06 §3.3
-  // A value is two spans: a mantissa and a suffix one step dimmer. The slot's width is reserved in
-  // `ch` from the maximum expected string, never measured, so the layout cannot reflow when a
+  // A value is two spans: the number, and its unit one step dimmer. The slot's width is reserved
+  // in `ch` from the maximum expected string, never measured, so the layout cannot reflow when a
   // number grows a digit (R3) — the single most important typographic rule in the document.
+  //
+  // ONE RULE FOR WHERE THE BOUNDARY FALLS, AND IT HOLDS EVERYWHERE:
+  //   the MANTISSA span holds the NUMBER — the digits *and* the SI prefix that scales them;
+  //   the UNIT span holds the UNIT ALONE, and always the whole of it.
+  // `47.6 k` is one numeral. A `k` set dim and small next to `⛬` is read as part of the unit, and
+  // the same quantity then renders three different ways as it grows — `73.0 ⛬`, `47.6 k ⛬` — with
+  // the prefix changing colour and size with the magnitude it scales. It is the number that grew.
+  //
+  // THE BOUNDARY IS STATED BY THE CALLER, NEVER INFERRED FROM THE STRING. Splitting on the last
+  // space is what promoted `61` out of `7 of 61`, `3:51` out of `full in 3:51`, and the second `k`
+  // out of `3.08 k / 3.08 k` into the dim slot: a phrase is not a number with a suffix, and a
+  // formatter's own output is the only thing that knows where its unit begins.
   // ───────────────────────────────────────────────────────────────────────────
 
   function slot (cls) {
@@ -882,62 +901,58 @@
     return n
   }
 
-  function splitNum (str) {
+  // The one formatter whose trailing token is a UNIT rather than an SI prefix: fmtMass prints
+  // `g`, `kg`, `t`, `kt` — compound units that genuinely change as the mass grows, and therefore
+  // the only thing left in the UI for R4's unit cross-fade to fade. Nothing else may split a
+  // string to find its unit.
+  function splitMass (str) {
     var i = str.lastIndexOf(' ')
     return i < 0 ? [str, ''] : [str.slice(0, i), str.slice(i + 1)]
   }
 
-  function joinUnit (suffix, unit) {
-    if (!unit) return suffix
-    if (!suffix) return unit
-    return suffix + ' ' + unit
-  }
+  // The unit is separated from the number by a REAL SPACE, in the DOM, not by a CSS margin. SI
+  // requires the gap, `5:29to empty` proves a sub-space margin cannot supply it, and a margin is
+  // invisible to innerText — which is what a screen reader and every one of our own tests read.
+  function unitText (unit) { return unit ? ' ' + unit : '' }
 
-  // R4: a suffix crossing cross-fades the suffix span alone. The mantissa always snaps, and no
-  // digit is ever animated.
-  function setSlot (n, str, unit) {
-    var parts = splitNum(str)
-    var suf = joinUnit(parts[1], unit)
-    if (n.__m.__t !== parts[0]) {
-      n.__m.__t = parts[0]
-      n.__m.textContent = parts[0]
+  // R4: a unit crossing cross-fades the unit span alone. The mantissa always snaps, and no digit
+  // is ever animated.
+  function setSlot (n, value, unit) {
+    if (n.__m.__t !== value) {
+      n.__m.__t = value
+      n.__m.textContent = value
     }
-    if (n.__u.__t === suf) return
+    unit = unit || ''
+    if (n.__u.__t === unit) return
     var had = !!n.__u.__t
-    n.__u.__t = suf
-    n.__u.textContent = suf
+    n.__u.__t = unit
+    n.__u.textContent = unitText(unit)
     if (!had || reducedMotion()) return
     setData(n.__u, 'fade', 'in')
     if (n.__fadeT) clearTimeout(n.__fadeT)
     n.__fadeT = setTimeout(function () { delete n.__u.dataset.fade }, U.D_FADE)
   }
 
-  function setMass (n, g) { setSlot(n, C().fmtMass(g)) }
-
-  // A composite readout — `812 / 1.24 k`, `12.0 kg + 90.0` — is one mantissa with one unit. It
-  // must not go through splitNum, which would promote the last word of the phrase to the dimmer
-  // suffix slot and read as a different number.
-  function setRaw (n, mant, unit) {
-    if (n.__m.__t !== mant) {
-      n.__m.__t = mant
-      n.__m.textContent = mant
-    }
-    unit = unit || ''
-    if (n.__u.__t === unit) return
-    n.__u.__t = unit
-    n.__u.textContent = unit
+  function setMass (n, g) {
+    var p = splitMass(C().fmtMass(g))
+    setSlot(n, p[0], p[1])
   }
 
-  // R6: rates are always signed and always suffixed with `/s`. Zero renders as an em dash, because
-  // a hard zero is information and a floating zero is noise.
+  // R6: rates are always signed and always suffixed with `/s`. The `/s` is not the caller's to
+  // write. A rate is the unit of its own quantity, per second — and every call site handed the
+  // whole suffix as one opaque string is a call site that can pass `'/s'` and forget the ⛬, which
+  // is exactly how MINERALS came to read `73.0 ⛬` on the left and `+0.24 /s` on the right of one
+  // row. Pass the quantity's unit; this builds the rate out of it, so it cannot go missing.
+  // Zero renders as an em dash, because a hard zero is information and a floating zero is noise.
   function setRate (n, v, unit) {
+    var per = (unit || '') + '/s'
     var a = Math.abs(v)
     if (!(a > U.RATE_ZERO)) {
-      setSlot(n, STR.nothing, unit || '/s')
+      setSlot(n, STR.nothing, per)
       setData(n, 'sign', 'zero')
       return
     }
-    setSlot(n, (v > 0 ? '+' : '−') + C().fmt(a), unit || '/s')
+    setSlot(n, (v > 0 ? '+' : '−') + C().fmt(a), per)
     setData(n, 'sign', v > 0 ? 'pos' : 'neg')
   }
 
@@ -2480,7 +2495,7 @@
     show(r0.el, true)
     setText(r0.lab, STR.biomass)
     setMass(r0.val, num(HY.state.standing(s)))
-    setRate(r0.rate, rateOf(v, 'standing'), 'g/s')
+    setRate(r0.rate, rateOf(v, 'standing'), GLYPH.biomass)
     poolLine(r0, num(s.res.biomass), true)
     setData(r0.el, 'lead', '1')
 
@@ -2499,7 +2514,7 @@
     var sat = !!(g && g.saturated && g.saturated(s))
     setData(r1.cap, 'tone', sat ? 'warn' : 'ok')
     if (sat) setSlot(r1.rate, STR.saturated, '')
-    else setRate(r1.rate, rateOf(v, 'signal'), '/s')
+    else setRate(r1.rate, rateOf(v, 'signal'), GLYPH.signal)
     if (r1.sub) show(r1.sub, false)
 
     var r2 = v.ledgerRows[2]
@@ -2508,7 +2523,7 @@
       show(r2.el, true)
       setText(r2.lab, STR.insight)
       setSlot(r2.val, C().fmt(num(s.res.insight)), GLYPH.insight)
-      setRate(r2.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, '/s')
+      setRate(r2.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
     } else {
       show(r2.el, false)
     }
@@ -2518,7 +2533,7 @@
     show(r3.el, true)
     setText(r3.lab, STR.minerals)
     setSlot(r3.val, C().fmt(num(s.res.minerals)), GLYPH.minerals)
-    setRate(r3.rate, rateOf(v, 'minerals'), '/s')
+    setRate(r3.rate, rateOf(v, 'minerals'), GLYPH.minerals)
 
     show(v.gear, true)
     setData(v.ledger, 'gear', '1')
@@ -2537,7 +2552,7 @@
     show(r0.el, true)
     setText(r0.lab, STR.carbon)
     setSlot(r0.val, C().fmt(num(s.res.carbon)), GLYPH.carbon)
-    setRate(r0.rate, rateOf(v, 'carbon'), GLYPH.carbon + '/s')
+    setRate(r0.rate, rateOf(v, 'carbon'), GLYPH.carbon)
     setData(r0.el, 'lead', '1')
     if (r0.sub) show(r0.sub, false)
     // Biomass is gone by the void and so is the pool under it; the row is carbon now.
@@ -2554,22 +2569,23 @@
     var sat = !!(g && g.saturated && g.saturated(s))
     setData(r1.cap, 'tone', sat ? 'warn' : 'ok')
     if (sat) setSlot(r1.rate, STR.saturated, '')
-    else setRate(r1.rate, rateOf(v, 'signal'), '/s')
+    else setRate(r1.rate, rateOf(v, 'signal'), GLYPH.signal)
 
-    // Craft is a count and a count takes no unit: the row already says the word. The rate slot
-    // carries the measured rate of the count itself — a row's rate is the rate of its own
+    // A count still takes a unit: `n`, 09 §6.4. Left bare, the row read `252 G` — and `G` is giga,
+    // an SI prefix sitting exactly where every other row in the strip prints its substance. The
+    // rate slot carries the measured rate of the count itself; a row's rate is the rate of its own
     // quantity, and the fleet's carbon surplus already reads out on the CARBON row above.
     var r2 = v.ledgerRows[2]
     show(r2.el, true)
     setText(r2.lab, STR.craft)
-    setSlot(r2.val, C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0), '')
-    setRate(r2.rate, rateOf(v, 'craft'), '/s')
+    setSlot(r2.val, C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0), GLYPH.craft)
+    setRate(r2.rate, rateOf(v, 'craft'), GLYPH.craft)
 
     var r3 = v.ledgerRows[3]
     show(r3.el, true)
     setText(r3.lab, STR.insight)
     setSlot(r3.val, C().fmt(num(s.res.insight)), GLYPH.insight)
-    setRate(r3.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, '/s')
+    setRate(r3.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
 
     show(v.gear, true)
     setData(v.ledger, 'gear', '1')
@@ -2584,7 +2600,7 @@
     show(r0.el, true)
     setText(r0.lab, STR.biomass)
     setMass(r0.val, num(HY.state.standing(s)))
-    setRate(r0.rate, rateOf(v, 'standing'), 'g/s')
+    setRate(r0.rate, rateOf(v, 'standing'), GLYPH.biomass)
     // Before the first tip there is nothing to spend on and the two numbers are the same number,
     // so the second line would be noise on the cold-boot screen. It arrives with the surface that
     // first charges for something.
@@ -2604,8 +2620,8 @@
       // 390px phone, and the two spaces the panels can afford are what pushed the pair onto a
       // second line the moment it gained its unit. Naming the substance is worth more than the
       // spaces; a row that silently becomes two rows is worth less than either.
-      setRaw(r1.val, C().fmt(held) + '/' + C().fmt(cap), SUG)
-      setRate(r1.rate, rateOf(v, 'sugar'), SUG_S)
+      setSlot(r1.val, C().fmt(held) + '/' + C().fmt(cap), SUG)
+      setRate(r1.rate, rateOf(v, 'sugar'), SUG)
       show(r1.cap, true)
       var f = cap > 0 ? held / cap : 0
       r1.cap.style.setProperty('--v', fill(f).toFixed(4))
@@ -2621,7 +2637,7 @@
       show(r2.el, true)
       setText(r2.lab, STR.minerals)
       setSlot(r2.val, C().fmt(num(s.res.minerals)), GLYPH.minerals)
-      setRate(r2.rate, rateOf(v, 'minerals'), '/s')
+      setRate(r2.rate, rateOf(v, 'minerals'), GLYPH.minerals)
     } else {
       show(r2.el, false)
     }
@@ -2633,12 +2649,12 @@
       setText(r3.lab, STR.netSugar)
       var e = E1()
       var ns = e && e.netSugar ? e.netSugar() : 0
-      setRate(r3.val, ns, SUG_S)
+      setRate(r3.val, ns, SUG)
       // When the net goes negative the line gains a countdown. That single row is Act I's
       // unsold-inventory sawtooth (01 §5A.6).
       if (ns < 0) {
         // A duration in the rate slot is not a rate, so it says what it is counting down to.
-        setRaw(r3.rate, C().fmtTime(num(s.res.sugar) / Math.max(1e-9, -ns)), STR.toEmpty)
+        setSlot(r3.rate, C().fmtTime(num(s.res.sugar) / Math.max(1e-9, -ns)), STR.toEmpty)
         setData(r3.rate, 'sign', 'neg')
       } else {
         // The word "net" is only meaningful next to what was netted off. While the balance is
@@ -3204,7 +3220,7 @@
 
       var a = A1()
       var u = a && a.utilisation ? a.utilisation() : 0
-      setRaw(utilNum, String(Math.round(fill(u) * 100)), '%')
+      setSlot(utilNum, String(Math.round(fill(u) * 100)), '%')
       utilBar.set(u, u >= T().A1.UTIL_ALARM ? 'warn' : '',
         Math.round(fill(u) * 100) + ' percent of what falls', T().A1.UTIL_ALARM)
 
@@ -3300,7 +3316,7 @@
       // `throughputPerSec` is a tip-time budget, not a mass: soft litter buys more grams per
       // second of it than hard litter does, so it is not this row's number and never was. A bare
       // floor now reads as nothing being eaten, which is what is happening.
-      setRate(thru, A1() ? A1().litterPerSec() : 0, 'g/s')
+      setRate(thru, A1() ? A1().litterPerSec() : 0, GLYPH.biomass)
       if (nowMs() < settle) return
       var a = A1()
       var g = a ? a.tipCost(s.a1.tips) : 0
@@ -3465,15 +3481,19 @@
         var mkt = s.a1.mkt[e.TYPES.indexOf(type)]
         var unit = e.unitPrice(type)
         show(side, !!s.proj.flags.two_sided_book)
-        setSlot(price, C().fmt(unit), GLYPH.sugar + '/g')
+        setSlot(price, C().fmt(unit), SUG_G)
         setText(arrow, unit > lastPrice ? '▲' : unit < lastPrice ? '▼' : '·')
         setData(arrow, 'dir', unit > lastPrice ? 'up' : unit < lastPrice ? 'down' : 'flat')
         lastPrice = unit
         setText(sparkEl, spark(e.priceHistory(type)))
         // The fair line is the whole content of `mycelial_ledger`: without it the player is
         // forecasting, and with it they are reading.
+        // Fair value is a PRICE and carries the price's unit. Unqualified it was the one number on
+        // the row without one — `fair 0.13` sitting under `0.14 sug/g` reads as a second, different
+        // quantity rather than the same price on the same scale, which is the only comparison the
+        // line exists to support.
         setText(detail, (s.proj.flags.mycelial_ledger
-          ? STR.fair + ' ' + C().fmt(e.fairValue(type)) + ' · '
+          ? STR.fair + ' ' + C().fmt(e.fairValue(type)) + ' ' + SUG_G + ' · '
           : '') + C().fmtMass(num(s.a1.sub[type])) + ' ' + STR.onFloor)
         setText(stockTxt, C().fmtMass(mkt.stock) + ' ' + STR.forSale)
         // The gap to the smallest size the player cannot yet buy: the next thing they want and
@@ -3559,12 +3579,12 @@
       setText(seasonTxt, SEASON_LABEL[s.a1.season])
       setText(yearTxt, interp(STR.year, { n: s.a1.year + 1 }))
       var left = (1 - num(s.a1.seasonPhase)) * T().CLOCK.SEASON_S
-      setRaw(phaseNum, C().fmtTime(left), '')
+      setSlot(phaseNum, C().fmtTime(left), '')
       phase.set(num(s.a1.seasonPhase), '',
         SEASON_LABEL[s.a1.season] + ', ' + C().fmtTime(left) + ' left')
-      setRaw(moist, C().fmt(num(s.a1.moisture)) + ' ×' +
+      setSlot(moist, C().fmt(num(s.a1.moisture)) + ' ×' +
         C().fmt(a && a.moistureMult ? a.moistureMult() : 1), '')
-      setRaw(warm, C().fmt(a && a.tempMult ? a.tempMult() : 1), '×')
+      setSlot(warm, C().fmt(a && a.tempMult ? a.tempMult() : 1), '×')
       show(evRow.el, s.a1.activeEvents.length > 0)
       if (s.a1.activeEvents.length) {
         setText(evTxt, s.a1.activeEvents.map(function (e) { return e.id }).join(' · '))
@@ -3871,7 +3891,7 @@
         var label = SPECIES_NAME[tree.species] || tree.species
         setText(name, label)
         setText(age, whole(tree.age) + ' y')
-        setRaw(repNum, whole(tree.rep), 'rep')
+        setSlot(repNum, whole(tree.rep), 'rep')
         var d = E1().carbonDeficit(tree)
         dBar.set(d, '', Math.round(d * 100) + ' percent short of carbon')
         pips.set(num(tree.rep) / T().A1.REP_MAX, '',
@@ -4043,7 +4063,7 @@
       setText(have, interp(STR.places, { n: s.a1.patches, k: A.PATCH_MAX }))
       pv.setCount(s.a1.patches)
       if (next > A.PATCH_MAX) {
-        setRaw(cost, STR.nothing, '')
+        setSlot(cost, STR.nothing, '')
         setText(gate, '')
         setText(shortTxt, '')
         show(claimBtn, false)
@@ -4052,7 +4072,7 @@
       }
       var spec = A.PATCH[next - 1]
       var needRep = A.PATCH_GATE_REP[next - 1]
-      setRaw(cost, C().fmtMass(spec.biomass) + ' + ' + C().fmt(spec.minerals), GLYPH.minerals)
+      setSlot(cost, C().fmtMass(spec.biomass) + ' + ' + C().fmt(spec.minerals), GLYPH.minerals)
       setText(gate, needRep > 0 ? interp(STR.needsStanding, { n: needRep }) : '')
       var flight = s.a1.claimInFlight
       show(claimBtn, !flight)
@@ -4901,7 +4921,7 @@
         setText(tag, c.reached ? STR.reached : (can ? C().fmt(cost) + ' ' + GLYPH.signal : ''))
         setData(tag, 'tone', c.reached ? 'signal' : '')
         show(tag, !!tag.textContent)
-        setSlot(craftN, C().fmt(c.n), '')
+        setSlot(craftN, C().fmt(c.n), GLYPH.craft)
         setText(state, c.reached
           ? STR.harvest + ' ' + C().fmt(c.harvest) + ' ' + GLYPH.carbon + '/s'
           : (can ? STR.unreached : STR.needsFirst))
@@ -4940,13 +4960,13 @@
     p.__sync = function (s) {
       var bl = BL()
       if (!bl || !bl.list) return
-      setSlot(craftN, C().fmt(num(bl.totalCraft(s))), '')
+      setSlot(craftN, C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
       setSlot(sporeN, C().fmt(num(s.res.spores)), GLYPH.spores)
       var lam = num(bl.Lambda(s))
       setSlot(lamN, signed(lam), GLYPH.carbon + '/s')
       setData(lamN, 'tone', lam >= 0 ? 'pos' : 'neg')
       reconcile(pv.body, bag, bl.list(s), function (c) { return c.id }, biomeRow, s)
-      pv.setCount(C().fmt(num(bl.totalCraft(s))))
+      pv.setCount(C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
     }
     p.view = pv
     return pv
@@ -5001,7 +5021,7 @@
         setSlot(surN, signed(c.surplus), GLYPH.carbon + '/s')
         setData(surN, 'tone', c.surplus > 0 ? 'pos' : (c.surplus < 0 ? 'neg' : ''))
         var f = c.NCAP > 0 ? c.n / c.NCAP : 0
-        setSlot(occN, C().fmt(c.n), '')
+        setSlot(occN, C().fmt(c.n), GLYPH.craft)
         // The tick is `n*`, and it only appears once H4 has been bought: the act's best question
         // is "how many craft is the right number", and selling the answer early would end it.
         occ.set(f, c.surplus < 0 ? 'warn' : 'signal',
@@ -5046,7 +5066,7 @@
       var occ = 0, i
       for (i = 0; i < list.length; i++) if (list[i].n > 0) occ += 1
       setSlot(occN, occ + ' / ' + list.length, '')
-      setSlot(craftN, C().fmt(num(bl.totalCraft(s))), '')
+      setSlot(craftN, C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
       var lam = num(bl.Lambda(s))
       setSlot(lamN, signed(lam), GLYPH.carbon + '/s')
       setData(lamN, 'tone', lam >= 0 ? 'pos' : 'neg')
@@ -5151,10 +5171,10 @@
         // A condition is a pair, always: what you have and what it wants. One of the two alone is
         // a number with nothing to compare it to.
         if (COND_TIME[c.id]) {
-          setRaw(val, C().fmtTime(c.have) + ' / ' + C().fmtTime(c.want), '')
+          setSlot(val, C().fmtTime(c.have) + ' / ' + C().fmtTime(c.want), '')
           return
         }
-        setRaw(val, C().fmt(c.have) + ' / ' + C().fmt(c.want), COND_UNIT[c.id] || '')
+        setSlot(val, C().fmt(c.have) + ' / ' + C().fmt(c.want), COND_UNIT[c.id] || '')
       }
     }
   }
@@ -5880,11 +5900,11 @@
       var r = visibleRows[0]
       ok(r.querySelector('.ledger-lab').textContent === STR.biomass,
         'D02: the first ledger row must be biomass')
-      var parts = splitNum(C().fmtMass(0))
+      var parts = splitMass(C().fmtMass(0))
       ok(r.querySelector('.ledger-val .mant').textContent === parts[0],
         'D02: biomass must read "' + parts[0] + '"')
-      ok(r.querySelector('.ledger-val .unit').textContent === 'g',
-        'D02: biomass must be shown in grams')
+      ok(r.querySelector('.ledger-val .unit').textContent === ' g',
+        'D02: biomass must be shown in grams, a real space away from the number')
       ok(r.dataset.lead === 'solo', 'D02: alone on screen, biomass is the display size')
       ok(r.querySelector('.ledger-rate').dataset.sign === 'zero',
         'D02: a zero rate renders as an em dash, never +0.00')
@@ -5909,18 +5929,18 @@
     var poolMant = function () { return pool.querySelector('.row-num .mant').textContent }
     ok(!!pool, 'the labile pool has a line of its own once anything can be bought')
     if (pool) {
-      ok(headMant() === splitNum(C().fmtMass(13500))[0],
+      ok(headMant() === splitMass(C().fmtMass(13500))[0],
         'the headline is the standing mass, not the spendable pool')
-      ok(poolMant() === splitNum(C().fmtMass(655))[0],
+      ok(poolMant() === splitMass(C().fmtMass(655))[0],
         'the second line is the spendable pool')
       var wasHead = headMant()
       grown.res.biomass = 55                  // the player buys a 600 g tip
       paintLedger(view, grown, grownRev)
       ok(headMant() === wasHead, 'a purchase did not shrink the organism')
-      ok(poolMant() === splitNum(C().fmtMass(55))[0], 'a purchase did empty the pool')
+      ok(poolMant() === splitMass(C().fmtMass(55))[0], 'a purchase did empty the pool')
       grown.res.pruned = 4500                 // and now the player deadheads
       paintLedger(view, grown, grownRev)
-      ok(headMant() === splitNum(C().fmtMass(9000))[0],
+      ok(headMant() === splitMass(C().fmtMass(9000))[0],
         'giving up tissue is the one thing that makes the organism smaller')
     }
     paintLedger(view, s, COLD)
@@ -5999,10 +6019,24 @@
       '06 §5.5 / §8.3: the tap floor is 44 px and the long-press is 420 ms')
     ok(U.D_PRESS === 70 && U.D_RELEASE === 220,
       '06 §5.2: press is 70 ms front-loaded and release is 220 ms long-tailed')
-    ok(splitNum('4.12 T')[1] === 'T' && splitNum('812')[1] === '',
-      'a value splits into a mantissa and a suffix; a bare number has no suffix')
-    ok(joinUnit('T', '') === 'T' && joinUnit('', 'g/s') === 'g/s' &&
-      joinUnit('k', 'g/s') === 'k g/s', 'a unit joins a suffix without leaving a stray space')
+    // The one rule of §3.3, asserted rather than trusted. A slot is painted and read back: the SI
+    // prefix must stay with the number it scales, the unit must arrive whole and one real space
+    // away, and a phrase handed to a slot must not be quietly cut at its last space.
+    var probe = slot('row-num')
+    setSlot(probe, C().fmt(47600), GLYPH.minerals)
+    ok(probe.__m.textContent === '47.6 k' && probe.__u.textContent === ' ⛬',
+      '06 §3.3: the SI prefix belongs to the number, not to the unit')
+    setRate(probe, 1620, 'g')
+    ok(probe.__m.textContent === '+1.62 k' && probe.__u.textContent === ' g/s',
+      'R6: a rate carries the unit of its own quantity, per second')
+    setRate(probe, 0, GLYPH.minerals)
+    ok(probe.__u.textContent === ' ⛬/s',
+      'R6: a rate that is zero still says what it is a rate of')
+    setSlot(probe, interp(STR.stands, { n: 7 }), '')
+    ok(probe.__m.textContent === '7 of 61' && probe.__u.textContent === '',
+      'a capped pair is one number; its denominator is not a unit')
+    ok(splitMass(C().fmtMass(5.33e11))[1] === 'kt' && splitMass('812')[1] === '',
+      'fmtMass is the one formatter whose trailing token is a unit')
     ok(ascii(0).length === U.ASCII_N && ascii(0.5).length === U.ASCII_N &&
       ascii(1).length === U.ASCII_N,
       'the ASCII meter is a fixed 20 characters at every value')

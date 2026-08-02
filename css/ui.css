@@ -502,8 +502,13 @@ canvas{ display:block; }
 [data-flash="gain"]{ color:var(--text-max); transition-duration:90ms; }
 [data-flash="loss"]{ color:var(--negative-text); transition-duration:90ms; }
 
-/* The suffix is always one step dimmer than the mantissa. It costs one span. */
-.unit{ color:var(--text-tertiary); margin-inline-start:.28ch; }
+/* The unit is always one step dimmer than the number. It costs one span.
+   The gap between them is a real space in the markup, not a margin here: `.28ch` was a tracking
+   nudge for an SI prefix hugging its own mantissa, and once the prefix moved back to the number
+   (06 §3.3) this span begins a word — `to empty`, `owed`, `sug/s` — which at .28ch read as
+   `5:29to empty`. A margin also cannot be heard: innerText, and therefore a screen reader, saw
+   `0.00g`. */
+.unit{ color:var(--text-tertiary); }
 .ledger-val .unit{ color:var(--text-secondary); }
 .unit[data-fade="in"]{ animation:sufIn var(--d-fade) linear; }
 @keyframes sufIn{ from{opacity:0} to{opacity:1} }
