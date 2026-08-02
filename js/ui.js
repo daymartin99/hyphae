@@ -1076,7 +1076,14 @@
       head: head,
       body: body,
       setTitle: function (s) { setText(title, s) },
-      setCount: function (s) { setText(count, s === null || s === undefined ? '' : s) },
+      // The header chip is a readout too, and the same rule binds it: a magnitude printed here
+      // needs its unit, or `252 G` says the panel holds two hundred and fifty-two gigasomethings.
+      // It is one text node rather than two spans because the chip is already tertiary and micro —
+      // there is no dimmer step left to put a unit in — but the space before the unit is real.
+      setCount: function (s, unit) {
+        setText(count, s === null || s === undefined || s === ''
+          ? '' : s + unitText(unit))
+      },
       empty: function (text) {
         if (!api.__empty) {
           api.__empty = el('p', 'panel-empty')
@@ -1262,6 +1269,13 @@
     wrap.setReadout = function (str, unit, aria) {
       setSlot(val, str, unit)
       if (aria) setAttr(input, 'aria-valuetext', aria)
+    }
+    // A mass names its own unit as it grows (g → kg → t), so a dial showing one takes the mass
+    // rather than a pre-formatted string: handing `12.0 kg` to setReadout with no unit would put
+    // the `kg` in the bright number span, which is the one thing §3.3 forbids.
+    wrap.setMassReadout = function (g, aria) {
+      var p = splitMass(C().fmtMass(g))
+      wrap.setReadout(p[0], p[1], aria)
     }
     wrap.setNote = function (s) { setText(note, s || '') }
     wrap.value = function () { return Number(input.value) }
@@ -3835,7 +3849,7 @@
       var mineralRate = e1.offer(tree, t.volume, t.term, t.collateral, t.exclusive)
       volume.setReadout(C().fmt(t.volume), SUG_S, C().fmt(t.volume) + ' sugar per second')
       term.setReadout(String(t.term), '', interp(STR.seasons, { n: t.term }))  // no suffix
-      coll.setReadout(C().fmtMass(t.collateral), '', C().fmtMass(t.collateral))
+      coll.setMassReadout(t.collateral, C().fmtMass(t.collateral))
       volume.setNote(C().fmt(e1.maxIntake(tree)) + ' ' + SUG_S + ' ' + STR.max)
       term.setNote(STR.max + ' ' + e1.maxTerm(tree))
       setSlot(payNum, C().fmt(t.volume), SUG_S)
@@ -4294,12 +4308,12 @@
         setText(note, c.necrotized ? STR.dead : (c.advancing ? STR.colonising : ''))
         // One figure per row, and it is the one the row is asking a question about: what the next
         // step costs while there is one, and the stand's standing when there is not.
-        if (c.density) setSlot(state, C().fmtMass(c.density.cost), '')
-        else if (!c.claimed && c.advance) setSlot(state, C().fmtMass(c.advance.cost), '')
+        if (c.density) setMass(state, c.density.cost)
+        else if (!c.claimed && c.advance) setMass(state, c.advance.cost)
         else setSlot(state, c.claimed ? STR.standing : STR.fog, '')
         col.set(c.col, '', STR.colonising + ' ' + pct(c.col))
         dens.set(c.d, '', STR.density + ' ' + pct(c.d))
-        setSlot(litterVal, C().fmtMass(c.L), '')
+        setMass(litterVal, c.L)
         setSlot(humusVal, c.h.toFixed(2), '')
         show(advBtn, !c.claimed && !!c.advance)
         show(densBtn, !!c.density)
@@ -4568,7 +4582,7 @@
       setSlot(slotsN, interp(STR.slotsUsed, { n: fl.used(), k: fl.slots() }), '')
       setSlot(sporesN, C().fmt(num(s.res.spores)), GLYPH.spores)
       var vol = num(s.res.biomass) * (bet.value() / U.SLIDER_STEPS) * U.FLUSH_BET_MAX
-      bet.setReadout(C().fmtMass(vol), '', STR.stake + ' ' + C().fmtMass(vol))
+      bet.setMassReadout(vol, STR.stake + ' ' + C().fmtMass(vol))
       show(fruitBtn, free)
       setData(fruitBtn, 's', free && vol > 0 ? 'afford' : 'want')
       setText(betTxt, free ? '' : STR.slotsFull)
@@ -4722,7 +4736,7 @@
         api.id = o.id
         setText(name, o.name)
         setText(guild, o.guild)
-        setSlot(stake, C().fmtMass(o.stake), '')
+        setMass(stake, o.stake)
         setText(terms, interp(STR.channelsOf, { n: o.ch, k: o.chMax }) + ' ' + STR.channels +
           ' · ' + interp(STR.seasons, { n: o.termPeriods }) + ' · ' + secs(o.left))
         setData(r.el, 's', o.affordable ? 'afford' : 'want')
