@@ -218,6 +218,12 @@
 
     consumed: 'consumed',
     interface_: 'live interface',
+    // 02 §4.1 defines live interface as "the surface area at which your hyphae are in exchange
+    // with a living root", and BIBLE §2.1 already measures hyphae in metres. So the row is an
+    // area and says so — it read a bare `54.6` between `stands 61 / 61` and `connectivity 1.40 ×`,
+    // the one figure in the panel that named no quantity at all, and it is the figure every Signal
+    // rate in the act is proportional to.
+    area: 'm²',
     connectivity: 'connectivity',
     retention: 'retention',
     stands: '{n} / 61',
@@ -4276,7 +4282,7 @@
       eatenBar.set(fc, fc > 0.88 ? 'warn' : 'signal', pct(fc) + ' ' + STR.consumed)
       var n = w && w.claimedCount ? w.claimedCount() : 0
       setSlot(held, interp(STR.stands, { n: n }), '')
-      setSlot(iface, C().fmt(f.totalInterface ? num(f.totalInterface(s)) : 0), '')
+      setSlot(iface, C().fmt(f.totalInterface ? num(f.totalInterface(s)) : 0), STR.area)
       setSlot(conn, (w && w.connectivity ? num(w.connectivity()) : 1).toFixed(2), '×')
       pv.setCount(pctNum(fc), '%')
       show(dial, !!rev.retention)
