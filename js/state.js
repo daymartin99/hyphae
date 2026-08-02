@@ -11,7 +11,7 @@
   // getter that builds the cold-boot save on first touch.
 
   var DEFAULT_SEED = 0x9E3779B9   // §3's literal; also the value core.rng() falls back to
-  var CURRENT = 1                 // §3 `v`. Bump on ANY key rename or removal.
+  var CURRENT = 2                 // §3 `v`. Bump on ANY key rename, removal or addition.
 
   // The seven Act I substrate pools, in the order §3 writes them. This is a vocabulary, not a
   // tuning table — the per-type economics (k, etaB, etaS, price, cap, fall) belong to economy1.
@@ -231,7 +231,7 @@
       t: 0,
 
       res: {
-        biomass: 0, cumBiomass: 0, extracted: 0,
+        biomass: 0, cumBiomass: 0, pruned: 0, extracted: 0,
         sugar: 0, minerals: 0,
         signal: 0, insight: 0, satTime: 0,
         spores: 0, accord: 0, accordLifetime: 0,
@@ -457,7 +457,8 @@
       v: 'num', seed: 'num', wallClock: 'num', act: 'num', phase: 'str', t: 'num',
 
       res: {
-        biomass: 'num', cumBiomass: 'num', extracted: 'num', sugar: 'num', minerals: 'num',
+        biomass: 'num', cumBiomass: 'num', pruned: 'num', extracted: 'num',
+        sugar: 'num', minerals: 'num',
         signal: 'num', insight: 'num', satTime: 'num', spores: 'num', accord: 'num',
         accordLifetime: 'num', carbon: 'num', cumCarbon: 'num', alleles: 'num', canon: 'num',
         D: 'num'
@@ -761,6 +762,14 @@
     fillDefaults(sv, newGame(sv.seed, sv.meta))
   }
 
+  // v1 predates `res.pruned`, and therefore predates any tissue ever having been given up: a v1
+  // save has deadheaded nothing, so the new stock is zero and `fillDefaults` is the whole
+  // migration. An addition needs a version because `assertShape` reads a missing key as a fault,
+  // not because anything held in a v1 save has changed meaning.
+  function m1to2 (sv) {
+    fillDefaults(sv, newGame(sv.seed, sv.meta))
+  }
+
   function migrate (save, from) {
     var v = isNum(from) ? from : (isNum(save.v) ? save.v : 0)
     if (v > CURRENT) return save     // never downgrade; load() and importB64() have already refused
@@ -769,6 +778,9 @@
     switch (v) {
       case 0:
         m0to1(save)
+        /* falls through */
+      case 1:
+        m1to2(save)
         /* falls through */
       default:
         break
@@ -1057,6 +1069,30 @@
   }
 
   // ───────────────────────────────────────────────────────────────────────────
+  // THE ORGANISM'S SIZE — as distinct from what it can spend
+  // ───────────────────────────────────────────────────────────────────────────
+
+  // `cumBiomass` is every gram the colony has ever laid down, and it is the only quantity the
+  // canvas can honestly draw: threads extend, and they do not retract because a tip was bought.
+  // `biomass` is the labile pool — carbon in transit, spent the instant it is useful — and it
+  // falls on every purchase. Printing the second one under the word BIOMASS put the headline
+  // number in flat contradiction with the picture beside it: buy a tip, watch the colony visibly
+  // grow, and read that it had shrunk by 82 g.
+  //
+  // So the size is lifetime production minus tissue genuinely given up. `pruned` is its only
+  // subtrahend and it moves in exactly one place — deadheading, in act1.js — which is what makes
+  // a fall in this number mean something when it happens. `cumBiomass` itself stays strictly
+  // monotone, because Act II's differentiation ladders and Act III's trigger are lifetime-mass
+  // thresholds, and a threshold you can fall back through is a rung that ungrants itself.
+  function standing (state) {
+    var s = state || st()
+    if (!s || !s.res) return 0
+    var a = s.res.cumBiomass, b = s.res.pruned
+    var g = (isNum(a) ? a : 0) - (isNum(b) ? b : 0)
+    return g > 0 ? g : 0
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
   // SELF-TEST — returns [] when healthy
   // ───────────────────────────────────────────────────────────────────────────
 
@@ -1083,6 +1119,23 @@
       ok(g.a2.regions.L.length === TUNE().A2.REGIONS, 'region arrays are the wrong length')
       ok(g.a3.bands.phase.length === TUNE().A3.BANDS, 'band arrays are the wrong length')
       ok(g.meta.runs === 0 && g.meta.sclerotium === 0, 'newGame did not zero meta')
+
+      // 1b · the size, and what a v1 save has to be told about it.
+      g.res.cumBiomass = 13500
+      g.res.biomass = 655
+      ok(standing(g) === 13500, 'standing() followed the spendable pool instead of the size')
+      g.res.pruned = 4500
+      ok(standing(g) === 9000, 'standing() ignored tissue given up')
+      g.res.pruned = 1e9
+      ok(standing(g) === 0, 'standing() went negative; a colony has no negative size')
+      g.res.cumBiomass = 0; g.res.biomass = 0; g.res.pruned = 0
+      var v1 = serialise(newGame(77, null))
+      delete v1.res.pruned                       // exactly what a save written before v2 looks like
+      v1.v = 1
+      ok(assertShape(v1).length > 0, 'a v1 save was accepted without migration')
+      var up = migrate(deserialise(v1), 1)
+      ok(up.v === CURRENT && up.res.pruned === 0 && assertShape(up).length === 0,
+        'v1 -> v2 did not fill res.pruned')
 
       // meta carries across New Growth and must survive construction.
       var g2 = newGame(9, { sclerotium: 7, runs: 3, upgrades: ['a'], archive: [{ name: 'x' }] })
@@ -1397,6 +1450,7 @@
 
   HY.state = {
     newGame: newGame,
+    standing: standing,
     save: save,
     load: load,
     exportB64: exportB64,

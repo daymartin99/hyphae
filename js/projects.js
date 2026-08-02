@@ -1251,7 +1251,7 @@
     { psi: 200, g: a2g(3.0e11) },
     function (s) { return fc(s) >= 0.75 },
     function () { /* spore decay off; biomass → spores on demand at SPORE_DIVISOR */ },
-    'Nothing you make now is for you. (Biomass to spores)',
+    'Nothing you make now is for you. (Labile carbon to spores)',
     ['rulechange', 'verb'])
 
   // THE ACT BREAK, PRICED AGAINST THE ACT THAT PAYS IT.

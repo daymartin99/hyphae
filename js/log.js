@@ -289,9 +289,13 @@
     { opening: 3, bin: 'fact', src: 'hydrolysis of lignocellulose; standard biochemistry',
       guard: function (s) { return s.stats.taps >= 3 } })
 
+  // Against the SIZE, not the labile pool. The line is about how much of the floor the colony has
+  // got through, which is a fact about the organism and not about its current balance; read off
+  // `res.biomass` it could be spent back below its own threshold, and act1.js's matching reveal
+  // (REVEAL_SUBSTRATE_G) has always read the cumulative figure.
   L(1, 'a1.substrate', 'narrative', null, 'biomass >= 5',
     'there are two thousand grams of it. you have used ten.',
-    { opening: 4, pred: function (s) { return s.res.biomass >= T().A1.REVEAL_SUBSTRATE_G } })
+    { opening: 4, pred: function (s) { return HY.state.standing(s) >= T().A1.REVEAL_SUBSTRATE_G } })
 
   L(1, 'a1.autumn', 'narrative', null, 't >= 14 || taps >= 15',
     'it is autumn. more is falling. not fast enough.',
@@ -2392,7 +2396,8 @@
         manageLog(live)
         ok(seen.length === 1 && seen[0].id === 'a1.boot', 'boot line did not land first')
 
-        live.res.biomass = 5000            // would fire a1.substrate on its own
+        live.res.cumBiomass = 5000         // would fire a1.substrate on its own
+        live.res.biomass = 5000
         live.a1.tips = 4                   // and a1.first_tip and a1.sugar_reveal
         live.t = 1
         manageLog(live)

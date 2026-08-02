@@ -118,6 +118,9 @@
   var STR = {
     extend: 'extend',
     biomass: 'biomass',
+    // PROVISIONAL, pending the narrative writer (09 §1.1). `labile` is the mycological term for
+    // readily-usable carbon, which is exactly what this pool is; see the shortlist in the handover.
+    labile: 'labile',
     sugar: 'sugar',
     minerals: 'minerals',
     netSugar: 'net sugar',
@@ -2039,7 +2042,7 @@
       }
       return k
     })
-    if (done && view) flashSlot(view.ledgerRows[0].val, 'loss')
+    if (done) flashSpend()
     return done
   }
 
@@ -2335,6 +2338,11 @@
     // and its row's rate must be the rate of that count, so it is measured here the same way.
     var bl = HY.bloom
     if (s.act >= 3 && bl && bl.totalCraft) rate(v, 'craft', num(bl.totalCraft(s)), dt)
+    // The size row is not a `res` key — it is lifetime production less tissue given up — so its
+    // rate is measured here, off the same reader the row prints. It needs none of `commit`'s step
+    // subtraction: the number it describes does not move when the player buys something, which is
+    // why that machinery had to exist for the labile pool in the first place.
+    else if (s.act < 3) rate(v, 'standing', num(HY.state.standing(s)), dt)
   }
 
   // Every discrete transaction the interface performs is handed to the rate meters so they can
@@ -2412,6 +2420,34 @@
     }
   }
 
+  // The labile pool, printed under the size it came out of. Two readings of one organism: how
+  // big it is, and how much of it is spendable this second. The row above is the canvas's number
+  // and never falls; this line falls on every purchase, which is where a falling number belongs.
+  // It is built lazily and lives in the same slot as the rot line so the strip's row count — four,
+  // and 06 §5.1 means it — is untouched.
+  function poolLine (r, g, on) {
+    if (!on) { if (r.pool) show(r.pool, false); return }
+    if (!r.pool) {
+      r.pool = el('div', 'ledger-sub')
+      r.pool.dataset.kind = 'pool'
+      r.pool.appendChild(el('span', 'ledger-lab', STR.labile))
+      r.poolVal = slot('row-num')
+      r.pool.appendChild(r.poolVal)
+      r.el.parentNode.insertBefore(r.pool, r.el.nextSibling)
+    }
+    show(r.pool, true)
+    setMass(r.poolVal, g)
+  }
+
+  // A purchase is a fall in the labile pool and in nothing else, so that is the only slot that may
+  // flash for it. Flashing the size row would say the organism had lost mass, which is the exact
+  // lie this whole change exists to stop telling.
+  function flashSpend () {
+    if (!view) return
+    var r = view.ledgerRows[0]
+    flashSlot(r.poolVal && r.pool && !r.pool.hidden ? r.poolVal : r.val, 'loss')
+  }
+
   function rotLine (r, rot) {
     if (rot > 0) {
       if (!r.sub) {
@@ -2435,8 +2471,9 @@
     var r0 = v.ledgerRows[0]
     show(r0.el, true)
     setText(r0.lab, STR.biomass)
-    setMass(r0.val, num(s.res.biomass))
-    setRate(r0.rate, rateOf(v, 'biomass'), 'g/s')
+    setMass(r0.val, num(HY.state.standing(s)))
+    setRate(r0.rate, rateOf(v, 'standing'), 'g/s')
+    poolLine(r0, num(s.res.biomass), true)
     setData(r0.el, 'lead', '1')
 
     var r1 = v.ledgerRows[1]
@@ -2495,6 +2532,8 @@
     setRate(r0.rate, rateOf(v, 'carbon'), GLYPH.carbon + '/s')
     setData(r0.el, 'lead', '1')
     if (r0.sub) show(r0.sub, false)
+    // Biomass is gone by the void and so is the pool under it; the row is carbon now.
+    poolLine(r0, 0, false)
 
     var r1 = v.ledgerRows[1]
     show(r1.el, true)
@@ -2536,8 +2575,12 @@
     var r0 = v.ledgerRows[0]
     show(r0.el, true)
     setText(r0.lab, STR.biomass)
-    setMass(r0.val, num(s.res.biomass))
-    setRate(r0.rate, rateOf(v, 'biomass'), 'g/s')
+    setMass(r0.val, num(HY.state.standing(s)))
+    setRate(r0.rate, rateOf(v, 'standing'), 'g/s')
+    // Before the first tip there is nothing to spend on and the two numbers are the same number,
+    // so the second line would be noise on the cold-boot screen. It arrives with the surface that
+    // first charges for something.
+    poolLine(r0, num(s.res.biomass), !!rev.tips)
 
     var r1 = v.ledgerRows[1]
     if (rev.sugar) {
@@ -2549,7 +2592,11 @@
       // The pair carries the unit. Without it this row read `520 / 790` bare while the market two
       // panels down quoted `0.11 sug/g` — the one readout the buy decision is made against was the
       // one place the substance was never named.
-      setRaw(r1.val, C().fmt(held) + ' / ' + C().fmt(cap), SUG)
+      // Tight slash, and only here. The strip has 72px of label and a 9ch rate slot to clear on a
+      // 390px phone, and the two spaces the panels can afford are what pushed the pair onto a
+      // second line the moment it gained its unit. Naming the substance is worth more than the
+      // spaces; a row that silently becomes two rows is worth less than either.
+      setRaw(r1.val, C().fmt(held) + '/' + C().fmt(cap), SUG)
       setRate(r1.rate, rateOf(v, 'sugar'), SUG_S)
       show(r1.cap, true)
       var f = cap > 0 ? held / cap : 0
@@ -2781,8 +2828,9 @@
       ariaRow(v, 3, STR.insight, C().fmt(num(s.res.insight)))
       return
     }
-    ariaRow(v, 0, STR.biomass, C().fmtMass(num(s.res.biomass)),
-      rateOf(v, 'biomass') > 0 ? 'rising' : 'steady')
+    ariaRow(v, 0, STR.biomass, C().fmtMass(num(HY.state.standing(s))),
+      STR.labile + ' ' + C().fmtMass(num(s.res.biomass)) + ', ' +
+      (rateOf(v, 'standing') > 0 ? 'rising' : 'steady'))
     if (s.act >= 2) {
       ariaRow(v, 1, STR.p_signal, C().fmt(num(s.res.signal)) + ' of ' +
         C().fmt(g && g.Sc ? num(g.Sc(s)) : 0),
@@ -2826,7 +2874,7 @@
     var m = A1() && A1().hyphae ? A1().hyphae() : 0
     setAttr(v.flux, 'aria-label',
       C().fmt(m) + ' metres of thread, ' + C().fmt(s.a1.tips) + ' tips, ' +
-      (rateOf(v, 'biomass') > 0 ? 'growing' : 'still'))
+      (rateOf(v, 'standing') > 0 ? 'growing' : 'still'))
   }
 
   var verbose = false
@@ -2846,7 +2894,8 @@
     if (s.act >= 2) {
       var w = HY.world
       setText(v.statusVh,
-        STR.biomass + ' ' + C().fmtMass(num(s.res.biomass)) + '. ' +
+        STR.biomass + ' ' + C().fmtMass(num(HY.state.standing(s))) + '. ' +
+        STR.labile + ' ' + C().fmtMass(num(s.res.biomass)) + '. ' +
         STR.p_signal + ' ' + C().fmt(num(s.res.signal)) + ' of ' +
         C().fmt(g && g.Sc ? num(g.Sc(s)) : 0) + '. ' +
         (w && w.claimedCount ? w.claimedCount() : 0) + ' stands.')
@@ -2854,7 +2903,8 @@
     }
     var cap = A1() && A1().sugarCap ? A1().sugarCap() : 0
     setText(v.statusVh,
-      STR.biomass + ' ' + C().fmtMass(num(s.res.biomass)) + '. ' +
+      STR.biomass + ' ' + C().fmtMass(num(HY.state.standing(s))) + '. ' +
+      STR.labile + ' ' + C().fmtMass(num(s.res.biomass)) + '. ' +
       STR.sugar + ' ' + C().fmt(num(s.res.sugar)) + ' of ' + C().fmt(cap) + '. ' +
       s.a1.contracts.length + ' terms.')
   }
@@ -3868,7 +3918,7 @@
         return
       }
       commit(function () { PJ().purchase(entry.id) })
-      if (view) flashSlot(view.ledgerRows[0].val, 'loss')
+      flashSpend()
     }
 
     p.__sync = function (s) {
@@ -5790,6 +5840,41 @@
       ok(r.querySelector('.ledger-rate').dataset.sign === 'zero',
         'D02: a zero rate renders as an em dash, never +0.00')
     }
+    ok(!host.querySelector('.ledger-sub[data-kind="pool"]'),
+      'D02: nothing is purchasable at t=0, so the labile line is not on the cold-boot screen')
+
+    // 2b · THE HEADLINE AND THE PICTURE AGREE.
+    // The canvas draws a colony that only ever grows. The number over it has to be the same
+    // organism, so it is the standing mass and not the pool the purchases come out of: spending
+    // must move the second line and leave the first exactly where it was.
+    var grown = STATE().newGame(0, null)
+    grown.res.cumBiomass = 13500
+    grown.res.biomass = 655
+    var grownRev = {}
+    for (var rk in COLD) if (Object.prototype.hasOwnProperty.call(COLD, rk)) grownRev[rk] = COLD[rk]
+    grownRev.tips = true
+    paintLedger(view, grown, grownRev)
+    var head = host.querySelectorAll('.ledger-row')[0]
+    var pool = host.querySelector('.ledger-sub[data-kind="pool"]')
+    var headMant = function () { return head.querySelector('.ledger-val .mant').textContent }
+    var poolMant = function () { return pool.querySelector('.row-num .mant').textContent }
+    ok(!!pool, 'the labile pool has a line of its own once anything can be bought')
+    if (pool) {
+      ok(headMant() === splitNum(C().fmtMass(13500))[0],
+        'the headline is the standing mass, not the spendable pool')
+      ok(poolMant() === splitNum(C().fmtMass(655))[0],
+        'the second line is the spendable pool')
+      var wasHead = headMant()
+      grown.res.biomass = 55                  // the player buys a 600 g tip
+      paintLedger(view, grown, grownRev)
+      ok(headMant() === wasHead, 'a purchase did not shrink the organism')
+      ok(poolMant() === splitNum(C().fmtMass(55))[0], 'a purchase did empty the pool')
+      grown.res.pruned = 4500                 // and now the player deadheads
+      paintLedger(view, grown, grownRev)
+      ok(headMant() === splitNum(C().fmtMass(9000))[0],
+        'giving up tissue is the one thing that makes the organism smaller')
+    }
+    paintLedger(view, s, COLD)
 
     // 3 · exactly one button on screen, and it says EXTEND
     var live = []
