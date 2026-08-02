@@ -1064,7 +1064,7 @@
     var head = el('header', 'panel-head')
     var title = el('h2', 'panel-title', spec.title || id)
     title.id = 'p-' + id
-    var count = el('span', 'panel-count num')
+    var count = slot('panel-count')
     head.appendChild(title)
     head.appendChild(count)
     var body = el('div', 'panel-body')
@@ -1079,11 +1079,11 @@
       setTitle: function (s) { setText(title, s) },
       // The header chip is a readout too, and the same rule binds it: a magnitude printed here
       // needs its unit, or `252 G` says the panel holds two hundred and fifty-two gigasomethings.
-      // It is one text node rather than two spans because the chip is already tertiary and micro —
-      // there is no dimmer step left to put a unit in — but the space before the unit is real.
+      // It is a slot rather than a text node for one reason beyond consistency: the chip is
+      // uppercased by 06 §5.1, and an uppercased unit is a different unit — `n` became `N`, which
+      // is newtons. The unit span opts out of the transform in the stylesheet.
       setCount: function (s, unit) {
-        setText(count, s === null || s === undefined || s === ''
-          ? '' : s + unitText(unit))
+        setSlot(count, s === null || s === undefined ? '' : String(s), unit)
       },
       empty: function (text) {
         if (!api.__empty) {

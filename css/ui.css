@@ -766,6 +766,9 @@ canvas{ display:block; }
               color:var(--text-secondary); }
 .panel-count{ margin-inline-start:auto; font:var(--t-micro); letter-spacing:.10em;
               text-transform:uppercase; color:var(--text-tertiary); }
+/* An uppercased unit is a different unit: the craft glyph `n` came out of this chip as `N`, which
+   is newtons, and `sug` as `SUG`. The words in the chip are still uppercase; the unit is not. */
+.panel-count .unit{ text-transform:none; }
 .panel-body{ padding-top:var(--sp-8); }
 .panel-empty{ padding:var(--sp-12) var(--gutter); font:var(--t-meta);
               color:var(--text-tertiary); text-align:center; }
