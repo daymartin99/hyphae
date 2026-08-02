@@ -138,6 +138,8 @@
 
     growTip: 'grow tip',
     nextTip: 'next tip',
+    deadhead: 'deadhead',
+    deadheadNote: '−{n} tips · −{g} · +{b} labile',
     litterEaten: 'litter eaten',
     utilisation: 'utilisation',
     ofWhatFalls: 'of what falls here',
@@ -2354,11 +2356,17 @@
     var before = []
     var i, r
     for (i = 0; i < RATE_KEYS.length; i++) before.push(num(s.res[RATE_KEYS[i]]))
+    // The size row is not a `res` key and is normally immune to this, because nothing the player
+    // buys moves it. Deadheading does, and a cut is still a transaction: without this the size row
+    // reports −2.3 kg/s for two seconds over a colony that is growing again.
+    var standBefore = num(HY.state.standing(s))
     var out = fn()
     for (i = 0; i < RATE_KEYS.length; i++) {
       r = view.rates[RATE_KEYS[i]]
       if (r) r.step += num(s.res[RATE_KEYS[i]]) - before[i]
     }
+    r = view.rates.standing
+    if (r) r.step += num(HY.state.standing(s)) - standBefore
     return out
   }
 
@@ -3251,6 +3259,31 @@
     span(l1, 'row-sub', STR.litterEaten)
     var thru = slot('row-num')
     l1.appendChild(thru)
+
+    // DEADHEAD. 06 §12.1 keeps long-press for secondary actions and D73 fixes the number of
+    // confirmations in the game at three, so a control that costs the player tissue cannot open a
+    // fourth and must not be a tap either. It is the destructive hold — the same 400 ms commit the
+    // endings take — which is deliberate by construction and needs nothing said about it.
+    var lCut = r.line()
+    // No `cost` tone: this is a price quote for something the player may want, not a shortfall
+    // warning, and half of what it quotes is a gain.
+    var cutTxt = span(lCut, 'row-sub', '')
+    // `act-btn` for the shape and `hold` for the sweep: the control has to look like every other
+    // thing you can press, and fill red under the thumb like every other thing you cannot undo.
+    var cutBtn = btn('act-btn hold')
+    cutBtn.appendChild(el('span', 'hold-fill'))
+    cutBtn.appendChild(el('span', 'hold-lab', STR.deadhead))
+    lCut.appendChild(cutBtn)
+    show(lCut, false)
+    bindHold(cutBtn, function () {
+      var a = A1()
+      if (!a || !a.canDeadhead()) { refuse(cutBtn); return }
+      commit(function () { return a.deadhead() })
+      // The one action in the game allowed to flash the size row, because it is the only one that
+      // took mass out of the organism rather than out of the pool underneath it.
+      if (view) flashSlot(view.ledgerRows[0].val, 'loss')
+    })
+
     pv.body.appendChild(r.el)
 
     // The cost updates *after* the press animation completes, not during, so the number the player
@@ -3305,6 +3338,22 @@
       // Behavioural triggers: the wider buys appear when the narrow one has become a chore.
       show(b5, s.a1.tips >= U.BURST_5_AT)
       show(bMax, s.a1.tips >= U.BURST_MAX_AT)
+
+      // The cut states its whole price before the thumb lands: how much of the front goes, how
+      // much tissue goes with it, and what the rest is worth afterwards. Nothing here is a
+      // recommendation — three numbers and the trade is the player's to read (09 §1.0 rule 2).
+      var cut = !!(a && a.canDeadhead && a.canDeadhead(s))
+      show(lCut, cut)
+      if (cut) {
+        var tissue = a.pruneTissue(s)
+        var cutStr = interp(STR.deadheadNote, {
+          n: whole(a.pruneCount(s)),
+          g: C().fmtMass(tissue),
+          b: C().fmtMass(tissue * T().A1.PRUNE_SALVAGE)
+        })
+        setText(cutTxt, cutStr)
+        setAttr(cutBtn, 'aria-label', STR.deadhead + ', ' + cutStr)
+      }
     }
     p.view = pv
     return pv

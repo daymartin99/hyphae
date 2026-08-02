@@ -283,10 +283,10 @@
 
       a1: {
         tips: 0,
-        // Cuts taken, not tips lost: the concentration multiplier is a function of how many times
-        // the front has been cut back, and act1 derives it rather than storing a second number
-        // that could disagree with this one.
-        deadheads: 0,
+        // The widest the front has ever been. Deadheading's concentration term is peak/standing —
+        // the mat's supply does not shrink when tips are cut — so this is the only thing that has
+        // to be remembered about a cut, and it fades to nothing on its own as the front regrows.
+        tipsPeak: 0,
         hyphaeManual: 0,
         season: A1.BOOT_SEASON,
         seasonPhase: A1.BOOT_SEASON_PHASE,
@@ -490,7 +490,7 @@
       },
 
       a1: {
-        tips: 'num', deadheads: 'num', hyphaeManual: 'num',
+        tips: 'num', tipsPeak: 'num', hyphaeManual: 'num',
         season: 'num', seasonPhase: 'num', year: 'num',
         moisture: 'num', weatherMoistMod: 'num', weatherFallMod: numArray(TYPES.length, false),
         sub: poolsCheck, consumptionOrder: 'arr', unlockedTypes: 'arr', mkt: mktCheck,
@@ -1145,11 +1145,12 @@
       g.res.cumBiomass = 0; g.res.biomass = 0; g.res.pruned = 0
       var v1 = serialise(newGame(77, null))
       delete v1.res.pruned                       // exactly what a save written before v2 looks like
+      delete v1.a1.tipsPeak                      // and before v3
       v1.v = 1
       ok(assertShape(v1).length > 0, 'a v1 save was accepted without migration')
       var up = migrate(deserialise(v1), 1)
-      ok(up.v === CURRENT && up.res.pruned === 0 && assertShape(up).length === 0,
-        'v1 -> v2 did not fill res.pruned')
+      ok(up.v === CURRENT && up.res.pruned === 0 && up.a1.tipsPeak === 0 &&
+        assertShape(up).length === 0, 'v1 -> v3 did not fill the stocks it added')
 
       // meta carries across New Growth and must survive construction.
       var g2 = newGame(9, { sclerotium: 7, runs: 3, upgrades: ['a'], archive: [{ name: 'x' }] })

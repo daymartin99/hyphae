@@ -561,6 +561,7 @@
     C().setStock(s.res, 'biomass', num(s.res.biomass) - cost)
     if (mineral > 0) C().setStock(s.res, 'minerals', num(s.res.minerals) - mineral)
     s.a1.tips = n + 1
+    if (s.a1.tips > num(s.a1.tipsPeak)) s.a1.tipsPeak = s.a1.tips
     feel('buy', { what: 'tip', n: s.a1.tips })
     fire('a1.first_tip')
     if (HY.log && HY.log.bought) HY.log.bought('tip')
@@ -599,18 +600,29 @@
     return g
   }
 
-  // Permanent, and capped. PRUNE_CONC is set above what E(n) loses across one cut — n^0.50 makes
-  // four fifths of the tips 0.894 of the column — so the first cut is worth taking; the ceiling
-  // arrives at the fourth, before the tip count has been cut to nothing.
+  // The mat's reach does not shrink when tips are cut. `tipsPeak` is how wide the front has ever
+  // been, and the litter within that reach is shared out among the tips actually standing — so
+  // cutting a fifth of them feeds the rest a fifth better, and the term decays to 1.00 exactly as
+  // the front regrows. That is what makes a cut cost 0.894× rather than 0.715×: only the enzyme
+  // column (n^0.50) is lost, not the linear tip term. It is also why deadheading can never be
+  // farmed for throughput — regrow and you are precisely where you started, minus the tissue.
   function concentration (state) {
     var s = state || S(), a = A()
-    var c = 1 + a.PRUNE_CONC * num(s.a1.deadheads)
+    var n = s.a1.tips
+    if (!(n > 0)) return 1
+    var peak = num(s.a1.tipsPeak)
+    if (peak < n) peak = n
+    var c = peak / n
+    if (c < 1) return 1
     return c > a.PRUNE_CONC_MAX ? a.PRUNE_CONC_MAX : c
   }
 
+  // No cut counter and no cooldown. The floor at PRUNE_MIN_TIPS and the salvage being under 1.00
+  // are the whole of the limit: a colony cut to the gate cannot be cut again until it has regrown,
+  // and every gram that comes back came out of something that was standing.
   function canDeadhead (state) {
     var s = state || S()
-    return s.act === 1 && pruneCount(s) > 0 && concentration(s) < A().PRUNE_CONC_MAX
+    return s.act === 1 && pruneCount(s) > 0
   }
 
   function deadhead () {
@@ -618,8 +630,10 @@
     if (!canDeadhead(s)) return false
     var k = pruneCount(s)
     var g = pruneTissue(s)
+    // The peak is latched before the cut, not after: it is the reach the mat already has, and the
+    // whole concentration term is the difference between that and what is left standing.
+    if (s.a1.tips > num(s.a1.tipsPeak)) s.a1.tipsPeak = s.a1.tips
     s.a1.tips -= k
-    s.a1.deadheads = num(s.a1.deadheads) + 1
     // The size falls by the whole of it, and `cumBiomass` is untouched: the colony did lay that
     // mass down, and Act II's ladders are lifetime thresholds that must not fall back through
     // themselves. `state.standing()` is what subtracts this.
@@ -1123,6 +1137,41 @@
       S().proj.flags.foraging_front = 1
       ok(tipCost(100) < 10570, 'Foraging Front did not move the coefficient')
       delete S().proj.flags.foraging_front
+
+      // ── deadheading ──────────────────────────────────────────────────────
+      // The one verb allowed to make the colony smaller, so the one verb whose arithmetic has to
+      // be checked in both directions: what leaves, and what comes back.
+      cold(1)
+      var ds = S()
+      ds.a1.tips = 20
+      ok(!canDeadhead(ds), 'a cut below the mineral gate was offered')
+      ds.a1.tips = 55
+      ds.a1.tipsPeak = 55
+      ds.res.cumBiomass = 100000
+      ds.res.biomass = 1000
+      ds.res.pruned = 0
+      var cutK = pruneCount(ds)
+      var cutG = pruneTissue(ds)
+      var thruBefore = throughputPerSec(ds)
+      near(cutK, Math.ceil(55 * A().PRUNE_FRAC), 0, 'a cut is not a fifth of the front')
+      ok(cutG > 0, 'a cut priced the tissue it removes at nothing')
+      ok(deadhead(), 'the cut was refused with the gate clear')
+      near(ds.a1.tips, 55 - cutK, 0, 'the front did not thin')
+      near(ds.res.pruned, cutG, 1e-6, 'the tissue removed is not what the control quoted')
+      near(ds.res.cumBiomass, 100000, 0, 'a cut moved lifetime production')
+      near(HY.state.standing(ds), 100000 - cutG, 1e-6, 'the size did not fall by the tissue')
+      near(ds.res.biomass, 1000 + cutG * A().PRUNE_SALVAGE, 1e-6, 'the salvage is not what was quoted')
+      // The whole point of the concentration term: the linear tip loss is carried by the mat, so
+      // the cut costs the enzyme column and nothing else.
+      var lost = throughputPerSec(ds) / thruBefore
+      var wantLost = Math.pow((55 - cutK) / 55, E_EXP)
+      near(lost, wantLost, 0.02, 'a cut cost more than the enzyme column')
+      // And it is not farmable: regrow to the peak and the term is gone.
+      ds.a1.tips = 55
+      near(concentration(ds), 1, 1e-9, 'the concentration survived the regrowth that cancels it')
+      // The floor holds against repetition rather than against a counter.
+      ds.a1.tips = A().PRUNE_MIN_TIPS
+      ok(!canDeadhead(ds), 'the colony was cut below the gate it had already climbed')
 
       // The decomposition columns and economy1's market columns are two views of `01` §5.5's one
       // table, split because they are read on different sides of a module boundary. They are not

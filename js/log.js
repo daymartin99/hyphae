@@ -2184,7 +2184,9 @@
     }
 
     // ── The corpus itself ────────────────────────────────────────────────────
-    ok(LINES.length === 158, 'corpus is ' + LINES.length + ' entries, expected 158')
+    // 159, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
+    // corpus was transcribed. It is one Act I world line and it is counted, not excused.
+    ok(LINES.length === 159, 'corpus is ' + LINES.length + ' entries, expected 159')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -2192,7 +2194,7 @@
     }
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
-    ok(counts.a1 === 47, 'act I lines: ' + counts.a1)
+    ok(counts.a1 === 48, 'act I lines: ' + counts.a1)
     ok(counts.a2 === 38, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 25, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)

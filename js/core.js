@@ -87,17 +87,18 @@
       ETA_S: 0.20,             // fraction of litter mass → sugar (K06)
       RESPIRED: 0.30,          // fraction of litter mass respired and gone (§3.6 conservation)
       // deadheading — the only thing in the game that costs tissue
-      // A cut gives up a fifth of the front and the mass that was laid down to build it, and pays
-      // a permanent concentration multiplier on what is left. The tips have to be re-bought at the
-      // same prices they cost the first time, so the multiplier is the whole of the return and the
-      // regrowth is the whole of the price: PRUNE_CONC is deliberately larger than the throughput
-      // E(n) loses across one cut (n^0.50 makes 0.80 of the tips 0.894 of the column), so one cut
-      // is worth taking and five are not — the ceiling lands before the tip count does.
+      // A cut is a LIQUIDITY verb, not a growth one, and it is deliberately never a long-run gain:
+      // the tissue that leaves is gone, and re-buying the tips costs exactly what they cost the
+      // first time against a salvage of 0.60. What it buys is grams now, out of a body that has
+      // them, at a price the player can see. Throughput is linear in tips, so a cut with no
+      // concentration term would cost 0.715× — which is why the term exists and why it is a
+      // ratio rather than a bonus: the mat's supply is set by the widest the front has ever been,
+      // so cutting a fifth of the tips feeds the rest a fifth better and the cut costs only what
+      // the enzyme column loses (n^0.50, so 0.894×). It fades to nothing as the front regrows.
       PRUNE_MIN_TIPS: 24,       // tips, the mineral gate; below it a cut is just losing tips
       PRUNE_FRAC: 0.20,         // share of the standing tip count taken in one cut
-      PRUNE_SALVAGE: 0.25,      // of the tissue removed, the fraction that autolyses back to labile
-      PRUNE_CONC: 0.14,         // × throughput per cut, permanent, on the tips that remain
-      PRUNE_CONC_MAX: 1.56,     // the concentration ceiling: four cuts, and the fourth is marginal
+      PRUNE_SALVAGE: 0.60,      // of the tissue removed, the fraction that autolyses back to labile
+      PRUNE_CONC_MAX: 1.60,     // ceiling on peak/standing; a colony cut to nothing is not a colony
       // the mineral gate — the spine of the act
       MIN_WARN_TIPS: 20,        // tips, the greyed 0 ⛬ forecast on GROW TIP
       MIN_GATE_TIPS: 24,        // tips, first tip that costs a mineral (≈11:48)
