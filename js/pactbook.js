@@ -2218,16 +2218,22 @@
 
   function fmt (v) { return C().fmt(v) }
 
+  // THE NUMBER ONLY. Its unit is the guild's, and GUILDS has carried the right string for all six
+  // since it was written — while this function hand-rolled six notations that between them led
+  // with the glyph (`Ψ 0.30/s`, `⛬ 37.1/s` — nothing else in the game puts the unit first), glued
+  // the `/s` to the digits, and left RIVAL as `−0.0030/s`, a rate naming no quantity at all. All
+  // six then landed whole in the mantissa, so none of it drew dim — one row under this panel's
+  // own `book cost 18.7 M g/s`, which does. 06 §3.3: the caller states the boundary, and the
+  // boundary is after the number.
   function rateText (s, p) {
-    var g = guildOf(p)
-    if (p.guild === ROOT) return '⛬ ' + fmt(num(p.yield)) + '/s'
-    if (p.guild === NODULE) return '+' + (num(p.yield)).toFixed(2) + '× gross'
-    if (p.guild === BROOD) return '+' + (num(p.rate) / Math.max(1e-9, gross)).toFixed(2) + '× gross'
-    if (p.guild === GHOST) return 'Ψ ' + fmt(num(p.yield)) + '/s'
-    if (p.guild === CROWN) return '+' + (num(p.yield)).toFixed(2) + '× Σ'
-    if (p.guild === RIVAL) return '−' + (num(p.yield)).toFixed(4) + '/s'
-    return fmt(num(p.yield)) + ' ' + g.unit
+    void s
+    if (p.guild === BROOD) return '+' + (num(p.rate) / Math.max(1e-9, gross)).toFixed(2)
+    if (p.guild === NODULE || p.guild === CROWN) return '+' + (num(p.yield)).toFixed(2)
+    if (p.guild === RIVAL) return '−' + (num(p.yield)).toFixed(4)
+    return fmt(num(p.yield))
   }
+
+  function rateUnit (p) { return guildOf(p).unit }
 
   function traitCells (s, b, p) {
     var out = [], i
@@ -2271,6 +2277,7 @@
       pips: pips(num(p.ch), chMax),
       rate: p.guild === BROOD ? num(p.rate) : num(p.yield),
       rateText: rateText(s, p),
+      rateUnit: rateUnit(p),
       spark: spark,
       bond: bondOf(p),
       bondMult: bondMultOf(p),
@@ -2297,7 +2304,8 @@
       cost: num(p.cost)
     }
     m.aria = m.name + ', ' + g.label + ' guild, ' + m.ch + ' of ' + chMax + ' channels, ' +
-      m.rateText.replace('×', ' times ') + ', bond ' + m.bondMult.toFixed(2) + ' times, strain ' +
+      (m.rateText + ' ' + m.rateUnit).replace('×', ' times ') +
+      ', bond ' + m.bondMult.toFixed(2) + ' times, strain ' +
       st.toFixed(2) + ' ' + (num(p.dStrain) > 0 ? 'rising' : 'falling') + ', ' +
       Math.round(m.termLeft / 60) + ' minutes remaining'
     return m
@@ -2427,7 +2435,7 @@
     var want = C().clamp(Math.round(x / width * chMax), 0, Math.min(chMax, channelsFree(s) + p.ch))
     var was = p.ch
     p.ch = want
-    var preview = { ch: want, rate: yieldOf(s, b, p), rateText: rateText(s, p) }
+    var preview = { ch: want, rate: yieldOf(s, b, p), rateText: rateText(s, p), rateUnit: rateUnit(p) }
     p.ch = was
     return preview
   }
@@ -3049,7 +3057,21 @@
       ok(cm.traits.length === 3, 'a card does not show three trait slots')
       ok(cm.aria.indexOf('brood guild') > 0 && cm.aria.indexOf('channels') > 0,
         'the aria label does not read the card')
-      ok(cm.rateText.length <= 20, 'the rate slot is too long for 390 px: ' + cm.rateText)
+      ok((cm.rateText + ' ' + cm.rateUnit).length <= 20,
+        'the rate slot is too long for 390 px: ' + cm.rateText + ' ' + cm.rateUnit)
+      // The split is the whole point, and it has to hold for all six guilds rather than the one
+      // this block happens to build: the mantissa carries digits only, and the unit is the
+      // guild's own string rather than a notation invented at the call site.
+      for (k = 0; k < NGUILD; k++) {
+        var gp = make(k, 2, 0, { beta: [0, 0, 0, 0, 0] })
+        var pc = card(gp.id)
+        ok(!/[⛬ΨΣ]|\/s|gross|×/.test(pc.rateText),
+          GUILDS[k].key + ' put its unit in the mantissa: ' + pc.rateText)
+        ok(pc.rateUnit === GUILDS[k].unit,
+          GUILDS[k].key + ' is not quoted in its guild unit: ' + pc.rateUnit)
+        ok((pc.rateText + ' ' + pc.rateUnit).length <= 20,
+          GUILDS[k].key + ' rate is too long for 390 px: ' + pc.rateText + ' ' + pc.rateUnit)
+      }
       var dm = detail(shown.id)
       ok(dm.strainBreakdown.length === 7, 'the strain breakdown is not six terms and a net')
       ok(dm.exposure.length === NFACTOR, 'the detail sheet does not show five factors')

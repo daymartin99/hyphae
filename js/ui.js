@@ -4683,7 +4683,7 @@
         api.id = c.id
         setText(name, c.name)
         setText(guild, c.guild + (c.notice ? ' · notice' : ''))
-        setSlot(rateN, c.rateText || C().fmt(c.rate), '')
+        setSlot(rateN, c.rateText || C().fmt(c.rate), c.rateUnit || '')
         pips.set(c.chMax > 0 ? c.ch / c.chMax : 0, '', c.ch + ' of ' + c.chMax + ' ' + STR.channels)
         strain.set(c.strain, c.warn ? 'warn' : 'signal', STR.strain + ' ' + pct(c.strain))
         setPct(strainN, c.strain)
