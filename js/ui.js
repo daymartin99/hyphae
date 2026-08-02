@@ -184,7 +184,7 @@
 
     claim: 'claim',
     claiming: 'claiming',
-    places: '{n} of {k}',
+    places: '{n} / {k}',
     needsStanding: 'standing {n}',
 
     short: '{n} short',
@@ -220,7 +220,7 @@
     interface_: 'live interface',
     connectivity: 'connectivity',
     retention: 'retention',
-    stands: '{n} of 61',
+    stands: '{n} / 61',
     advance: 'advance',
     denser: 'denser',
     survey: 'survey',
@@ -258,7 +258,7 @@
     resume: 'resume',
     riskNow: 'risk',
     bestIn: 'best in {v}',
-    slotsUsed: '{n} of {k}',
+    slotsUsed: '{n} / {k}',
     spores: 'spores',
     noPrimordia: 'nothing is fruiting. knot one, and the weather decides the rest.',
     fruit: 'fruit',
@@ -276,7 +276,7 @@
     noPacts: 'nobody has offered you anything yet.',
     noOffers: 'no offers on the table.',
     termLeft: '{v} left',
-    channelsOf: '{n} of {k}',
+    channelsOf: '{n} / {k}',
     offerTerm: 'term',
     rootType: 'root type',
     forecast: 'forecast',
@@ -6128,8 +6128,12 @@
     ok(probe.__u.textContent === ' ⛬/s',
       'R6: a rate that is zero still says what it is a rate of')
     setSlot(probe, interp(STR.stands, { n: 7 }), '')
-    ok(probe.__m.textContent === '7 of 61' && probe.__u.textContent === '',
+    ok(probe.__m.textContent === '7 / 61' && probe.__u.textContent === '',
       'a capped pair is one number; its denominator is not a unit')
+    // One separator, everywhere. These four phrases were the last `of`s on screen, against the
+    // ` / ` that channels, loci, bands, signal capacity, sugar and the endings all use.
+    ok(!/ of /.test(STR.stands + STR.places + STR.slotsUsed + STR.channelsOf),
+      'a capped pair is written `n / k`, not `n of k`')
     ok(splitMass(C().fmtMass(5.33e11))[1] === 'kt' && splitMass('812')[1] === '',
       'fmtMass is the one formatter whose trailing token is a unit')
     ok(ascii(0).length === U.ASCII_N && ascii(0.5).length === U.ASCII_N &&
