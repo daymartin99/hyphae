@@ -5180,7 +5180,10 @@
   // because the label already says what is being counted.
   var COND_UNIT = {
     upsilon: GLYPH.upsilon, carbon: GLYPH.carbon,
-    insight: GLYPH.insight, signal: GLYPH.signal
+    insight: GLYPH.insight, signal: GLYPH.signal,
+    // THEIRS weighs the wild fleet against yours, and both sides are counted in craft. It was the
+    // one row left reading `4.21 G / 1.40 G` on the last screen the game ever shows.
+    mass: GLYPH.craft
   }
   // Two rows are durations, not magnitudes: `3.60 k s` is not a readable age. They render on the
   // clock formatter instead, which is the one place a pair is not two mantissas.
