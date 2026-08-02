@@ -1077,13 +1077,19 @@
     var st = S()
     if (st && st.act >= 2) return
     seasonWash()
+    // A repaint has already thrown the picture away by the time the reduced-motion gate below is
+    // reached, so it may not then be made to wait for it: a theme flip, a purchase or a shed would
+    // leave the plate blank for up to eight seconds. A repaint is a state change by definition —
+    // it happens because the ink under the drawing moved — so it is exactly what that gate exists
+    // to let through, and it is flushed in this frame.
+    var forced = repaint
     if (repaint) { clearNet(); repaint = false }
     if (net.drawn >= net.n) return
 
     if (reduced) {
-      var pending = net.n - net.drawn
       var t = nowMs()
-      if (pending < FLUX.REDUCED_BATCH && t - lastFlushAt < FLUX.REDUCED_FLUSH_S * 1000) return
+      var pending = net.n - net.drawn
+      if (!forced && pending < FLUX.REDUCED_BATCH && t - lastFlushAt < FLUX.REDUCED_FLUSH_S * 1000) return
       lastFlushAt = t
     }
 
@@ -1362,9 +1368,9 @@
     var tSec = tMs / 1000
     readForm(false)
 
-    drawTips(ctx, tSec)
-    // Under the tips: what has been let go is behind what is still there.
+    // Before the tips, so what has been let go is behind what is still there.
     drawShed(ctx, tMs)
+    drawTips(ctx, tSec)
     // After the tips, so the head sits over the tip it came from rather than under it.
     if (sg) drawSurge(ctx, sg)
     if (s && s.act >= 2) stepPulses(ctx, tSec, s)
