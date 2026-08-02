@@ -245,7 +245,7 @@
     saturation: 'saturation',
     gain: 'gain',
     slots: 'slots',
-    fillsIn: 'full in {v}',
+    toFull: 'to full',
     ripeness: 'ripeness',
     insight: 'insight',
     vesicles: 'vesicles',
@@ -360,7 +360,7 @@
     regenomeNote: 'a regenome empties every locus and gives you the window to place them again.',
     genomeNote: 'longer genomes cost mass, and mass is subsistence. eight axes, and no build ' +
       'takes more than four of them.',
-    deaths: 'deaths, last {v}',
+    deaths: 'dead, last {v}',
     noDeaths: 'nothing has died yet.',
 
     strainName: 'strain',
@@ -4443,7 +4443,8 @@
       sigBar.set(cap > 0 ? held / cap : 0, g.saturated(s) ? 'warn' : 'signal',
         C().fmt(held) + ' of ' + C().fmt(cap) + ' ' + STR.capacity)
       setSlot(rateN, '+' + C().fmt(sr), GLYPH.signal + '/s')
-      setSlot(fills, g.saturated(s) ? STR.saturated : interp(STR.fillsIn, { v: secs(g.fillsIn(s)) }), '')
+      if (g.saturated(s)) setSlot(fills, STR.saturated, '')
+      else setSlot(fills, secs(g.fillsIn(s)), STR.toFull)
       pv.setCount(C().fmt(held), GLYPH.signal)
 
       show(r2.el, !!rev.insight)
@@ -5544,9 +5545,15 @@
       var bl = BL()
       if (!bl || !bl.mortality) return
       var m = bl.mortality(s)
-      // The header carries the window, not the total: a total over six causes says nothing, and
-      // "deaths, last 2:00" is the sentence that makes all six of them readable.
-      pv.setCount(m.total > 0 ? interp(STR.deaths, { v: C().fmtTime(m.window) }) : '')
+      // The header carries the total AND the window it covers: a total over six causes says
+      // nothing on its own. But the window is a qualifier of that number, not a replacement for
+      // it — written whole into the count slot it made this the one chip in the game holding a
+      // sentence where the others hold `61`, `39 %`, `6 D`.
+      if (m.total > 0) {
+        pv.setCount(C().fmt(m.total),
+          GLYPH.craft + ' ' + interp(STR.deaths, { v: C().fmtTime(m.window) }))
+      }
+      else pv.setCount('')
       for (var k = 0; k < rows.length && k < m.rows.length; k++) rows[k].set(m.rows[k])
       show(body, m.total > 0)
       if (m.total > 0) pv.unempty()
