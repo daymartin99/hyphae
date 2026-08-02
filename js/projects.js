@@ -40,8 +40,10 @@
   // CURRENCIES — the price-table keys, and where each one is held in §3
   // ───────────────────────────────────────────────────────────────────────────
 
-  // `glyph` is what the hand-written priceTag prints; the CI check in __selftest parses the tag back
-  // through this table and compares it with `price`, which is BIBLE §8 D66.
+  // `glyph` is how renderCost names this currency on a card. There is no hand-written tag to drift
+  // from it any more — the tag is generated from `price` through the same two formatters the
+  // resource strip uses — so BIBLE §8 D66 now asks the question that survives: that what a card
+  // prints is character-for-character what the strip prints for the same number.
   var CUR = {
     g:      { glyph: 'g',   get: function (s) { return s.res.biomass },  set: function (s, v) { C().setStock(s.res, 'biomass', v) } },
     sug:    { glyph: 'sug', get: function (s) { return s.res.sugar },    set: function (s, v) { C().setStock(s.res, 'sugar', v) } },
