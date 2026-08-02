@@ -2645,11 +2645,13 @@
       // The pair carries the unit. Without it this row read `520 / 790` bare while the market two
       // panels down quoted `0.11 sug/g` — the one readout the buy decision is made against was the
       // one place the substance was never named.
-      // Tight slash, and only here. The strip has 72px of label and a 9ch rate slot to clear on a
-      // 390px phone, and the two spaces the panels can afford are what pushed the pair onto a
-      // second line the moment it gained its unit. Naming the substance is worth more than the
-      // spaces; a row that silently becomes two rows is worth less than either.
-      setSlot(r1.val, C().fmt(held) + '/' + C().fmt(cap), SUG)
+      // ` / `, the separator every other pair in the game uses — `47.0 / 242 Σ`, `channels 2 / 7`,
+      // `loci 0 / 12`, `bands 1 / 13`. The tight slash that used to be here was defended as a
+      // width measure, and it is not one: sugar's cap is 400 + 30·tips with tips asserted ≤ 400,
+      // so the widest pair this row can ever hold is `12.4 k / 12.4 k`, and that measures to the
+      // same row height as the tight form at 320, 360, 390 and 430 px. It bought nothing and cost
+      // the player a second reading of `593/2.41 k`.
+      setSlot(r1.val, C().fmt(held) + ' / ' + C().fmt(cap), SUG)
       setRate(r1.rate, rateOf(v, 'sugar'), SUG)
       show(r1.cap, true)
       var f = cap > 0 ? held / cap : 0
@@ -5997,6 +5999,23 @@
       paintLedger(view, grown, grownRev)
       ok(headMant() === splitMass(C().fmtMass(9000))[0],
         'giving up tissue is the one thing that makes the organism smaller')
+    }
+    // 2c · A CAPPED PAIR IS WRITTEN ONE WAY. `held / cap`, spaced, with the substance named once
+    // at the end — the same shape as `47.0 / 242 Σ`, `channels 2 / 7` and `bands 1 / 13`. SUGAR
+    // spent a while as `593/2.41 k sug`, the one tight slash in the game.
+    grownRev.sugar = true
+    grown.res.sugar = 593
+    grown.a1.tips = 67
+    paintLedger(view, grown, grownRev)
+    var sugRow = host.querySelectorAll('.ledger-row')[1]
+    ok(sugRow && sugRow.querySelector('.ledger-lab').textContent === STR.sugar,
+      'the second ledger row is sugar once sugar is revealed')
+    if (sugRow) {
+      ok(/^[^/]+ \/ [^/]+$/.test(sugRow.querySelector('.ledger-val .mant').textContent),
+        'the sugar pair is not written `held / cap`: ' +
+        sugRow.querySelector('.ledger-val .mant').textContent)
+      ok(sugRow.querySelector('.ledger-val .unit').textContent === ' ' + SUG,
+        'the sugar pair does not name its substance once, at the end')
     }
     paintLedger(view, s, COLD)
 
