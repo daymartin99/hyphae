@@ -5068,8 +5068,8 @@
         setSlot(resN, C().fmt(c.X), GLYPH.carbon)
         setSlot(harvN, C().fmt(c.harvest), GLYPH.carbon + '/s')
         setSlot(subN, C().fmt(c.subsist), GLYPH.carbon + '/s')
-        setSlot(wildN, C().fmt(wildHere), '')
-        setSlot(starN, c.showStar ? C().fmt(c.nStar) : STR.nothing, '')
+        setSlot(wildN, C().fmt(wildHere), GLYPH.craft)
+        setSlot(starN, c.showStar ? C().fmt(c.nStar) : STR.nothing, c.showStar ? GLYPH.craft : '')
         r.label(interp(STR.band, { n: c.id }) + ', ' + STR.surplus + ' ' + signed(c.surplus) +
           ' carbon per second, ' + C().fmt(c.n) + ' craft of ' + C().fmt(c.NCAP) + ', ' +
           STR.explored + ' ' + pct(c.e))
@@ -5579,7 +5579,7 @@
         setData(tag, 'tone', succ ? 'neg' : fighting ? 'warn' : e.sequenced ? 'signal' : '')
         var mass = 0, i
         for (i = 0; i < e.w.length; i++) mass += num(e.w[i])
-        setSlot(massN, C().fmt(mass), '')
+        setSlot(massN, C().fmt(mass), GLYPH.craft)
         var d = dv && dv.distance ? dv.distance(e, s) : 0
         setText(where, interp(STR.band, { n: e.origin }) + ' · ' +
           interp(STR.distance, { n: d }) +
