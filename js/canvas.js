@@ -188,6 +188,26 @@
     SURGE_HZ: 30             // Hz a live surge borrows: 8 Hz draws a 150 ms push in one frame
   }
 
+  // THE FLOOR SHOWS WHAT IS ON IT. Act I's substrate stocks were pure ledger: a player bought a
+  // kilogram of leaf litter and the picture did not change, which playtesters unanimously read as
+  // the button not working. The floor band is the stock made visible — flecks strewn along the
+  // bottom of the plate, more of them the more is banked, each one holding its seeded position so
+  // the band accumulates and thins rather than shimmering. A trade is then a MOVEMENT of that
+  // band: bought matter falls onto it, sold matter lifts off it, scaled by the grams moved.
+  var LITTER = {
+    BAND_PX: 26,             // px above the plate's bottom edge the flecks strew across
+    MAX_N: 110,              // flecks at a full floor; enough to read as debris, cheap to draw
+    FULL_G: 60000,           // g of banked substrate that reads as a full band (log-scaled below)
+    R_MIN: 0.7, R_SPAN: 1.1, // fleck radius range, px
+    A_MIN: 0.14, A_SPAN: 0.20, // fleck alpha range — under the mat, over the background
+    FX_N_MIN: 5,             // flecks a minimal trade moves…
+    FX_N_SPAN: 17,           // …and how many more a 10 kg one adds
+    FX_MS: 700,              // ms of travel: fall-and-settle, or lift-and-go
+    FX_RISE_PX: 34,          // px of travel for both directions
+    FX_A: 0.5,               // moving flecks are brighter than settled ones: they are the event
+    FX_HZ: 30                // Hz a live trade borrows, for the same reason the surge borrows it
+  }
+
   var MAP = {
     RINGS: 4,                // axial radius: 1 + 6 + 12 + 18 + 24 = 61 regions
     PAD: 6,                  // px inset
@@ -280,6 +300,15 @@
     RECOMPUTE: 30,           // frames between p95 recomputations
     HIGH_P95: 12, HIGH_CORES: 6,
     LOW_P95: 22, FLOOR_P95: 30,
+    // A slow frame and a slow CADENCE are different facts. iOS halves Safari's rAF to a steady
+    // 30 Hz in Low Power Mode — every frame lands at 33.3 ms within a millisecond or two — and
+    // the p95 thresholds above, written against a 60 Hz baseline, read that as a device at
+    // death's door: FLOOR in three seconds, fluxHz 0, and no way back, because promotion asks
+    // for a p95 no 30 Hz clock can ever produce. Every tester on a phone in battery saver saw a
+    // still image while every desktop breathed. Distress has SPREAD — a struggling device mixes
+    // fast frames with spikes — so a p95 within this many ms of the median is an imposed refresh
+    // rate, and an imposed rate with our own draw cost inside budget is not a reason to degrade.
+    CADENCE_SPREAD_MS: 8,
     HOLD_S: 3,               // s a bad p95 must persist before demoting
     MEM_FLOOR_GB: 2,
     PROMOTE_S: 60,           // promotion is allowed at most this often…
@@ -1249,6 +1278,79 @@
   // on an ease-out — the wall gives, the tip goes, it slows against what is in front of it — and
   // then holds its length while the ink falls away on a square, which is a thing being absorbed
   // rather than a thing being switched off.
+  // ── the floor band and the trade that moves it ──────────────────────────────
+  var tradeFx = null
+
+  function totalSubstrate (s) {
+    if (!s || !s.a1 || !s.a1.sub) return 0
+    var t = 0
+    for (var k in s.a1.sub) {
+      if (!Object.prototype.hasOwnProperty.call(s.a1.sub, k)) continue
+      var v = Number(s.a1.sub[k])
+      if (v > 0) t += v
+    }
+    return t
+  }
+
+  // Log-scaled: the first hundred grams must already put something on the floor — the cold-boot
+  // player's first buy is the moment this exists for — and the band saturates at FULL_G rather
+  // than growing without bound.
+  function litterCount (g) {
+    if (!(g > 0)) return 0
+    var f = Math.log(1 + g) / Math.log(1 + LITTER.FULL_G)
+    if (f > 1) f = 1
+    var n = Math.round(LITTER.MAX_N * f)
+    return n > 0 ? n : 1
+  }
+
+  function drawFloorLitter (ctx, s) {
+    if (!s || s.act !== 1) return
+    var n = litterCount(totalSubstrate(s))
+    if (!n) return
+    var col = pal.melanin || pal.hyphae
+    for (var i = 0; i < n; i++) {
+      // Every property of a fleck is a stable function of its index, so the band holds still and
+      // a purchase reads as flecks ADDED, never as the whole floor reshuffling.
+      // All four draws vary hash01's SECOND argument: the index slot carries the Weyl mixing,
+      // and two streams that differ only in the seed slot are near-identical — seeds 11 and 23
+      // gave x correlated with y and drew the whole floor as one diagonal dash.
+      var x = hash01(7, i * 4) * surf.W
+      var y = surf.H - 2 - hash01(7, i * 4 + 1) * LITTER.BAND_PX
+      var r = LITTER.R_MIN + hash01(7, i * 4 + 2) * LITTER.R_SPAN
+      ctx.fillStyle = rgba(col, LITTER.A_MIN + hash01(7, i * 4 + 3) * LITTER.A_SPAN)
+      ctx.fillRect(x, y, r + r, r)
+    }
+  }
+
+  // kind is 'in' (bought: falls onto the floor) or 'out' (sold: lifts off it); mag is 0…1 of a
+  // full trade. Reduced motion banks the grams and skips the travel, exactly like the surge —
+  // the band itself still changes size, which is the state and not the decoration.
+  function tradeRelease (kind, mag) {
+    if (reduced || T().fluxHz <= 0) return
+    var f = typeof mag === 'number' && mag === mag ? (mag < 0 ? 0 : (mag > 1 ? 1 : mag)) : 0
+    tradeFx = { at: nowMs(), out: kind === 'out', n: Math.round(LITTER.FX_N_MIN + LITTER.FX_N_SPAN * f) }
+  }
+
+  function drawTradeFx (ctx, tMs) {
+    if (!tradeFx) return
+    var t = (tMs - tradeFx.at) / LITTER.FX_MS
+    if (t >= 1) { tradeFx = null; lastFlux = 0; return }
+    if (t < 0) t = 0
+    // Fall eases out (arriving matter settles); lift eases in (leaving matter accelerates away).
+    var u = tradeFx.out ? t * t : 1 - (1 - t) * (1 - t)
+    var col = pal.melanin || pal.hyphae
+    var base = (tradeFx.out ? 100000 : 200000) + 0
+    for (var i = 0; i < tradeFx.n; i++) {
+      var x = (0.5 + (hash01(7, base + i * 3) - 0.5) * 0.55) * surf.W
+      var yFloor = surf.H - 3 - hash01(7, base + i * 3 + 1) * LITTER.BAND_PX
+      var y = tradeFx.out ? yFloor - u * LITTER.FX_RISE_PX : yFloor - (1 - u) * LITTER.FX_RISE_PX
+      var a = LITTER.FX_A * (tradeFx.out ? 1 - t : 0.4 + 0.6 * t)
+      var r = LITTER.R_MIN + hash01(7, base + i * 3 + 2) * LITTER.R_SPAN
+      ctx.fillStyle = rgba(col, a)
+      ctx.fillRect(x, y, r + r, r)
+    }
+  }
+
   function surgeAt (tMs) {
     if (!surge) return null
     var t = tMs - surge.at
@@ -1318,8 +1420,11 @@
   function stateKey (s) {
     if (!s) return net ? net.n + '/' + net.live : '0'
     var fl = s.a2 && s.a2.flush ? s.a2.flush.length : 0
+    // The fleck count, not the raw grams: under reduced motion the static frame redraws on a key
+    // change, and a key that carried the grams would redraw the whole plate every decomposition
+    // tick. The band only matters when it visibly gains or loses a fleck.
     return net.n + '/' + net.live + '|' + s.act + '|' + (s.a1 ? s.a1.tips : 0) + '|' + fl +
-      '|' + (starving() ? 1 : 0) + '|' + form.key
+      '|' + (starving() ? 1 : 0) + '|' + form.key + '|' + litterCount(totalSubstrate(s))
   }
 
   function starving () {
@@ -1347,8 +1452,9 @@
     // the surge's own 670 ms and by the fact that only a thumb can start one.
     var sg = surgeAt(tMs)
     // A shed borrows the clock too, on the same terms and for the same reason: 8 Hz would draw a
-    // 1.1 s fall in nine frames, and tissue letting go in nine frames is a slideshow.
-    var hz = sg ? FLUX.SURGE_HZ : (shedGhost ? SHED.HZ : T().fluxHz)
+    // 1.1 s fall in nine frames, and tissue letting go in nine frames is a slideshow. So does a
+    // trade: litter falling in five frames is not falling.
+    var hz = sg ? FLUX.SURGE_HZ : (shedGhost ? SHED.HZ : (tradeFx ? LITTER.FX_HZ : T().fluxHz))
 
     if (reduced || hz <= 0) {
       // Once per state change, never on a clock. A static frame is always present — this branch
@@ -1368,6 +1474,10 @@
     var tSec = tMs / 1000
     readForm(false)
 
+    // The floor first, so the mat and its tips sit over the debris they are eating; the trade's
+    // moving flecks last in this group, because the event sits over the state it changes.
+    drawFloorLitter(ctx, s)
+    drawTradeFx(ctx, tMs)
     // Before the tips, so what has been let go is behind what is still there.
     drawShed(ctx, tMs)
     drawTips(ctx, tSec)
@@ -2340,7 +2450,7 @@
   // ADAPTIVE TIERING (06 §7.8) — measured, not guessed
   // ───────────────────────────────────────────────────────────────────────────
 
-  var frames = { buf: new Float32Array(PERF.WIN), n: 0, w: 0, last: 0, since: 0, p95: 0 }
+  var frames = { buf: new Float32Array(PERF.WIN), n: 0, w: 0, last: 0, since: 0, p95: 0, p50: 0 }
   var ownCost = { buf: new Float32Array(BUDGET.OWN_WIN), n: 0, w: 0, p95: 0 }
   var badSince = 0, lastDemote = -1e9, lastPromote = -1e9, boot = nowMs()
 
@@ -2351,13 +2461,14 @@
   }
 
   var scratch = new Float32Array(PERF.WIN)
-  function p95 (ring, len) {
+  function pct (ring, len, q) {
     if (len < 8) return 0
     for (var i = 0; i < len; i++) scratch[i] = ring[i]
     var a = scratch.subarray(0, len)
     a.sort()                                  // TypedArray sorts numerically without a comparator
-    return a[Math.min(len - 1, Math.floor(len * 0.95))]
+    return a[Math.min(len - 1, Math.floor(len * q))]
   }
+  function p95 (ring, len) { return pct(ring, len, 0.95) }
 
   // Called at the head of whichever structural pass owns the current act, so the tier keeps
   // tracking across an act break. Two calls inside one frame would otherwise inject a near-zero
@@ -2379,6 +2490,7 @@
     if (frames.since >= PERF.RECOMPUTE) {
       frames.since = 0
       frames.p95 = p95(frames.buf, frames.n)
+      frames.p50 = pct(frames.buf, frames.n, 0.5)
       ownCost.p95 = p95(ownCost.buf, ownCost.n)
       retier(t)
     }
@@ -2402,6 +2514,14 @@
     var want = null
     if (p > PERF.FLOOR_P95) want = 'FLOOR'
     else if (p > PERF.LOW_P95) want = 'LOW'
+
+    // The Low Power Mode exemption (PERF.CADENCE_SPREAD_MS): frames that are slow but UNIFORM are
+    // an imposed refresh rate, not a struggling device, and a 30 Hz phone whose canvas costs are
+    // inside budget deserves its breath. Distress keeps its demotion — a real struggle spreads.
+    if (want && frames.p50 > 0 && (p - frames.p50) < PERF.CADENCE_SPREAD_MS &&
+        ownCost.p95 <= BUDGET.OWN_P95_MS) {
+      want = null
+    }
 
     // My own cost is measured separately: the canvas must never be the reason a frame is dropped,
     // so it degrades on its own budget before the frame p95 has degraded at all.
@@ -2592,6 +2712,43 @@
     for (var ti = 1; ti < TIER_ORDER.length; ti++) {
       ok(TIERS[TIER_ORDER[ti]].segCap > TIERS[TIER_ORDER[ti - 1]].segCap, 'tier: segCap is not monotone')
     }
+
+    // 6b · a 30 Hz cadence is a refresh rate, not a death rattle. iOS Low Power Mode halves rAF
+    // to a steady 33 ms; the p95 gates alone would FLOOR that phone in three seconds and its
+    // breath would never come back. Uniform-slow with our own cost in budget must hold its tier;
+    // genuinely spiky frames at the same p95 must still demote. Driven through retier() itself,
+    // with the state saved and restored around it so the live tier never inherits the probe's.
+    ;(function () {
+      var sv = [tier, manualTier, frames.n, frames.w, frames.p95, frames.p50,
+        ownCost.p95, badSince, lastDemote, lastPromote, new Float32Array(frames.buf)]
+      var j, t1 = 1e6, t2 = t1 + (PERF.HOLD_S + 1) * 1000
+      // fill(v): a synthetic frame window — v(i) per slot — measured and judged through retier
+      // itself, across the HOLD_S the demotion path requires.
+      function run (v) {
+        manualTier = false
+        tier = 'MED'
+        for (j = 0; j < PERF.WIN; j++) frames.buf[j] = v(j)
+        frames.n = PERF.WIN
+        frames.p95 = p95(frames.buf, frames.n)
+        frames.p50 = pct(frames.buf, frames.n, 0.5)
+        ownCost.p95 = 0.4
+        badSince = 0; lastDemote = -1e9; lastPromote = t1
+        retier(t1)
+        retier(t2)
+        return tier
+      }
+      // Low Power Mode: every frame 33.3 ±0.4 ms. Distress: the same p95 as fast frames + spikes.
+      ok(run(function (i) { return 33.3 + ((i % 5) - 2) * 0.2 }) === 'MED',
+        'cadence: a uniform 30 Hz clock was demoted to ' + tier)
+      ok(run(function (i) { return i % 4 === 0 ? 28 : 12 }) === 'LOW',
+        'cadence: spiky frames did not demote (tier ' + tier + ')')
+      tier = sv[0]; manualTier = sv[1]; frames.n = sv[2]; frames.w = sv[3]
+      frames.p95 = sv[4]; frames.p50 = sv[5]; ownCost.p95 = sv[6]
+      badSince = sv[7]; lastDemote = sv[8]; lastPromote = sv[9]; frames.buf.set(sv[10])
+      // The spiky probe demoted through setTierInternal, which resizes the backing store when the
+      // dpr changes; restoring the tier by assignment must re-sync the store the same way.
+      resize()
+    })()
 
     // 7 · helpers.
     ok(bucketOf(0) === 0 && bucketOf(5) === 0 && bucketOf(6) === 1 && bucketOf(15) === 1 &&
@@ -2820,6 +2977,7 @@
     // The release. ui.js calls this at the instant a charge lifts and an extension was actually
     // paid for, with the same 0…1 pressure the button drew and the floor priced.
     surge: surgeRelease,
+    trade: tradeRelease,
 
     // The shed. OPTIONAL — see SHED at the top of this file. Any mechanic that debits `hyphae` is
     // already drawn correctly on the next frame without calling anything; this is only for one

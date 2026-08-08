@@ -3477,6 +3477,9 @@
         if (!(g > 0)) { refuse(source); return }
         if (!commit(function () { return e.sell(type, g) })) { refuse(source); return }
         if (view) flashSlot(view.ledgerRows[1].val, 'gain')
+        // The floor answers the trade: sold matter visibly lifts off the litter band, scaled by
+        // the grams moved. Playtesters read a trade with no picture as the button not working.
+        if (CANVAS() && CANVAS().trade) CANVAS().trade('out', g / U.MARKET_BUY_G[U.MARKET_BUY_G.length - 1])
         return
       }
       var unit = e.unitPrice(type)
@@ -3486,6 +3489,8 @@
       if (!(g > 0)) { refuse(source); return }
       commit(function () { e.buy(type, g) })
       if (view) flashSlot(view.ledgerRows[1].val, 'loss')
+      // And bought matter visibly falls onto it.
+      if (CANVAS() && CANVAS().trade) CANVAS().trade('in', g / U.MARKET_BUY_G[U.MARKET_BUY_G.length - 1])
     }
 
     // The two fixed sizes are masses, and they carry their unit: `1.00 k` alone is a quantity of
