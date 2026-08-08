@@ -46,6 +46,7 @@
     RETURN_VAST: 2592000,   // s (30 d)
     SKIP_AFTER: 1.0,        // s of a sequence before a tap may advance it
     SKIP_GUARD: 0.4,        // s; a second tap inside this does nothing (double-tap eats two lines)
+    PUMP_STALE_MS: 1500,    // ms; a display pump older than this has died and the sim clock resumes
     PRIORITY: { narrative: 3, voice: 3, world: 2, system: 1, observation: 0 },
     ROWS_BY_CHANNEL: { system: 1, world: 2, narrative: 2, observation: 2, voice: 2 }
   }
@@ -1230,6 +1231,24 @@
   var soft = null           // sequence player handle
   var seqT = null           // sim-time baseline for self-driven sequences (act transitions)
 
+  // The one subscriber for everything in a sequence that is not a word for the console: the
+  // curtain, the fades, the cut, the reveal. ui.js registers it; headless there is none and the
+  // words still play, which is what the harness and the self-tests rely on. It is told 'begin'
+  // before the first step and 'end' after the last, so a host that raised a surface always hears
+  // the moment to take it down — even for a sequence whose steps never include a 'shell'.
+  var seqHost = null
+  function hostSequence (fn) { seqHost = typeof fn === 'function' ? fn : null }
+  function tellHost (st) {
+    if (!seqHost) return
+    // The words must never stall on their own scenery — but a host that throws is a bug, and a
+    // swallowed one hides for exactly as long as nobody looks (a wrong accessor name in the first
+    // host lived here, invisible, through a full build-and-boot pass). Spoken to the console so
+    // the harness counts it; never rethrown so the sequence finishes regardless.
+    try { seqHost(st) } catch (e) {
+      if (typeof console !== 'undefined' && console.error) console.error('sequence host: ' + e)
+    }
+  }
+
   // The opening five, by their position in 09 §2.1's order. Index 0 is unused.
   var OPENING = []
   ;(function () {
@@ -1475,11 +1494,21 @@
     // clock paces them here, before the frozen gate — the freeze is theirs. At 1× the sim clock is
     // the player's clock; headless, it is the only clock there is — and without this the freeze a
     // transition takes on the queue was never given back.
+    //
+    // But this runs at LOG_HZ — 1 Hz, never faster (BIBLE §4 step 16) — against words authored
+    // 900 ms apart with 220 ms fades: paced from here alone, the four words land in one-second
+    // clumps. So when a live display is pumping (pumpSequence, from the 10 Hz display slot), this
+    // clock stands down and the real one conducts; it steps back in the moment the pump goes
+    // stale, which is what a headless build and a fast-forwarding harness look like.
     if (soft && !soft.done && soft.seq.selfDrive) {
-      if (seqT === null || s.t < seqT) seqT = s.t
-      var seqDt = s.t - seqT
-      seqT = s.t
-      if (seqDt > 0) stepSequence(seqDt)
+      if (pumpFresh()) {
+        seqT = null
+      } else {
+        if (seqT === null || s.t < seqT) seqT = s.t
+        var seqDt = s.t - seqT
+        seqT = s.t
+        if (seqDt > 0) stepSequence(seqDt)
+      }
     } else {
       seqT = null
     }
@@ -1852,7 +1881,29 @@
       onStep: opts.onStep || null,
       onDone: opts.onDone || null
     }
+    tellHost({ kind: 'begin', at: 0, payload: { seq: seq.id } })
     return soft
+  }
+
+  // The real clock's half of the two-conductor rule above. The display slot calls this at 10 Hz
+  // with no argument; the dt is measured here, from the wall, because the caller's cadence is a
+  // budget and not a measurement. Between calls the sim conductor watches pumpAt: fresh means a
+  // display is alive and pacing, stale means fast-forward or headless and the sim clock resumes.
+  var pumpAt = 0
+  function realMs () {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now()
+  }
+  function pumpFresh () { return pumpAt > 0 && realMs() - pumpAt < CONS.PUMP_STALE_MS }
+  function pumpSequence () {
+    if (!soft || soft.done || !soft.seq.selfDrive) { pumpAt = 0; return false }
+    var t = realMs()
+    var dt = pumpAt > 0 ? (t - pumpAt) / 1000 : 0
+    pumpAt = t
+    // A first call primes the clock and fires the sequence's t=0 steps in the same breath, so the
+    // fade a sequence opens with is on screen the frame after the purchase, not a cadence later.
+    if (dt > 0.5) dt = 0.5              // a stalled tab resumes, it does not lurch
+    stepSequence(dt)
+    return true
   }
 
   // Advanced from the display timer with real seconds, because the sim is frozen for the whole
@@ -1880,6 +1931,10 @@
       } else if (st.kind === 'blank') {
         emitRaw(s, null, '', null, soft.seq.centred ? 'ending' : 'narrative')
         soft.spoke = true
+      } else {
+        // Words, motions, shell reveals, buttons: everything that is scenery rather than console
+        // is the host's, and the whole step travels so the payload's numbers arrive intact.
+        tellHost(st)
       }
       if (soft.onStep) {
         try { soft.onStep(st, soft) } catch (e) { /* a host that throws must not stall the words */ }
@@ -1889,9 +1944,11 @@
     if (soft.i >= soft.steps.length && !soft.seq.waits) {
       soft.done = true
       var done = soft.onDone
-      var wasEnding = soft.seq.id.indexOf('ending') === 0 || soft.seq.id === 'encyst'
+      var endedId = soft.seq.id
+      var wasEnding = endedId.indexOf('ending') === 0 || endedId === 'encyst'
       soft = null
       if (!wasEnding) thaw()
+      tellHost({ kind: 'end', at: 0, payload: { seq: endedId } })
       if (done) { try { done() } catch (e) { /* as above */ } }
       return false
     }
@@ -2687,6 +2744,8 @@
     stepSequence: stepSequence,
     advanceSequence: advanceSequence,
     sequenceActive: sequenceActive,
+    hostSequence: hostSequence,
+    pumpSequence: pumpSequence,
     words: words,
     interpolate: interpolate,
 

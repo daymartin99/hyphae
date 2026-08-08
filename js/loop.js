@@ -209,6 +209,10 @@
   }
 
   function displayStep () {
+    // The act transitions are paced in the player's seconds, not the sim's 1 Hz log slot: the
+    // display clock pumps them whenever it is alive, and log.js falls back to the sim clock when
+    // it is not (headless, or a harness fast-forwarding synchronously).
+    if (HY.log && HY.log.pumpSequence) HY.log.pumpSequence()
     if (HY.ui && HY.ui.display) HY.ui.display(S())
   }
 

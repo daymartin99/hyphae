@@ -42,7 +42,10 @@
     // motion (06 §6.2)
     D_PRESS: 70, D_STATE: 120, D_FADE: 180, D_RELEASE: 220,
     D_MOVE: 240, D_REVEAL: 320, D_ACT: 2600,
-    ACT_HOLD_MS: 2400, ACT_LINE_GAP_MS: 700,
+    // The host's two fallback beats: the dim a payload does not time itself, and the take-down
+    // for a sequence that ends without a 'shell' step (ESCAPE, the endings). Both are D_ACT-family
+    // moments, shorter, because they are exits and not arrivals.
+    SEQ_DIM_MS: 280, SEQ_END_MS: 600,
 
     // interaction (06 §5.5, §5.8, §5.11, §6.3)
     LONGPRESS_MS: 420, LONGPRESS_SLOP_PX: 10,
@@ -191,6 +194,7 @@
     needsStanding: 'needs {n} rep',
 
     short: '{n} short',
+    skip: 'tap to continue',
     toEmpty: 'to empty',
     owed: 'owed',
     nothing: '—',
@@ -1985,6 +1989,8 @@
     // log.js delivers to its subscribers immediately after it has rendered the row, so the row this
     // hears about is the console's last child. That is the only fact this needs.
     if (LOG() && LOG().onLine) LOG().onLine(holdLine)
+    // The act transitions' scenery: the curtain, the fades, the cut, the reveal (09 §4–§5).
+    if (LOG() && LOG().hostSequence) LOG().hostSequence(seqHost)
 
     // `scroll` does not bubble, and the element that actually scrolls is the panel stack, not the
     // frame around it — this listener sat on `.scroll-main` (overflow:hidden) and had never once
@@ -5917,38 +5923,181 @@
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // ACT TRANSITION · 06 §6.6. Three luminance changes in four seconds; under reduced motion the
-  // same words at the same intervals with no motion at all — the words were always the content and
-  // the motion was always just the frame.
+  // THE SEQUENCE HOST · 09 §4–§5, 06 §6.6
+  // log.js paces the seven sequences and owns every word; canvas.js owns every drawn motion. What
+  // neither can touch is the DOM: the curtain the four words stand on, the opacity the shell drops
+  // to, the cut, and the reveal of the next act's face. This is that host — log.js hands it every
+  // step that is not a console line, plus one 'begin' before the first and one 'end' after the
+  // last, so a surface this raises is always taken down even for a sequence with no 'shell' step
+  // of its own (ESCAPE ends on the void canvas and never says "reveal").
+  //
+  // Every number here rides the step's payload — 0.06 for DECIDE, 0.35 for the discharge, each
+  // sequence's own fade — because they are the sequence's numbers, not this module's, and the
+  // stylesheet says the same thing from its side (css: "written inline by ui.js").
   // ═══════════════════════════════════════════════════════════════════════════
 
-  function transition (lines, onDone) {
-    if (!view) {
-      if (onDone) onDone()
+  var seqDom = null
+
+  // The whole-screen motions wear the plate at full viewport (css [data-fullplate]); the three
+  // that are the Act II map doing something inside its own window do not (09 §4.2).
+  var SEQ_FULLPLATE = { canvasFull: 1, voidCanvas: 1, wheelConverge: 1, wheelCollapse: 1,
+    fillWhite: 1, holdWhite: 1 }
+
+  // A tap during a sequence is the skip rule and nothing else: captured before any control can
+  // hear it, because the shell under the curtain is at 6% opacity and a purchase fired through it
+  // would be the one kind of accident the press contract exists to prevent.
+  function seqTap (e) {
+    if (LOG() && LOG().advanceSequence) LOG().advanceSequence()
+    e.stopPropagation()
+    e.preventDefault()
+  }
+
+  function seqRows () {
+    // Everything the shell shows that is not the plate or the console: the strip, the panels, the
+    // verb, the ending bar, the FAB, the tab bar. The plate stays because the motions are drawn on
+    // it; the console is the sequence's own voice and each step says whether it holds.
+    var els = [view.ledger, view.stack, view.hero, view.endbar, view.fab]
+    var bar = view.shell.querySelector('.tabbar')
+    if (bar) els.push(bar)
+    return els
+  }
+
+  function seqFadeEl (e, to, ms) {
+    if (!e) return
+    e.style.transition = 'opacity ' + (ms > 0 ? ms : 0) + 'ms linear'
+    e.style.opacity = String(to)
+    if (seqDom && seqDom.faded.indexOf(e) < 0) seqDom.faded.push(e)
+  }
+
+  function seqCurtain () {
+    if (!seqDom.curtain) {
+      seqDom.curtain = el('div', 'curtain')
+      view.main.appendChild(seqDom.curtain)
+    }
+    return seqDom.curtain
+  }
+
+  // The reveal, and the only cleanup: inline opacities go back to the stylesheet's, the curtain
+  // fades and leaves the DOM, the plate returns to its window, the plate returns to the act.
+  function seqDown (fadeMs) {
+    if (!seqDom) return
+    var d = seqDom
+    seqDom = null
+    var ms = fadeMs > 0 ? fadeMs : 0
+    var i
+    for (i = 0; i < d.faded.length; i++) {
+      d.faded[i].style.transition = 'opacity ' + ms + 'ms linear'
+      d.faded[i].style.opacity = ''
+    }
+    // The transition property itself is cleared a beat after it has finished carrying the fade;
+    // left behind it would ride every later opacity the stylesheet asks for.
+    setTimeout(function () {
+      for (var j = 0; j < d.faded.length; j++) d.faded[j].style.transition = ''
+    }, ms + 60)
+    if (d.curtain) {
+      var c = d.curtain
+      if (ms > 0) {
+        c.style.transition = 'opacity ' + ms + 'ms linear'
+        c.style.opacity = '0'
+        setTimeout(function () { if (c.parentNode) c.parentNode.removeChild(c) }, ms + 60)
+      } else if (c.parentNode) {
+        c.parentNode.removeChild(c)
+      }
+    }
+    if (view.shell.dataset.fullplate) {
+      delete view.shell.dataset.fullplate
+      if (CANVAS() && CANVAS().resize) CANVAS().resize()   // the plate steps back into its window
+    }
+    if (CANVAS() && CANVAS().stopMotion) CANVAS().stopMotion()
+    var dd = doc()
+    if (dd) dd.removeEventListener('pointerdown', seqTap, true)
+  }
+
+  function seqMotion (p) {
+    var cv = CANVAS()
+    // The cut is both surfaces at once: the plate's frame goes black (canvas owns that motion, and
+    // its slot rule lets the cut take a wave's stragglers), and the curtain turns opaque so the
+    // shell's own rows vanish under it in the same frame — the plate alone sits at z-0 and cannot
+    // cover them, which in a light theme would leave a cut that never cuts. The words already
+    // standing on the curtain stay; the console (z-60) keeps the voice, by design.
+    if (p.what === 'cut') {
+      seqCurtain().style.background = p.to === 'white' ? '#FFFFFF' : '#000000'
+      if (cv && cv.motion) cv.motion(p.what, p)
       return
     }
-    var reduced = reducedMotion()
-    setData(view.shell, 'transition', '1')
-    haptic(U.HAP_ACT[0], 'act.begin')
-    var curtain = el('div', 'curtain')
-    view.main.appendChild(curtain)
-    var i = 0
-    function step () {
-      if (i >= lines.length) {
-        haptic(U.HAP_ACT[2], 'act.end')
-        setData(view.shell, 'transition', '0')
-        if (curtain.parentNode) curtain.parentNode.removeChild(curtain)
-        if (onDone) onDone()
-        return
+    // Drawn motions belong to the plate; canvas answers null for the ones that are DOM.
+    if (cv && cv.motion && cv.motion(p.what, p) !== null) {
+      if (SEQ_FULLPLATE[p.what] === 1 && view.shell.dataset.fullplate !== '1') {
+        setData(view.shell, 'fullplate', '1')
+        // The box just changed size under both canvases; the backing stores follow now, not on
+        // the 250 ms debounce, or the first frames of the wave are a stretched stale plate.
+        if (cv.resize) cv.resize()
       }
-      curtain.appendChild(el('p', 'curtain-line', lines[i]))
-      i += 1
-      setTimeout(step, U.ACT_LINE_GAP_MS)
+      // The white hold's one concession: a skip hint, bottom centre, 0.3 opacity (09 §5.1). The
+      // stylesheet owns the alpha and the position; the payload owns the moment.
+      if (p.what === 'holdWhite' && p.skipHintAt >= 0) {
+        var hint = el('span', 'curtain-hint', STR.skip)
+        seqCurtain().appendChild(hint)
+        setTimeout(function () { setData(hint, 'on', '1') }, p.skipHintAt)
+      }
+      return
     }
-    setTimeout(function () {
+    if (p.what === 'panelsFade') {
+      var rows = seqRows(), i
+      for (i = 0; i < rows.length; i++) seqFadeEl(rows[i], p.to, p.ms)
+      if (!p.holdConsole) seqFadeEl(view.console, p.to, p.ms)
+    } else if (p.what === 'dimExcept') {
+      // ESCAPE: every strip row but the one the void is about to be priced in steps back.
+      var keep = String(p.keep || '').toLowerCase()
+      for (var r = 0; r < view.ledgerRows.length; r++) {
+        var row = view.ledgerRows[r]
+        if ((row.lab.textContent || '').toLowerCase() === keep) continue
+        seqFadeEl(row.el, p.to, U.SEQ_DIM_MS)
+      }
+    } else if (p.what === 'collapseList') {
+      // The fleet leaves one row at a time, top down, stepMs apart — the discharge in list form.
+      var kids = view.stack.children, k, n = 0
+      for (k = 0; k < kids.length; k++) {
+        if (kids[k].hidden) continue
+        ;(function (elk, delay) {
+          setTimeout(function () { seqFadeEl(elk, 0, p.stepMs > 0 ? p.stepMs : U.SEQ_DIM_MS) }, delay)
+        })(kids[k], n * (p.stepMs > 0 ? p.stepMs : U.SEQ_DIM_MS))
+        n++
+      }
+    }
+    // crossfade under reduced motion, and the dismantle's DOM steps, are state-driven elsewhere:
+    // the dismantle by finale's own clock through rev.dismantle, the crossfade by the act flip
+    // repainting the plate — a second copy here would run against the first.
+  }
+
+  function seqHost (st) {
+    if (!view || !st) return
+    var p = st.payload || {}
+    if (st.kind === 'begin') {
+      seqDown(0)                        // a sequence over a sequence starts clean
+      seqDom = { id: p.seq, curtain: null, faded: [] }
+      haptic(U.HAP_ACT[0], 'act.begin')
+      var d = doc()
+      if (d) d.addEventListener('pointerdown', seqTap, true)
+      return
+    }
+    if (!seqDom) return
+    if (st.kind === 'word') {
+      seqCurtain().appendChild(el('p', 'curtain-word', p.text))
       haptic(U.HAP_ACT[1], 'act.mid')
-      step()
-    }, reduced ? 0 : U.ACT_HOLD_MS)
+    } else if (st.kind === 'motion') {
+      seqMotion(p)
+    } else if (st.kind === 'shell') {
+      // The next act's face, over its own fade. The act itself flipped in the state at step zero;
+      // what happens here is only that the player is shown it.
+      seqDown(p.fadeMs)
+      if (p.panel) setTab(String(p.panel).toLowerCase())
+      haptic(U.HAP_ACT[2], 'act.end')
+    } else if (st.kind === 'end') {
+      // ESCAPE and the endings have no 'shell': the surface still comes down, over a beat.
+      seqDown(U.SEQ_END_MS)
+    }
+    // 'button' is finale's (it pins NEW GROWTH); 'blank' and 'line' never reach the host.
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -6323,7 +6472,6 @@
       var s = liveState()
       if (view && s) display(view, s, nowMs())
     },
-    transition: transition,
     layout: layout,
     openSettings: openSettings,
     // The reveal flags this module is painting against. A panel that has not arrived is either a
