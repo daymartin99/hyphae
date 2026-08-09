@@ -1994,6 +1994,18 @@
     nStar: nStar,
     nDagger: nDagger,
     harvestOf: harvestOf,
+    // The return report's reader (09 §6.6 bands_starving): bands whose craft cannot cover their
+    // own subsistence this second — the same inequality stepStarvation kills by.
+    starvingBands: function (st) {
+      var s = st || S()
+      if (!s || !s.a3) return 0
+      var n = count(s), k = 0
+      for (var b = 0; b < n; b++) {
+        if (!live(s, b) || !(num(field(s).n[b]) > 0)) continue
+        if (subsistOf(s, b) > harvestOf(s, b)) k++
+      }
+      return k
+    },
     subsistOf: subsistOf,
 
     // the genome

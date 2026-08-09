@@ -178,6 +178,7 @@
     }
     if (s.act === 1 && s.a1) {
       snap.patches = num(s.a1.patches)
+      snap.shortfall = sumShortfall(s)
       snap.netRep = num(s.a1.netRep)
       snap.seasons = s.a1.year * 4 + s.a1.season
       snap.leafPrice = HY.economy1 && HY.economy1.unitPrice ? num(HY.economy1.unitPrice('leaf')) : 0
@@ -186,14 +187,51 @@
         snap.contracts[s.a1.contracts[i].id] = s.a1.contracts[i].state
       }
     }
-    if (s.act === 3 && HY.bloom && HY.bloom.bandsReached) snap.bands = HY.bloom.bandsReached(s)
+    if (s.act === 2 && s.a2) {
+      // Which claimed regions were yours going in: the diff against this list is a rival take.
+      snap.claimedIdx = []
+      if (HY.world && HY.world.claimed) {
+        for (var r = 0; r < s.a2.regions.flags.length; r++) {
+          if (HY.world.claimed(r, s)) snap.claimedIdx.push(r)
+        }
+      }
+      snap.meanBond = HY.pactbook && HY.pactbook.meanBond ? HY.pactbook.meanBond() : 0
+      snap.pactCount = HY.pactbook && HY.pactbook.pacts ? HY.pactbook.pacts().length : 0
+      snap.lapsed = HY.pactbook && HY.pactbook.lapsedCount ? HY.pactbook.lapsedCount(s) : 0
+    }
+    if (s.act === 3) {
+      if (HY.bloom && HY.bloom.bandsReached) snap.bands = HY.bloom.bandsReached(s)
+      snap.strains = HY.divergence && HY.divergence.strains ? HY.divergence.strains(s).length : 0
+    }
     return snap
   }
+
+  function sumShortfall (s) {
+    var t = 0
+    for (var i = 0; i < s.a1.contracts.length; i++) {
+      if (s.a1.contracts[i].state === 'active') t += num(s.a1.contracts[i].shortfall)
+    }
+    return t
+  }
+
+  // Every needs kind this builder can emit — the other half of log.js's NEEDS table, and the
+  // contract its self-test checks. This review round found six authored report lines that were
+  // unreachable because no producer existed; a NEEDS row missing from this list is now a failure,
+  // not a discovery.
+  var OFFLINE_KINDS = ['substrate_dry', 'term_short', 'term_done', 'term_default',
+    'season_autumn', 'claim_done', 'market_move', 'stands_dry', 'rival_take', 'pact_expired',
+    'bond_deepened', 'bands_starving', 'strain_born', 'strain_band', 'band_open', 'phase_drift']
 
   function offlineNeeds (s, b, dryAtS) {
     var needs = []
     if (b.act === 1 && s.act === 1 && s.a1) {
       if (dryAtS >= 0) needs.push({ kind: 'substrate_dry', tokens: { t: dryAtS } })
+      // economy1's D32 note promises this line: offline shortfall accrues, never defaults, and
+      // is "reported on return". The report states only what the absence added.
+      var shortGrew = sumShortfall(s) - (b.shortfall || 0)
+      if (shortGrew > 1) {
+        needs.push({ kind: 'term_short', tokens: { n: shortGrew }, tone: 'warn' })
+      }
       var repDiff = Math.round(num(s.a1.netRep) - b.netRep)
       for (var i = 0; i < s.a1.contracts.length; i++) {
         var c = s.a1.contracts[i]
@@ -223,9 +261,67 @@
         needs.push({ kind: 'market_move', tokens: { price: p1 } })
       }
     }
-    if (b.act === 3 && s.act === 3 && HY.bloom && HY.bloom.bandsReached) {
-      var nb = HY.bloom.bandsReached(s)
-      if (nb > b.bands) needs.push({ kind: 'band_open', tokens: { b: nb } })
+    if (b.act === 2 && s.act === 2 && s.a2) {
+      var w = HY.world, pb = HY.pactbook
+      // Current distress first: dryness is about NOW, not about the diff.
+      var dry = HY.forest && HY.forest.countDry ? HY.forest.countDry(s) : 0
+      if (dry >= 2) needs.push({ kind: 'stands_dry', tokens: { k: dry }, tone: 'warn' })
+      if (w && w.claimed && b.claimedIdx) {
+        for (var ri = 0; ri < b.claimedIdx.length; ri++) {
+          var reg = b.claimedIdx[ri]
+          if (w.claimed(reg, s)) continue
+          var who = w.rivalNameAt ? w.rivalNameAt(reg, s) : null
+          if (!who) continue
+          needs.push({ kind: 'rival_take',
+            tokens: { region: w.regionName(reg), strain: who }, tone: 'neg' })
+          break                          // one loss is the fact; the map holds the rest
+        }
+      }
+      var lapsed = pb && pb.lapsedCount ? pb.lapsedCount(s) - b.lapsed : 0
+      if (lapsed > 0) needs.push({ kind: 'pact_expired', tokens: { k: lapsed } })
+      // The network's own initiative, stated as the fact it is: bonds accrue at full rate while
+      // you are away (08 §10.2 calls it kindness; the report calls it what it looks like). Only
+      // on a real change, only with a book worth the sentence, and ranked under everything urgent.
+      var bond = pb && pb.meanBond ? pb.meanBond() : 0
+      if (b.pactCount >= 2 && bond - b.meanBond >= T().OFFLINE.RETURN_BOND_MOVE) {
+        needs.push({ kind: 'bond_deepened', tokens: null })
+      }
+    }
+    if (b.act === 3 && s.act === 3) {
+      var starving = HY.bloom && HY.bloom.starvingBands ? HY.bloom.starvingBands(s) : 0
+      if (starving >= 1) needs.push({ kind: 'bands_starving', tokens: { k: starving }, tone: 'warn' })
+      if (HY.divergence && HY.divergence.strains) {
+        var list = HY.divergence.strains(s)
+        if (list.length > b.strains && list.length) {
+          var born = list[list.length - 1]
+          // The band it was born into is where its mass sits; w is per-band, the max is the home.
+          var home = 0, best = -1
+          for (var wb = 0; wb < born.w.length; wb++) {
+            if (num(born.w[wb]) > best) { best = num(born.w[wb]); home = wb }
+          }
+          needs.push({ kind: 'strain_born', tokens: { strain: born.name, b: home } })
+        }
+      }
+      if (HY.divergence && HY.divergence.strains && s.a3 && s.a3.bands) {
+        var ls = HY.divergence.strains(s)
+        for (var si = 0; si < ls.length; si++) {
+          var st2 = ls[si], hb = 0, hw = -1
+          for (var wb2 = 0; wb2 < st2.w.length; wb2++) {
+            if (num(st2.w[wb2]) > hw) { hw = num(st2.w[wb2]); hb = wb2 }
+          }
+          if (hw > num(s.a3.bands.n[hb])) {
+            needs.push({ kind: 'strain_band', tokens: { strain: st2.name, b: hb }, tone: 'neg' })
+            break
+          }
+        }
+      }
+      if (HY.bloom && HY.bloom.bandsReached) {
+        var nb = HY.bloom.bandsReached(s)
+        if (nb > b.bands) needs.push({ kind: 'band_open', tokens: { b: nb } })
+      }
+      // finale.returnNeeds has been exported and self-tested since the finale shipped — and this
+      // is its first caller. phase_drift outranks everything else on the screen (rank 95).
+      if (HY.finale && HY.finale.returnNeeds) needs = needs.concat(HY.finale.returnNeeds(s))
     }
     return needs
   }
@@ -1634,6 +1730,7 @@
     stop: stop,
     simTick: simTick,
     reconcileOffline: reconcileOffline,
+    OFFLINE_KINDS: OFFLINE_KINDS,
     setSimRate: setSimRate,
     onFrame: onFrame,
     effective: effective,

@@ -3187,6 +3187,23 @@
     voidRegion: voidRegion,
     legacyTerm: legacyTerm,
     maxStrain: maxStrain,
+    // The return report's two readers: how much the book tightened while nobody watched
+    // (bond_deepened), and how many terms ran out (pact_expired). Means and counts only —
+    // the report attributes nothing it cannot state from these.
+    meanBond: function () {
+      var list = pacts(), i, t = 0
+      if (!list.length) return 0
+      for (i = 0; i < list.length; i++) t += bondOf(list[i])
+      return t / list.length
+    },
+    lapsedCount: function (st) {
+      var s = st || S()
+      var b = s && s.a2 ? s.a2.pact : null
+      if (!b || !(b.pacts instanceof Array)) return 0
+      var k = 0
+      for (var i = 0; i < b.pacts.length; i++) if (b.pacts[i].state === 'lapsed') k++
+      return k
+    },
     pacts: pacts,
     GUILDS: GUILDS,
     TRAITS: TRAITS,

@@ -703,6 +703,20 @@
     fireSlow(s, dts, o || { stochastic: true, offline: false })
   }
 
+  // The return report's reader (09 §6.6 stands_dry): claimed stands that fireSlow's own test
+  // calls dry this second. Flag bit 4 is RF_CLAIMED, §3's assignment, hardcoded here the same
+  // way projects.js hardcodes it — the bits are stable forever.
+  function countDry (st) {
+    var s = st || S()
+    if (!s || !s.a2) return 0
+    var a = A(), r = s.a2.regions, k = 0
+    for (var i = 0; i < nreg; i++) {
+      if (!(r.flags[i] & 4)) continue
+      if (num(r.h[i]) < a.HUMUS_FIRE && moistureAt(i, s) < FIRE_DRY_M) k++
+    }
+    return k
+  }
+
   function fireSlow (s, dts, o) {
     var r = s.a2.regions, a = A(), i
     var haz = mult(s, 'hazMult', 1)
@@ -1513,6 +1527,7 @@
     biomassRate: biomassRate,
     canopy: canopy,
     moistureAt: moistureAt,
+    countDry: countDry,
     rho: rho,
     globalRho: globalRho,
     necrotized: necrotized,

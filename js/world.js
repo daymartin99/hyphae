@@ -2034,6 +2034,12 @@
     stepRivals: stepRivals,
     survey: survey,
     regionName: regionName,
+    claimed: claimed,
+    // The return report names who took a region while nobody watched (09 §6.6 rival_take).
+    rivalNameAt: function (i, st) {
+      var r = (st || S()).a2.regions
+      return r.rival[i] >= 0 ? RIVALS[r.rival[i] % RIVALS.length].name : null
+    },
 
     // the step loop.js drives (BIBLE §4 step 10) and the pulse arrival
     step: step,

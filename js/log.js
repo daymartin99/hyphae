@@ -913,11 +913,14 @@
     { kind: 'stands_dry', act: 2, rank: 90, text: '{k} stands are dangerously dry.' },
     { kind: 'rival_take', act: 2, rank: 80, text: '{region} was taken by {strain}.' },
     { kind: 'pact_expired', act: 2, rank: 60, text: '{k} pacts have run out their term.' },
-    { kind: 'mast_open', act: 2, rank: 50, text: 'A mast window opened and closed.' },
+    { kind: 'bond_deepened', act: 2, rank: 45,
+      text: 'Every pact is older and holds tighter. None of them asked.' },
 
     { kind: 'bands_starving', act: 3, rank: 90, text: '{k} bands are starving.' },
     { kind: 'strain_band', act: 3, rank: 80,
       text: '{strain} has taken band {b}. It is larger than you are there.' },
+    { kind: 'strain_born', act: 3, rank: 55,
+      text: '{strain} was born in band {b}. Nothing was consulted.' },
     { kind: 'band_open', act: 3, rank: 60, text: 'Band {b} is open.' }
   ]
 
@@ -1764,7 +1767,12 @@
       return 1
     }
 
-    pushReturn(away >= CONS.RETURN_SHORT ? 'x.return' : 'x.return_short', { away: away })
+    // The opener carries the act's register (09 §6.6 writes it lowercase in Act I and sentence
+    // case in II–III), the same way TOKEN.tree does: one string, cased at the moment it is said.
+    var opener = BY_ID[away >= CONS.RETURN_SHORT ? 'x.return' : 'x.return_short']
+    var oText = interpolate(opener.text, { away: away }, s, null)
+    if (act >= 2) oText = oText.charAt(0).toUpperCase() + oText.slice(1)
+    pendingReturn.push({ raw: true, id: opener.id, text: oText, tone: null, channel: 'system' })
     lines++
 
     if (away >= CONS.RETURN_LONG) {
@@ -2389,6 +2397,13 @@
       if (NEEDS[i].act === 1) {
         ok(!/[A-Z]/.test(NEEDS[i].text), 'L5 needs.' + NEEDS[i].kind + ': capital letter')
         ok(NEEDS[i].text.charAt(0) !== '{', 'R1 needs.' + NEEDS[i].kind + ': token-initial')
+      }
+      // Reachability. Six rows of this table — two of them quoted in 09 §6.6's own examples —
+      // sat authored, linted and unreachable, because no producer in loop.js ever emitted their
+      // kind. A row without a producer is now a failure here, not a discovery in a review.
+      if (HY.loop && HY.loop.OFFLINE_KINDS) {
+        ok(HY.loop.OFFLINE_KINDS.indexOf(NEEDS[i].kind) >= 0,
+          'D36 needs.' + NEEDS[i].kind + ': authored but no offlineNeeds producer emits it')
       }
     }
 
