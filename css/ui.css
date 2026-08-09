@@ -864,6 +864,8 @@ canvas{ display:block; }
 .row-line + .row-line{ margin-top:var(--sp-4); }
 .row-name{ font:var(--t-title); color:var(--text-primary); min-width:0; }
 .row-sub{ font:var(--t-meta); color:var(--text-secondary); }
+/* The market row's stock/shortfall slot: its own line, pushed to the reading edge. */
+.row-stock{ margin-inline-start:auto; }
 .row-sub[data-tone="cost"]{ color:var(--attention-dim); }
 .row-sub[data-tone="forecast"]{ color:var(--text-locked); }
 .row-num{ margin-inline-start:auto; font:var(--t-meta); color:var(--text-primary);

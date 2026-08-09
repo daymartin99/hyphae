@@ -46,6 +46,11 @@
     // for a sequence that ends without a 'shell' step (ESCAPE, the endings). Both are D_ACT-family
     // moments, shorter, because they are exits and not arrivals.
     SEQ_DIM_MS: 280, SEQ_END_MS: 600,
+    // A shortfall is displayed only when it is real and only when it is steady: EPS keeps a
+    // floating-point whisker from printing "0.00 g short", and HOLD keeps a balance that crosses
+    // an affordability line once a second (contract deliveries land each sim-second) from
+    // flickering the row's meta text at 1 Hz.
+    SHORT_EPS: 0.005, SHORT_HOLD_MS: 1200,
 
     // interaction (06 §5.5, §5.8, §5.11, §6.3)
     LONGPRESS_MS: 420, LONGPRESS_SLOP_PX: 10,
@@ -3474,7 +3479,13 @@
     var arrow = span(l1, 'row-arrow', '·')
     var sparkEl = span(l1, 'row-ascii', '')
     var detail = span(l1, 'row-sub num', '')
-    var stockTxt = span(l1, 'row-num', '')
+    // The stock-or-shortfall slot lives on its OWN line. It shared l1 with the fair price and the
+    // floor stock, and row-line wraps: whether the row was one line or two depended on the sum of
+    // four text widths, so the legitimate afford/short swap moved the row ±27 px — the last
+    // measured source of the owner's "screen jumps up and down". A dedicated line owes nothing
+    // to anyone's width; the row is the same height in both faces, forever.
+    var l1b = r.line()
+    var stockTxt = span(l1b, 'row-num row-stock', '')
 
     var l2 = r.line()
     // The same promise the tips row makes: the shortfall is on screen before the tap, so a
@@ -3575,12 +3586,23 @@
         // the row without one — `fair 0.13` sitting under `0.14 sug/g` reads as a second, different
         // quantity rather than the same price on the same scale, which is the only comparison the
         // line exists to support.
+        // While a steady shortfall is showing it takes the WHOLE meta line: the detail and the
+        // stock share one 390 px line with the fair price, and any added characters wrapped it —
+        // which is a 27 px height pulse, the exact disease the hysteresis exists to prevent. One
+        // short string is guaranteed one line; the fair price and the floor stock come back the
+        // moment the row is affordable again.
         setText(detail, (s.proj.flags.mycelial_ledger
           ? STR.fair + ' ' + C().fmt(e.fairValue(type)) + ' ' + SUG_G + ' · '
           : '') + C().fmtMass(num(s.a1.sub[type])) + ' ' + STR.onFloor)
-        setText(stockTxt, C().fmtMass(mkt.stock) + ' ' + STR.forSale)
         // The gap to the smallest size the player cannot yet buy: the next thing they want and
-        // the only shortfall worth a line. Four shortfalls on one row is four numbers to read.
+        // the only shortfall worth a line. NOT worth a NEW line. This text was its own row-sub
+        // under the row, and with contract deliveries landing every sim-second the sugar balance
+        // crosses the 1 kg price once a second — the extra line pulsed the row +27 px at 1 Hz,
+        // 120 times a minute, and every panel below rode it: the owner's "screen jumps up and
+        // down", measured at the element. The shortfall now swaps INTO the for-sale slot — the
+        // slot the buying eye is already reading — and only after its state has held for
+        // SHORT_HOLD_MS, so a balance oscillating across the price line keeps the steady face
+        // and a real shortfall still lands within a breath.
         var gap = 0
         buys.forEach(function (b) {
           var ok
@@ -3590,11 +3612,24 @@
           setData(b.el, 's', ok ? 'afford' : 'want')
           var need = Math.max(0, b.g * unit - num(s.res.sugar))
           b.el.dataset.short = interp(STR.short, { n: C().fmt(need) + ' ' + GLYPH.sugar })
-          if (!mode.sell && b.kind === 'abs' && need > 0 && (gap === 0 || need < gap)) gap = need
+          if (!mode.sell && b.kind === 'abs' && need > U.SHORT_EPS && (gap === 0 || need < gap)) gap = need
         })
-        setText(shortTxt, gap > 0
-          ? interp(STR.short, { n: C().fmt(gap) + ' ' + GLYPH.sugar })
-          : '')
+        var wantShort = gap > 0
+        if (wantShort !== mode.shortShown) {
+          if (!mode.shortAt) mode.shortAt = nowMs()
+          if (nowMs() - mode.shortAt >= U.SHORT_HOLD_MS) { mode.shortShown = wantShort; mode.shortAt = 0 }
+        } else {
+          mode.shortAt = 0
+        }
+        if (mode.shortShown) {
+          if (gap > 0) mode.lastGap = gap
+          setText(stockTxt, interp(STR.short, { n: C().fmt(mode.lastGap || 0) + ' ' + GLYPH.sugar }))
+          setData(stockTxt, 'tone', 'cost')
+        } else {
+          setText(stockTxt, C().fmtMass(mkt.stock) + ' ' + STR.forSale)
+          setData(stockTxt, 'tone', '')
+        }
+        setText(shortTxt, '')
         r.label((TYPE_NAME[type] || type) + ', ' + C().fmt(unit) + ' sugar per gram, ' +
           C().fmtMass(mkt.stock) + ' for sale')
       }
@@ -4187,10 +4222,17 @@
       prog.set(Math.min(1, num(s.res.biomass) / spec.biomass), canPay ? '' : 'warn',
         C().fmtMass(num(s.res.biomass)) + ' of ' + C().fmtMass(spec.biomass))
       setData(claimBtn, 's', canPay ? 'afford' : 'want')
-      claimBtn.dataset.short = interp(STR.short, {
-        n: C().fmtMass(Math.max(0, spec.biomass - num(s.res.biomass)))
-      })
-      setText(shortTxt, canPay ? '' : claimBtn.dataset.short)
+      // The shortfall names the leg that is BINDING. This line only ever quoted the biomass leg,
+      // so a claim blocked on minerals or standing read "0.00 g short" beside a live CLAIM —
+      // zero short is not short, and the owner photographed exactly that.
+      var bioShort = Math.max(0, spec.biomass - num(s.res.biomass))
+      var minShort = Math.max(0, spec.minerals - num(s.res.minerals))
+      var repShort = Math.max(0, needRep - num(s.a1.netRep))
+      var shortStr = bioShort > U.SHORT_EPS ? interp(STR.short, { n: C().fmtMass(bioShort) })
+        : minShort > U.SHORT_EPS ? interp(STR.short, { n: C().fmt(minShort) + ' ' + GLYPH.minerals })
+          : repShort > U.SHORT_EPS ? interp(STR.short, { n: C().fmt(repShort) + ' rep' }) : ''
+      claimBtn.dataset.short = shortStr
+      setText(shortTxt, canPay ? '' : shortStr)
     }
     p.view = pv
     return pv
