@@ -110,12 +110,12 @@
      shows, and at cold boot it shows the seed height only — a third of the phone spent on one
      12 px hairline is a third of the phone spent on nothing. Opening the window is a crop, not a
      resize: only ui.js resizes the canvas, and only it can tell the renderer it did. */
-  --plate-cap:30dvh; --plate-seed:17dvh;
+  --plate-cap:30svh; --plate-seed:17svh;
   --plate-min:48px;      /* 06 §4.3: the stage-2 map collapses to a strip, never to nothing */
-  --panels-min:14dvh;    /* the list keeps this much even when 200% text squeezes the column */
+  --panels-min:14svh;    /* the list keeps this much even when 200% text squeezes the column */
   /* The atrium's living wall, 900 px and up: a specimen panel beside the column, not a slab. It
      earns its height on the same terms the plate does. */
-  --wall-w:min(40vw,480px); --wall-h:min(70dvh,640px); --wall-seed:min(48dvh,420px);
+  --wall-w:min(40vw,480px); --wall-h:min(70svh,640px); --wall-seed:min(48svh,420px);
   --wall-gap:var(--sp-48);
 }
 
@@ -338,7 +338,11 @@ canvas{ display:block; }
   --plate-full:min(var(--plate-px), var(--plate-cap));
   --plate-open:var(--plate-full);
   display:flex; flex-direction:column;
-  height:100vh; height:100dvh;
+  /* svh, not dvh. The dynamic unit re-measures live as Safari's toolbar collapses and expands,
+     so the shell — and every band derived from it — resized under the thumb on every scroll:
+     the whole game visibly jumped. The small unit is the stable one; in the installed app the
+     two are equal, and in the browser the shell simply keeps the toolbar-visible height. */
+  height:100vh; height:100svh;
   max-width:1680px; margin:0 auto;
   padding-top:env(safe-area-inset-top);
   padding-left:env(safe-area-inset-left);
@@ -572,6 +576,10 @@ canvas{ display:block; }
 }
 .hero[data-state="disabled"][data-press="1"],
 .hero[data-state="locked"][data-press="1"]{ transform:none; background:var(--surface-1); }
+/* The refusal's visible half: the press the floor would not pay flashes the button's edge in the
+   attention ink and falls back over the release curve. Colour only — under reduced motion this is
+   the whole of the answer, and it still answers. */
+.hero[data-refuse="1"]{ border-color:var(--attention); color:var(--attention-text,var(--attention)); transition:none; }
 .hero[data-state="new"]{ border-color:var(--positive); color:var(--text-max); }
 .hero-cost{ display:block; margin-top:var(--sp-2);
             font-family:var(--font-mono); font-size:13px; white-space:nowrap;
@@ -1142,7 +1150,7 @@ canvas{ display:block; }
 .sheet{
   position:fixed; inset-inline:0; bottom:0; z-index:80;
   width:100%; max-width:var(--col-max); margin:0 auto;
-  max-height:86dvh; display:flex; flex-direction:column;
+  max-height:86svh; display:flex; flex-direction:column;
   background:var(--surface-2); border-top:1px solid var(--line-strong);
   border-radius:var(--r-xl) var(--r-xl) 0 0;
   transform:translateY(100%);
@@ -1397,7 +1405,7 @@ canvas{ display:block; }
    plus the plate were taking 46% of it before a single row of the game appeared. Both give a
    little; the list and the tab bar give nothing. */
 @media (max-height:700px){
-  :root{ --plate-cap:22dvh; --con-rows:4; }
+  :root{ --plate-cap:22svh; --con-rows:4; }
   .ledger-row{ min-height:32px; }
   .ledger-row[data-lead="1"]{ min-height:40px; }
 }

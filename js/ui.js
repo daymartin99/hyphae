@@ -195,6 +195,7 @@
 
     short: '{n} short',
     skip: 'tap to continue',
+    floorBare: 'the floor is bare',
     toEmpty: 'to empty',
     owed: 'owed',
     nothing: '—',
@@ -2046,12 +2047,31 @@
     if (!s) return
     if (LOG() && LOG().notifyInput) LOG().notifyInput()
     var verb = heroVerb(s)
-    if (verb === 'extend' && A1() && A1().onExtend) extend(heldS)
-    else if (verb === 'settle' && HY.bloom) commit(function () { return HY.bloom.settle() })
+    if (verb === 'extend' && A1() && A1().onExtend) {
+      // A press the floor refuses must answer AT THE BUTTON, now — not on the console's own poll
+      // a minute later. A tester whose economy starved watched EXTEND go silent under the thumb
+      // and reported the game as crashed, and they were right to: tappable and silent is a crash
+      // as far as a hand can tell.
+      if (!extend(heldS)) refuseHero()
+    } else if (verb === 'settle' && HY.bloom) commit(function () { return HY.bloom.settle() })
     else if (verb === 'newgrowth' && HY.finale && HY.finale.newGrowth) HY.finale.newGrowth()
     // feel.js fires the extend haptic from act1's own call site; this is the fallback for a build
     // in which it has not been concatenated yet.
     if (!FEEL()) haptic(U.HAP_PRESS, 'extend')
+  }
+
+  // The refusal, spoken three ways because iOS grants none of them for free: the error haptic
+  // (where the OS allows one), the announcer for a screen reader, and a visible pulse on the
+  // button itself — colour only, so reduced motion keeps it whole.
+  function refuseHero () {
+    if (!view) return
+    if (!view.hero.dataset.short) view.hero.dataset.short = STR.floorBare
+    refuse(view.hero)
+    setData(view.hero, 'refuse', '1')
+    if (view.__refuseT) clearTimeout(view.__refuseT)
+    view.__refuseT = setTimeout(function () {
+      if (view) delete view.hero.dataset.refuse
+    }, U.D_RELEASE)
   }
 
   // EXTEND, and the one place the release becomes visible somewhere other than under the thumb.
@@ -2750,8 +2770,15 @@
     }
 
     setText(v.heroLab, label)
-    show(v.heroCost, verb === 'settle')
+    // A greyed EXTEND says WHY on its own cost line — a bare grey button reads as a crash, and a
+    // tester reported it as exactly that. The same words ride dataset.short so a press on the
+    // grey answers audibly through refuse().
+    var bare = verb === 'extend' && state === 'disabled'
+    show(v.heroCost, verb === 'settle' || bare)
     if (verb === 'settle') setText(v.heroCost, C().fmt(num(s.res.spores)) + ' ' + GLYPH.spores)
+    else if (bare) setText(v.heroCost, STR.floorBare)
+    if (bare) v.hero.dataset.short = STR.floorBare
+    else if (v.hero.dataset.short) delete v.hero.dataset.short
     placeHero(v, !!verb)
     // Only a live verb is on the stage. Act II and the void have no floor to extend, so EXTEND is
     // gone — not greyed at centre stage on the FOREST board, which is a dead verb the act revoked
@@ -2760,7 +2787,7 @@
     setData(v.hero, 'state', state)
     setAttr(v.hero, 'aria-label', verb === 'settle'
       ? label + ', ' + C().fmt(num(s.res.spores)) + ' ' + GLYPH.spores
-      : label)
+      : (bare ? label + ', ' + STR.floorBare : label))
     paintEndbar(v, s)
     paintFab(v, s)
   }
