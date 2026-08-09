@@ -29,7 +29,7 @@ var GROUP=1e3
 var F='—'
 var y='−'
 var L='∞'
-var TUNE={NUM:{CEIL:1e42,GROUP:GROUP,SIG:3,MAX_LEN:8,VAL_CH:8,RATE_CH:9,SAT_EPS:.5,RESID_REL:1e-9,ASSERT_EVERY:200,INT_MAX:{tips:400,patches:6,regions:61,bands:13,loci:26,D:45,pactSlots:9,channels:19,strains:6,projects:163}},CLOCK:{SIM_HZ_A1:10,SIM_HZ_A23:20,DT_A1:.1,DT_A23:.05,DISPLAY_HZ:10,MARKET_HZ:1,SLOW_HZ:.5,LOG_HZ:1,CANVAS_HZ:4,AUTOSAVE_S:10,CATCHUP_BEHIND_S:.25,CATCHUP_MAX_DT:2,SEASON_S:360,YEAR_S:1440,DAY_S:15,WEATHER_PERIOD:1800},A1:{TIP_THROUGHPUT:1.875,TIP_BASE:60,TIP_COEF:3.2,TIP_EXP:1.72,TIP_COEF_FORAGING:2.6,ETA_B:.5,ETA_S:.2,RESPIRED:.3,PRUNE_MIN_TIPS:24,PRUNE_FRAC:.2,PRUNE_SALVAGE:.6,PRUNE_CONC_MAX:1.6,MIN_WARN_TIPS:20,MIN_GATE_TIPS:24,MIN_GATE_COEF:.06,MIN_GATE_EXP:1.35,SUGAR_CAP_BASE:400,SUGAR_CAP_SLOPE:30,ROT_RATE:.06,SCLEROTIA_ROT_GATE:500,HYPHAE_PER_TIP:1.75,HYPHAE_PER_PATCH:30,HYPHAE_PER_TAP:.02,HYPHAE_GATE:500,MOIST_RELAX_PER_S:.04,MOIST_OPT:1.05,MOIST_WIDTH:.3,MOIST_MIN:.15,MOIST_MAX:1.5,SEASON_MOIST:[1.15,.7,1.05,.55],SEASON_TEMP:[.95,1.15,1,.55],ANTIFREEZE_WINTER:1.545,SEASON_SPRING:0,SEASON_SUMMER:1,SEASON_AUTUMN:2,SEASON_WINTER:3,PATCH_SUPPLY_EXP:1.8,PATCH_MULT_STEP:.06,PATCH_MAX:6,FOREST_SUPPLY_BASE:849,SUSTAINABLE_FRAC:.65,CLAIM_S_PER_INDEX:45,CLAIM_THROUGHPUT:.9,PATCH:[{biomass:0,minerals:0,claimS:0},{biomass:12000,minerals:90,claimS:90},{biomass:3e4,minerals:260,claimS:135},{biomass:7e4,minerals:700,claimS:180},{biomass:1.6e5,minerals:1800,claimS:225},{biomass:4e5,minerals:4400,claimS:270}],PATCH_GATE_REP:[0,0,22,0,45,55],MOM_DECAY:.955,MEAN_REV:.03,PRICE_SIGMA:.006,MOM_CLAMP:.075,FAIR_K:1.1,FAIR_EXP:1.6,PRICE_FLOOR:.3,PRICE_CEIL:5,INFL:.06,IMPACT:.35,SPREAD:.72,SELL_BASE_DROP:.02,COOL_S:45,COOL_RATE:3e-4,COOL_FLOOR:.85,STOCK_INIT_FRAC:.55,HIST_LEN:120,TERM_MIN:1,TERM_MAX:8,REP_MAX:100,RESERVE_S:60,SHORTFALL_FRAC:.05,WINDFALL_SUB:50,WINDFALL_BIOMASS:200,WINDFALL_LEAF:2e3,WINDFALL_REP:1,WINDFALL_FREE_S:300,PHOSPHORUS_BASE:200,PHOSPHORUS_GROWTH:2,PHOSPHORUS_REP:40,UTIL_ALARM:.92,UTIL_ALARM_S:180,UTIL_ALARM_PRICE:.6,REVEAL_SUBSTRATE_G:5,REVEAL_TIPS_G:60,REVEAL_SUGAR_TIPS:3,MARKET_SUB_G:500,MARKET_T:210,SEASONS_T:300,TREES_SUGAR_G:250,PROJECTS_BIOMASS_G:2e3,ACTION_POTENTIAL_REP:60,DECIDE_SIGNAL:1e3,BOOT_SUB_LEAF:2e3,BOOT_SEASON:2,BOOT_SEASON_PHASE:.1667,BOOT_MOISTURE:1.05},HANDOFF:{BIOMASS:2e6,CUM_BIOMASS:3.4e6,MINERALS:1.6e4,DECOMP_RATE0:2700,TIPS:255,HYPHAE:596,D:3,BIOMASS_KEPT:.1},A2:{ACT2_SCALE:.333,SIG_K:3,SIG_CAP_BASE:260,D_COND_STEP:.35,D_VES_EXP:1.85,IFACE_BASE:.6,IFACE_EXP:.85,TIME_TO_FILL_K:86.7,INS_K:.055,RIPE_T:180,RIPE_T_MEMORY:130,RIPE_T_DEEP:95,RIPE_DEC:3,RIPE_FLOOR_CAP:.3,INS_RIPE_A:.25,INS_RIPE_B:.75,D_LADDER_SCALE:1.665e8,D_TRIGGER:5e8,D_MAX:45,RESPEC_A:120,RESPEC_E:1.6,KAPPA:.00062,LAMBDA:5.5e-9,TREE_G:1.6e-8,TMAX_MULT:1.35,BASE_MORT:9e-7,NECRO_RATE:8.5e-4,HUMUS_IN:.16,HUMUS_OUT_A:.00028,HUMUS_OUT_B:.00095,HUMUS_SCALE_F:.045,HUMUS_SWITCH:.28,HUMUS_FIRE:.22,RHO_MAX:.8,RHO_FLAT_MAX:.45,RHO_PINS:5,REGIONS:61,EXTRACT_TARGET:4e12,FOREST_TOTAL:7.08e12,L0_TOTAL:1.42e12,T0_TOTAL:5.66e12,LITTER_BASE:1.15e10,STANDING_BASE:4.6e10,RING_MULT:.55,ADV_BASE:6e5,ADV_GROWTH:1.21,ADV_TIME:45,ADV_RING_TIME:4.5,ADV_RING_COST:.22,DENS_BASE:2.4e5,DENS_POLE_EXP:1.35,CONN_K:.14,CONN_EXP:1.25,CONN_MIN:1,CONN_MAX:1.6,SURVEY_COST:120,SEED_BASE:4e3,SEED_GROWTH:1.34,OU_THETA:.01,OU_SIGMA:.028,OU_MEAN:.52,W_SEASON_AMP:.16,W_MIN:.02,W_MAX:.98,WIND_BOOT:.45,FORECAST_H:[0,120,300,600],FORECAST_ALARM_BONUS:90,MAT_TIME:240,SPORE_K:.045,HAZ_BASE:.0022,YIELD_EXP:1.6,EXPOSURE_EXP:2,HAZ_ROBUST:.35,AUTO_RELEASE:.55,SPORE_DECAY:.99995,MAST_PERIOD:2100,MAST_JITTER:400,MAST_WARN:180,MAST_LEN:90,MAST_MULT:6,MAST_FLUSH_GATE:40,FIRE_ACC:.0055,FIRE_DEC:.009,FIRE_TRIG:.85,FIRE_P:.03,PULSE_COST_FRAC:.55,PULSE_CD:120,PULSE_FALLOFF:.82,TERM_PERIOD_S:1800,CHANNEL_A:46,CHANNEL_E:1.55,CHANNELS_MIN:3,CHANNELS_MAX:19,SLOTS_MIN:2,SLOTS_MAX:9,CONGEST_K:.052,CONGEST_EXP:1.42,RECONCILE_K:260,TRIANGLE_K:420,BOND_MAX:2.6,STRAIN_CAP:.95,PASSIVE_MIN_K:.9,PASSIVE_MIN_EXP:.6,CHEMOTAXIS_SIG:400,PRIMORDIUM_INSIGHT:8,ACTION_POTENTIAL_CLAIMED:3,PACT_FIRST_FC:.004,HUMIC_RETENTION_H:.25,NECRO_FC:.22,PACT_CHEMO_PACTS:3,PACT_CHEMO_TENURE:600,PATH_FC:.6,CHARTER_LIFE:.55,CONVERSION_LIFE:.25,PHOTO_FC:.88,PHOTO_FLOOR:.4,PHOTO_COST:1300,ASCOSPORE_FC:.97,SPORE_DIVISOR:270,LEGACY_HUMUS_W:.55,LEGACY_LIFE_W:.45,ASCOSPORE_MINERALS:.25,ASCOSPORE_SIGNAL_MULT:.35},A3:{SPORE_DECAY_3:.997,SETTLE_Q:2.4e7,REACH_BASE:2600,REACH_GROWTH:1.45,BIOME_X0:[2e15,1.4e17,2.6e17,9e16,3.4e17,1.2e18,3e17,1.7e18],GERM_TUBE_N:2e8,APPRESSORIUM_X:4e14,ESCAPE_PC:.97,ESCAPE_LOSS:.96,BANDS:13,R_BASE:12,R_GROWTH:2.15,X0_BASE:9e26,X0_GROWTH:5.6,NCAP_DIV:6e10,LAG_K:.024,LAG_T:.0022,TAU0:90,TAU_GROWTH:1.35,PROP_K:1.8,MAXLAUNCH:.02,HARV_K:4e7,SUB_K:9e5,REP_K:.025,AS_RATIO:66.7,N_STAR_K:7.17,N_DAGGER_K:65.7,CRAFT_M0:2.4e6,GEN_TAX:.085,GEN_EXP:1.15,EXP_K:.0022,NREF_FRAC:.3,GERM_BASE:.28,ALLOC_BOOT:[.7,.2,.1],RAD_K:2.6e-5,TR_HAZ:3e-4,SEN_K:1.1e-5,STELLAR_P:.00042,SKIRM_K:.0016,MORTALITY_WINDOW:60,MORTALITY_CAUSES:6,SIG_K3:4.2,SIG_CAP3:364,NSIG:1e12,LAMBDA_EXP:.18,LOCI_FREE0:4,LOCI_CAP0:12,LOCI_A:140,LOCI_E:1.62,LOCI_MAX:26,CAP_A:400,CAP_G:1.42,SEQ_A:140,SEQ_G:1.42,REGEN_FRAC:.02,REGEN_G:1.75,REGEN_T:90,FID_BASE_A:.72,FID_BASE_B:.28,FID_PER_FID_LOCUS:.03,FID_PER_ANT_LOCUS:.038,BOUGHT_FID_CAP:.24,FID_MIN:.3,FID_MAX:.9975,DRIFT_K:.28,DRIFT_TRIG:1,DRIFT_DECAY:6e-4,DRIFT_FID_EXP:1.4,DEFECT_MIN:.04,DEFECT_MAX:.14,MUT_P:.3,SPREAD_K:9e-4,MAX_STRAINS:6,ALPHA_PURGE:.9,ALPHA_ABSORB:2.1,ALPHA_SUCC:4,ALPHA_EXP:.3,NOVELTY_K:.14,STRAIN_LINEAGES_DRIFT:1,ANASTOMOSIS_STRAINS:2,ANTI_ORGAN_WILD:.18,ANTIPHONY_MAX:27,COMBAT_K:.014,WITHDRAW_RECOVER:.6,REINFORCE_FRAC:.1,SUCC_TRIGGER_T:120,SUCC_LEARN_S:240,DESYNC_K:.02,SUCC_CEDE_AGE:1800,PULSE_CD:75,K_ENTRAIN:.55,PERIOD_BASE:300,PERIOD_SLOPE:.22,ISO_COMPRESS:.55,UPSILON_FREE:.31,BLOOM_Y:.8,BODY_Y:.97,BLOOM_X:9e34,BODY_X:1.32e35,BLOOM_SIG:1.1e7,BLOOM_PSI:2400,BODY_PSI:3600,BODY_FID:.985,ENCYST_S:1200,K_SCL:45,SCL_CARB_EXP:.42,SCL_CARB_REF:1e33,SCL_LEGACY:.6,SCL_FID:.85,SCL_STRAIN:.02,END_MULT:{bloom:1,body:1.15,inherit:1.3,encyst:.35},ARCHIVE_MAX:3},OFFLINE:{CAP:43200,CAP_VERNALISATION:86400,TIERS:[[7200,1],[21600,.75],[43200,.5]],VERN_FLOOR:.7,DOR_FLOOR_STEP:.02,DOR_FLOOR_MAX:.16,STEPS:240,INSIGHT_CAP_S:5400,PRED_CAP:.25,STRAIN_MULT:.35,ACCORD_MULT:.6,RETURN_LINES:5},PROJ:{VISIBLE_CAP:6,PINNED:9,DAI_MAX:9,DAI_MEDIAN:[2,4],DEAD_AIR_MAX:480,COUNT_A1:45,COUNT_A2:68,COUNT_A3:50,COUNT:163,NEAR_RATIO:.35},LOG:{HARD_GAP:1.2,BURST_CAP:6,BURST_WINDOW:20,OBS_COOLDOWN:240,RING:200,ROWS:5,RETURN_GAP:1.2},SAVE:{SLOTS:3,PREFIX:'hyphae.slot',FAULT_KEY:'hyphae.balanceFault',MAX_BYTES_A1:22528,MAX_BYTES_A2:34816,MAX_BYTES_A3:3072},UI:{BASE_PX:360,COLUMN_PX:420,TAP_MIN_PX:44,GRID_PX:4,GUTTER_PX:16,TAB_SLOTS:5,ACT3_SHIFT_MS:2600,LUM_CHANGES_MAX:3,SEG_PER_M:.4,SEG_CAP:1800,AGE_WASH:.045}}
+var TUNE={NUM:{CEIL:1e42,GROUP:GROUP,SIG:3,MAX_LEN:8,VAL_CH:8,RATE_CH:9,SAT_EPS:.5,RESID_REL:1e-9,ASSERT_EVERY:200,INT_MAX:{tips:400,patches:6,regions:61,bands:13,loci:26,D:45,pactSlots:9,channels:19,strains:6,projects:163}},CLOCK:{SIM_HZ_A1:10,SIM_HZ_A23:20,DT_A1:.1,DT_A23:.05,DISPLAY_HZ:10,MARKET_HZ:1,SLOW_HZ:.5,LOG_HZ:1,CANVAS_HZ:4,AUTOSAVE_S:10,CATCHUP_BEHIND_S:.25,CATCHUP_MAX_DT:2,SEASON_S:360,YEAR_S:1440,DAY_S:15,WEATHER_PERIOD:1800},A1:{TIP_THROUGHPUT:1.875,TIP_BASE:60,TIP_COEF:3.2,TIP_EXP:1.72,TIP_COEF_FORAGING:2.6,ETA_B:.5,ETA_S:.2,RESPIRED:.3,PRUNE_MIN_TIPS:24,PRUNE_FRAC:.2,PRUNE_SALVAGE:.6,PRUNE_CONC_MAX:1.6,MIN_WARN_TIPS:20,MIN_GATE_TIPS:24,MIN_GATE_COEF:.06,MIN_GATE_EXP:1.35,SUGAR_CAP_BASE:400,SUGAR_CAP_SLOPE:30,ROT_RATE:.06,SCLEROTIA_ROT_GATE:500,HYPHAE_PER_TIP:1.75,HYPHAE_PER_PATCH:30,HYPHAE_PER_TAP:.02,HYPHAE_GATE:500,MOIST_RELAX_PER_S:.04,MOIST_OPT:1.05,MOIST_WIDTH:.3,MOIST_MIN:.15,MOIST_MAX:1.5,SEASON_MOIST:[1.15,.7,1.05,.55],SEASON_TEMP:[.95,1.15,1,.55],ANTIFREEZE_WINTER:1.545,SEASON_SPRING:0,SEASON_SUMMER:1,SEASON_AUTUMN:2,SEASON_WINTER:3,PATCH_SUPPLY_EXP:1.8,PATCH_MULT_STEP:.06,PATCH_MAX:6,FOREST_SUPPLY_BASE:849,SUSTAINABLE_FRAC:.65,CLAIM_S_PER_INDEX:45,CLAIM_THROUGHPUT:.9,PATCH:[{biomass:0,minerals:0,claimS:0},{biomass:12000,minerals:90,claimS:90},{biomass:3e4,minerals:260,claimS:135},{biomass:7e4,minerals:700,claimS:180},{biomass:1.6e5,minerals:1800,claimS:225},{biomass:4e5,minerals:4400,claimS:270}],PATCH_GATE_REP:[0,0,22,0,45,55],MOM_DECAY:.955,MEAN_REV:.03,PRICE_SIGMA:.006,MOM_CLAMP:.075,FAIR_K:1.1,FAIR_EXP:1.6,PRICE_FLOOR:.3,PRICE_CEIL:5,INFL:.06,IMPACT:.35,SPREAD:.72,SELL_BASE_DROP:.02,COOL_S:45,COOL_RATE:3e-4,COOL_FLOOR:.85,STOCK_INIT_FRAC:.55,HIST_LEN:120,TERM_MIN:1,TERM_MAX:8,REP_MAX:100,RESERVE_S:60,SHORTFALL_FRAC:.05,WINDFALL_SUB:50,WINDFALL_BIOMASS:200,WINDFALL_LEAF:2e3,WINDFALL_REP:1,WINDFALL_FREE_S:300,PHOSPHORUS_BASE:200,PHOSPHORUS_GROWTH:2,PHOSPHORUS_REP:40,UTIL_ALARM:.92,UTIL_ALARM_S:180,UTIL_ALARM_PRICE:.6,REVEAL_SUBSTRATE_G:5,REVEAL_TIPS_G:60,REVEAL_SUGAR_TIPS:3,MARKET_SUB_G:500,MARKET_T:210,SEASONS_T:300,TREES_SUGAR_G:250,PROJECTS_BIOMASS_G:2e3,ACTION_POTENTIAL_REP:60,DECIDE_SIGNAL:1e3,BOOT_SUB_LEAF:2e3,BOOT_SEASON:2,BOOT_SEASON_PHASE:.1667,BOOT_MOISTURE:1.05},HANDOFF:{BIOMASS:2e6,CUM_BIOMASS:3.4e6,MINERALS:1.6e4,DECOMP_RATE0:2700,TIPS:255,HYPHAE:596,D:3,BIOMASS_KEPT:.1},A2:{ACT2_SCALE:.333,SIG_K:3,SIG_CAP_BASE:260,D_COND_STEP:.35,D_VES_EXP:1.85,IFACE_BASE:.6,IFACE_EXP:.85,TIME_TO_FILL_K:86.7,INS_K:.055,RIPE_T:180,RIPE_T_MEMORY:130,RIPE_T_DEEP:95,RIPE_DEC:3,RIPE_FLOOR_CAP:.3,INS_RIPE_A:.25,INS_RIPE_B:.75,D_LADDER_SCALE:1.665e8,D_TRIGGER:5e8,D_MAX:45,RESPEC_A:120,RESPEC_E:1.6,KAPPA:.00062,LAMBDA:5.5e-9,TREE_G:1.6e-8,TMAX_MULT:1.35,BASE_MORT:9e-7,NECRO_RATE:8.5e-4,HUMUS_IN:.16,HUMUS_OUT_A:.00028,HUMUS_OUT_B:.00095,HUMUS_SCALE_F:.045,HUMUS_SWITCH:.28,HUMUS_FIRE:.22,RHO_MAX:.8,RHO_FLAT_MAX:.45,RHO_PINS:5,REGIONS:61,EXTRACT_TARGET:4e12,FOREST_TOTAL:7.08e12,L0_TOTAL:1.42e12,T0_TOTAL:5.66e12,LITTER_BASE:1.15e10,STANDING_BASE:4.6e10,RING_MULT:.55,ADV_BASE:6e5,ADV_GROWTH:1.21,ADV_TIME:45,ADV_RING_TIME:4.5,ADV_RING_COST:.22,DENS_BASE:2.4e5,DENS_POLE_EXP:1.35,CONN_K:.14,CONN_EXP:1.25,CONN_MIN:1,CONN_MAX:1.6,SURVEY_COST:120,SEED_BASE:4e3,SEED_GROWTH:1.34,OU_THETA:.01,OU_SIGMA:.028,OU_MEAN:.52,W_SEASON_AMP:.16,W_MIN:.02,W_MAX:.98,WIND_BOOT:.45,FORECAST_H:[0,120,300,600],FORECAST_ALARM_BONUS:90,MAT_TIME:240,SPORE_K:.045,HAZ_BASE:.0022,YIELD_EXP:1.6,EXPOSURE_EXP:2,HAZ_ROBUST:.35,AUTO_RELEASE:.55,SPORE_DECAY:.99995,MAST_PERIOD:2100,MAST_JITTER:400,MAST_WARN:180,MAST_LEN:90,MAST_MULT:6,MAST_FLUSH_GATE:40,FIRE_ACC:.0055,FIRE_DEC:.009,FIRE_TRIG:.85,FIRE_P:.03,PULSE_COST_FRAC:.55,PULSE_CD:120,PULSE_FALLOFF:.82,TERM_PERIOD_S:1800,CHANNEL_A:46,CHANNEL_E:1.55,CHANNELS_MIN:3,CHANNELS_MAX:19,SLOTS_MIN:2,SLOTS_MAX:9,CONGEST_K:.052,CONGEST_EXP:1.42,RECONCILE_K:260,TRIANGLE_K:420,BOND_MAX:2.6,STRAIN_CAP:.95,PASSIVE_MIN_K:.9,PASSIVE_MIN_EXP:.6,CHEMOTAXIS_SIG:400,PRIMORDIUM_INSIGHT:8,ACTION_POTENTIAL_CLAIMED:3,PACT_FIRST_FC:.004,HUMIC_RETENTION_H:.25,NECRO_FC:.22,PACT_CHEMO_PACTS:3,PACT_CHEMO_TENURE:600,PATH_FC:.6,CHARTER_LIFE:.55,CONVERSION_LIFE:.25,PHOTO_FC:.88,PHOTO_FLOOR:.4,PHOTO_COST:1300,ASCOSPORE_FC:.97,SPORE_DIVISOR:270,LEGACY_HUMUS_W:.55,LEGACY_LIFE_W:.45,ASCOSPORE_MINERALS:.25,ASCOSPORE_SIGNAL_MULT:.35},A3:{SPORE_DECAY_3:.997,SETTLE_Q:2.4e7,REACH_BASE:2600,REACH_GROWTH:1.45,BIOME_X0:[2e15,1.4e17,2.6e17,9e16,3.4e17,1.2e18,3e17,1.7e18],GERM_TUBE_N:2e8,APPRESSORIUM_X:4e14,ESCAPE_PC:.97,ESCAPE_LOSS:.96,BANDS:13,R_BASE:12,R_GROWTH:2.15,X0_BASE:9e26,X0_GROWTH:5.6,NCAP_DIV:6e10,LAG_K:.024,LAG_T:.0022,TAU0:90,TAU_GROWTH:1.35,PROP_K:1.8,MAXLAUNCH:.02,HARV_K:4e7,SUB_K:9e5,REP_K:.025,AS_RATIO:66.7,N_STAR_K:7.17,N_DAGGER_K:65.7,CRAFT_M0:2.4e6,GEN_TAX:.085,GEN_EXP:1.15,EXP_K:.0022,NREF_FRAC:.3,GERM_BASE:.28,ALLOC_BOOT:[.7,.2,.1],RAD_K:2.6e-5,TR_HAZ:3e-4,SEN_K:1.1e-5,STELLAR_P:.00042,SKIRM_K:.0016,MORTALITY_WINDOW:60,MORTALITY_CAUSES:6,SIG_K3:4.2,SIG_CAP3:364,NSIG:1e12,LAMBDA_EXP:.18,LOCI_FREE0:4,LOCI_CAP0:12,LOCI_A:140,LOCI_E:1.62,LOCI_MAX:26,CAP_A:400,CAP_G:1.42,SEQ_A:140,SEQ_G:1.42,REGEN_FRAC:.02,REGEN_G:1.75,REGEN_T:90,FID_BASE_A:.72,FID_BASE_B:.28,FID_PER_FID_LOCUS:.03,FID_PER_ANT_LOCUS:.038,BOUGHT_FID_CAP:.24,FID_MIN:.3,FID_MAX:.9975,DRIFT_K:.28,DRIFT_TRIG:1,DRIFT_DECAY:6e-4,DRIFT_FID_EXP:1.4,DEFECT_MIN:.04,DEFECT_MAX:.14,MUT_P:.3,SPREAD_K:9e-4,MAX_STRAINS:6,ALPHA_PURGE:.9,ALPHA_ABSORB:2.1,ALPHA_SUCC:4,ALPHA_EXP:.3,NOVELTY_K:.14,STRAIN_LINEAGES_DRIFT:1,ANASTOMOSIS_STRAINS:2,ANTI_ORGAN_WILD:.18,ANTIPHONY_MAX:27,COMBAT_K:.014,WITHDRAW_RECOVER:.6,REINFORCE_FRAC:.1,SUCC_TRIGGER_T:120,SUCC_LEARN_S:240,DESYNC_K:.02,SUCC_CEDE_AGE:1800,PULSE_CD:75,K_ENTRAIN:.55,PERIOD_BASE:300,PERIOD_SLOPE:.22,ISO_COMPRESS:.55,UPSILON_FREE:.31,BLOOM_Y:.8,BODY_Y:.97,BLOOM_X:9e34,BODY_X:1.32e35,BLOOM_SIG:1.1e7,BLOOM_PSI:2400,BODY_PSI:3600,BODY_FID:.985,ENCYST_S:1200,K_SCL:45,SCL_CARB_EXP:.42,SCL_CARB_REF:1e33,SCL_LEGACY:.6,SCL_FID:.85,SCL_STRAIN:.02,END_MULT:{bloom:1,body:1.15,inherit:1.3,encyst:.35},ARCHIVE_MAX:3},OFFLINE:{CAP:43200,CAP_VERNALISATION:86400,TIERS:[[7200,1],[21600,.75],[43200,.5]],VERN_FLOOR:.7,DOR_FLOOR_STEP:.02,DOR_FLOOR_MAX:.16,STEPS:240,RETURN_PRICE_MOVE:.25,INSIGHT_CAP_S:5400,PRED_CAP:.25,STRAIN_MULT:.35,ACCORD_MULT:.6,RETURN_LINES:5},PROJ:{VISIBLE_CAP:6,PINNED:9,DAI_MAX:9,DAI_MEDIAN:[2,4],DEAD_AIR_MAX:480,COUNT_A1:45,COUNT_A2:68,COUNT_A3:50,COUNT:163,NEAR_RATIO:.35},LOG:{HARD_GAP:1.2,BURST_CAP:6,BURST_WINDOW:20,OBS_COOLDOWN:240,RING:200,ROWS:5,RETURN_GAP:1.2},SAVE:{SLOTS:3,PREFIX:'hyphae.slot',FAULT_KEY:'hyphae.balanceFault',MAX_BYTES_A1:22528,MAX_BYTES_A2:34816,MAX_BYTES_A3:3072},UI:{BASE_PX:360,COLUMN_PX:420,TAP_MIN_PX:44,GRID_PX:4,GUTTER_PX:16,TAB_SLOTS:5,ACT3_SHIFT_MS:2600,LUM_CHANGES_MAX:3,SEG_PER_M:.4,SEG_CAP:1800,AGE_WASH:.045}}
 z(TUNE)
 function z(o){var k,v
 for(k in o){if(!Object.prototype.hasOwnProperty.call(o,k))continue
@@ -757,7 +757,7 @@ return words(th)+' thousand'+(rest?(rest<100?' and ':' ')+words(rest):'')}return
 function spelled(n){n=Math.round(Number(n)||0)
 return n<=u.SPELL_MAX&&n>=0?words(n):String(n)}
 var bB={region:function(v){return String(v)},strain:function(v){return String(v)},tree:function(v,s){var t='the '+String(v)
-return(s&&s.act>=2)?t.charAt(0).toUpperCase()+t.slice(1):t},season:function(v){return String(v).toLowerCase()},band:function(v){return words(v)},k:function(v){return spelled(v)},kwords:function(v){return words(v)},n:function(v){return C().fmt(v)},amt:function(v){return C().fmt(v)},bio:function(v){return C().fmt(v)},sug:function(v){return C().fmt(v)},min:function(v){return C().fmt(v)},psi:function(v){return C().fmt(v)},car:function(v){return C().fmt(v)},b:function(v){return words(v)},pct:function(v){return String(Math.round(Number(v)||0))},price:function(v){return(Number(v)||0).toFixed(u.PRICE_DP)},clock:function(v){return C().fmtTime(v,'clock')},away:function(v){return aK(v)},t:function(v){return aK(v)}}
+return(s&&s.act>=2)?t.charAt(0).toUpperCase()+t.slice(1):t},season:function(v){return String(v).toLowerCase()},band:function(v){return words(v)},k:function(v){return spelled(v)},kwords:function(v){return words(v)},n:function(v){return C().fmt(v)},amt:function(v){return C().fmt(v)},bio:function(v){return C().fmt(v)},sug:function(v){return C().fmt(v)},min:function(v){return C().fmt(v)},psi:function(v){return C().fmt(v)},car:function(v){return C().fmt(v)},b:function(v){return words(v)},pct:function(v){return String(Math.round(Number(v)||0))},price:function(v){return(Number(v)||0).toFixed(u.PRICE_DP)+' sug/g'},clock:function(v){return C().fmtTime(v,'clock')},away:function(v){return aK(v)},t:function(v){return aK(v)}}
 function aK(v){var s=C().fmtTime(Math.abs(Number(v)||0),'away')
 return s.length>4&&s.slice(-4)===' 0 m'?s.slice(0,-4):s}
 var bn=/\{(\w+)\}/g
@@ -961,7 +961,7 @@ var signalT0=null
 var NOTICE={no_storage:{text:'nothing can be written down here. the run will not survive this tab.',tone:'warn',once:!0},quota:{text:'there is no room to write. export the run.',tone:'warn',cooldown:300},decode_fail:{text:'this save cannot be read. it has not been overwritten.',tone:'warn'},version_newer:{text:'this save is from a later version. nothing has been changed.',tone:'warn'},import_bad:{text:'that is not a run.',tone:'warn'},import_ok:{text:"{away} of someone's forest.",tone:null}}
 var EMPTY={market_sold_out:'nothing is for sale. it will fall again.',substrate:'the floor is bare',trees:'nothing above you is short of anything yet',contracts:'no terms',adaptations:'nothing to change yet',patches:'one place',stands:'Nothing out there is adjacent to you.',flush:'No knots yet.',pacts:'Nobody is offering.',pacts_offers:'{k} offers. No obligations.',lineages:'Everything is still answering.',bands:'Dark, and not far.',log:'(nothing yet)'}
 var CONFIRM={kill_stand:{text:'This cannot regrow.',yes:'KILL',no:'DONE'},regenome:{text:'{k} loci return. The genome you had is not saved.',yes:'REGENOME',no:'DONE'},encyst:{text:'This ends the run. You keep about a third.',yes:'ENCYST',no:'DONE'}}
-var bC={1:'+{bio} biomass, +{sug} sugar, +{min} minerals.',2:'{bio} decomposed. {psi} insight.',3:'{car} harvested. {psi} insight. Band {b} is open.'}
+var bC={1:'+{bio} biomass, +{sug} sugar, +{min} minerals.',2:'{bio} decomposed. {psi} insight.',3:'{car} harvested. {psi} insight.'}
 var aW={1:' {pct}% dormant.',2:' {pct}% dormant.',3:' {pct}% dormant.'}
 var bH={2:'[ tap the map ]',3:'[ tap the void ]'}
 var NEEDS=[{kind:'substrate_dry',act:1,rank:90,text:'the substrate ran dry after {t}.'},{kind:'term_short',act:1,rank:80,text:'a term is short by {n} sugar. it has not ended.'},{kind:'term_default',act:1,rank:75,text:'a term went unpaid. {k} reputation is gone.'},{kind:'season_autumn',act:1,rank:70,text:'autumn passed. leaf litter is on the floor at {price}.'},{kind:'term_done',act:1,rank:60,text:'a term completed with {tree}. +{k} reputation.'},{kind:'claim_done',act:1,rank:55,text:'a claim completed. there is another place under you now.'},{kind:'market_move',act:1,rank:40,text:'leaf litter is on the floor at {price}.'},{kind:'stands_dry',act:2,rank:90,text:'{k} stands are dangerously dry.'},{kind:'rival_take',act:2,rank:80,text:'{region} was taken by {strain}.'},{kind:'pact_expired',act:2,rank:60,text:'{k} pacts have run out their term.'},{kind:'mast_open',act:2,rank:50,text:'A mast window opened and closed.'},{kind:'bands_starving',act:3,rank:90,text:'{k} bands are starving.'},{kind:'strain_band',act:3,rank:80,text:'{strain} has taken band {b}. It is larger than you are there.'},{kind:'band_open',act:3,rank:60,text:'Band {b} is open.'}]
@@ -1429,7 +1429,7 @@ ok(spelled(12)==='twelve'&&spelled(13)==='13','spelled() boundary at twelve')
 ok(interpolate('band {band}',{band:12},null,null)==='band twelve','token band')
 ok(interpolate('{k} loci',{k:3},null,null)==='three loci','token k spells to twelve')
 ok(interpolate('{k} loci',{k:26},null,null)==='26 loci','token k numerals above')
-ok(interpolate('at {price}',{price:.8612},null,null)==='at 0.86','token price')
+ok(interpolate('at {price}',{price:.8612},null,null)==='at 0.86 sug/g','token price carries its unit')
 ok(interpolate('{n} of it',{n:4e12},null,null)==='4.00 T of it','token n')
 ok(interpolate('gone {away}',{away:24060},null,null)==='gone 6 h 41 m','token away')
 ok(interpolate('{pct}% dormant',{pct:33.3},null,null)==='33% dormant','token pct')
@@ -17201,18 +17201,18 @@ var running=!1
 var l=0
 var E=0
 var I=0
-var aL=0
+var aQ=0
 var F=0
 var U=[]
-var ac=0
-var aA=10
+var ae=0
+var aE=10
 var X=200
-var aP=!1
-function aQ(){return(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now()}
-function simTick(dt,aF){if(!(dt>0))return
+var aU=!1
+function aV(){return(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now()}
+function simTick(dt,aK){if(!(dt>0))return
 var s=S()
 if(!s)return
-var o=aF||{stochastic:!0,offline:!1}
+var o=aK||{stochastic:!0,offline:!1}
 var act=s.act
 var a1=HY.act1,ec=HY.economy1
 var Z=!!(act===1&&a1&&a1.stepSeason)
@@ -17242,86 +17242,118 @@ if(act===3&&HY.finale)HY.finale.step(dt,o)
 if(HY.cognition&&HY.cognition.stepLadders)HY.cognition.stepLadders(dt,o)
 if(act===3&&HY.bloom&&HY.bloom.stepLadders)HY.bloom.stepLadders(dt,o)
 if(HY.projects)HY.projects.manageProjects(s)
-ac++
-if(HY.log&&ac%aA===0)HY.log.manageLog(s)
-if(X&&ac%X===0&&HY.harness&&HY.harness.assert){HY.harness.assert(s)}if(!o.offline&&HY.state.tick)HY.state.tick(s,dt,o)}
-function effective(bb){var O=T().OFFLINE
-var bE=S()&&S().proj&&S().proj.flags&&S().proj.flags.vernalisation?O.CAP_VERNALISATION:O.CAP
-var bk=C().clamp(bb,0,bE)
-var bK=0,prev=0,i,tier
-for(i=0;i<O.TIERS.length&&bk>0;i++){tier=O.TIERS[i]
-var aR=Math.min(bk,tier[0]-prev)
-if(aR>0){bK+=aR*tier[1];bk-=aR}prev=tier[0]}return bK}
-function reconcileOffline(bA){var s=S()
+ae++
+if(HY.log&&ae%aE===0)HY.log.manageLog(s)
+if(X&&ae%X===0&&HY.harness&&HY.harness.assert){HY.harness.assert(s)}if(!o.offline&&HY.state.tick)HY.state.tick(s,dt,o)}
+function effective(bh){var O=T().OFFLINE
+var bK=S()&&S().proj&&S().proj.flags&&S().proj.flags.vernalisation?O.CAP_VERNALISATION:O.CAP
+var br=C().clamp(bh,0,bK)
+var bQ=0,prev=0,i,tier
+for(i=0;i<O.TIERS.length&&br>0;i++){tier=O.TIERS[i]
+var aW=Math.min(br,tier[0]-prev)
+if(aW>0){bQ+=aW*tier[1];br-=aW}prev=tier[0]}return bQ}
+function aa(s){var aF={act:s.act,cumBiomass:num(s.res.cumBiomass),sugar:num(s.res.sugar),minerals:num(s.res.minerals),insight:num(s.res.insight),cumCarbon:num(s.res.cumCarbon)}
+if(s.act===1&&s.a1){aF.patches=num(s.a1.patches)
+aF.netRep=num(s.a1.netRep)
+aF.seasons=s.a1.year*4+s.a1.season
+aF.leafPrice=HY.economy1&&HY.economy1.unitPrice?num(HY.economy1.unitPrice('leaf')):0
+aF.contracts={}
+for(var i=0;i<s.a1.contracts.length;i++){aF.contracts[s.a1.contracts[i].id]=s.a1.contracts[i].state}}if(s.act===3&&HY.bloom&&HY.bloom.bandsReached)aF.bands=HY.bloom.bandsReached(s)
+return aF}
+function aw(s,b,bi){var needs=[]
+if(b.act===1&&s.act===1&&s.a1){if(bi>=0)needs.push({kind:'substrate_dry',tokens:{t:bi}})
+var ax=Math.round(num(s.a1.netRep)-b.netRep)
+for(var i=0;i<s.a1.contracts.length;i++){var c=s.a1.contracts[i]
+var was=b.contracts[c.id]
+if(was===undefined||was===c.state)continue
+if(c.state==='complete'&&ax>0){var t=HY.economy1&&HY.economy1.treeById?HY.economy1.treeById(c.treeId):null
+needs.push({kind:'term_done',tokens:{tree:t?t.species:'a tree',k:ax}})
+break
+}if(c.state==='defaulted'){needs.push({kind:'term_default',tokens:{k:Math.max(1,-ax)},tone:'warn'})
+break
+}}var A1=T().A1
+for(var sn=b.seasons+1;sn<=s.a1.year*4+s.a1.season;sn++){if(sn%4===A1.SEASON_AUTUMN){needs.push({kind:'season_autumn',tokens:{price:ar()}})
+break
+}}if(num(s.a1.patches)>b.patches)needs.push({kind:'claim_done',tokens:null})
+var p1=ar()
+if(b.leafPrice>0&&Math.abs(p1-b.leafPrice)/b.leafPrice>=T().OFFLINE.RETURN_PRICE_MOVE){needs.push({kind:'market_move',tokens:{price:p1}})}}if(b.act===3&&s.act===3&&HY.bloom&&HY.bloom.bandsReached){var nb=HY.bloom.bandsReached(s)
+if(nb>b.bands)needs.push({kind:'band_open',tokens:{b:nb}})}return needs}
+function ar(){return HY.economy1&&HY.economy1.unitPrice?num(HY.economy1.unitPrice('leaf')):0}
+function reconcileOffline(bG){var s=S()
 if(!s)return 0
-var at=bA===undefined?HY.state.now():bA
-var as=s.wallClock>0?Math.max(0,at-s.wallClock):0
+var at=bG===undefined?HY.state.now():bG
+var bR=s.wallClock>0?at-s.wallClock:0
 s.wallClock=at
-if(!(as>1))return 0
-var bC=effective(as)
-if(!(bC>0))return 0
+if(bR<-60){if(HY.log&&HY.log.returnBurst)HY.log.returnBurst({away:-1,act:s.act})
+return 0}var ad=Math.max(0,bR)
+if(!(ad>1))return 0
+var bI=effective(ad)
+if(!(bI>0))return 0
+var before=aa(s)
 var STEPS=T().OFFLINE.STEPS
-var dt=bC/STEPS
-var aF={stochastic:!1,offline:!0}
+var dt=bI/STEPS
+var aK={stochastic:!1,offline:!0}
+var aX=-1
 if(HY.log&&HY.log.freeze)HY.log.freeze()
-for(var i=0;i<STEPS;i++)simTick(dt,aF)
-if(HY.log&&HY.log.thaw)HY.log.thaw()
-if(HY.log&&HY.log.returnBurst)HY.log.returnBurst(as,bC)
-return bC}
-function setSimRate(hz){if(hz===aL)return
-aL=hz
-aA=Math.max(1,Math.round(hz/T().CLOCK.LOG_HZ))
+for(var i=0;i<STEPS;i++){simTick(dt,aK)
+if(aX<0&&s.act===1&&HY.act1&&HY.act1.totalSubstrate&&!(HY.act1.totalSubstrate()>0)){aX=(i+1)*dt}}if(HY.log&&HY.log.thaw)HY.log.thaw()
+if(HY.log&&HY.log.returnBurst){var gains={biomass:Math.max(0,num(s.res.cumBiomass)-before.cumBiomass),sugar:Math.max(0,num(s.res.sugar)-before.sugar),minerals:Math.max(0,num(s.res.minerals)-before.minerals),insight:Math.max(0,num(s.res.insight)-before.insight),carbon:Math.max(0,num(s.res.cumCarbon)-before.cumCarbon)}
+HY.log.returnBurst({away:ad,act:s.act,efficiency:bI/ad,gains:gains,needs:aw(s,before,aX)})}return bI}
+function setSimRate(hz){if(hz===aQ)return
+aQ=hz
+aE=Math.max(1,Math.round(hz/T().CLOCK.LOG_HZ))
 if(l)clearInterval(l)
-l=setInterval(bc,1e3/hz)}
-function bc(){var t=aQ()
-var aS=(t-F)/1e3
+l=setInterval(bj,1e3/hz)}
+function bj(){var t=aV()
+var aY=(t-F)/1e3
 F=t
 var K=T().CLOCK
-if(aS>K.CATCHUP_BEHIND_S){simTick(Math.min(aS,K.CATCHUP_MAX_DT),{stochastic:!1,offline:!1})
+if(aY>K.CATCHUP_BEHIND_S){simTick(Math.min(aY,K.CATCHUP_MAX_DT),{stochastic:!1,offline:!1})
 return
-}simTick(1/aL,{stochastic:!0,offline:!1})}
-function aB(){if(HY.log&&HY.log.pumpSequence)HY.log.pumpSequence()
+}simTick(1/aQ,{stochastic:!0,offline:!1})}
+function aG(){if(HY.log&&HY.log.pumpSequence)HY.log.pumpSequence()
 if(HY.ui&&HY.ui.display)HY.ui.display(S())}
-function aT(ts){I=requestAnimationFrame(aT)
+function aZ(ts){I=requestAnimationFrame(aZ)
 var s=S()
 if(HY.ui&&HY.ui.render)HY.ui.render(s)
 for(var i=0;i<U.length;i++)U[i](ts,s)}
 function onFrame(fn){if(typeof fn==='function')U.push(fn)}
-function au(){var hidden=typeof document!=='undefined'&&document.hidden
+function ay(){var hidden=typeof document!=='undefined'&&document.hidden
 if(hidden){if(I){cancelAnimationFrame(I);I=0}if(HY.feel&&HY.feel.suspendAll)HY.feel.suspendAll()
-if(HY.state.save){try{HY.state.save()}catch(e){void 0}}}else{F=aQ()
-if(!I)I=requestAnimationFrame(aT)
+if(HY.state.save){try{HY.state.save()}catch(e){void 0}}}else{F=aV()
+reconcileOffline()
+if(!I)I=requestAnimationFrame(aZ)
 if(HY.feel&&HY.feel.resumeAll)HY.feel.resumeAll()}}
 function start(){if(running)return
 running=!0
-F=aQ()
+F=aV()
 setSimRate(S().act===1?T().CLOCK.SIM_HZ_A1:T().CLOCK.SIM_HZ_A23)
-E=setInterval(aB,1e3/T().CLOCK.DISPLAY_HZ)
-if(typeof requestAnimationFrame==='function')I=requestAnimationFrame(aT)
-if(typeof document!=='undefined'&&document.addEventListener){document.addEventListener('visibilitychange',au)}}
+E=setInterval(aG,1e3/T().CLOCK.DISPLAY_HZ)
+if(typeof requestAnimationFrame==='function')I=requestAnimationFrame(aZ)
+if(typeof document!=='undefined'&&document.addEventListener){document.addEventListener('visibilitychange',ay)}}
 function stop(){running=!1
-if(l){clearInterval(l);l=0}if(E){clearInterval(E);E=0}if(I){cancelAnimationFrame(I);I=0}aL=0}
-function boot(){if(aP)return
-aP=!0
+if(l){clearInterval(l);l=0}if(E){clearInterval(E);E=0}if(I){cancelAnimationFrame(I);I=0}aQ=0}
+function boot(){if(aU)return
+aU=!0
 var save=null
 try{save=HY.state.load()}catch(e){save=null}HY.state.init(save||null)
 var s=S()
 reinitModules(s)
-var bs=typeof document!=='undefined'?document.getElementById('app'):null
-if(HY.ui&&HY.ui.mount&&bs)HY.ui.mount(bs)
+var bA=typeof document!=='undefined'?document.getElementById('app'):null
+if(HY.ui&&HY.ui.mount&&bA)HY.ui.mount(bA)
 reconcileOffline()
 start()}
 function reinitModules(s){saver=null
-ac=0
-var bl=['log','projects','act1','economy1','cognition','world','forest','flush','pactbook','bloom','divergence','finale','feel','canvas','ui']
-for(var i=0;i<bl.length;i++){var m=HY[bl[i]]
-if(m&&m.init){try{m.init(s)}catch(e){av(bl[i],e)}}}}
-function av(name,bN){if(typeof console!=='undefined'&&console.warn){console.warn('hyphae: '+name+'.init failed — continuing without it',bN)}}
-function fastForward(R,aF){var s=S()
+ae=0
+var bs=['log','projects','act1','economy1','cognition','world','forest','flush','pactbook','bloom','divergence','finale','feel','canvas','ui']
+for(var i=0;i<bs.length;i++){var m=HY[bs[i]]
+if(m&&m.init){try{m.init(s)}catch(e){az(bs[i],e)}}}}
+function az(name,bU){if(typeof console!=='undefined'&&console.warn){console.warn('hyphae: '+name+'.init failed — continuing without it',bU)}}
+function fastForward(R,aK){var s=S()
 if(!s||!(R>0))return 0
 var dt=s.act===1?T().CLOCK.DT_A1:T().CLOCK.DT_A23
 var n=Math.ceil(R/dt)
-var o=aF||{stochastic:!0,offline:!1}
+var o=aK||{stochastic:!0,offline:!1}
 for(var i=0;i<n;i++)simTick(dt,o)
 return n}
 var z={TIP_MARGIN:1.25,BUY_CAP:5e3,BUFFER_S:120,SUGAR_KEEP:.5,COVERAGE:.6,SAVE_RATE:.5,SAVE_STALE_S:420,ROUTINE_S:90,RATE_TAU:60,FORGIVE_GROWTH:4,COND_SHARE:.5,VES_SLACK:2}
@@ -17339,7 +17371,7 @@ this.isDoor=!1
 this.lastCum=num(s.res.cumBiomass)
 this.lastEarned=num(s.stats.mineralEarned)}
 var saver=null
-function ad(s){if(!saver||saver.act!==s.act)saver=new A(s.act,s)
+function af(s){if(!saver||saver.act!==s.act)saver=new A(s.act,s)
 return saver}
 A.prototype.pick=function(dt){var pj=HY.projects
 if(!pj||!pj.visible)return null
@@ -17361,9 +17393,9 @@ this.id=pick.id
 this.best=pickR
 this.stale=0
 return pj.priceOf(pick.id)||{}}
-A.prototype.reserve=function(s,dt){var bL=num(s.res.cumBiomass),earned=num(s.stats.mineralEarned)
-var dG=Math.max(0,bL-this.lastCum),dM=Math.max(0,earned-this.lastEarned)
-this.lastCum=bL
+A.prototype.reserve=function(s,dt){var bS=num(s.res.cumBiomass),earned=num(s.stats.mineralEarned)
+var dG=Math.max(0,bS-this.lastCum),dM=Math.max(0,earned-this.lastEarned)
+this.lastCum=bS
 this.lastEarned=earned
 var a=dt>0?Math.min(1,dt/z.RATE_TAU):0
 this.rateG+=(dG/Math.max(dt,1e-6)-this.rateG)*a
@@ -17382,8 +17414,8 @@ if(this.routine(price))return!1
 if(this.bankG>0&&num(s.res.biomass)-num(price.g)<this.bankG)return!0
 if(this.bankMin>0&&num(s.res.minerals)-num(price.min)<this.bankMin)return!0
 if(!this.isDoor)return!1
-var bh=aJ[this.id]
-if(bh&&bh.indexOf(p.id)>=0)return!1
+var bo=aO[this.id]
+if(bo&&bo.indexOf(p.id)>=0)return!1
 var goal=pj.priceOf(this.id)||{}
 var k
 for(k in goal){if(!Object.prototype.hasOwnProperty.call(goal,k))continue
@@ -17392,39 +17424,39 @@ if(pj.holding(k)-num(price[k])<num(goal[k]))return!0}return!1}
 A.prototype.door=function(){var pj=HY.projects
 var list=pj.visible(),i,p
 for(i=0;i<list.length;i++){p=list[i]
-if(!ak[p.id]||!p.buyable)continue
+if(!am[p.id]||!p.buyable)continue
 if(pj.affordRatio(p)>1)return p}return null}
 A.prototype.forgive=function(){if(this.rateG<=this.forgiveAt*z.FORGIVE_GROWTH)return
 this.forgiveAt=this.rateG
 this.dead={}}
-A.prototype.wouldStarveDoor=function(key,bq){if(!this.isDoor)return!1
+A.prototype.wouldStarveDoor=function(key,by){if(!this.isDoor)return!1
 var pj=HY.projects
 var goal=pj.priceOf(this.id)||{}
-return num(goal[key])>0&&pj.holding(key)-num(bq)<num(goal[key])}
+return num(goal[key])>0&&pj.holding(key)-num(by)<num(goal[key])}
 A.prototype.routine=function(price){return num(price.g)<=this.rateG*z.ROUTINE_S&&num(price.min)<=this.rateMin*z.ROUTINE_S}
-function play(R,aF){var s=S()
+function play(R,aK){var s=S()
 if(!s||!(R>0))return 0
-var o=aF||{}
-var bF=o.tapsPerSec===undefined?2:o.tapsPerSec
+var o=aK||{}
+var bL=o.tapsPerSec===undefined?2:o.tapsPerSec
 var dt=s.act===1?T().CLOCK.DT_A1:T().CLOCK.DT_A23
-var bm=Math.round(1/dt)
-var bt={stochastic:o.stochastic!==!1,offline:!1}
+var bt=Math.round(1/dt)
+var bB={stochastic:o.stochastic!==!1,offline:!1}
 var bought=0
 q=o.want==='A'||o.want==='B'||o.want==='C'?o.want:''
-for(var bM=0;bM<R;bM++){for(var k=0;k<bF;k++)if(HY.act1&&HY.act1.onExtend)HY.act1.onExtend()
-for(var j=0;j<bm;j++)simTick(dt,bt)
+for(var bT=0;bT<R;bT++){for(var k=0;k<bL;k++)if(HY.act1&&HY.act1.onExtend)HY.act1.onExtend()
+for(var j=0;j<bt;j++)simTick(dt,bB)
 if(o.buy===!1)continue
-if(s.act===2){bought+=aV(s,o);s=S();continue}if(s.act===3){bought+=aW(s,o);s=S();continue}if(o.restock!==!1)az(s)
-var sv=o.save===!1?null:ad(s)
+if(s.act===2){bought+=bb(s,o);s=S();continue}if(s.act===3){bought+=bc(s,o);s=S();continue}if(o.restock!==!1)aD(s)
+var sv=o.save===!1?null:af(s)
 var goal=sv?sv.reserve(s,1):null
 if(HY.act1&&HY.act1.buyTip&&HY.act1.tipCost){while(bought<z.BUY_CAP&&x(s,goal)){if(!HY.act1.buyTip())break
 bought++}}if(o.projects!==!1)bought+=B(sv)
-if(o.contracts!==!1)ao(s)
+if(o.contracts!==!1)aq(s)
 s=S()}return bought}
-function ap(s){var g=HY.cognition
+function as(s){var g=HY.cognition
 if(!g||!g.unallocated)return
-var want=ae(s)
-var Y=aq(s)
+var want=ag(s)
+var Y=au(s)
 if(g.unallocated(s)>0){if(Y){g.allocate('ves',1);return}if(num(s.cog.dCond)>=Math.floor(num(s.res.D)*z.COND_SHARE))return
 if(J(s,g)>=want)g.allocate('cond',1)
 return
@@ -17434,23 +17466,23 @@ if(h('insight')<num(g.respecCost(s)))return
 if(Y){if(W(s,g)<want)return
 g.respec()
 return
-}var bu=aG(s,g,want)
-if(bu<0||num(s.cog.dVes)<bu+z.VES_SLACK)return
+}var bC=aL(s,g,want)
+if(bC<0||num(s.cog.dVes)<bC+z.VES_SLACK)return
 if(saver&&saver.isDoor&&saver.wouldStarveDoor('psi',num(g.respecCost(s))))return
 g.respec()}
-function aG(s,g,want){var V=num(s.res.D),v
-for(v=0;v<=V;v++)if(aU(s,g,v,V-v)>=want)return v
+function aL(s,g,want){var V=num(s.res.D),v
+for(v=0;v<=V;v++)if(ba(s,g,v,V-v)>=want)return v
 return-1}
-function aU(s,g,ves,cond){var v0=s.cog.dVes,c0=s.cog.dCond,l0=s.cog.dLag
+function ba(s,g,ves,cond){var v0=s.cog.dVes,c0=s.cog.dCond,l0=s.cog.dLag
 s.cog.dVes=ves;s.cog.dCond=cond;s.cog.dLag=0
-var bE=num(g.Sc(s))
+var bK=num(g.Sc(s))
 s.cog.dVes=v0;s.cog.dCond=c0;s.cog.dLag=l0
-return bE}
-function W(s,g){return aU(s,g,num(s.res.D),0)}
-function J(s,g){return aU(s,g,num(s.cog.dVes),num(s.cog.dCond)+1)}
-function aq(s){var g=HY.cognition
-return!!g&&!!g.Sc&&num(g.Sc(s))<ae(s)}
-function ae(s){var pj=HY.projects,g=HY.cognition
+return bK}
+function W(s,g){return ba(s,g,num(s.res.D),0)}
+function J(s,g){return ba(s,g,num(s.cog.dVes),num(s.cog.dCond)+1)}
+function au(s){var g=HY.cognition
+return!!g&&!!g.Sc&&num(g.Sc(s))<ag(s)}
+function ag(s){var pj=HY.projects,g=HY.cognition
 if(!pj||!pj.visible||!g||!g.Sc)return 0
 var want=0
 var list=pj.visible(),i,pr
@@ -17459,27 +17491,27 @@ if(num(pr.sig)>want)want=num(pr.sig)}if(s.phase==='canopy'&&HY.bloom&&HY.bloom.r
 if(num(HY.bloom.reachCost(s))>want)want=num(HY.bloom.reachCost(s))
 break
 }}return want}
-function aV(s,o){var n=0
-ap(s)
-var sv=o.save===!1?null:ad(s)
+function bb(s,o){var n=0
+as(s)
+var sv=o.save===!1?null:af(s)
 if(sv)sv.reserve(s,1)
 if(o.projects!==!1)n+=B(sv)
-if(o.territory!==!1)n+=aa(s,sv)
-if(o.flush!==!1){aE(s);aj(s,sv)}if(o.pacts!==!1)aO(s)
-if(o.kill!==!1)af(s)
-if(o.spores!==!1)aC(s)
+if(o.territory!==!1)n+=ab(s,sv)
+if(o.flush!==!1){aJ(s);al(s,sv)}if(o.pacts!==!1)aT(s)
+if(o.kill!==!1)ah(s)
+if(o.spores!==!1)aH(s)
 return n}
-function aC(s){var fl=HY.flush,pj=HY.projects
+function aH(s){var fl=HY.flush,pj=HY.projects
 if(!fl||!fl.convert||!pj||!pj.priceOf)return
 var price=pj.priceOf('ascospore_discharge')
 if(!price)return
 var Y=num(price.spore)-num(s.res.spores)+1
 if(!(Y>1))return
-var bi=num(s.res.biomass)-num(price.g)
-if(!(bi>0))return
-fl.convert(Math.min(bi,Y*T().A2.SPORE_DIVISOR))}
-var aH=.02
-function af(s){var f=HY.forest
+var bp=num(s.res.biomass)-num(price.g)
+if(!(bp>0))return
+fl.convert(Math.min(bp,Y*T().A2.SPORE_DIVISOR))}
+var aM=.02
+function ah(s){var f=HY.forest
 if(!f||!f.killStand||!f.necrotized)return
 var r=s.a2&&s.a2.regions
 if(!r)return
@@ -17487,86 +17519,86 @@ var i,worst=-1,wv=Infinity,l0,frac
 for(i=0;i<r.flags.length;i++){if(!(r.flags[i]&0x04)||(r.flags[i]&0x10))continue
 l0=num(r.L0[i])
 frac=l0>0?num(r.L[i])/l0:0
-if(frac>aH)continue
+if(frac>aM)continue
 if(num(r.T[i])<wv){wv=num(r.T[i]);worst=i}}if(worst>=0)f.killStand(worst)}
-function aW(s,o){var n=0
-ap(s)
-var sv=o.save===!1?null:ad(s)
+function bc(s,o){var n=0
+as(s)
+var sv=o.save===!1?null:af(s)
 if(sv)sv.reserve(s,1)
 if(o.projects!==!1)n+=B(sv)
-if(s.phase==='canopy')ag(s,sv)
-if(o.triangle!==!1)am(s)
-if(o.genome!==!1&&!aq(s))M(s,sv)
-if(o.strains!==!1)an(s)
-if(o.entrain!==!1)aw(s)
-if(o.ending!==!1)ax(s)
+if(s.phase==='canopy')ai(s,sv)
+if(o.triangle!==!1)ao(s)
+if(o.genome!==!1&&!au(s))M(s,sv)
+if(o.strains!==!1)ap(s)
+if(o.entrain!==!1)aA(s)
+if(o.ending!==!1)aB(s)
 return n}
-function ag(s,sv){var b=HY.bloom
+function ai(s,sv){var b=HY.bloom
 if(!b)return
-if(b.settle&&!ah(s,b))b.settle(s)
+if(b.settle&&!aj(s,b))b.settle(s)
 if(!b.canReach||!b.reach||!b.reachCost)return
 if(sv&&sv.isDoor&&sv.wouldStarveDoor('sig',num(b.reachCost(s))))return
 for(var i=1;i<8;i++)if(b.canReach(s,i)&&b.reach(i,s))return
 }
 var CROWDED=1.1
-function ah(s,b){if(!b.nStar||!b.totalCraft)return!1
-var bn=0,i
-var bG=s.phase==='canopy'?s.a3.biomes.n:s.a3.bands.n
-for(i=0;i<bG.length;i++)bn+=num(b.nStar(i,s))
-return bn>0&&num(b.totalCraft(s))>bn*CROWDED}
-function am(s){var b=HY.bloom
+function aj(s,b){if(!b.nStar||!b.totalCraft)return!1
+var bu=0,i
+var bM=s.phase==='canopy'?s.a3.biomes.n:s.a3.bands.n
+for(i=0;i<bM.length;i++)bu+=num(b.nStar(i,s))
+return bu>0&&num(b.totalCraft(s))>bu*CROWDED}
+function ao(s){var b=HY.bloom
 if(!b||!b.setAlloc)return
-var a=ah(s,b)?ai.CROWDED:ai.GROWING
-if(q==='C'&&s.a3.succ&&s.a3.succ.sequenced&&N('mass'))a=ai.CEDING
+var a=aj(s,b)?ak.CROWDED:ak.GROWING
+if(q==='C'&&s.a3.succ&&s.a3.succ.sequenced&&N('mass'))a=ak.CEDING
 b.setAlloc(a[0],a[1],a[2],s)}
-var ai={GROWING:[.7,.2,.1],CROWDED:[.02,.38,.6],CEDING:[0,.2,.8]}
+var ak={GROWING:[.7,.2,.1],CROWDED:[.02,.38,.6],CEDING:[0,.2,.8]}
 function M(s,sv){var b=HY.bloom
 if(!b||!b.setLocus||!b.AXES)return
 var loci=s.a3.loci
 if(!loci)return
 if(sv&&sv.isDoor&&sv.wouldStarveDoor('psi',num(b.nextLocusCost(s))))return
-var ar=aX()
-if(ar<0&&h('insight')<num(b.nextLocusCost(s)))return
-if(ar<0&&ah(s,b))return
-var lo=bd(loci,bo(),ar)
+var av=bd()
+if(av<0&&h('insight')<num(b.nextLocusCost(s)))return
+if(av<0&&aj(s,b))return
+var lo=bk(loci,bw(),av)
 if(lo<0)return
 b.setLocus(lo,num(loci[lo])+1,s)}
 var AXIS_FID=6,AXIS_ANT=7
-var aI=.02
-function aN(){var s=S()
+var aN=.02
+function aS(){var s=S()
 return!!s&&s.act===3&&s.phase==='void'}
-function bo(){if(q==='B')return AXIS_ANT
+function bw(){if(q==='B')return AXIS_ANT
 if(q==='C')return AXIS_FID
 return-1}
-function aX(){if(q==='B'){if(!aN())return-1
-return h('fidelity')<aI?AXIS_FID:-1}if(q==='C'){return HY.projects&&HY.projects.isBought&&HY.projects.isBought('sequencer')?AXIS_ANT:-1}return-1}
-function bd(loci,ban,ar){var i,lo=-1
-if(ar>=0)return ar
+function bd(){if(q==='B'){if(!aS())return-1
+return h('fidelity')<aN?AXIS_FID:-1}if(q==='C'){return HY.projects&&HY.projects.isBought&&HY.projects.isBought('sequencer')?AXIS_ANT:-1}return-1}
+function bk(loci,ban,av){var i,lo=-1
+if(av>=0)return av
 for(i=0;i<loci.length;i++){if(i===ban)continue
 if(lo<0||num(loci[i])<num(loci[lo]))lo=i}return lo}
-function an(s){var d=HY.divergence
+function ap(s){var d=HY.divergence
 if(!d||!d.strains)return
-if(q==='C'){be(s,d);return}var list=d.strains(s)
+if(q==='C'){bl(s,d);return}var list=d.strains(s)
 if(!list||!list.length)return
 var id=list[0].id
 var psi=d.absorbCost?num(d.absorbCost(s).psi):Infinity
 if(h('insight')>=psi&&d.absorb&&d.absorb(id))return
 if(d.purge)d.purge(id)}
-function be(s,d){var succ=s.a3.succ
+function bl(s,d){var succ=s.a3.succ
 if(succ){if(!succ.sequenced&&d.sequence)d.sequence('succ')
 return
 }if(HY.projects&&HY.projects.isBought&&HY.projects.isBought('sequencer'))return
 var list=d.strains(s)
 if(list&&list.length&&d.purge)d.purge(list[0].id)}
-function aw(s){var f=HY.finale,g=HY.cognition
+function aA(s){var f=HY.finale,g=HY.cognition
 if(!f||!f.wheel||!g||!g.pulse)return
 var w=f.wheel(s)
 if(!w||!w.live||!w.mass||!w.mass.length)return
 if(num(w.upsilon)>=num(w.ring))return
 if(N('insight'))return
-var bH=0,i
-for(i=1;i<w.mass.length;i++)if(num(w.mass[i])>num(w.mass[bH]))bH=i
-g.pulse('ENTRAIN',bH)}
+var bN=0,i
+for(i=1;i<w.mass.length;i++)if(num(w.mass[i])>num(w.mass[bN]))bN=i
+g.pulse('ENTRAIN',bN)}
 var q=''
 function u(s){var f=HY.finale
 if(!f||!f.endingAvailable)return null
@@ -17583,13 +17615,13 @@ if(!e||e.taken||!e.conditions)return Infinity
 var i,row
 for(i=0;i<e.conditions.length;i++){row=e.conditions[i]
 if(row.id===id)return num(row.have)-num(row.want)}return Infinity}
-function ax(s){var f=HY.finale
+function aB(s){var f=HY.finale
 if(!f||!f.takeEnding)return
 var e=u(s)
 if(e&&e.available&&!e.taken)f.takeEnding(e.id)}
-var aD=.05
+var aI=.05
 var H=3
-function aj(s,sv){var fl=HY.flush
+function al(s,sv){var fl=HY.flush
 var f=HY.forest
 var w=HY.world
 if(!fl||!fl.newPrimordium||!f||!f.canopy)return
@@ -17597,18 +17629,18 @@ if(!w||!w.claimedCount||w.claimedCount(s)<H)return
 if(fl.used()>=fl.slots())return
 var r=s.a2&&s.a2.regions
 if(!r)return
-var bj=num(s.res.biomass)*aD
-if(sv&&sv.bankG>0&&num(s.res.biomass)-bj<sv.bankG)return
+var bq=num(s.res.biomass)*aI
+if(sv&&sv.bankG>0&&num(s.res.biomass)-bq<sv.bankG)return
 var best=-1,bv=-1,i
 for(i=0;i<r.flags.length;i++){if(!(r.flags[i]&0x04)||(r.flags[i]&0x10))continue
 var c=num(f.canopy(i,s))
-if(c>bv){bv=c;best=i}}if(best>=0)fl.newPrimordium(best,bj)}
-function aO(s){var pb=HY.pactbook
+if(c>bv){bv=c;best=i}}if(best>=0)fl.newPrimordium(best,bq)}
+function aT(s){var pb=HY.pactbook
 if(!pb||!pb.offers||!pb.sign)return
 var list=pb.offers(),i
 for(i=0;i<list.length;i++){if(list[i].affordable&&pb.sign(list[i].id))return
 }void s}
-function aa(s,sv){var w=HY.world
+function ab(s,sv){var w=HY.world
 if(!w||!w.list)return 0
 var list=w.list(s),n=0,i,c
 for(i=0;i<list.length;i++){c=list[i]
@@ -17620,7 +17652,7 @@ if(!c.density)continue
 if(!(num(s.res.biomass)>=c.density.cost))continue
 if(sv&&sv.bankG>0&&num(s.res.biomass)-c.density.cost<sv.bankG)continue
 if(w.buyDensity(c.id)){n++;break}}return n}
-function aE(s){var fl=HY.flush
+function aJ(s){var fl=HY.flush
 if(!fl||!fl.list)return
 var list=fl.list(),i
 for(i=0;i<list.length;i++){if(list[i].held)continue
@@ -17631,9 +17663,9 @@ if(!(g>=0))return!1
 if(goal&&goal.g>0&&g<goal.g)return!1
 if(goal&&goal.min>0){var m=num(s.res.minerals)-a1.tipMineralCost(num(s.a1.tips)+1)
 if(m<goal.min)return!1}return!0}
-var ak={decide:1,ascospore_discharge:1,escape_velocity:1,necrotrophic_conversion:1}
-var aJ={ascospore_discharge:['photoreception','seed_bank']}
-function P(p){return p.kinds&&p.kinds.indexOf('irreversible')>=0&&!ak[p.id]}
+var am={decide:1,ascospore_discharge:1,escape_velocity:1,necrotrophic_conversion:1}
+var aO={ascospore_discharge:['photoreception','seed_bank']}
+function P(p){return p.kinds&&p.kinds.indexOf('irreversible')>=0&&!am[p.id]}
 function B(sv){var pj=HY.projects
 if(!pj||!pj.visible||!pj.purchase)return 0
 var list=pj.visible(),n=0,i,p
@@ -17641,49 +17673,49 @@ for(i=0;i<list.length;i++){p=list[i]
 if(!p.buyable||P(p))continue
 if(pj.affordRatio(p)>1)continue
 if(sv&&sv.blocks(p))continue
-if(ay(p))continue
+if(aC(p))continue
 if(pj.purchase(p.id))n++}return n}
 var y='circadian_entrainment'
-function ay(p){var s=S(),pj=HY.projects
+function aC(p){var s=S(),pj=HY.projects
 if(!s||s.act!==3||p.id===y)return!1
-var bw=pj.byId(y)
-if(!bw||!bw.buyable||pj.isBought(y))return!1
-var bx=num((pj.priceOf(y)||{}).min)
-if(!(bx>0))return!1
-return num(s.res.minerals)-num((pj.priceOf(p.id)||{}).min)<bx}
-function az(s){var e1=HY.economy1
+var bD=pj.byId(y)
+if(!bD||!bD.buyable||pj.isBought(y))return!1
+var bE=num((pj.priceOf(y)||{}).min)
+if(!(bE>0))return!1
+return num(s.res.minerals)-num((pj.priceOf(p.id)||{}).min)<bE}
+function aD(s){var e1=HY.economy1
 if(!e1||!e1.buy||s.act!==1||!s.a1)return
 var want=HY.act1.throughputPerSec()*z.BUFFER_S
-if(!(want>0)||al(s)>=want)return
+if(!(want>0)||an(s)>=want)return
 var V=num(s.res.sugar)*(1-z.SUGAR_KEEP)
-var aY=(s.a1.unlockedTypes||[]).slice()
-aY.sort(function(a,b){return e1.unitPrice(a)-e1.unitPrice(b)})
-for(var i=0;i<aY.length&&V>0;i++){var k=aY[i]
-var Y=want-al(s)
+var be=(s.a1.unlockedTypes||[]).slice()
+be.sort(function(a,b){return e1.unitPrice(a)-e1.unitPrice(b)})
+for(var i=0;i<be.length&&V>0;i++){var k=be[i]
+var Y=want-an(s)
 if(!(Y>0))return
 var price=e1.unitPrice(k)
 if(!(price>0))continue
-var bI=e1.capOf(k)-num(s.a1.sub[k])
-var g=Math.min(Y,bI,V/price)
+var bO=e1.capOf(k)-num(s.a1.sub[k])
+var g=Math.min(Y,bO,V/price)
 if(!(g>0))continue
 V-=e1.buy(k,g)*price}}
-function al(s){var t=0,i,types=HY.economy1.TYPES
+function an(s){var t=0,i,types=HY.economy1.TYPES
 for(i=0;i<types.length;i++)t+=num(s.a1.sub[types[i]])
 return t}
-function ao(s){var e1=HY.economy1
+function aq(s){var e1=HY.economy1
 if(!e1||!e1.signContract||s.act!==1||!s.a1)return
 var trees=s.a1.trees
 if(!trees||!trees.length)return
 var income=e1.netSugar()+e1.committedSugarPerSec()
 if(!(income>0))return
-var bf=z.COVERAGE*income-e1.committedSugarPerSec()
-if(!(bf>0))return
-var by=T().A1.TERM_MIN
-for(var i=0;i<trees.length&&bf>0;i++){var bD=Math.min(bf,e1.maxIntake(trees[i]))
-if(!(bD>0)||!e1.accepts(trees[i],bD,by,!1,0))continue
-if(e1.signContract(trees[i].id,bD,by,0,!1))bf-=bD}}
+var bm=z.COVERAGE*income-e1.committedSugarPerSec()
+if(!(bm>0))return
+var term=T().A1.TERM_MIN
+for(var i=0;i<trees.length&&bm>0;i++){var bJ=Math.min(bm,e1.maxIntake(trees[i]))
+if(!(bJ>0)||!e1.accepts(trees[i],bJ,term,!1,0))continue
+if(e1.signContract(trees[i].id,bJ,term,0,!1))bm-=bJ}}
 function __selftest(){var f=[]
-function ok(cond,bB){if(!cond)f.push(bB)}
+function ok(cond,bH){if(!cond)f.push(bH)}
 var pj=HY.projects
 if(!pj||!pj.byId)return['projects.js is absent; the harness policy cannot be checked']
 var Q=['decide']
@@ -17691,60 +17723,60 @@ var G=['autolysis','forward_contracts','perennial_mycelium','ghost_pipe_compact'
 var i,p
 for(i=0;i<Q.length;i++){p=pj.byId(Q[i])
 if(!p){f.push('missing project '+Q[i]);continue}ok(!P(p),'the harness refuses the act transition '+Q[i])}for(i=0;i<G.length;i++){p=pj.byId(G[i])
-if(!p){f.push('missing project '+G[i]);continue}ok(P(p),'the harness would blindly buy the one-way door '+G[i])}var ab={res:{cumBiomass:0,biomass:1e3,minerals:100},stats:{mineralEarned:0},act:1}
-var sv=new A(1,ab)
+if(!p){f.push('missing project '+G[i]);continue}ok(P(p),'the harness would blindly buy the one-way door '+G[i])}var ac={res:{cumBiomass:0,biomass:1e3,minerals:100},stats:{mineralEarned:0},act:1}
+var sv=new A(1,ac)
 sv.pick=function(){return{g:500,min:40}}
-ok(sv.reserve(ab,1).g===0,'the bank is not empty before any income arrives')
-ab.res.cumBiomass=200
-ab.stats.mineralEarned=20
-var r1=sv.reserve(ab,1)
+ok(sv.reserve(ac,1).g===0,'the bank is not empty before any income arrives')
+ac.res.cumBiomass=200
+ac.stats.mineralEarned=20
+var r1=sv.reserve(ac,1)
 ok(Math.abs(r1.g-200*z.SAVE_RATE)<1e-9,'the bank does not take SAVE_RATE of new income: got '+r1.g)
 ok(Math.abs(r1.min-20*z.SAVE_RATE)<1e-9,'the mineral bank does not take SAVE_RATE of new income: got '+r1.min)
-ab.res.cumBiomass=1e9
-ab.stats.mineralEarned=1e9
-var r2=sv.reserve(ab,1)
+ac.res.cumBiomass=1e9
+ac.stats.mineralEarned=1e9
+var r2=sv.reserve(ac,1)
 ok(r2.g===500&&r2.min===40,'the bank overshot the goal it is saving for')
-ab.res.biomass=120
-ok(sv.reserve(ab,1).g===120,'the bank survived a purchase that spent it')
-if(HY.act1&&HY.act1.tipCost){var bg={res:{biomass:0,minerals:1e6},a1:{tips:0}}
+ac.res.biomass=120
+ok(sv.reserve(ac,1).g===120,'the bank survived a purchase that spent it')
+if(HY.act1&&HY.act1.tipCost){var bn={res:{biomass:0,minerals:1e6},a1:{tips:0}}
 var cost=100
-var bz=HY.act1.tipCost
-var aZ=HY.act1.tipMineralCost
+var bF=HY.act1.tipCost
+var bf=HY.act1.tipMineralCost
 HY.act1.tipCost=function(){return cost}
 HY.act1.tipMineralCost=function(){return 0}
-bg.res.biomass=cost*z.TIP_MARGIN+40
-ok(x(bg,{g:0,min:0}),'a tip is refused with no bank and the price in hand')
-ok(x(bg,{g:30,min:0}),'a tip is refused with the bank covered')
-ok(!x(bg,{g:60,min:0}),'a tip was bought out of the bank')
-HY.act1.tipCost=bz
-HY.act1.tipMineralCost=aZ}var br=new A(1,ab)
-var ba=4
-var aK={visible:function(){return[{id:'a',buyable:!0,kinds:[]}]},affordRatio:function(){return ba},priceOf:function(){return{g:10}},isBought:function(){return!1},byId:function(id){return{id:id,buyable:!0,kinds:[]}}}
-var bp=HY.projects
-HY.projects=aK
-br.pick(1)
-ok(br.id==='a','the saver did not adopt the only unaffordable entry')
-ba=.5
-br.pick(1)
-ok(br.id==='a','the saver dropped its goal the instant the goal became affordable')
-aK.isBought=function(){return!0}
-br.pick(1)
-ok(br.id===null,'the saver kept saving for something it had already bought')
-var bJ=new A(1,ab)
-aK.isBought=function(){return!1}
-ba=3
-bJ.pick(1)
-bJ.pick(z.SAVE_STALE_S+1)
-ok(bJ.dead.a===1,'a goal that never gets closer is never abandoned')
-HY.projects=bp
+bn.res.biomass=cost*z.TIP_MARGIN+40
+ok(x(bn,{g:0,min:0}),'a tip is refused with no bank and the price in hand')
+ok(x(bn,{g:30,min:0}),'a tip is refused with the bank covered')
+ok(!x(bn,{g:60,min:0}),'a tip was bought out of the bank')
+HY.act1.tipCost=bF
+HY.act1.tipMineralCost=bf}var bz=new A(1,ac)
+var bg=4
+var aP={visible:function(){return[{id:'a',buyable:!0,kinds:[]}]},affordRatio:function(){return bg},priceOf:function(){return{g:10}},isBought:function(){return!1},byId:function(id){return{id:id,buyable:!0,kinds:[]}}}
+var bx=HY.projects
+HY.projects=aP
+bz.pick(1)
+ok(bz.id==='a','the saver did not adopt the only unaffordable entry')
+bg=.5
+bz.pick(1)
+ok(bz.id==='a','the saver dropped its goal the instant the goal became affordable')
+aP.isBought=function(){return!0}
+bz.pick(1)
+ok(bz.id===null,'the saver kept saving for something it had already bought')
+var bP=new A(1,ac)
+aP.isBought=function(){return!1}
+bg=3
+bP.pick(1)
+bP.pick(z.SAVE_STALE_S+1)
+ok(bP.dead.a===1,'a goal that never gets closer is never abandoned')
+HY.projects=bx
 return f}
-function selftest(){var aM=['core','state','log','projects','act1','economy1','ui','canvas','feel','cognition','world','forest','flush','pactbook','loop','bloom','divergence','finale']
+function selftest(){var aR=['core','state','log','projects','act1','economy1','ui','canvas','feel','cognition','world','forest','flush','pactbook','loop','bloom','divergence','finale']
 var out=[]
-for(var i=0;i<aM.length;i++){var m=HY[aM[i]]
+for(var i=0;i<aR.length;i++){var m=HY[aR[i]]
 if(!m||!m.__selftest)continue
 var r
-try{r=m.__selftest()}catch(e){out.push(aM[i]+': THREW '+e.message);continue}for(var j=0;j<r.length;j++)out.push(aM[i]+': '+r[j])}return out}
-HY.loop={start:start,stop:stop,simTick:simTick,reconcileOffline:reconcileOffline,setSimRate:setSimRate,onFrame:onFrame,effective:effective,reinitModules:reinitModules,get running(){return running},get ticks(){return ac},__selftest:__selftest}
+try{r=m.__selftest()}catch(e){out.push(aR[i]+': THREW '+e.message);continue}for(var j=0;j<r.length;j++)out.push(aR[i]+': '+r[j])}return out}
+HY.loop={start:start,stop:stop,simTick:simTick,reconcileOffline:reconcileOffline,setSimRate:setSimRate,onFrame:onFrame,effective:effective,reinitModules:reinitModules,get running(){return running},get ticks(){return ae},__selftest:__selftest}
 HY.debug={fastForward:fastForward,play:play,selftest:selftest,saver:function(){return saver?{goal:saver.id,g:saver.bankG,min:saver.bankMin,stale:saver.stale}:null}}
 HY.boot=boot})(window.HY=window.HY||{})
 </script>
