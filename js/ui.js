@@ -51,6 +51,7 @@
     // an affordability line once a second (contract deliveries land each sim-second) from
     // flickering the row's meta text at 1 Hz.
     SHORT_EPS: 0.005, SHORT_HOLD_MS: 1200,
+    ROW_SEAT_PX: 8,
 
     // interaction (06 §5.5, §5.8, §5.11, §6.3)
     LONGPRESS_MS: 420, LONGPRESS_SLOP_PX: 10,
@@ -2068,6 +2069,17 @@
   // The refusal, spoken three ways because iOS grants none of them for free: the error haptic
   // (where the OS allows one), the announcer for a screen reader, and a visible pulse on the
   // button itself — colour only, so reduced motion keeps it whole.
+  // 06 §4.6: an expanded row is seated at a known height — its top lands just under the panel's
+  // header — so the verbs it opens are always in the same place under the thumb. This is the
+  // trade for renegotiating "the card is the button": tap costs one indirection, and buys a
+  // fixed home for the controls that matter.
+  function seatRow (rowEl) {
+    if (!view || !rowEl || !view.stack) return
+    var st = view.stack
+    var y = rowEl.getBoundingClientRect().top - st.getBoundingClientRect().top + st.scrollTop - U.ROW_SEAT_PX
+    st.scrollTop = Math.max(0, y)
+  }
+
   function refuseHero () {
     if (!view) return
     if (!view.hero.dataset.short) view.hero.dataset.short = STR.floorBare
@@ -3479,12 +3491,35 @@
 
   // ── THE LITTER MARKET ──────────────────────────────────────────────────────
 
-  function marketRow (type) {
-    var r = row({})
+  function marketRow (type, onOpen) {
+    // The 06 §4.6 collapsed row, one act early, on the panel the money moves through. The
+    // collapsed face is two lines — name and price, then trend and stock-or-shortfall — and the
+    // verbs live on the expanded card, which is how the buy/sell bursts stop living at
+    // unpredictable scroll depths: an expanded row is scrolled to a known height, so the thumb
+    // learns ONE place the money verbs are. This renegotiates 06 §5.4's "the card is the button"
+    // — tap now means open — which is why the newest-arrived row starts expanded: the teaching
+    // face is seen once for free, and the gesture is the same one the tree cards taught.
+    var r = row({
+      expand: true,
+      onOpen: function () { if (onOpen) onOpen(type) }
+    })
     var mode = { sell: false }
 
     var l0 = r.line()
     span(l0, 'row-name', TYPE_NAME[type] || type)
+    var price = slot('row-num')
+    l0.appendChild(price)
+
+    var l1 = r.line()
+    var arrow = span(l1, 'row-arrow', '·')
+    var sparkEl = span(l1, 'row-ascii', '')
+    // The stock-or-shortfall slot keeps its own edge of the line and owes nothing to anyone's
+    // width (the ±27 px wrap lesson, kept through the collapse).
+    var stockTxt = span(l1, 'row-num row-stock', '')
+
+    var ex = r.expander()
+    var exTop = el('div', 'row-line')
+    var detail = span(exTop, 'row-sub num', '')
     var side = btn('side-btn', STR.buy)
     setAttr(side, 'aria-pressed', 'false')
     // economy1.sell() returns 0 until The Two-Sided Book is bought, so before that this toggle
@@ -3495,29 +3530,15 @@
     // (the +5 and MAX burst, the tab slots, the plate handle), and the card that grants it says
     // "(Unlocks selling)" in as many words while he is still deciding to buy it.
     show(side, false)
-    l0.appendChild(side)
-    var price = slot('row-num')
-    l0.appendChild(price)
+    exTop.appendChild(side)
+    ex.appendChild(exTop)
 
-    var l1 = r.line()
-    var arrow = span(l1, 'row-arrow', '·')
-    var sparkEl = span(l1, 'row-ascii', '')
-    var detail = span(l1, 'row-sub num', '')
-    // The stock-or-shortfall slot lives on its OWN line. It shared l1 with the fair price and the
-    // floor stock, and row-line wraps: whether the row was one line or two depended on the sum of
-    // four text widths, so the legitimate afford/short swap moved the row ±27 px — the last
-    // measured source of the owner's "screen jumps up and down". A dedicated line owes nothing
-    // to anyone's width; the row is the same height in both faces, forever.
-    var l1b = r.line()
-    var stockTxt = span(l1b, 'row-num row-stock', '')
-
-    var l2 = r.line()
-    // The same promise the tips row makes: the shortfall is on screen before the tap, so a
-    // refusal never has to interrupt the console to say it.
+    var l2 = el('div', 'row-line')
     var shortTxt = span(l2, 'row-sub', '')
     setData(shortTxt, 'tone', 'cost')
     var burst = el('div', 'burst')
     l2.appendChild(burst)
+    ex.appendChild(l2)
     var buys = []
 
     // The toggle is only on screen once the book is bought, so `mode.sell` cannot be true without
@@ -3586,14 +3607,16 @@
       setText(bMax, mode.sell ? STR.all : STR.max)
     }
     // The flip changes what all four buttons beneath it do, so it commits on release like they do.
+    // Its long-press alias is gone with the collapse: the row's long-press now belongs to
+    // expand-toggle (row() binds it), which is 01 §12.1's rule holding — one secondary gesture,
+    // and it is the same one everywhere.
     bindPress(side, flip, { onUp: true })
-    // 01 §12.1's promise: long-press is the secondary action, everywhere and only. The visible
-    // toggle is the keyboard's route to the same place (06 §8.3).
-    bindLongPress(r.el, flip)
 
     var lastPrice = 0
     return {
       el: r.el,
+      setExpanded: r.setExpanded,
+      isExpanded: r.isExpanded,
       sync: function (s) {
         var e = E1()
         var mkt = s.a1.mkt[e.TYPES.indexOf(type)]
@@ -3663,6 +3686,7 @@
   function buildMarket (v, p) {
     var pv = panel('market', { title: STR.p_market })
     var rows = {}
+    var openType = null
     p.__sync = function (s) {
       var e = E1()
       if (!e) return
@@ -3674,12 +3698,31 @@
         }
         n += 1
         if (!rows[type]) {
-          rows[type] = marketRow(type)
+          rows[type] = marketRow(type, function (t) {
+            // One open row per panel (06 §4.6): opening one closes the other in the same frame.
+            Object.keys(rows).forEach(function (k) {
+              if (k !== t && rows[k].isExpanded()) rows[k].setExpanded(false)
+            })
+            openType = t
+            seatRow(rows[t].el)
+          })
           pv.body.appendChild(rows[type].el)
+          // The first row the market ever shows arrives expanded — the burst is the teaching
+          // face — and a type unlocked mid-run arrives expanded too: it is new content, and its
+          // face says what it is. The boot batch is one sync, so only its first row teaches;
+          // programmatic opens never seat the scroll — only a tap does.
+          if (p.__seeded || openType === null) {
+            Object.keys(rows).forEach(function (k) {
+              if (k !== type && rows[k].isExpanded()) rows[k].setExpanded(false)
+            })
+            rows[type].setExpanded(true)
+            openType = type
+          }
         }
         show(rows[type].el, true)
         rows[type].sync(s)
       })
+      if (n) p.__seeded = true
       pv.setCount(n)
       if (n) pv.unempty()
       else pv.empty(LOG() ? LOG().EMPTY.market_sold_out : '')
@@ -3939,14 +3982,16 @@
     var age = span(l0, 'row-sub', '')
     var repNum = slot('row-num')
     l0.appendChild(repNum)
+    // The collapsed face is two lines (06 §4.6's 72 px row): name and standing on the first, the
+    // two gauges bare on the second — deficit hairline left, pips at the reading edge. The word
+    // labels live on the expanded card and in the row's aria; on the collapsed face they were
+    // half the height and none of the information.
     var l1 = r.line()
-    span(l1, 'row-sub', STR.deficit)
+    l1.className = 'row-line row-gauges'
     var dBar = meter('ascii', 0)
     l1.appendChild(dBar)
-    var l2 = r.line()
-    span(l2, 'row-sub', STR.standing)
     var pips = meter('pips', 0)
-    l2.appendChild(pips)
+    l1.appendChild(pips)
 
     var ex = r.expander()
     var volume = slider({ label: STR.volume, steps: U.SLIDER_STEPS, onInput: refresh })
@@ -4046,6 +4091,7 @@
     return {
       el: r.el,
       collapse: function () { r.setExpanded(false) },
+      expand: function () { r.setExpanded(true) },
       sync: function (s, tree) {
         var label = SPECIES_NAME[tree.species] || tree.species
         setText(name, label)
@@ -4085,6 +4131,13 @@
       var groups = {}
       var display = []
       s.a1.contracts.forEach(function (c) {
+        // A finished term leaves the list. The console spoke its completion, the return report
+        // repeats it, and the reputation is the residue — but the row itself lingered forever,
+        // and a long run's UNDERSTORY became a graveyard: fifteen rows, most reading
+        // "complete · 0.00 ∴/s · 0:00 left", three identical corpses deep on the owner's own
+        // screen. The projects panel already states the rule: removed from the DOM, no
+        // completed tab. A defaulted term stays — it is a debt being worked off, not history.
+        if (c.state === 'complete' || c.state === 'exited') return
         var tree = e.treeById(c.treeId)
         var sp = tree ? tree.species : ('id' + c.treeId)
         if (c.state === 'active' && !c.suspended) {
@@ -4124,8 +4177,16 @@
               treeRows[openTree].collapse()
             }
             openTree = openId
+            if (treeRows[openId]) seatRow(treeRows[openId].el)
           })
         }, s)
+      // The first tree the run ever shows arrives expanded: the negotiation face is the panel's
+      // teaching copy, seen once for free, and every later tree trusts the learned gesture.
+      if (!p.__taught && s.a1.trees.length) {
+        p.__taught = true
+        var first = treeRows[s.a1.trees[0].id]
+        if (first && first.expand) { first.expand(); openTree = s.a1.trees[0].id }
+      }
       pv.setCount(s.a1.trees.length + ' · ' + whole(s.a1.netRep) + ' rep')
       if (s.a1.trees.length || s.a1.contracts.length) pv.unempty()
       else pv.empty(LOG() ? LOG().EMPTY.trees : '')

@@ -863,12 +863,19 @@ canvas{ display:block; }
             min-height:19px; }
 .row-line + .row-line{ margin-top:var(--sp-4); }
 .row-name{ font:var(--t-title); color:var(--text-primary); min-width:0; }
+/* The collapsed face's second line: hairline meter left, pips at the reading edge. One line,
+   no word labels — the words live on the expanded card and in aria. */
+.row-gauges{ display:flex; align-items:center; gap:var(--sp-8); }
+.row-gauges > .pips{ margin-inline-start:auto; }
 .row-sub{ font:var(--t-meta); color:var(--text-secondary); }
 /* The market row's stock/shortfall slot: its own line, pushed to the reading edge. */
 .row-stock{ margin-inline-start:auto; }
 .row-sub[data-tone="cost"]{ color:var(--attention-dim); }
 .row-sub[data-tone="forecast"]{ color:var(--text-locked); }
-.row-num{ margin-inline-start:auto; font:var(--t-meta); color:var(--text-primary);
+/* t-value, not t-meta: the collapsed-row pass (06 §4.6) raised the row's one numeral from 13 px —
+   the smallest thing on the screen, on the rows the money is read from — to the ledger's own
+   value size. The owner's squint was a measurement. */
+.row-num{ margin-inline-start:auto; font:var(--t-value); color:var(--text-primary);
           min-width:7ch; text-align:end; }
 .row-num[data-tone="pos"]{ color:var(--positive-text); }
 .row-num[data-tone="warn"]{ color:var(--attention); }
