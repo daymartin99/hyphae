@@ -800,6 +800,10 @@ A panel is a titled block in the scroller. Anatomy, fixed:
   `--surface-1`. In Act II/III, where a tab shows one panel at a time, the panel is also
   backgroundless and rows carry the surface. This keeps the total painted area small and the screen
   dark.
+- The **plate's collapse handle arrives with UNDERSTORY**, one act before the tab bar: once the
+  stack outgrows its window the parked-or-open choice is the player's, and the stage-2 frame
+  reorder (`ledger order:-1`) remains the act break's own beat. Before UNDERSTORY the canvas is
+  still teaching press→growth and the handle stays hidden.
 - Panels are **never collapsible** in Act I. In Act II a panel header may carry a 44 × 44 disclosure
   target if the panel exceeds 6 rows, and the collapsed state persists in the save.
 - Panels arrive by fading in over 320 ms `--ease-organic` with a `translateY(6px) → 0`. They arrive

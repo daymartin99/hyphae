@@ -1529,12 +1529,15 @@ the progress bar (teardown §9 principle 9).
 
 **Rules, non-negotiable:**
 - Every tappable target ≥ 44 px tall, ≥ 44 px apart from any destructive neighbour.
-- **The primary action button is always the last element in the scroll**, so it is always reachable
-  by a thumb regardless of how many panels have opened. `EXTEND` stays there forever, becoming
-  vestigial exactly as UP's clip button did — and it is the *only* thing on screen in the last
+- **The primary action button is pinned in the frame's bottom band** — the build moved past this
+  section's original "last element in the scroll": `placeHero()` parents EXTEND into the frame
+  whenever a live verb exists, so it sits at the same y under any depth of stack. (The
+  vestigial-button homage died with it, honourably: the turgor verb un-vestigialised EXTEND at a
+  measured 121.0 g/min against 98.9 tapping.) It is still the *only* thing on screen in the last
   minute of Act III.
-- The **ledger** (biomass, sugar+cap, mineral, net sugar) is `position: sticky; top: 0` and is
-  four lines. Nothing else is ever pinned.
+- The **ledger** (biomass, sugar+cap, mineral, net sugar) is a fixed band of the frame above the
+  scroller — not `position: sticky`; the build's comment states why ("the strip holds the top of
+  the frame and the list scrolls below it") — and is four lines. Nothing else is ever pinned.
 - No tabs. No modals. No settings screen except a single sheet reachable from a 32 px gear in the
   ledger's corner. Total navigation actions required to finish Act I: **zero.**
 - Long-press = the secondary action, everywhere and only. (Sell on market rows; contract detail on

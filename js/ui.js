@@ -2246,6 +2246,9 @@
       show(view.tabbar, false)
       show(view.plateToggle, false)
       setPlate(false)
+      // A fresh run re-earns the handle and re-honours the parked choice at its own reveal.
+      view.plateShown = false
+      view.plateRecalled = false
       view.tabs.forEach(function (t) {
         t.earned = false
         delete t.el.dataset.earned
@@ -2265,6 +2268,8 @@
       // moves it arrives in the same frame the tab bar does.
       show(view.plateToggle, true)
       setPlate(recall('hyphae.plate') === 'min')
+      view.plateShown = true
+      view.plateRecalled = true
       layout()
     }
     if (n >= 3) {
@@ -2456,6 +2461,25 @@
 
   function stage (v, s, rev) {
     var want = s.act >= 2 ? 2 : (rev.market ? 1 : 0)
+    // The plate collapse, revealed one act early. Every mechanism has shipped since the Act II
+    // handle was built — the 44px toggle, the centre-crop that moves no pixel, the persisted
+    // preference — and Act I hid them while its stack grew to nineteen windowfuls read through a
+    // 294px letterbox. The gate is UNDERSTORY's own reveal: before it the canvas is still
+    // teaching press→growth and stays untouchable; after it every live number is in the ledger,
+    // the plate's every-loop information content is zero, and whether it stays open "is the
+    // player's business, not ours" (the crop CSS's own words). +138px of window when parked —
+    // measured, the panel window grows 47–56%.
+    var handle = want === 2 || (want === 1 && !!rev.trees)
+    if (handle !== v.plateShown) {
+      v.plateShown = handle
+      show(v.plateToggle, handle)
+      // The first frame the handle exists in this run, the parked/open choice a previous session
+      // made is honoured — the same recall the Act II break has always done.
+      if (handle && !v.plateRecalled) {
+        v.plateRecalled = true
+        if (recall('hyphae.plate') === 'min') setPlate(true)
+      }
+    }
     if (want === v.stage) return
     v.stage = want
     setData(v.shell, 'stage', String(want))
