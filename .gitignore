@@ -1,2 +1,3 @@
-game/dist/
-game/shots/
+dist/
+node_modules/
+scratch-*
