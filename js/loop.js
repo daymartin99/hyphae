@@ -157,26 +157,136 @@
   // read only here. state.now() is the single reader of the platform clock so the two sides cannot
   // drift apart again; passing `nowS` explicitly is how the harness and the D35 determinism check
   // hold the clock still.
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE RETURN REPORT'S FACTS · 09 §6.6
+  // log.js owns every word of the report and has since it was authored — and never once spoke,
+  // because this side handed it two bare numbers where it expects the summary object below. The
+  // whole feature was dead behind a signature mismatch; the tester's phrasing was "it's hard to
+  // see what's been going on since you were away", which is this bug described from the outside.
+  //
+  // The snapshot is taken before the offline sim runs and diffed after it: gains are what grew,
+  // and the needs list is only what can be stated truthfully from a diff — the report is allowed
+  // to be short (09: "it is never padded"), so anything this cannot attribute it does not say.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  function offlineSnapshot (s) {
+    var snap = {
+      act: s.act,
+      cumBiomass: num(s.res.cumBiomass), sugar: num(s.res.sugar),
+      minerals: num(s.res.minerals), insight: num(s.res.insight),
+      cumCarbon: num(s.res.cumCarbon)
+    }
+    if (s.act === 1 && s.a1) {
+      snap.patches = num(s.a1.patches)
+      snap.netRep = num(s.a1.netRep)
+      snap.seasons = s.a1.year * 4 + s.a1.season
+      snap.leafPrice = HY.economy1 && HY.economy1.unitPrice ? num(HY.economy1.unitPrice('leaf')) : 0
+      snap.contracts = {}
+      for (var i = 0; i < s.a1.contracts.length; i++) {
+        snap.contracts[s.a1.contracts[i].id] = s.a1.contracts[i].state
+      }
+    }
+    if (s.act === 3 && HY.bloom && HY.bloom.bandsReached) snap.bands = HY.bloom.bandsReached(s)
+    return snap
+  }
+
+  function offlineNeeds (s, b, dryAtS) {
+    var needs = []
+    if (b.act === 1 && s.act === 1 && s.a1) {
+      if (dryAtS >= 0) needs.push({ kind: 'substrate_dry', tokens: { t: dryAtS } })
+      var repDiff = Math.round(num(s.a1.netRep) - b.netRep)
+      for (var i = 0; i < s.a1.contracts.length; i++) {
+        var c = s.a1.contracts[i]
+        var was = b.contracts[c.id]
+        if (was === undefined || was === c.state) continue
+        if (c.state === 'complete' && repDiff > 0) {
+          var t = HY.economy1 && HY.economy1.treeById ? HY.economy1.treeById(c.treeId) : null
+          needs.push({ kind: 'term_done', tokens: { tree: t ? t.species : 'a tree', k: repDiff } })
+          break                          // one line; three completions is still one fact
+        }
+        if (c.state === 'defaulted') {
+          needs.push({ kind: 'term_default', tokens: { k: Math.max(1, -repDiff) }, tone: 'warn' })
+          break
+        }
+      }
+      // Boot season is autumn, so the boundary index is where (seasons % 4) returns to it.
+      var A1 = T().A1
+      for (var sn = b.seasons + 1; sn <= s.a1.year * 4 + s.a1.season; sn++) {
+        if (sn % 4 === A1.SEASON_AUTUMN) {
+          needs.push({ kind: 'season_autumn', tokens: { price: snapPrice() } })
+          break
+        }
+      }
+      if (num(s.a1.patches) > b.patches) needs.push({ kind: 'claim_done', tokens: null })
+      var p1 = snapPrice()
+      if (b.leafPrice > 0 && Math.abs(p1 - b.leafPrice) / b.leafPrice >= T().OFFLINE.RETURN_PRICE_MOVE) {
+        needs.push({ kind: 'market_move', tokens: { price: p1 } })
+      }
+    }
+    if (b.act === 3 && s.act === 3 && HY.bloom && HY.bloom.bandsReached) {
+      var nb = HY.bloom.bandsReached(s)
+      if (nb > b.bands) needs.push({ kind: 'band_open', tokens: { b: nb } })
+    }
+    return needs
+  }
+
+  function snapPrice () {
+    return HY.economy1 && HY.economy1.unitPrice ? num(HY.economy1.unitPrice('leaf')) : 0
+  }
+
   function reconcileOffline (nowS) {
     var s = S()
     if (!s) return 0
     var at = nowS === undefined ? HY.state.now() : nowS
     // A save with no wall clock at all is one this build has never written. Treating it as "just
     // now" costs nothing; treating it as the epoch would hand out the offline cap on first sight.
-    var elapsed = s.wallClock > 0 ? Math.max(0, at - s.wallClock) : 0
+    var raw = s.wallClock > 0 ? at - s.wallClock : 0
     s.wallClock = at
+    // The clock walking backwards is its own one-line report (09 §6.6): no accusation, no
+    // penalty, and nothing credited. A minute of slack absorbs DST jitter and NTP corrections.
+    if (raw < -60) {
+      if (HY.log && HY.log.returnBurst) HY.log.returnBurst({ away: -1, act: s.act })
+      return 0
+    }
+    var elapsed = Math.max(0, raw)
     if (!(elapsed > 1)) return 0
 
     var eff = effective(elapsed)
     if (!(eff > 0)) return 0
 
+    var before = offlineSnapshot(s)
     var STEPS = T().OFFLINE.STEPS
     var dt = eff / STEPS
     var opts = { stochastic: false, offline: true }
+    var dryAt = -1
     if (HY.log && HY.log.freeze) HY.log.freeze()
-    for (var i = 0; i < STEPS; i++) simTick(dt, opts)
+    for (var i = 0; i < STEPS; i++) {
+      simTick(dt, opts)
+      // The moment the floor ran out, in sim seconds — the one fact in the report that is about
+      // a point in time rather than a total, and unrecoverable from a diff after the fact.
+      if (dryAt < 0 && s.act === 1 && HY.act1 && HY.act1.totalSubstrate &&
+          !(HY.act1.totalSubstrate() > 0)) {
+        dryAt = (i + 1) * dt
+      }
+    }
     if (HY.log && HY.log.thaw) HY.log.thaw()
-    if (HY.log && HY.log.returnBurst) HY.log.returnBurst(elapsed, eff)
+
+    if (HY.log && HY.log.returnBurst) {
+      var gains = {
+        biomass: Math.max(0, num(s.res.cumBiomass) - before.cumBiomass),
+        sugar: Math.max(0, num(s.res.sugar) - before.sugar),
+        minerals: Math.max(0, num(s.res.minerals) - before.minerals),
+        insight: Math.max(0, num(s.res.insight) - before.insight),
+        carbon: Math.max(0, num(s.res.cumCarbon) - before.cumCarbon)
+      }
+      HY.log.returnBurst({
+        away: elapsed,
+        act: s.act,
+        efficiency: eff / elapsed,
+        gains: gains,
+        needs: offlineNeeds(s, before, dryAt)
+      })
+    }
     return eff
   }
 
@@ -237,6 +347,13 @@
       if (HY.state.save) { try { HY.state.save() } catch (e) { void 0 } }
     } else {
       lastSimMs = nowMs()
+      // An installed app almost never boots — iOS suspends it and resumes it here, through this
+      // event, hours later. boot() was the only caller of reconcileOffline, so a phone that slept
+      // through the night woke to a sim that reset its clock and silently discarded the entire
+      // absence: no growth, no report. The resume is the return, and it reconciles like one.
+      // (Under two minutes of hidden time the reconcile is a no-op and the report stays silent —
+      // switching apps is not being away.)
+      reconcileOffline()
       if (!rafId) rafId = requestAnimationFrame(frame)
       if (HY.feel && HY.feel.resumeAll) HY.feel.resumeAll()
     }

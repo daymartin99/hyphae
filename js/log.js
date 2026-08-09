@@ -151,7 +151,7 @@
     car: function (v) { return C().fmt(v) },
     b: function (v) { return words(v) },
     pct: function (v) { return String(Math.round(Number(v) || 0)) },
-    price: function (v) { return (Number(v) || 0).toFixed(CONS.PRICE_DP) },
+    price: function (v) { return (Number(v) || 0).toFixed(CONS.PRICE_DP) + ' sug/g' },
     clock: function (v) { return C().fmtTime(v, 'clock') },
     away: function (v) { return duration(v) },
     t: function (v) { return duration(v) }
@@ -889,7 +889,9 @@
   var GAINS = {
     1: '+{bio} biomass, +{sug} sugar, +{min} minerals.',
     2: '{bio} decomposed. {psi} insight.',
-    3: '{car} harvested. {psi} insight. Band {b} is open.'
+    3: '{car} harvested. {psi} insight.'
+    // 09's example folds "Band {b} is open." into this line, but a template states it whether or
+    // not a band opened; the band_open NEED carries it instead, only when one did.
   }
   var DORMANT = { 1: ' {pct}% dormant.', 2: ' {pct}% dormant.', 3: ' {pct}% dormant.' }
 
@@ -2428,7 +2430,7 @@
     ok(interpolate('band {band}', { band: 12 }, null, null) === 'band twelve', 'token band')
     ok(interpolate('{k} loci', { k: 3 }, null, null) === 'three loci', 'token k spells to twelve')
     ok(interpolate('{k} loci', { k: 26 }, null, null) === '26 loci', 'token k numerals above')
-    ok(interpolate('at {price}', { price: 0.8612 }, null, null) === 'at 0.86', 'token price')
+    ok(interpolate('at {price}', { price: 0.8612 }, null, null) === 'at 0.86 sug/g', 'token price carries its unit')
     ok(interpolate('{n} of it', { n: 4.0e12 }, null, null) === '4.00 T of it', 'token n')
     ok(interpolate('gone {away}', { away: 24060 }, null, null) === 'gone 6 h 41 m', 'token away')
     ok(interpolate('{pct}% dormant', { pct: 33.3 }, null, null) === '33% dormant', 'token pct')

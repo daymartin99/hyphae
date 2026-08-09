@@ -512,6 +512,7 @@
       DOR_FLOOR_STEP: 0.020,    // multiplier floor added per DOR locus (Act III)
       DOR_FLOOR_MAX: 0.16,      // cap on the DOR contribution
       STEPS: 240,               // macro-steps through the real simTick
+      RETURN_PRICE_MOVE: 0.25,  // fractional leaf-price move that earns a line in the return report
       INSIGHT_CAP_S: 5400,      // s of saturated production, against the time-average Sr (K27)
       PRED_CAP: 0.25,           // fraction of the fleet predation may take, whole period
       STRAIN_MULT: 0.35,        // × pact strain accrual
