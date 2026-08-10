@@ -12990,7 +12990,8 @@ var dx=px-o.x[i],dy=py-o.y[i]
 var d2=dx*dx+dy*dy
 if(d2<bl){bl=d2;bV=i}if(d2<aK&&o.fslot[i]>=0){aK=d2;_bFront=i}}}}_bAnyD=bV<0?Infinity:Math.sqrt(bl)
 _bFrontD=_bFront<0?Infinity:Math.sqrt(aK)}
-function grow(o){var aV=0,pulled=0
+function grow(o,lim){var aV=0,pulled=0
+if(!(lim>0)||lim>z.NEW_MAX)lim=z.NEW_MAX
 var cH=z.NEW_MAX*z.PULL_MAX
 var a=0
 while(a<o.aCount&&pulled<cH){cG(o,o.ax[a],o.ay[a])
@@ -13000,7 +13001,7 @@ o.accY[f]+=(o.ay[a]-o.y[_bFront])/_bFrontD
 if(o.accN[f]<255)o.accN[f]++
 o.aMiss[a]=0
 pulled++}else if(++o.aMiss[a]>z.STALE_STEPS){aD(o,a);continue
-}a++}for(var s=0;s<o.fCount&&aV<z.NEW_MAX;s++){if(!o.accN[s])continue
+}a++}for(var s=0;s<o.fCount&&aV<lim;s++){if(!o.accN[s])continue
 var i=o.frontier[s]
 var dx=o.accX[s],dy=o.accY[s]
 o.accX[s]=0;o.accY[s]=0;o.accN[s]=0
@@ -13162,7 +13163,7 @@ if(net.live>=want)return 0
 var budget=reduced?z.CAP:z.NEW_MAX
 var t0=E()
 var aV=0,aW=0
-while(net.live<want&&aV<budget&&aW++<64){var k=grow(net)
+while(net.live<want&&aV<budget&&aW++<64){var k=grow(net,want-net.live)
 aV+=k
 if(k===0&&net.aCount===0)break
 if(k===0&&aW>3)break
