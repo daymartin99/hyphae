@@ -3335,7 +3335,7 @@ var SPECIES={birch:{id:'birch',base:.008,intake:4,minRep:.55,canopy:.35,age0:40,
 var aq=[['birch'],['aspen'],['fir'],['hemlock','fir'],['elm'],['oak']]
 var az={fir:2}
 var U=[{rep:8,species:'birch'},{rep:22,species:'aspen'},{rep:38,species:'fir'},{rep:55,species:'hemlock'},{rep:72,species:'beech'}]
-var CT={MINERAL_K:3,TERM_K:.11,COLL_K:.3,COLL_SCALE:900,REP_A:.55,REP_B:.0075,NEED_K:1.6,NEED_E:1.5,EXCL:1.25,INTAKE_REP_A:.6,INTAKE_REP_B:.008,MAXTERM_DIV:12,PHOTO_M_A:.55,PHOTO_M_B:.45,PHOTO_M_REF:.9,BUD_LO:.05,BUD_HI:.4,BUD_AMP:1.9,BUD_W:.09,MAST_NEED:2.5,MAST_GAP_Y:3,CANOPY_K:.1,CANOPY_MIN:.55,FIRESCAR_D:.2,FIRESCAR_MINERAL:3,REP_DONE_A:6,REP_DONE_B:2,NETREP_DONE_A:6,NETREP_DONE_B:2,REP_FAIL:22,NETREP_FAIL:22,REFUSE_SEASONS:2,HEALTH_PER_COLL:4e5,EXIT_FRAC:.5,EXIT_REP:6,EXIT_NETREP:6,STAKE_K:.68,STAKE_SCALE:1e5,RENEG_REP:1,NEW_REP_A:15,NEW_REP_B:.45,NEW_REP_MIN:5,NEW_REP_MAX:70,SOLICIT_P:.35,SOLICIT_D:.25,SOLICIT_VOL:1.95,SOLICIT_TERM:4,TREE_MAX:7,DEATH_HEALTH:.05,BEETLE_HIT:.4,BEETLE_PER_SEASON:.1,BEETLE_SEASONS:6,BEECH_TERM:12,OXALATE_RATE:.35}
+var CT={MINERAL_K:3,TERM_K:.11,COLL_K:.3,COLL_SCALE:900,REP_A:.55,REP_B:.0075,NEED_K:1.6,NEED_E:1.5,EXCL:1.25,INTAKE_REP_A:.6,INTAKE_REP_B:.008,MAXTERM_DIV:12,PHOTO_M_A:.55,PHOTO_M_B:.45,PHOTO_M_REF:.9,BUD_LO:.05,BUD_HI:.4,BUD_AMP:1.9,BUD_W:.09,MAST_NEED:2.5,MAST_GAP_Y:3,CANOPY_K:.1,CANOPY_MIN:.55,FIRESCAR_D:.2,FIRESCAR_MINERAL:3,REP_DONE_A:6,REP_DONE_B:2,NETREP_DONE_A:6,NETREP_DONE_B:2,REP_FAIL:22,NETREP_FAIL:22,REFUSE_SEASONS:2,HEALTH_PER_COLL:4e5,EXIT_FRAC:.5,EXIT_REP:6,EXIT_NETREP:6,STAKE_K:.68,STAKE_SCALE:1e5,RENEG_REP:1,NEW_REP_A:15,NEW_REP_B:.45,NEW_REP_MIN:5,NEW_REP_MAX:70,REP_DRIFT:2,SOLICIT_P:.35,SOLICIT_D:.25,SOLICIT_VOL:1.95,SOLICIT_TERM:4,TREE_MAX:7,DEATH_HEALTH:.05,BEETLE_HIT:.4,BEETLE_PER_SEASON:.1,BEETLE_SEASONS:6,BEECH_TERM:12,OXALATE_RATE:.35}
 var MK={STEP_S:1,WIDE_AFTER:12,MAX_H:10,MAX_SUBSTEPS:240,MIN_TRADE_G:1,ANTAGONISM:.78,FORWARD_FILLS:12,FORWARD_MARK:1.05,STANDING_PENALTY:1.08,STANDING_FLOOR:.15,STANDING_MAX_FRAC:.02,IMPACT_BIAS_MAX:.14}
 var MX={P0:125,REVERT:.0022,MOM_GAIN:.019,SIGMA:.009,MOM_DECAY:.94,MOM_IN:.06,BUY_DRIFT:4e-4,SELL_DRIFT:.00018,DRIFT_EXP:.55,PBAR_RELAX:1/9e3,P_MIN:8,P_MAX:4e3}
 var EVENTS=[{id:'mast',domain:'tree',pBySeason:[0,0,.12,0],seasonsLeft:2,logId:'a1.mast'},{id:'beetle',domain:'tree',pBySeason:[0,.06,0,0],seasonsLeft:CT.BEETLE_SEASONS,logId:'a1.beetle'},{id:'windthrow',domain:'supply',pBySeason:[.09,.09,.18,.14],seasonsLeft:2,logId:'a1.windthrow'},{id:'carrion',domain:'supply',pBySeason:[.1,.1,.1,.22],seasonsLeft:1,logId:'a1.carrion'},{id:'earthworm',domain:'supply',pBySeason:[.07,.07,0,0],seasonsLeft:3,logId:'a1.earthworm'},{id:'firescar',domain:'supply',pBySeason:[.03,.03,.03,.03],seasonsLeft:1,logId:'a1.fire_scar'},{id:'drought',domain:'weather',pBySeason:[.04,.1,0,0],seasonsLeft:1,logId:'a1.drought'},{id:'frost',domain:'weather',pBySeason:[0,0,0,.14],seasonsLeft:1,logId:'a1.hard_frost'},{id:'wetspring',domain:'weather',pBySeason:[.18,0,0,0],seasonsLeft:2,logId:'a1.wet_spring'},{id:'latefrost',domain:'weather',pBySeason:[.09,0,0,0],seasonsLeft:1,logId:'a1.late_frost'}]
@@ -3649,9 +3649,15 @@ spec=sp(t)
 t.age=num(t.age)+dt/T().CLOCK.YEAR_S
 if(spec.lifeSeasons>0)t.health=num(t.health)-dt/(spec.lifeSeasons*M)
 if(beetle&&beetle.payload&&beetle.payload.treeId===t.id){t.health=num(t.health)-CT.BEETLE_PER_SEASON*dt/M}t.health=C().clamp(num(t.health),0,1)
-if(t.health<=CT.DEATH_HEALTH){killTree(t,'health');continue}t.d=carbonDeficit(t)}var cd=num(s.a1.year)*4+num(s.a1.season)
+if(t.health<=CT.DEATH_HEALTH){killTree(t,'health');continue}bs(t,dt,M)
+t.d=carbonDeficit(t)}var cd=num(s.a1.year)*4+num(s.a1.season)
 if(cd!==Q){Q=cd
 W(cd)}}
+function bs(t,dt,M){var s=S()
+if(num(t.refuseUntil)>num(s.t))return
+var implied=C().clamp(CT.NEW_REP_A+CT.NEW_REP_B*num(s.a1.netRep),CT.NEW_REP_MIN,CT.NEW_REP_MAX)
+if(num(t.rep)>=implied)return
+t.rep=Math.min(implied,num(t.rep)+CT.REP_DRIFT*dt/M)}
 function aQ(bf){var i,j,list
 for(i=0;i<bf&&i<aq.length;i++){list=aq[i]
 for(j=0;j<list.length;j++){if(ao(list[j])>=(az[list[j]]||1))continue
