@@ -13165,8 +13165,8 @@ return want>cap?cap:want}
 function growNetwork(hyphaeM){if(!net){attach();aA()}else aA()
 if(!net)return 0
 aF(!1)
-var raw=bk(hyphaeM)
-if(raw>z.MIN_TARGET&&net.live-raw>=cc.MIN){bn(raw);return 0}var want=Z(hyphaeM)
+var want=Z(hyphaeM)
+if(want>z.MIN_TARGET&&net.live-want>=cc.MIN){bn(want);return 0}
 if(net.live>=want)return 0
 var budget=reduced?z.CAP:z.NEW_MAX
 var t0=E()
@@ -14919,7 +14919,7 @@ view.scrollT=setTimeout(function(){view.scrolling=!1},U.SCROLL_QUIET_MS)},{captu
 var w=win()
 if(w){on(w,'resize',layout)
 on(w,'orientationchange',layout)}layout()
-if(HY.loop&&HY.loop.onFrame){HY.loop.onFrame(function(){stepCharge();render(E())})}render(s)
+if(HY.loop&&HY.loop.onFrame){HY.loop.onFrame(function(){stepCharge()})}render(s)
 return view}
 function aZ(s){if(!s)return null
 if(s.act===1)return'extend'
