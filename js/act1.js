@@ -1874,6 +1874,13 @@
     // frame of a hold rather than keeping a curve of its own, so there is exactly one turgor curve
     // in the build and the swell cannot drift from the payout.
     turgor: turgor,
+    // REFLEX ARC — press-and-hold REPEAT (01's own note for this project). Its existence is what
+    // the catalog's capability gate looks for: `NEEDS.holdExtend` asks whether any module supplies
+    // the reader, and until this line landed nothing did, so the project that sells the verb was
+    // correctly — and invisibly — withheld for the life of the build. The gate was right; the verb
+    // was simply never written. Turgor CHARGE (hold → one bigger extension) is a different thing
+    // and stays free from the first press: it teaches the wall. This sells not having to decide.
+    holdExtend: function (st) { return !!((st || S()).proj.flags.reflex_arc) },
     // The wall's own duration, so nothing outside this file has to write 0.600 down a second time.
     // It is derived here (MAT_FULL_S − PRESS_LIFT_S) and moves when the tap table moves.
     turgorRipeS: TURGOR_RIPE_S,

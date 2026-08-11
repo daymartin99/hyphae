@@ -1842,7 +1842,7 @@
   function heroCharge (on) {
     if (!view) return
     if (on) {
-      charge = { at: nowMs(), ripe: false }
+      charge = { at: nowMs(), ripe: false, refused: false }
       setTurgor(0)
       setData(view.hero, 'ripe', '0')
       setData(view.hero, 'charge', '1')
@@ -1876,6 +1876,23 @@
       charge.ripe = true
       setData(view.hero, 'ripe', '1')
       haptic(U.HAP_RIPE, 'ripe')
+      // REFLEX ARC. Without it the wall is a ceiling: pressure stops building and the extension
+      // waits for the thumb to lift. With it the wall is a valve — the charge fires at the moment
+      // it ripens and immediately begins again, so one unbroken hold is a train of full-pressure
+      // extensions. The same gesture, a second phase, and the flavour line finally true: you stop
+      // deciding to move and simply move.
+      if (a && a.holdExtend && a.holdExtend()) {
+        if (extend(a.turgorRipeS || 1)) {
+          charge.at = nowMs()
+          charge.ripe = false
+          setData(view.hero, 'ripe', '0')
+          setTurgor(0)
+          return
+        }
+        // The floor is bare: the arc has nothing to repeat on, and says so once rather than
+        // hammering the refusal every frame the thumb stays down.
+        if (!charge.refused) { charge.refused = true; refuseHero() }
+      }
     }
     // 06 §8.6. Under reduced motion the button still reports the two facts that decide the press —
     // a hold is building, and the wall has been reached — and nothing between them moves. That is

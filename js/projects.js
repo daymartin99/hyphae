@@ -2672,6 +2672,19 @@
         ok(!!(BY_ID[GATED[i]] && BY_ID[GATED[i]].needs),
           GATED[i] + ' lost its capability gate: it can charge for a system nobody honours')
       }
+      // A GATE THAT HAS OPENED MUST STAY OPEN. These name readers that now exist, so the gate is
+      // no longer withholding and the project is on sale. The distinction matters because both
+      // states look identical from here — a silent `false` is how Reflex Arc spent the whole build
+      // invisible: its verb shipped under a different name (turgor CHARGE, free) and nothing
+      // noticed that the repeat the project actually sells had never been written. Renaming the
+      // reader again would put it back in the dark, so the open gate is asserted, not assumed.
+      var LANDED = ['reflex_arc', 'action_potential']
+      for (i = 0; i < LANDED.length; i++) {
+        p = BY_ID[LANDED[i]]
+        ok(!!(p && p.needs && p.needs()),
+          LANDED[i] + ": its capability gate answers false — the reader it waits for has been " +
+          'renamed or removed, and the project is now invisible for the rest of the run')
+      }
 
       var wp = makeProbe(31)
       wp.act = 1
