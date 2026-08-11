@@ -1628,16 +1628,16 @@ var ae=['leaf','needle','twig','bark','log','stump','carrion']
 var Z=1
 var M=4
 var ag=4
-var bl=6
+var bm=6
 var aC=7
 var aD={g:{glyph:'g',write:'mass',get:function(s){return s.res.biomass},set:function(s,v){C().setStock(s.res,'biomass',v)}},sug:{glyph:'sug',get:function(s){return s.res.sugar},set:function(s,v){C().setStock(s.res,'sugar',v)}},min:{glyph:'⛬',get:function(s){return s.res.minerals},set:function(s,v){C().setStock(s.res,'minerals',v)}},rep:{glyph:'rep',write:'whole',get:function(s){return s.a1.netRep},set:function(s,v){C().setStock(s.a1,'netRep',v,T().A1.REP_MAX)}},sig:{glyph:'Σ',get:function(s){return s.res.signal},set:function(s,v){C().setStock(s.res,'signal',v)}},psi:{glyph:'Ψ',get:function(s){return s.res.insight},set:function(s,v){C().setStock(s.res,'insight',v)}},spore:{glyph:'◦',get:function(s){return s.res.spores},set:function(s,v){C().setStock(s.res,'spores',v)}},carbon:{glyph:'Χ',get:function(s){return s.res.carbon},set:function(s,v){C().setStock(s.res,'carbon',v)}},accord:{glyph:'⟡',get:function(s){return s.res.accord},set:function(s,v){C().setStock(s.res,'accord',v)}},alpha:{glyph:'α',get:function(s){return s.res.alleles},set:function(s,v){C().setStock(s.res,'alleles',v)}},canon:{glyph:'†',get:function(s){return s.res.canon},set:function(s,v){C().setStock(s.res,'canon',v)}}}
 var aS={n:-1}
 var al=0
-function memo(bL,fn){if(aS.n!==al){aS={n:al}}if(aS[bL]===undefined)aS[bL]=fn()
-return aS[bL]}
+function memo(bM,fn){if(aS.n!==al){aS={n:al}}if(aS[bM]===undefined)aS[bM]=fn()
+return aS[bM]}
 function num(v){return typeof v==='number'&&isFinite(v)?v:0}
 function flag(s,id){return!!(s.proj&&s.proj.flags&&s.proj.flags[id])}
-function bA(s,id){return s.proj&&s.proj.flags?num(s.proj.flags[id]):0}
+function bB(s,id){return s.proj&&s.proj.flags?num(s.proj.flags[id]):0}
 function stat(s,k){return s.stats?num(s.stats[k]):0}
 function tips(s){return num(s.a1.tips)}
 function patches(s){return num(s.a1.patches)}
@@ -1652,11 +1652,11 @@ function totalSub(s){return memo('totalSub',function(){var i,t=0
 for(i=0;i<ae.length;i++)t+=num(s.a1.sub[ae[i]])
 return t})}
 function minPrice(s){if(HY.economy1&&HY.economy1.minPrice){var v=HY.economy1.minPrice(s)
-return(typeof v==='number'&&!isNaN(v))?v:Infinity}var bD=Infinity,i,k,row
+return(typeof v==='number'&&!isNaN(v))?v:Infinity}var bE=Infinity,i,k,row
 for(i=0;i<ae.length;i++){k=ae[i]
 if(s.a1.unlockedTypes.indexOf(k)<0)continue
 row=s.a1.mkt[i]
-if(row&&row.price>0&&row.stock>0&&row.price<bD)bD=row.price}return bD}
+if(row&&row.price>0&&row.stock>0&&row.price<bE)bE=row.price}return bE}
 function aJ(c){return!!c&&c.state==='active'}
 function as(s){if(tips(s)>0&&totalSub(s)>0)return!0
 var i,c
@@ -1679,15 +1679,15 @@ for(i=0;i<ae.length;i++){row=s.a1.mkt[i]
 if(row&&row.base>0&&row.price>mult*row.base)return!0}return!1}
 function ai(s,ratio){if(tips(s)<=0)return!1
 var A=T().A1
-var bE=A.TIP_THROUGHPUT*tips(s)
+var bF=A.TIP_THROUGHPUT*tips(s)
 var i,k
 for(i=0;i<ae.length;i++){k=ae[i]
 if(s.a1.unlockedTypes.indexOf(k)<0)continue
-if(num(s.a1.sub[k])>ratio*bE)return!0}return!1}
-function bm(s,n){if(HY.act1&&HY.act1.tipCost)return num(HY.act1.tipCost(n))
+if(num(s.a1.sub[k])>ratio*bF)return!0}return!1}
+function bn(s,n){if(HY.act1&&HY.act1.tipCost)return num(HY.act1.tipCost(n))
 var A=T().A1
-var bT=flag(s,'foraging_front')?A.TIP_COEF_FORAGING:A.TIP_COEF
-return Math.ceil(A.TIP_BASE+bT*Math.pow(n,A.TIP_EXP))}
+var bU=flag(s,'foraging_front')?A.TIP_COEF_FORAGING:A.TIP_COEF
+return Math.ceil(A.TIP_BASE+bU*Math.pow(n,A.TIP_EXP))}
 function ad(s,bit){return memo('rf'+bit,function(){var f=s.a2.regions.flags,i,n=0
 for(i=0;i<f.length;i++)if(f[i]&bit)n++
 return n})}
@@ -1695,20 +1695,20 @@ function P(s){return ad(s,M)}
 function ba(s){return ad(s,Z)}
 function fc(s){if(HY.forest&&HY.forest.forestConsumed)return num(HY.forest.forestConsumed(s))
 return C().clamp(num(s.res.extracted)/T().A2.EXTRACT_TARGET,0,1)}
-function bo(s){return memo('minH',function(){var r=s.a2.regions,i,m=Infinity
+function bp(s){return memo('minH',function(){var r=s.a2.regions,i,m=Infinity
 for(i=0;i<r.h.length;i++)if(r.flags[i]&M)m=Math.min(m,r.h[i])
 return m})}
 function legacyLife(s){return memo('legLife',function(){if(HY.forest&&HY.forest.legacyLife)return num(HY.forest.legacyLife(s))
 var r=s.a2.regions,i,a=0,b=0
 for(i=0;i<r.T.length;i++){a+=r.T[i];b+=r.T0[i]}return b>0?C().clamp(a/b,0,1):1})}
-function aT(s,bW){var r=s.a2.regions,i
-for(i=0;i<r.terrain.length;i++)if((r.flags[i]&M)&&r.terrain[i]===bW)return!0
+function aT(s,bX){var r=s.a2.regions,i
+for(i=0;i<r.terrain.length;i++)if((r.flags[i]&M)&&r.terrain[i]===bX)return!0
 return!1}
 function aM(s){if(HY.world&&HY.world.connectivity){var A=T().A2
 var c=C().clamp(num(HY.world.connectivity(s)),A.CONN_MIN,A.CONN_MAX)
 return Math.pow(Math.max(0,(c-1)/A.CONN_K),1/A.CONN_EXP)}return 0}
-function bb(s,bx,by){var r=s.a2.regions,i,n=0
-for(i=0;i<r.rival.length;i++)if(r.rival[i]===bx&&r.rivalStr[i]>by)n++
+function bb(s,by,bz){var r=s.a2.regions,i,n=0
+for(i=0;i<r.rival.length;i++)if(r.rival[i]===by&&r.rivalStr[i]>bz)n++
 return n}
 function l(s){return s.a2&&s.a2.pact?s.a2.pact:{}}
 function U(s){var p=l(s)
@@ -1727,10 +1727,10 @@ function N(s){var p=l(s)
 return p.slots===undefined?0:num(p.slots)}
 function aO(s){var p=l(s)
 return num(p.noduleScars)>0}
-function bM(arr){var i,t=0;for(i=0;i<arr.length;i++)t+=arr[i];return t}
-function bc(s){return memo('bFleet',function(){return bM(s.a3.biomes.n)})}
-function an(s){return memo('nFleet',function(){return bM(s.a3.bands.n)})}
-function bN(s){return bc(s)+an(s)}
+function bN(arr){var i,t=0;for(i=0;i<arr.length;i++)t+=arr[i];return t}
+function bc(s){return memo('bFleet',function(){return bN(s.a3.biomes.n)})}
+function an(s){return memo('nFleet',function(){return bN(s.a3.bands.n)})}
+function bO(s){return bc(s)+an(s)}
 function Q(s){return memo('biomes',function(){var r=s.a3.biomes.reached,i,n=0
 for(i=0;i<r.length;i++)if(r[i])n++
 return n})}
@@ -1746,28 +1746,28 @@ for(i=0;i<t.length;i++)n+=num(t[i].count)
 return n}
 function effFid(s){if(HY.bloom&&HY.bloom.effFid)return num(HY.bloom.effFid(s))
 var A=T().A3
-return C().clamp(num(s.carry.fidelityBase)+A.FID_PER_FID_LOCUS*s.a3.loci[bl]-A.FID_PER_ANT_LOCUS*s.a3.loci[aC]+num(s.mult.boughtFid),A.FID_MIN,A.FID_MAX)}
+return C().clamp(num(s.carry.fidelityBase)+A.FID_PER_FID_LOCUS*s.a3.loci[bm]-A.FID_PER_ANT_LOCUS*s.a3.loci[aC]+num(s.mult.boughtFid),A.FID_MIN,A.FID_MAX)}
 function strains(s){return s.a3.strains||[]}
 function aP(s){return memo('wildF',function(){var w=0,i,j,st=strains(s)
 for(i=0;i<st.length;i++)if(st[i]&&st[i].w)for(j=0;j<st[i].w.length;j++)w+=st[i].w[j]
 var mine=an(s)
 return w+mine>0?w/(w+mine):0})}
-function bp(s){var w=0,i,j,st=strains(s)
+function bq(s){var w=0,i,j,st=strains(s)
 for(i=0;i<st.length;i++)if(st[i]&&st[i].w)for(j=0;j<st[i].w.length;j++)w+=st[i].w[j]
 return w}
 function succ(s){return s.a3.succ}
 function G(s){return s.phase==='void'||s.phase==='dismantle'}
 function mul(o,k,f){if(o&&typeof o[k]==='number')o[k]=o[k]*f}
 function set(o,k,v){if(o)o[k]=v}
-function bq(s,k,v){C().setStock(s.res,k,num(s.res[k])+v)}
-function mulEnzyme(s,bJ,f){var i,e=s.mult.enzymeK
+function br(s,k,v){C().setStock(s.res,k,num(s.res[k])+v)}
+function mulEnzyme(s,bK,f){var i,e=s.mult.enzymeK
 if(!e)return
-for(i=0;i<bJ.length;i++)if(typeof e[bJ[i]]==='number')e[bJ[i]]*=f}
+for(i=0;i<bK.length;i++)if(typeof e[bK[i]]==='number')e[bK[i]]*=f}
 function unlockType(s,k){if(s.a1.unlockedTypes.indexOf(k)<0)s.a1.unlockedTypes.push(k)}
 function addFid(s,v){s.mult.boughtFid=C().clamp(num(s.mult.boughtFid)+v,0,T().A3.BOUGHT_FID_CAP)}
 function grantD(s,n){if(HY.cognition&&HY.cognition.grantD){HY.cognition.grantD(n);return}C().setStock(s.res,'D',num(s.res.D)+n,T().A2.D_MAX)}
 function claimPatch(s,id){if(HY.act1&&HY.act1.claimPatch){HY.act1.claimPatch(id);return}s.a1.patches=Math.max(s.a1.patches,Math.min(id,T().A1.PATCH_MAX))}
-function bO(s,id){s.proj.flags[id]=s.t}
+function bP(s,id){s.proj.flags[id]=s.t}
 var av={holdExtend:function(){return!!(HY.act1&&HY.act1.holdExtend)},assayPanel:function(){return!!(HY.ui&&HY.ui.assay)},treeLedger:function(){return!!(HY.ui&&HY.ui.treeLedger)},foresight:function(){return!!(HY.act1&&HY.act1.foresight)},forecast:function(){return!!(HY.act1&&HY.act1.forecast)},dielBonus:function(){return!!(HY.loop&&HY.loop.dielBonus)},signalA1:function(){return!!((HY.cognition&&HY.cognition.step)||(HY.act1&&HY.act1.stepSignal))}}
 var CATALOG=[]
 var ALL=[]
@@ -1777,7 +1777,7 @@ var p={id:id,title:title,act:act,note:at.note||null,description:description,pric
 p.triggerRaw=trigger
 p.trigger=p.needs?function(s){return!!p.needs()&&!!trigger(s)}:trigger
 p.cost=function(){return aG(p,S())}
-p.pay=function(){return bF(p,S())}
+p.pay=function(){return bG(p,S())}
 Object.defineProperty(p,'priceTag',{get:function(){return aF(p,S())},enumerable:!0})
 if(J[id])throw new Error('duplicate project id: '+id)
 J[id]=p
@@ -1803,7 +1803,7 @@ for(k in pr){if(!Object.prototype.hasOwnProperty.call(pr,k))continue
 if(!aD[k])continue
 if(aD[k].get(s)<pr[k])return!1}if(p.also&&!p.also(s))return!1
 return!0}
-function bF(p,s){var pr=priceOf(p,s),k
+function bG(p,s){var pr=priceOf(p,s),k
 for(k in pr){if(!Object.prototype.hasOwnProperty.call(pr,k))continue
 if(!aD[k])continue
 aD[k].set(s,aD[k].get(s)-pr[k])}}
@@ -1841,12 +1841,12 @@ E('contract_arbitration','Contract Arbitration',1,{g:46000,min:320},function(s){
 E('seasonal_forecast','Seasonal Forecast',1,{g:52000,min:380},function(s){return year(s)>=2},function(){},'Three months is not so far ahead. (Weather forecast)',['information'],{needs:av.forecast})
 E('perennial_mycelium','Perennial Mycelium',1,{g:55000,min:350},function(s){return year(s)>=3&&flag(s,'antifreeze_glycoproteins')},function(s){set(s.mult,'perennial',!0);s.a1.activeEvents.length=0},'You stop having years. The average is very good, and nothing will ever beat the average again.',['trap','irreversible','removes'])
 E('fruiting_body','Fruiting Body',1,{g:6e4},function(s){return season(s)===T().A1.SEASON_AUTUMN&&moisture(s)>=1&&hyphae(s)>=200},function(s){C().setStock(s.a1,'netRep',netRep(s)+8,T().A1.REP_MAX)},'For one night in the year you are visible, and the forest counts you. (+8 reputation)',['event'])
-E('autolysis','Autolysis',1,{},function(s){return tips(s)>=40},function(s){var bG=Math.floor(.2*tips(s))
-if(bG<1)return
+E('autolysis','Autolysis',1,{},function(s){return tips(s)>=40},function(s){var bH=Math.floor(.2*tips(s))
+if(bH<1)return
 var refund=0,i
-for(i=tips(s)-bG;i<tips(s);i++)refund+=bm(s,i)
-s.a1.tips=tips(s)-bG
-bq(s,'biomass',3*refund)},'You are allowed to be smaller. It is faster than patience, and it costs what it looks like.',['rearm','irreversible','verb'],{rearm:!0,pinned:!0,note:I})
+for(i=tips(s)-bH;i<tips(s);i++)refund+=bn(s,i)
+s.a1.tips=tips(s)-bH
+br(s,'biomass',3*refund)},'You are allowed to be smaller. It is faster than patience, and it costs what it looks like.',['rearm','irreversible','verb'],{rearm:!0,pinned:!0,note:I})
 E('patch_under_the_hemlocks','Patch: Under the Hemlocks',1,function(s){return H(s,3)},function(s){return patches(s)>=3},function(s){claimPatch(s,4)},'Deep shade, deep needle, and nothing else growing. (+1 patch)',['panel'])
 E('oxalate_weathering','Oxalate Weathering',1,{g:75000,min:500},function(s){return stat(s,'mineralEarned')>=1500},function(){},'You dissolve the rock yourself, slowly, with an acid you have always made. (+0.35 mineral/s)',['rulechange'])
 E('patch_old_coppice','Patch: The Old Coppice',1,function(s){return H(s,4)},function(s){return patches(s)>=4&&netRep(s)>=T().A1.PATCH_GATE_REP[4]},function(s){claimPatch(s,5)},'Cut a hundred years ago by someone who did not write it down. (+1 patch, stump-rich)',['panel'])
@@ -1867,7 +1867,7 @@ E('sever_the_elm','Sever the Elm',1,{},function(s){return ap(s,function(c){var t
 return aJ(c)&&!!t&&t.species==='elm'&&num(t.health)<.15})},function(s){var i,c=contracts(s),t
 for(i=c.length-1;i>=0;i--){if(!aJ(c[i]))continue
 t=aW(s,c[i].treeId)
-if(t&&t.species==='elm'){bq(s,'minerals',num(c[i].collateral));c.splice(i,1)}}for(i=0;i<trees(s).length;i++)if(trees(s)[i].species==='elm')trees(s)[i].health=0},'It was going to die anyway. (No penalty)',['irreversible','event'],{note:I})
+if(t&&t.species==='elm'){br(s,'minerals',num(c[i].collateral));c.splice(i,1)}}for(i=0;i<trees(s).length;i++)if(trees(s)[i].species==='elm')trees(s)[i].health=0},'It was going to die anyway. (No penalty)',['irreversible','event'],{note:I})
 E('the_hollow_beech','The Hollow Beech',1,{sug:4e3},function(s){return year(s)>=2&&aK(s,function(t){return t.species==='beech'&&num(t.d)>=.85})},function(){},'It is enormous and it is empty and it will pay almost anything. Read the term length twice.',['trap'])
 E('anastomosis','Anastomosis',1,{g:2.6e5,min:900},function(s){return hyphae(s)>=T().A1.HYPHAE_GATE&&patches(s)>=4},function(s){mul(s.mult,'structureMult',1.25)},'Where two threads meet, they stop being two threads. (+25% throughput, pooled substrate)',['rulechange','panel'])
 E('action_potential','Action Potential',1,{g:9e5,min:4e3},function(s){return flag(s,'anastomosis')&&netRep(s)>=T().A1.ACTION_POTENTIAL_REP},function(){},'Something moved from one end of you to the other, and it was not food.',['panel'],{needs:av.signalA1})
@@ -1880,7 +1880,7 @@ s.a1.trees.length=0
 s.a1.contracts.length=0
 s.act=2
 s.phase='network'},'Stop tasting. Start knowing.',['irreversible','removes'],{pinned:!0,note:I})
-function bH(bR){return bR*T().A2.ACT2_SCALE}
+function bI(bS){return bS*T().A2.ACT2_SCALE}
 E('chemotaxis','Chemotaxis',2,{sig:200},function(s){return s.act===2},function(){},'Sense the gradient. Go up it.',['panel','verb'])
 E('apical_growth','Apical Growth',2,{sig:900},function(s){return P(s)>=2},function(s){mul(s.mult,'advanceSpeed',1.45)},'Grow only at the ends. (+45% advance speed)',['multiplier'])
 E('turgor','Turgor',2,{sig:1600},function(s){return!!s.stats.everSaturated},function(){},'The pressure has nowhere to go, so it becomes an opinion. (Unlocks Insight)',['panel','rulechange'])
@@ -1888,14 +1888,14 @@ E('primordium','Primordium',2,{psi:10},function(s){return s.res.insight>=T().A2.
 E('substrate_assay','Substrate Assay',2,{sig:2400},function(s){return ba(s)>=4},function(){},'Taste before you commit. (Enables SURVEY)',['verb','information'])
 E('action_potential_ii','Action Potential',2,{psi:45},function(s){return P(s)>=T().A2.ACTION_POTENTIAL_CLAIMED},function(){},'Say all of it at once, in one direction. (Unlocks PULSE)',['panel','verb'])
 E('differentiation','Differentiation',2,{sig:3200},function(s){return s.res.cumBiomass>=T().A2.D_TRIGGER},function(){},'Not every thread needs to do everything. (Unlocks Differentiation)',['panel'])
-E('manganese_peroxidase','Manganese Peroxidase',2,{psi:30,sig:6e3},function(s){return s.res.extracted>=bH(4e9)},function(s){mul(s.mult,'E',1.6)},'Rust, applied with intent. (+60% enzyme power)',['multiplier'])
+E('manganese_peroxidase','Manganese Peroxidase',2,{psi:30,sig:6e3},function(s){return s.res.extracted>=bI(4e9)},function(s){mul(s.mult,'E',1.6)},'Rust, applied with intent. (+60% enzyme power)',['multiplier'])
 E('rhizomorphs','Rhizomorphs',2,{psi:55},function(s){return P(s)>=6},function(s){mul(s.mult,'advCostMult',.82)},'Cables, not threads. (3 advances at once)',['rulechange'])
 E('anemophily','Anemophily',2,{psi:40},function(s){return s.res.spores>=5e4},function(){},'Let the weather carry it. You do not have to know where. (Ranged seeding)',['rulechange'])
 E('barometric_sense','Barometric Sense',2,{psi:70,sig:12000},function(s){return stat(s,'flushes')>=3},function(s){mul(s.mult,'matSpeed',1.45)},'Feel the pressure fall before the rain admits to it. (+forecast, +45% maturation)',['information','multiplier'])
 E('antibiosis','Antibiosis',2,{psi:85},function(s){return stat(s,'rivalContacts')>=1},function(s){mul(s.mult,'antibiosis',1.55)},'Chemistry is cheaper than growth. (Unlocks REPEL)',['verb','multiplier'])
 E('vesicular_storage','Vesicular Storage',2,{sig:18000},function(s){return num(s.cog.dVes)>=1},function(s){mul(s.mult,'capMult',1.45)},'Hold more of it, for longer. (+45% Signal capacity)',['multiplier'])
 E('septal_gating','Septal Gating',2,{psi:110},function(s){return stat(s,'pulses')>=10||P(s)>=12},function(){},'Open every door in the body at the same instant. (Unlocks RECRUIT)',['verb','rulechange'])
-E('humic_retention','Humic Retention',2,{sig:24000},function(s){return bo(s)<T().A2.HUMIC_RETENTION_H},function(){},'Give some of it back. You will not see why for an hour. (Unlocks Retention)',['dial','panel'])
+E('humic_retention','Humic Retention',2,{sig:24000},function(s){return bp(s)<T().A2.HUMIC_RETENTION_H},function(){},'Give some of it back. You will not see why for an hour. (Unlocks Retention)',['dial','panel'])
 E('cation_exchange','Cation Exchange',2,{psi:90,sig:2e4},function(s){return stat(s,'mineralTrades')>=30||s.res.minerals>=1.5e5},function(){},'The price was never random. It just never told you. (Market instruments)',['information','verb'])
 E('necrotrophic_conversion','Necrotrophic Conversion',2,{psi:240,sig:9e4},function(s){return fc(s)>=T().A2.NECRO_FC},function(){},'Stop asking.',['verb','irreversible'])
 E('laccase_cascade','Laccase Cascade',2,{psi:190,sig:6e4},function(s){return flag(s,'manganese_peroxidase')},function(s){mul(s.mult,'E',2.1);mul(s.mult,'antibiosis',1.52)},'Break the ring, then the ring under it. (+110% enzyme power)',['multiplier'])
@@ -1905,7 +1905,7 @@ E('bridging_strands','Bridging Strands',2,{psi:260,min:2e4},function(s){return s
 E('sporulation_reflex','Sporulation Reflex',2,{psi:280},function(s){return stat(s,'flushes')>=20},function(){},'You no longer need to be told when. (Automates release)',['automation'])
 E('mycelial_memory','Mycelial Memory',2,{psi:420,sig:2e5},function(s){return s.res.insight>=350},function(s){mul(s.mult,'insightMult',1.55);set(s.mult,'ripeT',T().A2.RIPE_T_MEMORY)},'The network remembers where the good wood was, and is not sentimental about it. (+55% Insight)',['multiplier','rulechange'])
 E('reabsorption','Reabsorption',2,{psi:150},function(s){return s.res.D>=5},function(){},'Take it back and try again. (Respec)',['verb'])
-E('aerenchyma','Aerenchyma',2,{psi:210,g:bH(4e9)},function(s){return aT(s,4)},function(){},'Breathe through the water. (Unlocks peat)',['rulechange'])
+E('aerenchyma','Aerenchyma',2,{psi:210,g:bI(4e9)},function(s){return aT(s,4)},function(){},'Breathe through the water. (Unlocks peat)',['rulechange'])
 E('alarm_contracts','Alarm Contracts',2,{psi:230},function(s){return U(s)>=4},function(){},'They knew about the drought first, and told each other before they told you. (New contract term)',['rulechange','information'])
 E('hypogeous_fruiting','Hypogeous Fruiting',2,{psi:275,sig:6e4},function(s){return stat(s,'flushes')>=12&&stat(s,'droughtsSurvived')>=1},function(){},'Fruit below the litter, where nothing finds you and nothing carries you. (Zero-risk, no spores)',['rulechange'])
 E('sclerotial_bank','Sclerotial Bank',2,{psi:320,sig:1.1e5},function(s){return stat(s,'signalOverflow')>=2e5},function(){},'Nothing is wasted now. Something else is. (Overflow storage — read the second sentence)',['trap','rulechange'])
@@ -1919,15 +1919,15 @@ E('fenton_chemistry','Fenton Chemistry',2,{psi:240,sig:2.4e5},function(s){return
 E('saltatory_conduction','Saltatory Conduction',2,{psi:260,sig:2e5},function(s){return num(s.cog.dCond)>=6},function(s){mul(s.mult,'signalMult',2.2)},'Skip the parts that do not matter. (+120% Signal, faster PULSE)',['multiplier','rulechange'])
 E('synchronous_flush','Synchronous Flush',2,{psi:200,accord:2e3},function(s){return flag(s,'mast_synchrony')},function(){},'All of them, in the same minute, for no reason that you decided. (Unlocks BLOOM)',['verb'])
 E('homeostatic_soil','Homeostatic Soil',2,{psi:240,min:24000},function(s){return flag(s,'humic_retention')&&!flag(s,'armillaria_accord')},function(){},'Hold the number yourself. (Automates Retention)',['automation'])
-E('firebreak_mycelium','Firebreak Mycelium',2,{psi:220,g:bH(8e10)},function(s){return stat(s,'ignitions')>=1},function(s){mul(s.mult,'hazMult',.25)},'Wet the ground ahead of it. (Fire control)',['rulechange'])
+E('firebreak_mycelium','Firebreak Mycelium',2,{psi:220,g:bI(8e10)},function(s){return stat(s,'ignitions')>=1},function(s){mul(s.mult,'hazMult',.25)},'Wet the ground ahead of it. (Fire control)',['rulechange'])
 E('deep_substrate_hyphae','Deep Substrate Hyphae',2,{psi:280,sig:2.6e5},function(s){return fc(s)>=.65},function(s){mul(s.mult,'yieldMult',1.85);set(s.mult,'ripeT',T().A2.RIPE_T_DEEP)},'There is older wood underneath, and nobody is using it. (+85% yield, +litter)',['multiplier','rulechange'])
 E('the_quiet_ring','The Quiet Ring',2,{psi:220,min:6e4},function(s){return fc(s)>=.55&&legacyLife(s)>=.45},function(){},'Seven stands that will outlive the decision you are about to make.',['irreversible','cost','removes'])
-E('the_charter','The Charter',2,{psi:260,g:bH(2.4e11)},function(s){return legacyLife(s)>=T().A2.CHARTER_LIFE&&fc(s)>=T().A2.PATH_FC},function(s){mul(s.mult,'yieldMult',2.4);set(s.carry,'pathFlag','symbiont')},'Terms, in perpetuity, with things that cannot read. (+140% yield on living stands)',['fork','irreversible'],{excludes:['total_conversion']})
-E('total_conversion','Total Conversion',2,{psi:260,g:bH(2.4e11)},function(s){return legacyLife(s)<=T().A2.CONVERSION_LIFE&&fc(s)>=T().A2.PATH_FC},function(s){mul(s.mult,'necroMult',3);set(s.carry,'pathFlag','necrotroph')},'There is no second forest.',['fork','irreversible'],{excludes:['the_charter']})
+E('the_charter','The Charter',2,{psi:260,g:bI(2.4e11)},function(s){return legacyLife(s)>=T().A2.CHARTER_LIFE&&fc(s)>=T().A2.PATH_FC},function(s){mul(s.mult,'yieldMult',2.4);set(s.carry,'pathFlag','symbiont')},'Terms, in perpetuity, with things that cannot read. (+140% yield on living stands)',['fork','irreversible'],{excludes:['total_conversion']})
+E('total_conversion','Total Conversion',2,{psi:260,g:bI(2.4e11)},function(s){return legacyLife(s)<=T().A2.CONVERSION_LIFE&&fc(s)>=T().A2.PATH_FC},function(s){mul(s.mult,'necroMult',3);set(s.carry,'pathFlag','necrotroph')},'There is no second forest.',['fork','irreversible'],{excludes:['the_charter']})
 E('ballistospory','Ballistospory',2,{psi:300,sig:2.8e5},function(s){return fc(s)>=.85},function(s){mul(s.mult,'sporeMult',2.8);mul(s.mult,'matSpeed',3.4)},'Fire them. Do not wait for wind. (Everything, faster)',['multiplier','rulechange'])
 E('photoreception','Photoreception',2,function(){return{psi:T().A2.PHOTO_COST}},function(s){return fc(s)>=T().A2.PHOTO_FC},function(){},'Learn to face the sky. (Signal floor)',['failsafe','rulechange'],{pinned:!0})
-E('seed_bank','Seed Bank',2,{psi:200,g:bH(3e11)},function(s){return fc(s)>=.75},function(){},'Nothing you make now is for you. (Labile carbon to spores)',['rulechange','verb'])
-E('ascospore_discharge','Ascospore Discharge',2,{sig:7e4,psi:350,g:bH(1.4e12),spore:2e8},function(s){return fc(s)>=T().A2.ASCOSPORE_FC},function(s){if(HY.forest&&HY.forest.ascospore){HY.forest.ascospore();return}var A=T().A2
+E('seed_bank','Seed Bank',2,{psi:200,g:bI(3e11)},function(s){return fc(s)>=.75},function(){},'Nothing you make now is for you. (Labile carbon to spores)',['rulechange','verb'])
+E('ascospore_discharge','Ascospore Discharge',2,{sig:7e4,psi:350,g:bI(1.4e12),spore:2e8},function(s){return fc(s)>=T().A2.ASCOSPORE_FC},function(s){if(HY.forest&&HY.forest.ascospore){HY.forest.ascospore();return}var A=T().A2
 C().setStock(s.carry,'sporeBank',num(s.res.spores)+Math.floor(num(s.res.biomass)/A.SPORE_DIVISOR))
 C().setStock(s.res,'biomass',0)
 C().setStock(s.res,'minerals',num(s.res.minerals)*A.ASCOSPORE_MINERALS)
@@ -1975,11 +1975,11 @@ E('escape_velocity','Escape Velocity',3,{carbon:9e17,sig:8e4},function(s){return
 for(i=0;i<s.a3.biomes.n.length;i++)s.a3.biomes.n[i]*=keep
 for(i=0;i<s.a3.bands.n.length;i++)s.a3.bands.n[i]*=keep
 s.phase='void'
-bO(s,'void_t')},'Leave nothing behind that can decide to stay.',['irreversible','removes'],{pinned:!0,also:function(s){return planetConsumed(s)>=T().A3.ESCAPE_PC}})
+bP(s,'void_t')},'Leave nothing behind that can decide to stay.',['irreversible','removes'],{pinned:!0,also:function(s){return planetConsumed(s)>=T().A3.ESCAPE_PC}})
 E('radial_survey','Radial Survey',3,{sig:7e3},function(s){return G(s)},function(){},'Look outward. It is all outward. (Unlocks the bands)',['panel','information'])
 E('thrust','Thrust',3,{sig:12000},function(s){return s.a3.bands.e[0]>=.25},function(){},'There is nothing to push against. Push anyway. (Unlocks DISPERSE)',['verb'])
 E('chemotropism','Chemotropism',3,{carbon:1.7e23},function(s){return z(s)>=2},function(s){mul(s.mult,'exploreMult',1.7)},'Follow the gradient across four light-years. (+70% exploration)',['multiplier'])
-E('sclerotial_coat','Sclerotial Coat',3,{carbon:1.3e23},function(s){return ao(s)>=.1*bN(s)&&ao(s)>0},function(){},'Harden. Wait. It is a long way. (-45% transit hazard)',['rulechange'])
+E('sclerotial_coat','Sclerotial Coat',3,{carbon:1.3e23},function(s){return ao(s)>=.1*bO(s)&&ao(s)>0},function(){},'Harden. Wait. It is a long way. (-45% transit hazard)',['rulechange'])
 E('recruit','Recruit',3,{carbon:4.6e23},function(s){return z(s)>=2&&ao(s)>0},function(){},'Tell the ones already moving to hurry. (Unlocks RECRUIT)',['verb'])
 E('hyphal_continuity','Hyphal Continuity',3,{carbon:2.4e25},function(s){return G(s)&&z(s)>=4},function(){},'A thought that takes a century is still a thought. (-22% pulse lag)',['rulechange'])
 E('pyomelanin','Pyomelanin',3,{carbon:2.4e27},function(s){return G(s)&&stat(s,'radiationHazards')>=20},function(s){if(s.a3.loci)s.a3.loci[ag]=s.a3.loci[ag]+1},'Black is not a colour. It is a decision. (+0.9 melanisation, no harvest cost)',['rulechange'])
@@ -2016,9 +2016,9 @@ E('the_fruiting_body','The Fruiting Body',3,function(){var A=T().A3;return{carbo
 return num(s.a3.upsilon)>=A.BODY_Y&&effFid(s)>=A.BODY_FID&&strains(s).length===0},note:'ϒ ≥ 0.97, Φ ≥ 0.985'})
 E('cede','Cede',3,{},function(s){var k=succ(s)
 if(!k||!k.sequenced)return!1
-return(s.t-num(k.born))>=T().A3.SUCC_CEDE_AGE&&bp(s)>=3*an(s)},function(s){s.stats.endingsReached+=1;s.phase='dismantle'},'It is not wrong.',['ending','irreversible'],{excludes:ac('cede'),note:I})
+return(s.t-num(k.born))>=T().A3.SUCC_CEDE_AGE&&bq(s)>=3*an(s)},function(s){s.stats.endingsReached+=1;s.phase='dismantle'},'It is not wrong.',['ending','irreversible'],{excludes:ac('cede'),note:I})
 E('encyst','Encyst',3,{},function(s){if(HY.bloom&&HY.bloom.stranded&&HY.bloom.stranded(s))return!0
-return G(s)&&(s.t-bA(s,'void_t'))>=T().A3.ENCYST_S},function(s){s.stats.endingsReached+=1;s.phase='dismantle'},'Stop here. Keep what you have.',['ending','failsafe','irreversible'],{excludes:ac('encyst'),pinned:!0,note:I})
+return G(s)&&(s.t-bB(s,'void_t'))>=T().A3.ENCYST_S},function(s){s.stats.endingsReached+=1;s.phase='dismantle'},'Stop here. Keep what you have.',['ending','failsafe','irreversible'],{excludes:ac('encyst'),pinned:!0,note:I})
 E('anti_organ','The Antiphonal Organ',3,{carbon:1.6e32},function(s){return aP(s)>=T().A3.ANTI_ORGAN_WILD},function(){},'Twenty-seven conversations, and no way to have them twice. (Unlocks the Antiphony)',['panel','verb'])
 E('drone_register','The Drone',3,{canon:620},function(s){return flag(s,'anti_organ')},function(){},'One note held under everything else. (New register)',['verb'])
 E('invert_register','The Inversion',3,{canon:900},function(s){return flag(s,'drone_register')},function(){},'Their line, upside down, given back. (New register)',['verb'])
@@ -2026,38 +2026,38 @@ E('the_offer','We Have Been Talking Without You',3,{},function(s){return!!succ(s
 var R={}
 var V={}
 var W=0
-var br=0
+var bs=0
 var pendingDt=-1
 function aW(s,id){var t=trees(s),i
 for(i=0;i<t.length;i++)if(t[i]&&t[i].id===id)return t[i]
 return null}
-function H(s,bK){var row=T().A1.PATCH[bK]
-var d=(s.proj.flags.util_alarm_target===bK)?T().A1.UTIL_ALARM_PRICE:1
+function H(s,bL){var row=T().A1.PATCH[bL]
+var d=(s.proj.flags.util_alarm_target===bL)?T().A1.UTIL_ALARM_PRICE:1
 return{g:row.biomass*d,min:row.minerals*d}}
 function utilisation(s){if(HY.act1&&HY.act1.utilisation)return num(HY.act1.utilisation(s))
 var A=T().A1
-var bs=A.FOREST_SUPPLY_BASE*Math.pow(patches(s),A.PATCH_SUPPLY_EXP)*A.SUSTAINABLE_FRAC
-if(!(bs>0))return 0
-var bU=A.TIP_THROUGHPUT*tips(s)*num(s.mult.enzymeMult)*num(s.mult.structureMult)
-return bU/bs}
+var bt=A.FOREST_SUPPLY_BASE*Math.pow(patches(s),A.PATCH_SUPPLY_EXP)*A.SUSTAINABLE_FRAC
+if(!(bt>0))return 0
+var bV=A.TIP_THROUGHPUT*tips(s)*num(s.mult.enzymeMult)*num(s.mult.structureMult)
+return bV/bt}
 function aj(s){var p=patches(s)
 return p<T().A1.PATCH_MAX?p:-1}
-function bn(s,dt){if(s.act!==1)return
+function bo(s,dt){if(s.act!==1)return
 var A=T().A1
-var bK=aj(s)
-if(bK<0||s.proj.flags.util_alarm_used_a1){W=0;return}var e=CATALOG[am[bK]]
+var bL=aj(s)
+if(bL<0||s.proj.flags.util_alarm_used_a1){W=0;return}var e=CATALOG[am[bL]]
 if(!e||(e.cost()&&ak(s,e))){W=0;return}if(utilisation(s)<=A.UTIL_ALARM){W=0;return}W+=dt
 if(W<A.UTIL_ALARM_S)return
 W=0
 s.proj.flags.util_alarm_used_a1=1
-s.proj.flags.util_alarm_target=bK
+s.proj.flags.util_alarm_target=bL
 if(!K(s,e.id))s.proj.seen.push(e.id)
 au(s,e.id)
 if(HY.log&&HY.log.logFire)HY.log.logFire('util_alarm')}
 var am={}
-function Y(){var bP=['patch_second_shadow','patch_windthrow_gap','patch_under_the_hemlocks','patch_old_coppice','patch_oak_rise']
+function Y(){var bQ=['patch_second_shadow','patch_windthrow_gap','patch_under_the_hemlocks','patch_old_coppice','patch_oak_rise']
 var i,j
-for(i=0;i<bP.length;i++){for(j=0;j<CATALOG.length;j++)if(CATALOG[j].id===bP[i])am[i+1]=j}}
+for(i=0;i<bQ.length;i++){for(j=0;j<CATALOG.length;j++)if(CATALOG[j].id===bQ[i])am[i+1]=j}}
 function K(s,id){return s.proj.seen.indexOf(id)>=0}
 function ay(s,id){return s.proj.queue.indexOf(id)>=0}
 function au(s,id){var i=s.proj.queue.indexOf(id)
@@ -2100,7 +2100,7 @@ if(!K(s,p.id))s.proj.seen.push(p.id)
 au(s,p.id)
 V[p.id]=!p.cost()
 return!0}
-function bh(s){var cap=T().PROJ.VISIBLE_CAP
+function bi(s){var cap=T().PROJ.VISIBLE_CAP
 for(var q=s.proj.queue.length-1;q>=0;q--){var e=J[s.proj.queue[q]]
 if(!e||(e.act>0&&e.act<s.act))s.proj.queue.splice(q,1)}if(!s.proj.queue.length)return
 s.proj.queue.sort(function(a,b){return ab(J[a]||{},s)-ab(J[b]||{},s)})
@@ -2110,10 +2110,10 @@ V[id]=!J[id].cost()}}
 function aq(p,s){try{return!!p.trigger(s)}catch(e){C().faults.count+=1;C().faults.last='trigger:'+p.id;return!1}}
 function aX(p){try{return!!p.cost()}catch(e){C().faults.count+=1;C().faults.last='cost:'+p.id;return!1}}
 function manageProjects(state){var s=state||S()
-var dt=pendingDt>=0?pendingDt:s.t-br
+var dt=pendingDt>=0?pendingDt:s.t-bs
 pendingDt=-1
 if(!(dt>=0)||dt>T().CLOCK.CATCHUP_MAX_DT)dt=0
-br=s.t
+bs=s.t
 al++
 var i,p
 for(i=0;i<CATALOG.length;i++){p=CATALOG[i]
@@ -2122,11 +2122,11 @@ if(K(s,p.id)||ay(s,p.id))continue
 if(!p.rearm&&s.proj.bought.indexOf(p.id)>=0)continue
 if(!aq(p,s))continue
 s.proj.seen.push(p.id)
-admit(s,p)}bn(s,dt)
-bh(s)
+admit(s,p)}bo(s,dt)
+bi(s)
 var r=L(s)
 for(i=0;i<r.length;i++)V[r[i].id]=!aX(r[i])}
-function bt(s){var B={res:{},mult:{},enzymeK:{},carry:{},cog:{},a1:{},a3:{}}
+function bu(s){var B={res:{},mult:{},enzymeK:{},carry:{},cog:{},a1:{},a3:{}}
 var k
 for(k in s.res)B.res[k]=s.res[k]
 for(k in s.mult)if(typeof s.mult[k]!=='object')B.mult[k]=s.mult[k]
@@ -2146,7 +2146,7 @@ B.a3.rich=Array.prototype.slice.call(s.a3.bands.rich)
 B.phase=s.phase
 B.act=s.act
 return B}
-function bB(s,B){var k
+function bC(s,B){var k
 for(k in B.res)s.res[k]=B.res[k]
 for(k in B.mult)s.mult[k]=B.mult[k]
 for(k in B.enzymeK)s.mult.enzymeK[k]=B.enzymeK[k]
@@ -2178,23 +2178,23 @@ if(!p.buyable)return!1
 if(!ak(s,p))return!1
 if(!aq(p,s))return!1
 if(!aX(p))return!1
-var B=bt(s)
-var bu=0,pr=priceOf(p,s),k
+var B=bu(s)
+var bv=0,pr=priceOf(p,s),k
 try{p.pay()
-p.effect(s)}catch(e){bB(s,B)
+p.effect(s)}catch(e){bC(s,B)
 C().faults.count+=1
 C().faults.last='effect:'+p.id
-return!1}for(k in pr)if(aD[k]&&k==='g')bu=pr[k]
+return!1}for(k in pr)if(aD[k]&&k==='g')bv=pr[k]
 s.proj.flags[p.id]=1
 s.stats.purchases+=1
-if(bu>s.stats.largestSinglePurchase)s.stats.largestSinglePurchase=bu
+if(bv>s.stats.largestSinglePurchase)s.stats.largestSinglePurchase=bv
 if(p.rearm){s.proj.uses[p.id]=num(s.proj.uses[p.id])+1
 var si=s.proj.seen.indexOf(p.id)
 if(si>=0)s.proj.seen.splice(si,1)}else if(s.proj.bought.indexOf(p.id)<0){s.proj.bought.push(p.id)}au(s,p.id)
 delete V[p.id]
 if(p.id==='patch_second_shadow'||p.id==='patch_windthrow_gap'||p.id==='patch_under_the_hemlocks'||p.id==='patch_old_coppice'||p.id==='patch_oak_rise'){delete s.proj.flags.util_alarm_target}if(p.excludes.length)ah(s,p)
 if(HY.log&&HY.log.logFire)HY.log.logFire('project.'+p.id)
-bh(s)
+bi(s)
 return!0}
 function visible(){var s=S()
 var r=L(s),i,pin=[],rest=[]
@@ -2217,7 +2217,7 @@ CATALOG.length=0
 for(var i=0;i<ALL.length;i++)CATALOG.push(ALL[i])
 for(i=0;i<ALL.length;i++){if(ALL[i].excludes.length&&s.proj.flags[ALL[i].id])ah(s,ALL[i])}V={}
 W=0
-br=s.t
+bs=s.t
 Y()
 return s}
 function tick(state,dt,at){pendingDt=typeof dt==='number'&&dt>=0?dt:-1
@@ -2227,10 +2227,10 @@ function serialise(){return null}
 function migrate(){return!0}
 function O(seed){var s=HY.state.newGame(seed||4242,null)
 var A=T(),i
-var bz=1e30
-s.res.biomass=bz;s.res.cumBiomass=bz;s.res.extracted=A.A2.EXTRACT_TARGET
-s.res.sugar=bz;s.res.minerals=bz;s.res.signal=bz;s.res.insight=bz
-s.res.spores=bz;s.res.accord=bz;s.res.alleles=bz;s.res.canon=bz
+var bA=1e30
+s.res.biomass=bA;s.res.cumBiomass=bA;s.res.extracted=A.A2.EXTRACT_TARGET
+s.res.sugar=bA;s.res.minerals=bA;s.res.signal=bA;s.res.insight=bA
+s.res.spores=bA;s.res.accord=bA;s.res.alleles=bA;s.res.canon=bA
 s.res.carbon=2e35;s.res.cumCarbon=2e35;s.res.D=A.A2.D_MAX
 for(var k in s.stats)if(typeof s.stats[k]==='number')s.stats[k]=1e6
 s.stats.everSaturated=!0
@@ -2265,17 +2265,17 @@ delete s.proj.flags.armillaria_accord
 s.proj.flags.void_t=0
 return s}
 function __selftest(){var f=[]
-function ok(cond,bS){if(!cond)f.push(bS)}
-function bi(a,b){return Math.abs(a-b)<=Math.max(1e-9,Math.abs(b)*.005)}
-var bv=HY.state.serialise()
+function ok(cond,bT){if(!cond)f.push(bT)}
+function bj(a,b){return Math.abs(a-b)<=Math.max(1e-9,Math.abs(b)*.005)}
+var bw=HY.state.serialise()
 var i,j,p,k
 try{var PJ=T().PROJ
 ok(ALL.length===PJ.COUNT,'catalog holds '+ALL.length+' entries, expected '+PJ.COUNT)
 ok(ALL.length===T().NUM.INT_MAX.projects,'catalog disagrees with NUM.INT_MAX.projects')
-var az={1:0,2:0,3:0},bP={},pinned=0
+var az={1:0,2:0,3:0},bQ={},pinned=0
 for(i=0;i<ALL.length;i++){p=ALL[i]
-ok(!bP[p.id],'duplicate id: '+p.id)
-bP[p.id]=1
+ok(!bQ[p.id],'duplicate id: '+p.id)
+bQ[p.id]=1
 ok(p.act===1||p.act===2||p.act===3,p.id+': act is '+p.act)
 az[p.act]+=1
 if(p.pinned)pinned+=1
@@ -2305,8 +2305,8 @@ for(k in pr){if(!Object.prototype.hasOwnProperty.call(pr,k))continue
 ok(!!aD[k],p.id+': price has '+k+', which is not a currency')
 if(!aD[k]||!(pr[k]>0))continue
 charged++
-var bQ=aD[k].write==='mass'?C().fmtMass(pr[k]):aD[k].write==='whole'?String(Math.round(pr[k]))+' '+aD[k].glyph:C().fmt(pr[k])+' '+aD[k].glyph
-ok(tag.indexOf(bQ)>=0,p.id+': priceTag "'+tag+'" does not print '+k+' as "'+bQ+'"')}ok(charged===0?tag.indexOf(aV)===0:tag.split(aw).length===charged,p.id+': priceTag "'+tag+'" states '+tag.split(aw).length+' costs, cost() charges '+charged)
+var bR=aD[k].write==='mass'?C().fmtMass(pr[k]):aD[k].write==='whole'?String(Math.round(pr[k]))+' '+aD[k].glyph:C().fmt(pr[k])+' '+aD[k].glyph
+ok(tag.indexOf(bR)>=0,p.id+': priceTag "'+tag+'" does not print '+k+' as "'+bR+'"')}ok(charged===0?tag.indexOf(aV)===0:tag.split(aw).length===charged,p.id+': priceTag "'+tag+'" states '+tag.split(aw).length+' costs, cost() charges '+charged)
 ok(!p.note||tag.indexOf(' ('+p.note+')')===tag.length-p.note.length-3,p.id+': note "'+p.note+'" is not on the end of "'+tag+'"')
 if(!p.buyable)ok(p.cost()===!1,p.id+': is unbuyable but cost() returned true')}var cold=HY.state.newGame(7,null)
 init(cold)
@@ -2341,8 +2341,10 @@ for(i=0;i<ALL.length;i++){p=ALL[i]
 var reachable=!1
 for(j=0;j<aa.length&&!reachable;j++){aa[j].act=p.act
 al++
-try{reachable=!!p.triggerRaw(aa[j])}catch(e){f.push(p.id+': trigger threw on probe '+j+': '+e)}}ok(reachable,p.id+' is unreachable: no probe state satisfies its trigger')}var bj=['reflex_arc','assay_plate','trade_memory','chemotropic_sensing','diel_rhythm','seasonal_forecast','action_potential']
-for(i=0;i<bj.length;i++){ok(!!(J[bj[i]]&&J[bj[i]].needs),bj[i]+' lost its capability gate: it can charge for a system nobody honours')}var wp=O(31)
+try{reachable=!!p.triggerRaw(aa[j])}catch(e){f.push(p.id+': trigger threw on probe '+j+': '+e)}}ok(reachable,p.id+' is unreachable: no probe state satisfies its trigger')}var bk=['reflex_arc','assay_plate','trade_memory','chemotropic_sensing','diel_rhythm','seasonal_forecast','action_potential']
+for(i=0;i<bk.length;i++){ok(!!(J[bk[i]]&&J[bk[i]].needs),bk[i]+' lost its capability gate: it can charge for a system nobody honours')}var bg=['reflex_arc','action_potential']
+for(i=0;i<bg.length;i++){p=J[bg[i]]
+ok(!!(p&&p.needs&&p.needs()),bg[i]+": its capability gate answers false — the reader it waits for has been "+'renamed or removed, and the project is now invisible for the rest of the run')}var wp=O(31)
 wp.act=1
 var F=[]
 for(i=0;i<ALL.length;i++){p=ALL[i]
@@ -2355,9 +2357,9 @@ HY.state.init(ws)
 init(ws)
 ws.res.biomass=1e9;ws.res.minerals=1e7
 for(i=0;i<F.length;i++){if(!K(ws,F[i]))ws.proj.seen.push(F[i])
-var bI=ws.res.biomass
+var bJ=ws.res.biomass
 ok(purchase(F[i])===!1,F[i]+' is withheld but took the money')
-ok(ws.res.biomass===bI,F[i]+' charged for a capability that is not built')
+ok(ws.res.biomass===bJ,F[i]+' charged for a capability that is not built')
 ok(!ws.proj.flags[F[i]],F[i]+' set its flag while withheld')}var s=HY.state.newGame(21,null)
 HY.state.init(s)
 init(s)
@@ -2381,16 +2383,16 @@ manageProjects(s)
 var before=s.res.biomass
 ok(purchase('rhizomorph_cords')===!0,'purchase(rhizomorph_cords) refused a legal buy')
 var aY=s.res.biomass
-var bC=s.mult.structureMult
-ok(bi(before-aY,900),'purchase did not deduct 900 g')
+var bD=s.mult.structureMult
+ok(bj(before-aY,900),'purchase did not deduct 900 g')
 ok(purchase('rhizomorph_cords')===!1,'a bought project was purchasable a second time')
-ok(s.res.biomass===aY&&s.mult.structureMult===bC,'the double-fire changed state: purchase is not idempotent')
+ok(s.res.biomass===aY&&s.mult.structureMult===bD,'the double-fire changed state: purchase is not idempotent')
 ok(isBought('rhizomorph_cords'),'isBought did not see the purchase')
 ok(s.proj.flags.rhizomorph_cords===1,'the purchase did not set its flag')
 s.res.biomass=10
-var bg=s.res.biomass
+var bh=s.res.biomass
 ok(purchase('assay_plate')===!1,'an unaffordable purchase succeeded')
-ok(s.res.biomass===bg,'a refused purchase still deducted')
+ok(s.res.biomass===bh,'a refused purchase still deducted')
 var w=HY.state.newGame(22,null)
 HY.state.init(w)
 init(w)
@@ -2398,12 +2400,12 @@ w.a1.sub.leaf=0;w.res.biomass=0;w.res.sugar=0;w.a1.tips=0
 w.a1.mkt[0].price=1;w.a1.mkt[0].stock=100
 manageProjects(w)
 ok(K(w,'windfall'),'WINDFALL did not arm against a destitute board')
-var bV=w.a1.netRep
+var bW=w.a1.netRep
 ok(purchase('windfall')===!0,'WINDFALL refused: '+JSON.stringify(priceOf(J.windfall,w)))
 ok(w.a1.sub.leaf>=T().A1.WINDFALL_LEAF,'WINDFALL did not grant leaf')
 ok(w.proj.uses.windfall===1,'WINDFALL did not count its use')
 ok(!K(w,'windfall'),'WINDFALL stayed revealed after firing; it cannot re-arm')
-ok(w.a1.netRep===bV,'the first WINDFALL at rep 0 was not free')
+ok(w.a1.netRep===bW,'the first WINDFALL at rep 0 was not free')
 w.a1.sub.leaf=0
 w.t+=T().A1.WINDFALL_FREE_S+1
 manageProjects(w)
@@ -2417,8 +2419,8 @@ d.a1.trees.push({id:1,species:'elm',health:.4,rep:30,d:.5})
 d.a1.contracts.push({id:1,treeId:1,sugarRate:8,mineralRate:3,termSeasons:4,collateral:10,delivered:0,shortfall:0,startT:0,endT:10,suspended:!1,state:aB})
 manageProjects(d)
 return d}
-var bw=['complete','defaulted','exited']
-for(i=0;i<bw.length;i++){ok(K(destitute(41+i,bw[i]),'windfall'),'WINDFALL did not arm beside a '+bw[i]+' contract: the failsafe can dead-end')}ok(!K(destitute(44,'active'),'windfall'),'WINDFALL armed for a player who is still being paid')
+var bx=['complete','defaulted','exited']
+for(i=0;i<bx.length;i++){ok(K(destitute(41+i,bx[i]),'windfall'),'WINDFALL did not arm beside a '+bx[i]+' contract: the failsafe can dead-end')}ok(!K(destitute(44,'active'),'windfall'),'WINDFALL armed for a player who is still being paid')
 var x=HY.state.newGame(23,null)
 HY.state.init(x)
 init(x)
@@ -2443,9 +2445,9 @@ var a=HY.state.newGame(24,null)
 HY.state.init(a)
 init(a)
 a.res.biomass=900
-ok(bi(affordRatio('rhizomorph_cords'),1),'affordRatio at exactly the price is not 1')
+ok(bj(affordRatio('rhizomorph_cords'),1),'affordRatio at exactly the price is not 1')
 a.res.biomass=1800
-ok(bi(affordRatio('rhizomorph_cords'),.5),'affordRatio is not cost/holding')
+ok(bj(affordRatio('rhizomorph_cords'),.5),'affordRatio is not cost/holding')
 a.res.biomass=0
 ok(affordRatio('rhizomorph_cords')===Infinity,'affordRatio at zero holding is not Infinity')
 ok(affordRatio('decide')===0,'a free project does not have affordRatio 0')
@@ -2473,7 +2475,7 @@ u.res.biomass=0
 for(i=0;i<T().A1.UTIL_ALARM_S+20;i++){u.t+=1;manageProjects(u)}ok(u.proj.flags.util_alarm_used_a1===1,'the utilisation alarm never fired')
 ok(u.proj.flags.util_alarm_target===1,'the alarm did not target the next territory rung')
 var disc=priceOf(J.patch_second_shadow,u)
-ok(bi(disc.g,T().A1.PATCH[1].biomass*T().A1.UTIL_ALARM_PRICE),'the alarm did not discount the rung to 0.60×')
+ok(bj(disc.g,T().A1.PATCH[1].biomass*T().A1.UTIL_ALARM_PRICE),'the alarm did not discount the rung to 0.60×')
 ok(K(u,'patch_second_shadow'),'the alarm did not force-reveal the rung')
 var r2=HY.state.newGame(27,null)
 HY.state.init(r2)
@@ -2495,10 +2497,10 @@ aZ.d[0]=.3
 aZ.terrain[0]=0
 aZ.sp0[0]=2;aZ.sp1[0]=0;aZ.w0[0]=.95
 aZ.T0[0]=1e9;aZ.T[0]=1e9
-var bk=num(HY.cognition.Sc(aI))
+var bl=num(HY.cognition.Sc(aI))
 var chemo=priceOf(J.chemotaxis,aI)
 ok(num(chemo.sig)>0,'chemotaxis lost its Σ price; the opening gate has no meaning')
-ok(num(chemo.sig)<=bk*.95,'chemotaxis ('+num(chemo.sig)+' Σ) does not fit the worst legal opening capacity ('+bk.toFixed(1)+' Σ): the Act I → II transition can hard-softlock again')}}catch(e){f.push('threw: '+(e&&e.stack?e.stack:e))}HY.state.importB64(HY.state.exportB64(HY.state.deserialise(bv)))
+ok(num(chemo.sig)<=bl*.95,'chemotaxis ('+num(chemo.sig)+' Σ) does not fit the worst legal opening capacity ('+bl.toFixed(1)+' Σ): the Act I → II transition can hard-softlock again')}}catch(e){f.push('threw: '+(e&&e.stack?e.stack:e))}HY.state.importB64(HY.state.exportB64(HY.state.deserialise(bw)))
 init(S())
 return f}
 function ab(p,s){if(!p||!p.price)return Infinity
@@ -2508,7 +2510,7 @@ held=aD[k].get(s)
 if(!(held>0))return Infinity
 worst=Math.max(worst,pr[k]/held)}return worst}
 Y()
-HY.projects={CATALOG:CATALOG,manageProjects:manageProjects,reveal:reveal,purchase:purchase,affordRatio:affordRatio,visible:visible,isBought:isBought,init:init,tick:tick,serialise:serialise,migrate:migrate,isDisabled:isDisabled,census:census,byId:function(id){return J[id]||null},priceOf:function(id){return priceOf(J[id],S())},holding:function(bL){return aD[bL]?num(aD[bL].get(S())):0},__selftest:__selftest}})(typeof window!=='undefined'?(window.HY=window.HY||{}):(globalThis.HY=globalThis.HY||{}))
+HY.projects={CATALOG:CATALOG,manageProjects:manageProjects,reveal:reveal,purchase:purchase,affordRatio:affordRatio,visible:visible,isBought:isBought,init:init,tick:tick,serialise:serialise,migrate:migrate,isDisabled:isDisabled,census:census,byId:function(id){return J[id]||null},priceOf:function(id){return priceOf(J[id],S())},holding:function(bM){return aD[bM]?num(aD[bM].get(S())):0},__selftest:__selftest}})(typeof window!=='undefined'?(window.HY=window.HY||{}):(globalThis.HY=globalThis.HY||{}))
 ;
 //js/act1.js
 ;(function(HY){'use strict'
@@ -3315,7 +3317,7 @@ elapsed=s.t
 if(out.firstTipAt<0&&num(s.res.biomass)>=tipCost(0)){out.firstTipAt=elapsed
 out.boughtFirst=buyTip()}else{while(buyTip()){}}if(out.tipsAt90===0&&elapsed>=90)out.tipsAt90=s.a1.tips
 if(out.tipsAt120===0&&elapsed>=120)out.tipsAt120=s.a1.tips}return out}
-HY.act1={onExtend:onExtend,tipCost:tipCost,tipMineralCost:tipMineralCost,buyTip:buyTip,deadhead:deadhead,canDeadhead:canDeadhead,pruneCount:pruneCount,pruneTissue:pruneTissue,concentration:concentration,throughputPerSec:throughputPerSec,stepDecomposition:stepDecomposition,stepSeason:stepSeason,rollEvents:rollEvents,moistureMult:moistureMult,tempMult:tempMult,claimPatch:claimPatch,hyphae:hyphae,decide:decide,init:init,tick:tick,serialise:serialise,migrate:migrate,stepEnvironment:stepEnvironment,stepSpoilage:stepSpoilage,stepClaim:stepClaim,stepNeighbours:stepNeighbours,sugarCap:sugarCap,totalSubstrate:totalSubstrate,consume:function(g){return consume(S(),g)},litterPerSec:litterPerSec,demandPerSec:demandPerSec,forestSupply:forestSupply,utilisation:utilisation,feedstockReserve:feedstockReserve,patchSupplyMult:patchSupplyMult,patchCapMult:patchCapMult,enzymeStructure:enzymeStructure,claimProgress:claimProgress,reveals:reveals,seasonName:seasonName,mineralMult:mineralMult,get starving(){return ak()},DECOMP:DECOMP,tapLitter:tapLitter,turgor:turgor,turgorRipeS:b,__selftest:__selftest}})(window.HY=window.HY||{})
+HY.act1={onExtend:onExtend,tipCost:tipCost,tipMineralCost:tipMineralCost,buyTip:buyTip,deadhead:deadhead,canDeadhead:canDeadhead,pruneCount:pruneCount,pruneTissue:pruneTissue,concentration:concentration,throughputPerSec:throughputPerSec,stepDecomposition:stepDecomposition,stepSeason:stepSeason,rollEvents:rollEvents,moistureMult:moistureMult,tempMult:tempMult,claimPatch:claimPatch,hyphae:hyphae,decide:decide,init:init,tick:tick,serialise:serialise,migrate:migrate,stepEnvironment:stepEnvironment,stepSpoilage:stepSpoilage,stepClaim:stepClaim,stepNeighbours:stepNeighbours,sugarCap:sugarCap,totalSubstrate:totalSubstrate,consume:function(g){return consume(S(),g)},litterPerSec:litterPerSec,demandPerSec:demandPerSec,forestSupply:forestSupply,utilisation:utilisation,feedstockReserve:feedstockReserve,patchSupplyMult:patchSupplyMult,patchCapMult:patchCapMult,enzymeStructure:enzymeStructure,claimProgress:claimProgress,reveals:reveals,seasonName:seasonName,mineralMult:mineralMult,get starving(){return ak()},DECOMP:DECOMP,tapLitter:tapLitter,turgor:turgor,holdExtend:function(st){return!!((st||S()).proj.flags.reflex_arc)},turgorRipeS:b,__selftest:__selftest}})(window.HY=window.HY||{})
 ;
 //js/economy1.js
 ;(function(HY){'use strict'
@@ -14155,12 +14157,12 @@ HY.canvas={growNetwork:growNetwork,drawNet:drawNet,ageWash:ageWash,drawMap:drawM
 ;(function(HY){'use strict'
 function C(){return HY.core}
 function T(){return HY.core.TUNE}
-function aw(){return HY.state}
+function ax(){return HY.state}
 function S(){return HY.state.state}
 function A1(){return HY.act1}
 function E1(){return HY.economy1}
 function PJ(){return HY.projects}
-function cu(){return HY.log}
+function cw(){return HY.log}
 function J(){return HY.canvas}
 function hu(){return HY.feel}
 var U={PLATE_FRAC:[.38,.22,.18],PLATE_MIN_PX:40,CONSOLE_ROWS:5,LEDGER_MAX_ROWS:4,D_PRESS:70,D_STATE:120,D_FADE:180,D_RELEASE:220,D_MOVE:240,D_REVEAL:320,D_ACT:2600,SEQ_DIM_MS:280,SEQ_END_MS:600,SHORT_EPS:.005,SHORT_HOLD_MS:1200,ROW_SEAT_PX:8,LONGPRESS_MS:420,LONGPRESS_SLOP_PX:10,PRESS_SLOP_PX:10,CHARGE_SLOP_PX:28,HAP_RIPE:5,DESTRUCT_MS:400,REPEAT_DELAY_MS:500,REPEAT_MS_1:167,REPEAT_MS_2:83,REPEAT_ACCEL_MS:1500,REPEAT_HAPTIC_EVERY:3,COST_SETTLE_MS:220,SWIPE_DISMISS_PX:96,TOAST_MS:2600,DOT_SEEN_MS:1200,DOT_SEEN_FRAC:.5,FLASH_GAIN_MS:150,FLASH_LOSS_MS:90,HAP_PRESS:8,HAP_REPEAT:4,HAP_HOLD:18,HAP_DESTRUCT:22,HAP_REVEAL:8,HAP_ERROR:4,HAP_ACT:[12,12,30],DISPLAY_MS:100,RATE_TAU_S:1.6,RATE_ZERO:1e-6,ARIA_STRIP_MS:3e3,ARIA_CANVAS_MS:5e3,ARIA_STATUS_MS:5e3,SCROLL_QUIET_MS:120,DPR_MAX:2,PIPS:5,ASCII_N:20,ASCII_FULL:'▓',ASCII_HEAD:'▒',ASCII_EMPTY:'░',SPARK:'▁▂▃▄▅▆▇█',SPARK_N:8,BURST_5_AT:5,BURST_MAX_AT:20,BURST_MAX_STEPS:64,MARKET_BUY_G:[1e3,1e4],MARKET_FRAC:.25,SUGAR_WARN_FRAC:.85,COVER_WARN:.75,SIGNAL_METER_AT:.5,SLIDER_STEPS:100,SOONER:-1,LATER:1,STANDS_SHOWN:10,FLUSH_BET_MAX:.25,FLUSH_BET_DEFAULT:.4,BANDS_SHOWN:13,COMMIT_DEFAULT:60,ALLOC_STEPS:20,ENGAGE_WARN:.9,STELLAR_WARN_S:40}
@@ -14173,23 +14175,23 @@ var B={biomass:'g',sugar:'sug',minerals:'⛬',signal:'Σ',insight:'Ψ',spores:'�
 var hs=B.sugar
 var bF=hs+'/s'
 var gB=hs+'/g'
-var bk={BAL:'ballistospory',GER:'germination',MYC:'myceliation',SPO:'sporulation',MEL:'melanisation',DOR:'dormancy',FID:'fidelity',ANT:'antagonism'}
+var bm={BAL:'ballistospory',GER:'germination',MYC:'myceliation',SPO:'sporulation',MEL:'melanisation',DOR:'dormancy',FID:'fidelity',ANT:'antagonism'}
 var eH={BAL:'reach further, arrive sooner, land worse',GER:'more of what lands takes hold',MYC:'harvest more, and burn a little of the armour for it',SPO:'replicate faster',MEL:'survive radiation and predation',DOR:'cheap to keep, slow to do anything',FID:'copies stay copies',ANT:'your craft fight back, and drift faster for it'}
 var TAB_SLOTS=[{key:'forest',label:'forest',label3:'void',d:['M12 3.5 L18.5 13.5 H5.5 Z','M12 13.5 V20.5'],d3:['M12 12 m-8.5 0 a8.5 8.5 0 1 0 17 0 a8.5 8.5 0 1 0 -17 0','M12 12 m-3.5 0 a3.5 3.5 0 1 0 7 0 a3.5 3.5 0 1 0 -7 0']},{key:'mind',label:'mind',label3:'genome',d:['M12 4.2 a2 2 0 1 0 .01 0 Z','M5.4 15.4 a2 2 0 1 0 .01 0 Z','M18.6 15.4 a2 2 0 1 0 .01 0 Z','M11.2 7.6 L6.6 13.6','M12.8 7.6 L17.4 13.6','M7.4 16.6 H16.6'],d3:['M8 4 C14 8, 14 16, 8 20','M16 4 C10 8, 10 16, 16 20','M9.4 8 H14.6','M9.4 16 H14.6']},{key:'flush',label:'flush',label3:'fleet',d:['M4.5 13.2 a7.5 5.4 0 0 1 15 0 Z','M10.2 13.2 V19 a1.8 1.8 0 0 0 3.6 0 V13.2'],d3:['M12 3.5 L15 11 L12 9.2 L9 11 Z','M12 12.5 V20.5']},{key:'pact',label:'pact',label3:'lineages',d:['M10 7.5 a4.5 4.5 0 0 0 0 9','M14 7.5 a4.5 4.5 0 0 1 0 9','M10 12 H14'],d3:['M12 4 V9','M12 9 L7 14 V20','M12 9 L17 14 V20']},{key:'log',label:'log',label3:'log',d:['M4.5 7.5 H19.5','M4.5 12 H19.5','M4.5 16.5 H13'],d3:['M4.5 7.5 H19.5','M4.5 12 H19.5','M4.5 16.5 H13']}]
 var eI=['M6 14.5 L12 8.5 L18 14.5']
 var fV=['M3 16 H8 L10.5 6 L14 18 L16.5 12 H21']
 var gP=['M12 9.4 a2.6 2.6 0 1 0 .01 0 Z','M12 3.6 v2','M12 18.4 v2','M3.6 12 h2','M18.4 12 h2','M6.1 6.1 l1.4 1.4','M16.5 16.5 l1.4 1.4','M17.9 6.1 l-1.4 1.4','M7.5 16.5 l-1.4 1.4']
 var fh='http://www.w3.org/2000/svg'
-function dS(){return typeof document==='undefined'?null:document}
+function dT(){return typeof document==='undefined'?null:document}
 function win(){return typeof window==='undefined'?null:window}
-function el(tag,gM,text){var n=dS().createElement(tag)
+function el(tag,gM,text){var n=dT().createElement(tag)
 if(gM)n.className=gM
 if(text!==undefined&&text!==null)n.textContent=String(text)
 return n}
 function btn(gM,text){var b=el('button',gM,text)
 b.type='button'
 return b}
-function aJ(gN,size){var s=dS().createElementNS(fh,'svg')
+function aJ(gN,size){var s=dT().createElementNS(fh,'svg')
 var i,p
 s.setAttribute('viewBox','0 0 24 24')
 s.setAttribute('width',String(size||24))
@@ -14201,7 +14203,7 @@ s.setAttribute('stroke-linecap','round')
 s.setAttribute('stroke-linejoin','round')
 s.setAttribute('aria-hidden','true')
 s.setAttribute('focusable','false')
-for(i=0;i<gN.length;i++){p=dS().createElementNS(fh,'path')
+for(i=0;i<gN.length;i++){p=dT().createElementNS(fh,'path')
 p.setAttribute('d',gN[i])
 s.appendChild(p)}return s}
 function on(node,ev,fn,passive){node.addEventListener(ev,fn,passive===!1?!1:{passive:!0})}
@@ -14215,7 +14217,7 @@ function show(node,fY){if(node.hidden===!fY)return;node.hidden=!fY}
 function gC(node){while(node.firstChild)node.removeChild(node.firstChild)}
 function fill(f){return C().clamp(f,0,1)}
 function num(v){return typeof v==='number'&&isFinite(v)?v:0}
-function ax(){var w=win()
+function ar(){var w=win()
 return(w&&w.performance&&w.performance.now)?w.performance.now():Date.now()}
 function interp(ir,tok){return ir.replace(/\{(\w+)\}/g,function(m,k){return tok[k]===undefined?m:String(tok[k])})}
 function whole(n){return String(Math.round(num(n)))}
@@ -14234,69 +14236,69 @@ if(s&&s.set&&s.set.haptics===!1)return
 if(M())return
 var n=typeof navigator==='undefined'?null:navigator
 if(n&&n.vibrate){try{n.vibrate(ms)}catch(e){}}}
-function dk(k,v){try{if(typeof localStorage!=='undefined')localStorage.setItem(k,v)}catch(e){}}
-function bm(k){try{return typeof localStorage!=='undefined'?localStorage.getItem(k):null}catch(e){return null}}
-function setTheme(t){var d=dS()
+function dl(k,v){try{if(typeof localStorage!=='undefined')localStorage.setItem(k,v)}catch(e){}}
+function bn(k){try{return typeof localStorage!=='undefined'?localStorage.getItem(k):null}catch(e){return null}}
+function setTheme(t){var d=dT()
 if(t!=='auto'&&t!=='dark'&&t!=='light')t='auto'
 if(d)d.documentElement.dataset.theme=t
 var s=E()
 if(s)s.set.theme=t
-dk('hyphae.theme',t)
+dl('hyphae.theme',t)
 return t}
-function aI(){var d=dS()
+function aI(){var d=dT()
 if(!d)return
 var s=E()
 var v=s&&s.set?s.set.reduceMotion:null
 if(v===!0)d.documentElement.dataset.motion='reduce'
 else if(v===!1)d.documentElement.dataset.motion='full'
 else delete d.documentElement.dataset.motion}
-function dT(aD){try{var cx=dS().createElement('canvas').getContext('2d')
+function dU(aD){try{var cx=dT().createElement('canvas').getContext('2d')
 if(!cx)return!0
 var f=getComputedStyle(aD).getPropertyValue('--font-ui')
 cx.font='500 17px '+(f||'sans-serif')
 return Math.abs(cx.measureText('111111').width-cx.measureText('000000').width)<.5}catch(e){return!0}}
 function scrolling(){return!!(view&&view.scrolling)}
-function F(node,fn,av){av=av||{}
-var mark=av.state||node
+function F(node,fn,aw){aw=aw||{}
+var mark=aw.state||node
 var down=!1
-var cF=!1
+var cG=!1
 var aF=!1
 var R=!1
 var bW=0
 var sx=0
 var sy=0
-function bX(){return R?(ax()-bW)/1e3:0}
+function bX(){return R?(ar()-bW)/1e3:0}
 function aR(hK){if(!R)return
 R=!1
-if(av.onCharge)av.onCharge(!1,hK)}
+if(aw.onCharge)aw.onCharge(!1,hK)}
 function fi(){if(!down)return
 down=!1
-cF=!1
+cG=!1
 aR(!1)
 setData(mark,'press','0')}
 on(node,'pointerdown',function(e){if(e.button)return
 down=!0
-cF=!0
-R=typeof av.charge==='function'?!!av.charge():!1
-aF=R||(typeof av.onUp==='function'?!!av.onUp():!!av.onUp)
+cG=!0
+R=typeof aw.charge==='function'?!!aw.charge():!1
+aF=R||(typeof aw.onUp==='function'?!!aw.onUp():!!aw.onUp)
 sx=e.clientX
 sy=e.clientY
-bW=ax()
+bW=ar()
 setData(mark,'press','1')
-if(!av.quiet)haptic(U.HAP_PRESS,av.feel||'ui.press')
-if(R&&av.onCharge)av.onCharge(!0,!1)
+if(!aw.quiet)haptic(U.HAP_PRESS,aw.feel||'ui.press')
+if(R&&aw.onCharge)aw.onCharge(!0,!1)
 if(!aF&&fn)fn(e)})
-on(node,'pointermove',function(e){if(!cF||!aF)return
+on(node,'pointermove',function(e){if(!cG||!aF)return
 var hR=R?U.CHARGE_SLOP_PX:U.PRESS_SLOP_PX
 if(Math.hypot(e.clientX-sx,e.clientY-sy)<=hR)return
-cF=!1
+cG=!1
 aR(!1)
 setData(mark,'press','0')})
 on(node,'pointerup',function(e){if(!down)return
-var go=cF&&aF&&!scrolling()
+var go=cG&&aF&&!scrolling()
 var held=bX()
 down=!1
-cF=!1
+cG=!1
 aR(go)
 setData(mark,'press','0')
 if(go&&fn)fn(e,held)})
@@ -14304,10 +14306,10 @@ on(node,'pointercancel',fi)
 on(node,'pointerleave',fi)
 on(node,'keydown',function(e){if((e.key!==' '&&e.key!=='Enter')||e.repeat)return
 e.preventDefault()
-R=typeof av.charge==='function'?!!av.charge():!1
-bW=ax()
+R=typeof aw.charge==='function'?!!aw.charge():!1
+bW=ar()
 setData(mark,'press','1')
-if(R&&av.onCharge)av.onCharge(!0,!1)
+if(R&&aw.onCharge)aw.onCharge(!0,!1)
 else if(fn)fn(e)},!1)
 on(node,'keyup',function(e){setData(mark,'press','0')
 if(!R||(e.key!==' '&&e.key!=='Enter'))return
@@ -14315,7 +14317,7 @@ var held=bX()
 aR(!0)
 if(fn)fn(e,held)})
 return node}
-function as(node,fn,fg){var mark=fg||node
+function au(node,fn,fg){var mark=fg||node
 var t=null
 var sx=0
 var sy=0
@@ -14335,7 +14337,7 @@ on(node,'pointercancel',cancel)
 on(node,'pointerleave',cancel)
 return node}
 function ay(node,fn){var t=null
-function dl(e){if(e&&e.button)return
+function dm(e){if(e&&e.button)return
 setData(node,'holding','1')
 t=setTimeout(function(){setData(node,'holding','0')
 haptic(U.HAP_DESTRUCT,'ui.destruct')
@@ -14343,14 +14345,14 @@ fn()},U.DESTRUCT_MS)}
 function bY(){if(t)clearTimeout(t)
 t=null
 setData(node,'holding','0')}
-on(node,'pointerdown',dl)
+on(node,'pointerdown',dm)
 on(node,'pointerup',bY)
 on(node,'pointercancel',bY)
 on(node,'pointerleave',bY)
-on(node,'keydown',function(e){if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();dl(null)}},!1)
+on(node,'keydown',function(e){if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();dm(null)}},!1)
 on(node,'keyup',bY)
 return node}
-function dU(node,fn,eG){var timer=null
+function dV(node,fn,eG){var timer=null
 var t0=0
 var count=0
 var held=!1
@@ -14363,7 +14365,7 @@ function step(){if(!eG()){bY();return}fn()
 held=!0
 count+=1
 if(count%U.REPEAT_HAPTIC_EVERY===0)haptic(U.HAP_REPEAT,'ui.repeat')
-var fast=(ax()-t0)>(U.REPEAT_DELAY_MS+U.REPEAT_ACCEL_MS)
+var fast=(ar()-t0)>(U.REPEAT_DELAY_MS+U.REPEAT_ACCEL_MS)
 timer=setTimeout(step,fast?U.REPEAT_MS_2:U.REPEAT_MS_1)}
 F(node,function(){if(held)return
 if(!eG()){refuse(node);return}fn()},{onUp:!0})
@@ -14371,7 +14373,7 @@ on(node,'pointerdown',function(e){if(e.button)return
 held=!1
 sx=e.clientX
 sy=e.clientY
-t0=ax()
+t0=ar()
 timer=setTimeout(step,U.REPEAT_DELAY_MS)})
 on(node,'pointermove',function(e){if(timer&&Math.hypot(e.clientX-sx,e.clientY-sy)>U.PRESS_SLOP_PX)bY()})
 on(node,'pointerup',bY)
@@ -14400,7 +14402,7 @@ if(!im||M())return
 setData(n.__u,'fade','in')
 if(n.__fadeT)clearTimeout(n.__fadeT)
 n.__fadeT=setTimeout(function(){delete n.__u.dataset.fade},U.D_FADE)}
-function ar(n,g){var p=P(C().fmtMass(g))
+function as(n,g){var p=P(C().fmtMass(g))
 setSlot(n,p[0],p[1])}
 function K(n,v,unit){var per=(unit||'')+'/s'
 var a=Math.abs(v)
@@ -14418,19 +14420,19 @@ if(f>=U.ASCII_N)return repeat(U.ASCII_FULL,U.ASCII_N)
 return repeat(U.ASCII_FULL,f)+U.ASCII_HEAD+repeat(U.ASCII_EMPTY,U.ASCII_N-f-1)}
 function fk(aQ){if(!aQ||!aQ.length)return''
 var n=Math.min(U.SPARK_N,aQ.length)
-var dl=aQ.length-n
+var dm=aQ.length-n
 var lo=Infinity
 var hi=-Infinity
 var i,v
-for(i=dl;i<aQ.length;i++){v=aQ[i]
+for(i=dm;i<aQ.length;i++){v=aQ[i]
 if(!(v>0))continue
 if(v<lo)lo=v
 if(v>hi)hi=v}if(!isFinite(lo)||!isFinite(hi))return''
 var span2=hi-lo
 var out=''
-for(i=dl;i<aQ.length;i++){v=span2>0?(aQ[i]-lo)/span2:.5
+for(i=dm;i<aQ.length;i++){v=span2>0?(aQ[i]-lo)/span2:.5
 out+=U.SPARK.charAt(C().clamp(Math.round(v*(U.SPARK.length-1)),0,U.SPARK.length-1))}return out}
-function bn(n,v,text){setAttr(n,'aria-valuenow',String(Math.round(fill(v)*100)))
+function bo(n,v,text){setAttr(n,'aria-valuenow',String(Math.round(fill(v)*100)))
 if(text)setAttr(n,'aria-valuetext',text)}
 function meter(kind,value){var n,f,i,pips
 if(kind==='pips'){n=el('div','pips')
@@ -14439,14 +14441,14 @@ for(i=0;i<U.PIPS;i++){pips.push(el('span','pip'))
 n.appendChild(pips[i])}n.set=function(v,tone,text){var k=Math.round(fill(v)*U.PIPS)
 for(var j=0;j<U.PIPS;j++)setData(pips[j],'on',j<k?'1':'0')
 if(tone)setData(n,'tone',tone)
-bn(n,v,text)}}else if(kind==='ascii'){n=el('span','ascii')
+bo(n,v,text)}}else if(kind==='ascii'){n=el('span','ascii')
 n.set=function(v,tone,text){setText(n,ascii(v))
-bn(n,v,text)}}else{n=el('div','meter')
+bo(n,v,text)}}else{n=el('div','meter')
 f=el('div','meter-fill')
 n.appendChild(f)
 n.set=function(v,tone,text,tick){f.style.setProperty('--v',fill(v).toFixed(4))
 if(tone!==undefined){if(tone)setData(n,'tone',tone)
-else delete n.dataset.tone}bn(n,v,text)
+else delete n.dataset.tone}bo(n,v,text)
 if(tick===undefined||tick===null)return
 if(!n.__tick){n.__tick=el('div','meter-tick')
 n.appendChild(n.__tick)}n.__tick.style.setProperty('--t',fill(tick).toFixed(4))}}n.setAttribute('role','progressbar')
@@ -14493,9 +14495,9 @@ n.__dotAt=0},seen:function(){if(dot)setData(dot,'seen','1')},isNew:function(){re
 if(spec.onPick)F(n,spec.onPick,{onUp:!0})
 return api}
 function row(spec){spec=spec||{}
-var dm=!!(spec.onPick||spec.expand)
+var dn=!!(spec.onPick||spec.expand)
 var n=el('div','row')
-var main=dm?btn('row-main'):null
+var main=dn?btn('row-main'):null
 if(main)n.appendChild(main)
 var H=main||n
 var expand=null
@@ -14514,8 +14516,8 @@ api.setExpanded(next)
 if(next&&spec.onOpen)spec.onOpen()}
 if(spec.expand){api.expander()
 F(main,toggle,{state:n})
-as(main,toggle,n)}else if(spec.onPick){F(main,spec.onPick,{state:n})
-if(spec.onHold)as(main,spec.onHold,n)}return api}
+au(main,toggle,n)}else if(spec.onPick){F(main,spec.onPick,{state:n})
+if(spec.onHold)au(main,spec.onHold,n)}return api}
 function span(parent,gM,text){var s=el('span',gM,text)
 parent.appendChild(s)
 return s}
@@ -14523,9 +14525,9 @@ function aK(node,word,value){if(!node.__word){node.textContent=''
 node.__word=span(node,'','')
 node.__price=span(node,'num','')}setText(node.__word,value?word+' · ':word)
 setText(node.__price,value||'')}
-function z(label,fn,av){var b=btn('act-btn',label)
+function z(label,fn,aw){var b=btn('act-btn',label)
 F(b,function(e){if(e&&e.stopPropagation)e.stopPropagation()
-fn(b)},{onUp:!(av&&av.instant)})
+fn(b)},{onUp:!(aw&&aw.instant)})
 return b}
 function seg(gz,current,onPick){var n=el('div','seg')
 n.setAttribute('role','group')
@@ -14587,13 +14589,13 @@ b.isOn=function(){return b.getAttribute('aria-pressed')==='true'}
 b.setNote=function(s){setText(n,s)}
 return b}
 var ah=null
-function dV(root){var list=root.querySelectorAll('button, input, select, textarea, [tabindex]')
+function dW(root){var list=root.querySelectorAll('button, input, select, textarea, [tabindex]')
 var out=[]
 var i
 for(i=0;i<list.length;i++){if(list[i].disabled||list[i].tabIndex<0)continue
 out.push(list[i])}return out}
 function sheet(spec){spec=spec||{}
-var H=view?view.shell:dS().body
+var H=view?view.shell:dT().body
 var scrim=el('div','scrim')
 var n=el('div','sheet')
 n.setAttribute('role','dialog')
@@ -14608,9 +14610,9 @@ n.appendChild(el('div','sheet-grab'))
 n.appendChild(title)
 n.appendChild(body)
 n.appendChild(foot)
-var cN=null
+var cO=null
 function gQ(){if(ah&&ah!==api)ah.close()
-cN=dS().activeElement
+cO=dT().activeElement
 H.appendChild(scrim)
 H.appendChild(n)
 void n.offsetHeight
@@ -14625,7 +14627,7 @@ if(view)view.main.removeAttribute('inert')
 ah=null
 setTimeout(function(){if(scrim.parentNode)scrim.parentNode.removeChild(scrim)
 if(n.parentNode)n.parentNode.removeChild(n)},U.D_MOVE)
-if(cN&&cN.focus)cN.focus()}
+if(cO&&cO.focus)cO.focus()}
 var api={el:n,body:body,foot:foot,open:gQ,close:bQ};(spec.buttons||[]).forEach(function(b){var button
 if(b.destructive){button=btn('sheet-btn hold')
 button.appendChild(el('span','hold-fill'))
@@ -14634,12 +14636,12 @@ ay(button,function(){b.onPick(api)})}else{button=btn('sheet-btn',b.label)
 F(button,function(){b.onPick(api)},{onUp:!0})}foot.appendChild(button)})
 if(!spec.destructive)F(scrim,bQ,{quiet:!0})
 on(n,'keydown',function(e){if(e.key==='Escape'){bQ();return}if(e.key!=='Tab')return
-var f=dV(n)
+var f=dW(n)
 if(!f.length)return
 var first=f[0]
 var last=f[f.length-1]
-if(e.shiftKey&&dS().activeElement===first){e.preventDefault()
-last.focus()}else if(!e.shiftKey&&dS().activeElement===last){e.preventDefault()
+if(e.shiftKey&&dT().activeElement===first){e.preventDefault()
+last.focus()}else if(!e.shiftKey&&dT().activeElement===last){e.preventDefault()
 first.focus()}},!1)
 var sy=0
 var bZ=!1
@@ -14650,7 +14652,7 @@ bZ=!1})
 if(spec.build)spec.build(body,api)
 return api}
 var G=null
-var dW=null
+var dX=null
 function toast(is,undo){if(!view)return null
 if(!G){G=el('div','toast')
 G.setAttribute('role','status')
@@ -14663,8 +14665,8 @@ F(u,function(){undo()
 setData(G,'open','0')},{onUp:!0})
 G.appendChild(u)
 G.__undo=u}setData(G,'open','1')
-if(dW)clearTimeout(dW)
-dW=setTimeout(function(){if(G)setData(G,'open','0')},U.TOAST_MS)
+if(dX)clearTimeout(dX)
+dX=setTimeout(function(){if(G)setData(G,'open','0')},U.TOAST_MS)
 return G}
 function announce(str){if(!view||!str)return
 var next=view.announcer.textContent===str?str+' ':str
@@ -14708,7 +14710,7 @@ pt.appendChild(aJ(eI,22))
 setAttr(pt,'aria-label',STR.collapseMap)
 setAttr(pt,'aria-expanded','true')
 pt.hidden=!0
-F(pt,dn,{onUp:!0})
+F(pt,dp,{onUp:!0})
 plate.appendChild(pt)
 v.plateToggle=pt
 v.plate=plate
@@ -14741,12 +14743,12 @@ v.heroCost.hidden=!0
 hero.appendChild(v.heroCost)
 var endbar=btn('endbar hold')
 endbar.appendChild(el('span','hold-fill'))
-var bo=el('span','hold-lab')
+var bp=el('span','hold-lab')
 v.endbarTitle=el('span','endbar-title','')
 v.endbarNote=el('span','endbar-note',STR.endTake)
-bo.appendChild(v.endbarTitle)
-bo.appendChild(v.endbarNote)
-endbar.appendChild(bo)
+bp.appendChild(v.endbarTitle)
+bp.appendChild(v.endbarNote)
+endbar.appendChild(bp)
 endbar.hidden=!0
 v.endbarKey=''
 ay(endbar,function(){var fin=hG()
@@ -14754,7 +14756,7 @@ if(v.endbarKey&&fin&&fin.takeEnding)fin.takeEnding(v.endbarKey)})
 v.endbar=endbar
 scroll.appendChild(endbar)
 v.hero=hero
-F(hero,gR,{feel:'extend',quiet:!0,onUp:function(){return aZ(E())!=='extend'},charge:aY,onCharge:dX})
+F(hero,gR,{feel:'extend',quiet:!0,onUp:function(){return ba(E())!=='extend'},charge:aZ,onCharge:dY})
 scroll.appendChild(hero)
 v.tailEl=el('div','tail')
 scroll.appendChild(v.tailEl)
@@ -14764,7 +14766,7 @@ var fab=btn('fab')
 fab.appendChild(aJ(fV,26))
 fab.hidden=!0
 F(fab,function(){firePulse(null)},{onUp:!0})
-as(fab,ce,fab)
+au(fab,cf,fab)
 v.fab=fab
 shell.appendChild(fab)
 var bar=el('nav','tabbar')
@@ -14816,44 +14818,50 @@ pos=pos==='top'?'top':'bottom'
 setData(view.shell,'console',pos)
 if(pos==='top')view.scroll.insertBefore(view.console,view.ledger)
 else view.shell.insertBefore(view.console,view.announcer)
-dk('hyphae.console',pos)
+dl('hyphae.console',pos)
 layout()
 return pos}
-function bp(){var w=win()
+function bq(){var w=win()
 var q=w&&w.location&&typeof w.location.search==='string'?w.location.search:''
 var m=/[?&]console=(top|bottom)/.exec(q)
 if(m)return m[1]
-return bm('hyphae.console')==='bottom'?'bottom':'top'}
+return bn('hyphae.console')==='bottom'?'bottom':'top'}
 var charge=null
 function extendMode(mode){if(!view)return'turgor'
 if(mode===undefined)return view.shell.dataset.verb||'turgor'
 mode=mode==='tap'?'tap':'turgor'
 setData(view.shell,'verb',mode)
-dk('hyphae.verb',mode)
+dl('hyphae.verb',mode)
 return mode}
-function bq(){var w=win()
+function br(){var w=win()
 var q=w&&w.location&&typeof w.location.search==='string'?w.location.search:''
 var m=/[?&]verb=(turgor|tap)/.exec(q)
 if(m)return m[1]
-return bm('hyphae.verb')==='tap'?'tap':'turgor'}
-function aY(){return extendMode()==='turgor'&&aZ(E())==='extend'&&!!(A1()&&A1().turgor)}
-function br(p){if(view)view.hero.style.setProperty('--turgor',p.toFixed(3))}
-function dX(on){if(!view)return
-if(on){charge={at:ax(),ripe:!1}
-br(0)
+return bn('hyphae.verb')==='tap'?'tap':'turgor'}
+function aZ(){return extendMode()==='turgor'&&ba(E())==='extend'&&!!(A1()&&A1().turgor)}
+function aS(p){if(view)view.hero.style.setProperty('--turgor',p.toFixed(3))}
+function dY(on){if(!view)return
+if(on){charge={at:ar(),ripe:!1,refused:!1}
+aS(0)
 setData(view.hero,'ripe','0')
 setData(view.hero,'charge','1')
 return
 }charge=null
 setData(view.hero,'charge','0')
 setData(view.hero,'ripe','0')
-br(0)
+aS(0)
 bG()}
 function stepCharge(){if(!charge||!view){bG();return}var a=A1()
-var p=Math.round((a&&a.turgor?a.turgor((ax()-charge.at)/1e3):0)*1e3)/1e3
+var p=Math.round((a&&a.turgor?a.turgor((ar()-charge.at)/1e3):0)*1e3)/1e3
 if(!charge.ripe&&p>=1){charge.ripe=!0
 setData(view.hero,'ripe','1')
-haptic(U.HAP_RIPE,'ripe')}br(M()?(charge.ripe?1:0):p)}
+haptic(U.HAP_RIPE,'ripe')
+if(a&&a.holdExtend&&a.holdExtend()){if(extend(a.turgorRipeS||1)){charge.at=ar()
+charge.ripe=!1
+setData(view.hero,'ripe','0')
+aS(0)
+return
+}if(!charge.refused){charge.refused=!0;cb()}}}aS(M()?(charge.ripe?1:0):p)}
 var az=[]
 function fo(){if(!charge||!view||!view.consoleInner)return
 var row=view.consoleInner.lastChild
@@ -14863,10 +14871,10 @@ az.push(row)}
 function bG(){if(!az.length)return
 for(var i=0;i<az.length;i++)delete az[i].dataset.held
 az.length=0}
-function cG(cv){if(!cv||cv.__sized||!(cv.clientHeight>0))return
+function cH(cv){if(!cv||cv.__sized||!(cv.clientHeight>0))return
 cv.__sized=1
-aU(cv)}
-function aU(cv){var w=cv.clientWidth
+aV(cv)}
+function aV(cv){var w=cv.clientWidth
 var h=cv.clientHeight
 if(!(w>0&&h>0))return
 var hP=Math.min((win()&&win().devicePixelRatio)||1,U.DPR_MAX)
@@ -14883,24 +14891,24 @@ var w=win()
 var h=view.shell.clientHeight||(w?w.innerHeight:780)
 var px=Math.max(U.PLATE_MIN_PX,Math.round(h*U.PLATE_FRAC[view.stage]))
 if(px!==view.plateH){view.plateH=px
-view.shell.style.setProperty('--plate-px',px+'px')}aU(view.net)
-aU(view.flux)}
-function mount(root){var d=dS()
+view.shell.style.setProperty('--plate-px',px+'px')}aV(view.net)
+aV(view.flux)}
+function mount(root){var d=dT()
 if(!d)return null
 root=root||d.getElementById('app')||d.body
 gC(root)
 view=ca(root)
-bg(view)
+bj(view)
 var s=E()
-setTheme(bm('hyphae.theme')||(s?s.set.theme:'auto'))
-consolePos(bp())
-extendMode(bq())
+setTheme(bn('hyphae.theme')||(s?s.set.theme:'auto'))
+consolePos(bq())
+extendMode(br())
 aI()
-if(bm('hyphae.verbose')==='1')verbose=!0
-if(!dT(d.body))d.documentElement.dataset.numfont='mono'
-if(cu()&&cu().mount)cu().mount(view.consoleInner)
-if(cu()&&cu().onLine)cu().onLine(fo)
-if(cu()&&cu().hostSequence)cu().hostSequence(gx)
+if(bn('hyphae.verbose')==='1')verbose=!0
+if(!dU(d.body))d.documentElement.dataset.numfont='mono'
+if(cw()&&cw().mount)cw().mount(view.consoleInner)
+if(cw()&&cw().onLine)cw().onLine(fo)
+if(cw()&&cw().hostSequence)cw().hostSequence(gx)
 d.addEventListener('scroll',function(e){if(!view)return
 if(e.target===view.stack){setData(view.ledger,'scrolled',view.stack.scrollTop>0?'1':'0')}view.scrolling=!0
 if(view.scrollT)clearTimeout(view.scrollT)
@@ -14910,7 +14918,7 @@ if(w){on(w,'resize',layout)
 on(w,'orientationchange',layout)}layout()
 if(HY.loop&&HY.loop.onFrame){HY.loop.onFrame(function(){stepCharge();render(E())})}render(s)
 return view}
-function aZ(s){if(!s)return null
+function ba(s){if(!s)return null
 if(s.act===1)return'extend'
 if(s.act>=3){var fin=HY.finale
 var e=fin&&fin.ending?fin.ending(s):null
@@ -14918,16 +14926,16 @@ if(e&&e.button)return'newgrowth'
 if(s.phase==='canopy')return'settle'}return null}
 function gR(e,bX){var s=E()
 if(!s)return
-if(cu()&&cu().notifyInput)cu().notifyInput()
-var verb=aZ(s)
-if(verb==='extend'&&A1()&&A1().onExtend){if(!extend(bX))dY()}else if(verb==='settle'&&HY.bloom)commit(function(){return HY.bloom.settle()})
+if(cw()&&cw().notifyInput)cw().notifyInput()
+var verb=ba(s)
+if(verb==='extend'&&A1()&&A1().onExtend){if(!extend(bX))cb()}else if(verb==='settle'&&HY.bloom)commit(function(){return HY.bloom.settle()})
 else if(verb==='newgrowth'&&HY.finale&&HY.finale.newGrowth)HY.finale.newGrowth()
 if(!hu())haptic(U.HAP_PRESS,'extend')}
 function ep(gO){if(!view||!gO||!view.stack)return
 var st=view.stack
 var y=gO.getBoundingClientRect().top-st.getBoundingClientRect().top+st.scrollTop-U.ROW_SEAT_PX
 st.scrollTop=Math.max(0,y)}
-function dY(){if(!view)return
+function cb(){if(!view)return
 if(!view.hero.dataset.short)view.hero.dataset.short=STR.floorBare
 refuse(view.hero)
 setData(view.hero,'refuse','1')
@@ -14957,7 +14965,7 @@ if(!a)return 0
 var done=commit(function(){var k=0
 for(var i=0;i<n;i++){if(!a.buyTip())break
 k+=1}return k})
-if(done)cc()
+if(done)ce()
 return done}
 function bH(type,dir){var s=E()
 if(!s||s.act!==1)return!1
@@ -14969,12 +14977,12 @@ var io=o[i]
 o[i]=o[j]
 o[j]=io
 return!0}
-function dn(){if(!view)return!1
+function dp(){if(!view)return!1
 var min=view.shell.dataset.plate==='min'
-ba(!min)
-dk('hyphae.plate',min?'open':'min')
+bc(!min)
+dl('hyphae.plate',min?'open':'min')
 return!min}
-function ba(min){if(!view)return
+function bc(min){if(!view)return
 if(min)setData(view.shell,'plate','min')
 else delete view.shell.dataset.plate
 setAttr(view.plateToggle,'aria-label',min?STR.expandMap:STR.collapseMap)
@@ -14989,11 +14997,11 @@ if(sel&&t.badge){t.el.removeChild(t.badge)
 t.badge=null}})
 return id}
 function revealTab(id){if(!view)return!1
-var dp=null
-view.tabs.forEach(function(x){if(x.key===id)dp=x})
-if(!dp||dp.earned)return!1
-dp.earned=!0
-setData(dp.el,'earned','1')
+var dq=null
+view.tabs.forEach(function(x){if(x.key===id)dq=x})
+if(!dq||dq.earned)return!1
+dq.earned=!0
+setData(dq.el,'earned','1')
 if(!view.tab)setTab(id)
 return!0}
 function revealPanel(id){if(!view)return null
@@ -15012,7 +15020,7 @@ view.tabs.forEach(function(t){if(t.key!==id)return
 t.earned=!1
 delete t.el.dataset.earned
 if(view.tab===id)setTab('log')})}
-function setAct(n){var d=dS()
+function setAct(n){var d=dT()
 if(!d||!view)return n
 var was=view.act
 view.act=n
@@ -15022,20 +15030,20 @@ view.stage=0
 setData(view.shell,'stage','0')
 show(view.tabbar,!1)
 show(view.plateToggle,!1)
-ba(!1)
+bc(!1)
 view.plateShown=!1
 view.plateRecalled=!1
 view.tabs.forEach(function(t){t.earned=!1
 delete t.el.dataset.earned
 setText(t.lab,t.spec.label)})
 view.tab=null
-cH(view,!0)
+cI(view,!0)
 layout()
 return n}if(n>=2){view.stage=2
 setData(view.shell,'stage','2')
 show(view.tabbar,!0)
 show(view.plateToggle,!0)
-ba(bm('hyphae.plate')==='min')
+bc(bn('hyphae.plate')==='min')
 view.plateShown=!0
 view.plateRecalled=!0
 layout()}if(n>=3){d.documentElement.dataset.act='3'
@@ -15074,7 +15082,7 @@ r.last=value
 r.step=0
 r.v+=(hS-r.v)*(1-Math.exp(-dt/U.RATE_TAU_S))}
 function ac(v,key){return v.rates[key]?v.rates[key].v:0}
-function dq(v,s){var hv=num(s.t)
+function dr(v,s){var hv=num(s.t)
 var dt=hv-v.lastRateT
 v.lastRateT=hv
 if(dt<0){v.rates={};return}for(var i=0;i<Z.length;i++)rate(v,Z[i],num(s.res[Z[i]]),dt)
@@ -15086,18 +15094,18 @@ if(!view||!s)return fn()
 var before=[]
 var i,r
 for(i=0;i<Z.length;i++)before.push(num(s.res[Z[i]]))
-var dr=num(HY.state.standing(s))
+var ds=num(HY.state.standing(s))
 var out=fn()
 for(i=0;i<Z.length;i++){r=view.rates[Z[i]]
 if(r)r.step+=num(s.res[Z[i]])-before[i]}r=view.rates.standing
-if(r)r.step+=num(HY.state.standing(s))-dr
+if(r)r.step+=num(HY.state.standing(s))-ds
 return out}
 function stage(v,s,rev){var want=s.act>=2?2:(rev.market?1:0)
-var cO=want===2||(want===1&&!!rev.trees)
-if(cO!==v.plateShown){v.plateShown=cO
-show(v.plateToggle,cO)
-if(cO&&!v.plateRecalled){v.plateRecalled=!0
-if(bm('hyphae.plate')==='min')ba(!0)}}if(want===v.stage)return
+var cP=want===2||(want===1&&!!rev.trees)
+if(cP!==v.plateShown){v.plateShown=cP
+show(v.plateToggle,cP)
+if(cP&&!v.plateRecalled){v.plateRecalled=!0
+if(bn('hyphae.plate')==='min')bc(!0)}}if(want===v.stage)return
 v.stage=want
 setData(v.shell,'stage',String(want))
 layout()}
@@ -15123,15 +15131,15 @@ return
 }var strip=d.indexOf('strip')>=0
 setData(v.shell,'dismantle',strip?'strip':String(d.length))
 setData(v.shell,'ending',taken&&strip?'1':'0')
-for(var i=0;i<d.length;i++){if(au[d[i]])bs(au[d[i]])}}
-function cb(r,g,on){if(!on){if(r.pool)show(r.pool,!1);return}if(!r.pool){r.pool=el('div','ledger-sub')
+for(var i=0;i<d.length;i++){if(av[d[i]])bs(av[d[i]])}}
+function cc(r,g,on){if(!on){if(r.pool)show(r.pool,!1);return}if(!r.pool){r.pool=el('div','ledger-sub')
 r.pool.dataset.kind='pool'
 r.pool.appendChild(el('span','ledger-lab',STR.labile))
 r.poolVal=slot('row-num')
 r.pool.appendChild(r.poolVal)
 r.el.parentNode.insertBefore(r.pool,r.el.nextSibling)}show(r.pool,!0)
-ar(r.poolVal,g)}
-function cc(){if(!view)return
+as(r.poolVal,g)}
+function ce(){if(!view)return
 var r=view.ledgerRows[0]
 an(r.poolVal&&r.pool&&!r.pool.hidden?r.poolVal:r.val,'loss')}
 function eL(){if(!view)return
@@ -15143,14 +15151,14 @@ r.el.parentNode.insertBefore(r.sub,r.el.nextSibling)}show(r.sub,!0)
 setText(r.sub,'− '+C().fmt(rot)+' '+bF+' ('+STR.rot+')')
 return
 }if(r.sub)show(r.sub,!1)}
-function cw(v,s,rev){var g=HY.cognition
+function cy(v,s,rev){var g=HY.cognition
 var shown=2
 var r0=v.ledgerRows[0]
 show(r0.el,!0)
 setText(r0.lab,STR.biomass)
-ar(r0.val,num(HY.state.standing(s)))
+as(r0.val,num(HY.state.standing(s)))
 K(r0.rate,ac(v,'standing'),B.biomass)
-cb(r0,num(s.res.biomass),!0)
+cc(r0,num(s.res.biomass),!0)
 setData(r0.el,'lead','1')
 var r1=v.ledgerRows[1]
 show(r1.el,!0)
@@ -15180,7 +15188,7 @@ K(r3.rate,ac(v,'minerals'),B.minerals)
 show(v.gear,!0)
 setData(v.ledger,'gear','1')
 return shown}
-function cy(v,s,rev){var g=HY.cognition
+function cz(v,s,rev){var g=HY.cognition
 var bl=HY.bloom
 var r0=v.ledgerRows[0]
 show(r0.el,!0)
@@ -15189,7 +15197,7 @@ setSlot(r0.val,C().fmt(num(s.res.carbon)),B.carbon)
 K(r0.rate,ac(v,'carbon'),B.carbon)
 setData(r0.el,'lead','1')
 if(r0.sub)show(r0.sub,!1)
-cb(r0,0,!1)
+cc(r0,0,!1)
 var r1=v.ledgerRows[1]
 show(r1.el,!0)
 setText(r1.lab,STR.p_signal)
@@ -15215,15 +15223,15 @@ K(r3.rate,g&&g.insightRate?num(g.insightRate(s)):0,B.insight)
 show(v.gear,!0)
 setData(v.ledger,'gear','1')
 return 4}
-function N(v,s,rev){if(s.act>=3)return cy(v,s,rev)
-if(s.act>=2)return cw(v,s,rev)
+function N(v,s,rev){if(s.act>=3)return cz(v,s,rev)
+if(s.act>=2)return cy(v,s,rev)
 var shown=1
 var r0=v.ledgerRows[0]
 show(r0.el,!0)
 setText(r0.lab,STR.biomass)
-ar(r0.val,num(HY.state.standing(s)))
+as(r0.val,num(HY.state.standing(s)))
 K(r0.rate,ac(v,'standing'),B.biomass)
-cb(r0,num(s.res.biomass),!!rev.tips)
+cc(r0,num(s.res.biomass),!!rev.tips)
 var r1=v.ledgerRows[1]
 if(rev.sugar){shown+=1
 show(r1.el,!0)
@@ -15255,10 +15263,10 @@ else setSlot(r3.rate,STR.nothing,'')
 setData(r3.rate,'sign','zero')}}else{show(r3.el,!1)}setData(r0.el,'lead',shown===1?'solo':'1')
 show(v.gear,shown>1)
 setData(v.ledger,'gear',shown>1?'1':'0')}
-function cH(v,pinned){var want=pinned?v.scroll:v.stack
+function cI(v,pinned){var want=pinned?v.scroll:v.stack
 if(v.hero.parentNode===want)return
 want.insertBefore(v.hero,pinned?v.tailEl:null)}
-function cI(v,s){var verb=aZ(s)
+function cJ(v,s){var verb=ba(s)
 var state='idle'
 var label=STR.extend
 if(verb==='settle'){label=STR.settle
@@ -15270,13 +15278,13 @@ if(verb==='settle')setText(v.heroCost,C().fmt(num(s.res.spores))+' '+B.spores)
 else if(bare)setText(v.heroCost,STR.floorBare)
 if(bare)v.hero.dataset.short=STR.floorBare
 else if(v.hero.dataset.short)delete v.hero.dataset.short
-cH(v,!!verb)
+cI(v,!!verb)
 show(v.hero,!!verb)
 setData(v.hero,'state',state)
 setAttr(v.hero,'aria-label',verb==='settle'?label+', '+C().fmt(num(s.res.spores))+' '+B.spores:(bare?label+', '+STR.floorBare:label))
-ds(v,s)
+du(v,s)
 fp(v,s)}
-function ds(v,s){var fin=hG()
+function du(v,s){var fin=hG()
 var pick=null
 if(s&&s.act>=3&&fin&&fin.endings&&!(fin.ending&&fin.ending(s)&&fin.ending(s).key)){var list=fin.endings(s)
 for(var i=0;i<list.length;i++){if(list[i].key==='ENCYST')continue
@@ -15316,7 +15324,7 @@ if(!m)return!1
 var ii=commit(function(){return g.pulse(m,pulseEpicentre(s))})
 if(ii){haptic(U.HAP_HOLD,'ui.pulse')
 s.stats.pulses=num(s.stats.pulses)+1}else{haptic(U.HAP_ERROR,'ui.error')}return ii}
-function ce(){var s=E()
+function cf(){var s=E()
 var g=HY.cognition
 if(!s||!g)return
 var list=g.modes(s)
@@ -15358,7 +15366,7 @@ return
 }var m=A1()&&A1().hyphae?A1().hyphae():0
 setAttr(v.flux,'aria-label',C().fmt(m)+' metres of thread, '+C().fmt(s.a1.tips)+' tips, '+(ac(v,'standing')>0?'growing':'still'))}
 var verbose=!1
-function du(v,s){var g=HY.cognition
+function dw(v,s){var g=HY.cognition
 var bl=HY.bloom
 if(s.act>=3){setText(v.statusVh,STR.carbon+' '+C().fmt(num(s.res.carbon))+'. '+STR.craft+' '+C().fmt(bl&&bl.totalCraft?num(bl.totalCraft(s)):0)+'. '+STR.surplus+' '+aH(bl&&bl.Lambda?num(bl.Lambda(s)):0)+' per second.')
 return
@@ -15389,33 +15397,33 @@ function display(v,s,t){if(t-v.lastDisplay<U.DISPLAY_MS)return
 v.lastDisplay=t
 var rev=bI(s)
 v.rev=rev
-dq(v,s)
+dr(v,s)
 stage(v,s,rev)
 tabs(v,s,rev)
 v.order.forEach(function(id){var p=v.panels[id]
 if(p.need(s,rev)&&!p.shown)revealPanel(id)
 if(!p.shown)return
-var on=dw(v,p,s)
+var on=dx(v,p,s)
 show(p.view.el,on)
 if(on)p.sync(s,rev)})
-cI(v,s)
+cJ(v,s)
 if(t-v.lastAria>=U.ARIA_STRIP_MS){v.lastAria=t
 eM(v,s)}if(t-v.lastCanvasAria>=U.ARIA_CANVAS_MS){v.lastCanvasAria=t
 bN(v,s)}if(verbose&&t-v.lastStatus>=U.ARIA_STATUS_MS){v.lastStatus=t
-du(v,s)}fX(v,t)}
+dw(v,s)}fX(v,t)}
 function render(s){if(!view)return
 s=s||E()
 if(!s)return
-var t=ax()
+var t=ar()
 display(view,s,t)
 N(view,s,view.rev||bt)
 eN(view)
 var cv=J()
 if(!cv)return
 if(s.act>=3){if(cv.drawVoid)cv.drawVoid(eB(s))}else if(s.act>=2){if(cv.drawMap&&s.a2)cv.drawMap(s.a2.regions)}else{if(cv.growNetwork&&A1()&&A1().hyphae)cv.growNetwork(A1().hyphae())
-if(cv.drawNet)cv.drawNet()}if(view.tab==='flush'&&s.act===2&&cv.drawForecast&&HY.flush&&HY.flush.strip){cG(view.forecastEl)
+if(cv.drawNet)cv.drawNet()}if(view.tab==='flush'&&s.act===2&&cv.drawForecast&&HY.flush&&HY.flush.strip){cH(view.forecastEl)
 if(view.forecastEl&&view.forecastEl.__sized)cv.drawForecast(HY.flush.strip())}if(view.tab==='forest'&&s.act>=3&&cv.drawWheel&&HY.finale&&HY.finale.wheel){var wh=HY.finale.wheel(s)
-if(wh&&wh.live){cG(view.wheel)
+if(wh&&wh.live){cH(view.wheel)
 cv.drawWheel(wh.phases,wh.mass)}}if(!view.scrolling&&cv.drawFlux)cv.drawFlux(t)}
 function def(v,id,need,build,tab,live){var p={id:id,shown:!1,view:null,tab:tab||null,sync:function(){},live:live||null}
 p.need=function(s,rev){var fY=need(s,rev)
@@ -15423,19 +15431,19 @@ if(fY&&!p.view){p.view=build(v,p)
 p.sync=p.__sync}return fY}
 v.panels[id]=p
 v.order.push(id)}
-function dw(v,p,s){if(p.live&&!p.live(s,v.rev||bt))return!1
+function dx(v,p,s){if(p.live&&!p.live(s,v.rev||bt))return!1
 if(s.act<2)return!0
 return p.tab===v.tab}
-var au={lineages:'pact',genome:'mind',fleet:'flush',void:'forest'}
+var av={lineages:'pact',genome:'mind',fleet:'flush',void:'forest'}
 function Y(rev,tab){var d=rev&&rev.dismantle
 var i
 if(!d||!d.length)return!1
-for(i=0;i<d.length;i++)if(au[d[i]]===tab)return!0
+for(i=0;i<d.length;i++)if(av[d[i]]===tab)return!0
 return!1}
 function ea(s){return s.act===1}
 function bJ(s){return s.act===2}
-function aV(tab){return function(s,rev){return s.act>=3&&!Y(rev,tab)}}
-function dx(s,rev){if(!rev.projects)return!1
+function aW(tab){return function(s,rev){return s.act>=3&&!Y(rev,tab)}}
+function dy(s,rev){if(!rev.projects)return!1
 if(s.a1.patches>1||s.a1.claimInFlight)return!0
 if(num(s.res.cumBiomass)>=T().A1.PATCH[1].biomass)return!0
 var a=A1()
@@ -15457,7 +15465,7 @@ r.expander().appendChild(acts)
 return{el:r.el,sync:function(s,order){var held=num(s.a1.sub[type])
 var cap=E1()&&E1().capOf?E1().capOf(type):0
 var ij=eo[order-1]||String(order)
-ar(fq,held)
+as(fq,held)
 setText(pos,interp(STR.eaten,{n:ij}))
 bar.set(cap>0?held/cap:0,'',C().fmtMass(held)+' of '+C().fmtMass(cap))
 setText(gS,interp(STR.roomFor,{v:C().fmtMass(cap)}))
@@ -15472,9 +15480,9 @@ span(hT,'row-name',STR.utilisation)
 span(hT,'row-sub',STR.ofWhatFalls)
 var eq=slot('row-num')
 hT.appendChild(eq)
-var cP=meter('fill',0)
-cP.classList.add('meter--grow')
-util.line().appendChild(cP)
+var cQ=meter('fill',0)
+cQ.classList.add('meter--grow')
+util.line().appendChild(cQ)
 pv.body.appendChild(util.el)
 var cond=row({})
 var ik=cond.line()
@@ -15496,7 +15504,7 @@ pv.setCount(n)
 var a=A1()
 var u=a&&a.utilisation?a.utilisation():0
 aj(eq,u)
-cP.set(u,u>=T().A1.UTIL_ALARM?'warn':'',Math.round(fill(u)*100)+' percent of what falls',T().A1.UTIL_ALARM)
+cQ.set(u,u>=T().A1.UTIL_ALARM?'warn':'',Math.round(fill(u)*100)+' percent of what falls',T().A1.UTIL_ALARM)
 show(cond.el,!!s.proj.flags.anastomosis)
 if(s.proj.flags.anastomosis)setText(ga,STR.nothing)}
 p.view=pv
@@ -15515,16 +15523,16 @@ setData(V,'tone','cost')
 show(ed,!1)
 var b1=btn('','+1')
 var b5=btn('','+'+U.BURST_5_AT)
-var aW=btn('',STR.max)
+var aX=btn('',STR.max)
 show(b5,!1)
-show(aW,!1)
+show(aX,!1)
 burst.appendChild(b1)
 burst.appendChild(b5)
-burst.appendChild(aW)
-dU(b1,function(){buyTips(1)},function(){return aa()>=1})
+burst.appendChild(aX)
+dV(b1,function(){buyTips(1)},function(){return aa()>=1})
 F(b5,function(){if(aa()<1){refuse(b5);return}buyTips(U.BURST_5_AT)},{onUp:!0})
-F(aW,function(){var n=aa()
-if(n<1){refuse(aW);return}buyTips(n)},{onUp:!0})
+F(aX,function(){var n=aa()
+if(n<1){refuse(aX);return}buyTips(n)},{onUp:!0})
 var l1=r.line()
 span(l1,'row-sub',STR.litterEaten)
 var hw=slot('row-num')
@@ -15540,10 +15548,10 @@ ay(bz,function(){var a=A1()
 if(!a||!a.canDeadhead()){refuse(bz);return}commit(function(){return a.deadhead()})
 if(view)an(view.ledgerRows[0].val,'loss')})
 pv.body.appendChild(r.el)
-var settle=0;[b1,b5,aW].forEach(function(b){on(b,'pointerdown',function(){settle=ax()+U.COST_SETTLE_MS})})
+var settle=0;[b1,b5,aX].forEach(function(b){on(b,'pointerdown',function(){settle=ar()+U.COST_SETTLE_MS})})
 p.__sync=function(s,rev){pv.setCount(whole(s.a1.tips))
 K(hw,A1()?A1().litterPerSec():0,B.biomass)
-if(ax()<settle)return
+if(ar()<settle)return
 var a=A1()
 var g=a?a.tipCost(s.a1.tips):0
 var m=a?a.tipMineralCost(s.a1.tips):0
@@ -15558,15 +15566,15 @@ show(ed,afford<1)
 if(afford<1)setText(V,ao)
 setData(b1,'s',afford>=1?'afford':'want')
 setData(b5,'s',afford>=U.BURST_5_AT?'afford':'want')
-setData(aW,'s',afford>=1?'afford':'want')
+setData(aX,'s',afford>=1?'afford':'want')
 b1.dataset.short=ao
 b5.dataset.short=ao
-aW.dataset.short=ao
+aX.dataset.short=ao
 setAttr(b1,'aria-label',STR.growTip+', '+C().fmtMass(g)+(m>0?', '+C().fmt(m)+' '+STR.minerals:''))
 setAttr(b5,'aria-label',STR.growTip+' '+U.BURST_5_AT)
-setAttr(aW,'aria-label',STR.growTip+' '+STR.max)
+setAttr(aX,'aria-label',STR.growTip+' '+STR.max)
 show(b5,s.a1.tips>=U.BURST_5_AT)
-show(aW,s.a1.tips>=U.BURST_MAX_AT)
+show(aX,s.a1.tips>=U.BURST_MAX_AT)
 var cut=!!(a&&a.canDeadhead&&a.canDeadhead(s))
 show(gc,cut)
 if(cut){var tissue=a.pruneTissue(s)
@@ -15584,7 +15592,7 @@ l0.appendChild(price)
 var l1=r.line()
 var arrow=span(l1,'row-arrow','·')
 var gd=span(l1,'row-ascii','')
-var bc=span(l1,'row-num row-stock','')
+var bd=span(l1,'row-num row-stock','')
 var ex=r.expander()
 var fs=el('div','row-line')
 var detail=span(fs,'row-sub num','')
@@ -15623,21 +15631,21 @@ span(b,'num',C().fmtMass(g))
 F(b,function(){trade(g,null,b)},{onUp:!0})
 burst.appendChild(b)
 ge.push({el:b,kind:'abs',g:g})})
-var dy=btn('')
-span(dy,'num',dj(U.MARKET_FRAC))
-F(dy,function(){trade(null,U.MARKET_FRAC,dy)},{onUp:!0})
-burst.appendChild(dy)
-ge.push({el:dy,kind:'frac',g:0})
-var aW=btn('',STR.max)
-F(aW,function(){trade(null,1,aW)},{onUp:!0})
-burst.appendChild(aW)
-ge.push({el:aW,kind:'max',g:0})
+var dz=btn('')
+span(dz,'num',dk(U.MARKET_FRAC))
+F(dz,function(){trade(null,U.MARKET_FRAC,dz)},{onUp:!0})
+burst.appendChild(dz)
+ge.push({el:dz,kind:'frac',g:0})
+var aX=btn('',STR.max)
+F(aX,function(){trade(null,1,aX)},{onUp:!0})
+burst.appendChild(aX)
+ge.push({el:aX,kind:'max',g:0})
 function hU(){if(!gf())return
 mode.sell=!mode.sell
 setData(r.el,'mode',mode.sell?'sell':'buy')
 setAttr(side,'aria-pressed',mode.sell?'true':'false')
 setText(side,mode.sell?STR.sell:STR.buy)
-setText(aW,mode.sell?STR.all:STR.max)}
+setText(aX,mode.sell?STR.all:STR.max)}
 F(side,hU,{onUp:!0})
 var aA=0
 return{el:r.el,setExpanded:r.setExpanded,isExpanded:r.isExpanded,sync:function(s){var e=E1()
@@ -15659,16 +15667,16 @@ setData(b.el,'s',ok?'afford':'want')
 var need=Math.max(0,b.g*unit-num(s.res.sugar))
 b.el.dataset.short=interp(STR.short,{n:C().fmt(need)+' '+B.sugar})
 if(!mode.sell&&b.kind==='abs'&&need>U.SHORT_EPS&&(gap===0||need<gap))gap=need})
-var cJ=gap>0
-if(cJ!==mode.shortShown){if(!mode.shortAt)mode.shortAt=ax()
-if(ax()-mode.shortAt>=U.SHORT_HOLD_MS){mode.shortShown=cJ;mode.shortAt=0}}else{mode.shortAt=0}if(mode.shortShown){if(gap>0)mode.lastGap=gap
-setText(bc,interp(STR.short,{n:C().fmt(mode.lastGap||0)+' '+B.sugar}))
-setData(bc,'tone','cost')}else{setText(bc,C().fmtMass(mkt.stock)+' '+STR.forSale)
-setData(bc,'tone','')}setText(V,'')
+var cK=gap>0
+if(cK!==mode.shortShown){if(!mode.shortAt)mode.shortAt=ar()
+if(ar()-mode.shortAt>=U.SHORT_HOLD_MS){mode.shortShown=cK;mode.shortAt=0}}else{mode.shortAt=0}if(mode.shortShown){if(gap>0)mode.lastGap=gap
+setText(bd,interp(STR.short,{n:C().fmt(mode.lastGap||0)+' '+B.sugar}))
+setData(bd,'tone','cost')}else{setText(bd,C().fmtMass(mkt.stock)+' '+STR.forSale)
+setData(bd,'tone','')}setText(V,'')
 r.label((TYPE_NAME[type]||type)+', '+C().fmt(unit)+' sugar per gram, '+C().fmtMass(mkt.stock)+' for sale')}}}
-function dz(v,p){var pv=panel('market',{title:STR.p_market})
+function dA(v,p){var pv=panel('market',{title:STR.p_market})
 var rows={}
-var cf=null
+var ci=null
 p.__sync=function(s){var e=E1()
 if(!e)return
 var n=0
@@ -15676,26 +15684,26 @@ e.TYPES.forEach(function(type){if(s.a1.unlockedTypes.indexOf(type)<0){if(rows[ty
 return
 }n+=1
 if(!rows[type]){rows[type]=eP(type,function(t){Object.keys(rows).forEach(function(k){if(k!==t&&rows[k].isExpanded())rows[k].setExpanded(!1)})
-cf=t
+ci=t
 ep(rows[t].el)})
 pv.body.appendChild(rows[type].el)
-if(p.__seeded||cf===null){Object.keys(rows).forEach(function(k){if(k!==type&&rows[k].isExpanded())rows[k].setExpanded(!1)})
+if(p.__seeded||ci===null){Object.keys(rows).forEach(function(k){if(k!==type&&rows[k].isExpanded())rows[k].setExpanded(!1)})
 rows[type].setExpanded(!0)
-cf=type}}show(rows[type].el,!0)
+ci=type}}show(rows[type].el,!0)
 rows[type].sync(s)})
 if(n)p.__seeded=!0
 pv.setCount(n)
 if(n)pv.unempty()
-else pv.empty(cu()?cu().EMPTY.market_sold_out:'')}
+else pv.empty(cw()?cw().EMPTY.market_sold_out:'')}
 p.view=pv
 return pv}
-function cQ(v,p){var pv=panel('seasons',{title:STR.p_seasons})
+function cR(v,p){var pv=panel('seasons',{title:STR.p_seasons})
 var r=row({})
 var l0=r.line()
 var eQ=span(l0,'row-name','')
 var gg=span(l0,'row-sub','')
-var dA=slot('row-num')
-l0.appendChild(dA)
+var dB=slot('row-num')
+l0.appendChild(dB)
 var phase=meter('fill',0)
 phase.classList.add('meter--grow')
 r.line().appendChild(phase)
@@ -15716,7 +15724,7 @@ p.__sync=function(s){var a=A1()
 setText(eQ,SEASON_LABEL[s.a1.season])
 setText(gg,interp(STR.year,{n:s.a1.year+1}))
 var left=(1-num(s.a1.seasonPhase))*T().CLOCK.SEASON_S
-setSlot(dA,C().fmtTime(left),STR.left)
+setSlot(dB,C().fmtTime(left),STR.left)
 phase.set(num(s.a1.seasonPhase),'',SEASON_LABEL[s.a1.season]+', '+C().fmtTime(left)+' left')
 setSlot(moist,C().fmt(num(s.a1.moisture)),'×'+C().fmt(a&&a.moistureMult?a.moistureMult():1))
 setSlot(warm,C().fmt(a&&a.tempMult?a.tempMult():1),'×')
@@ -15736,8 +15744,8 @@ function bK(id){var r=row({expand:!0})
 var l0=r.line()
 var name=span(l0,'row-name','')
 var state=span(l0,'row-sub','')
-var bd=slot('row-num')
-l0.appendChild(bd)
+var be=slot('row-num')
+l0.appendChild(be)
 var l1=r.line()
 span(l1,'row-sub',STR.delivered)
 var bar=meter('ascii',0)
@@ -15746,8 +15754,8 @@ var left=slot('row-num')
 l1.appendChild(left)
 var l2=r.line()
 var ft=span(l2,'row-sub','')
-var ci=slot('row-num')
-l2.appendChild(ci)
+var cj=slot('row-num')
+l2.appendChild(cj)
 show(l2,!1)
 var acts=el('div','row-actions')
 acts.appendChild(z(STR.renegotiate,function(b){if(!E1()||!commit(function(){return E1().renegotiate(id)}))refuse(b)}))
@@ -15757,7 +15765,7 @@ return{el:r.el,sync:function(s,c){var O=E1().treeById(c.treeId)
 var label=O?(SPECIES_NAME[O.species]||O.species):''
 setText(name,label)
 setText(state,c.suspended?STR.suspended:c.state)
-setSlot(bd,C().fmt(num(c.mineralRate)),B.minerals+'/s')
+setSlot(be,C().fmt(num(c.mineralRate)),B.minerals+'/s')
 var total=Math.max(1e-9,num(c.endT)-num(c.startT))
 var done=fill((num(s.t)-num(c.startT))/total)
 bar.set(done,'',Math.round(done*100)+' percent of the term')
@@ -15766,14 +15774,14 @@ var gV=num(c.sugarRate)*T().CLOCK.SEASON_S*T().A1.SHORTFALL_FRAC
 var sh=num(c.shortfall)
 show(l2,sh>0)
 if(sh>0){setText(ft,STR.shortfall)
-setSlot(ci,C().fmtTime(Math.max(0,gV-sh)/Math.max(1e-9,c.sugarRate)),STR.left)
-setData(ci,'tone','warn')}r.label(label+', '+C().fmt(num(c.sugarRate))+' sugar per second for '+C().fmt(num(c.mineralRate))+' minerals per second')}}}
+setSlot(cj,C().fmtTime(Math.max(0,gV-sh)/Math.max(1e-9,c.sugarRate)),STR.left)
+setData(cj,'tone','warn')}r.label(label+', '+C().fmt(num(c.sugarRate))+' sugar per second for '+C().fmt(num(c.mineralRate))+' minerals per second')}}}
 function bA(){var r=row({expand:!0})
 var l0=r.line()
 var name=span(l0,'row-name','')
 var fu=span(l0,'row-sub','')
-var bd=slot('row-num')
-l0.appendChild(bd)
+var be=slot('row-num')
+l0.appendChild(be)
 var l1=r.line()
 span(l1,'row-sub',STR.delivered)
 var bar=meter('ascii',0)
@@ -15793,7 +15801,7 @@ rate+=num(c.mineralRate)
 var fv=num(c.endT)-num(s.t)
 if(fv<soonest){soonest=fv
 var total=Math.max(1e-9,num(c.endT)-num(c.startT))
-prog=fill((num(s.t)-num(c.startT))/total)}}setSlot(bd,C().fmt(rate),B.minerals+'/s')
+prog=fill((num(s.t)-num(c.startT))/total)}}setSlot(be,C().fmt(rate),B.minerals+'/s')
 bar.set(prog,'',Math.round(prog*100)+' percent of the nearest term')
 setSlot(left,C().fmtTime(Math.max(0,soonest)),STR.left)
 r.label(label+', '+interp(STR.contractsN,{n:d.contracts.length})+', '+C().fmt(rate)+' minerals per second')
@@ -15817,7 +15825,7 @@ l.appendChild(n)
 H.appendChild(l)
 return n}
 function gh(id,onOpen){var r=row({expand:!0,onOpen:function(){onOpen(id)
-aS()}})
+aT()}})
 var l0=r.line()
 var name=span(l0,'row-name','')
 var age=span(l0,'row-sub','')
@@ -15830,32 +15838,32 @@ l1.appendChild(hz)
 var pips=meter('pips',0)
 l1.appendChild(pips)
 var ex=r.expander()
-var volume=slider({label:STR.volume,steps:U.SLIDER_STEPS,onInput:aS})
-var term=slider({label:STR.term,steps:T().A1.TERM_MAX,value:T().A1.TERM_MIN,onInput:aS})
-var coll=slider({label:STR.collateral,steps:U.SLIDER_STEPS,onInput:aS})
-var excl=fm(STR.exclusive,'',aS)
+var volume=slider({label:STR.volume,steps:U.SLIDER_STEPS,onInput:aT})
+var term=slider({label:STR.term,steps:T().A1.TERM_MAX,value:T().A1.TERM_MIN,onInput:aT})
+var coll=slider({label:STR.collateral,steps:U.SLIDER_STEPS,onInput:aT})
+var excl=fm(STR.exclusive,'',aT)
 var summary=el('div','summary')
 var gX=aM(summary,STR.youPay)
 var gY=aM(summary,STR.youGet)
 var gZ=aM(summary,STR.overTerm)
-var cR=el('div','row-line')
-span(cR,'row-sub',STR.coverage)
+var cS=el('div','row-line')
+span(cS,'row-sub',STR.coverage)
 var cov=meter('fill',0)
 cov.classList.add('meter--grow')
-cR.appendChild(cov)
-summary.appendChild(cR)
+cS.appendChild(cov)
+summary.appendChild(cS)
 var aN=el('div','row-line')
-var cj=span(aN,'row-sub','')
-setData(cj,'tone','cost')
+var ck=span(aN,'row-sub','')
+setData(ck,'tone','cost')
 summary.appendChild(aN)
-function cK(s,O){var e1=E1()
+function cL(s,O){var e1=E1()
 return{volume:Math.max(0,e1.maxIntake(O))*(volume.value()/U.SLIDER_STEPS),term:C().clamp(term.value(),T().A1.TERM_MIN,e1.maxTerm(O)),collateral:num(s.res.biomass)*(coll.value()/U.SLIDER_STEPS),exclusive:excl.isOn()}}
-function aS(){var s=E()
+function aT(){var s=E()
 var e1=E1()
 if(!s||!e1)return
 var O=e1.treeById(id)
 if(!O)return
-var t=cK(s,O)
+var t=cL(s,O)
 var mineralRate=e1.offer(O,t.volume,t.term,t.collateral,t.exclusive)
 volume.setReadout(C().fmt(t.volume),bF,C().fmt(t.volume)+' sugar per second')
 term.setReadout(String(t.term),'',interp(STR.seasons,{n:t.term}))
@@ -15872,7 +15880,7 @@ cov.set(coverage,coverage>=1?'bad':coverage>U.COVER_WARN?'warn':'',Math.round(co
 var ok=e1.accepts(O,t.volume,t.term,t.exclusive)
 setData(bR,'state',ok?'idle':'locked')
 var ct=ok?null:e1.counter(O,t.volume,t.term,t.exclusive)
-setText(cj,ct?interp(STR.atMost,{v:C().fmt(ct.maxVolume)+' '+bF,n:ct.maxTerm}):'')
+setText(ck,ct?interp(STR.atMost,{v:C().fmt(ct.maxVolume)+' '+bF,n:ct.maxTerm}):'')
 show(aN,!!ct)}
 var bR=btn('hero hero--wide')
 bR.appendChild(el('span','hero-lab',STR.sign))
@@ -15881,7 +15889,7 @@ var s=E()
 var e1=E1()
 var O=e1?e1.treeById(id):null
 if(!s||!O)return
-var t=cK(s,O)
+var t=cL(s,O)
 if(!e1.accepts(O,t.volume,t.term,t.exclusive)){haptic(U.HAP_ERROR,'ui.error')
 var ct=e1.counter(O,t.volume,t.term,t.exclusive)
 if(ct){announce(interp(STR.atMost,{v:C().fmt(ct.maxVolume)+' '+bF,n:ct.maxTerm}))}return
@@ -15901,37 +15909,37 @@ var d=E1().carbonDeficit(O)
 hz.set(d,'',Math.round(d*100)+' percent short of carbon')
 pips.set(num(O.rep)/T().A1.REP_MAX,'',whole(O.rep)+' of '+T().A1.REP_MAX)
 r.label(label+', deficit '+Math.round(d*100)+' percent, standing '+whole(O.rep))
-if(r.isExpanded())aS()}}}
+if(r.isExpanded())aT()}}}
 function bO(v,p){var pv=panel('understory',{title:STR.p_understory})
 var bL=el('div','sub-list')
-var ck=el('div','sub-list')
+var cl=el('div','sub-list')
 var eu=el('div','sub-list')
 pv.body.appendChild(bL)
-pv.body.appendChild(ck)
+pv.body.appendChild(cl)
 pv.body.appendChild(eu)
-var cS={}
+var cT={}
 var gi={}
 var aB={}
 var aC=null
 p.__sync=function(s){var e=E1()
 if(!e)return
-var cT={}
+var cU={}
 var display=[]
 s.a1.contracts.forEach(function(c){if(c.state==='complete'||c.state==='exited')return
 var O=e.treeById(c.treeId)
 var sp=O?O.species:('id'+c.treeId)
-if(c.state==='active'&&!c.suspended){if(!cT[sp]){cT[sp]={type:'grp',key:'g:'+sp,species:sp,contracts:[]};display.push(cT[sp])}cT[sp].contracts.push(c)}else{display.push({type:'one',key:'c'+c.id,contract:c})}})
+if(c.state==='active'&&!c.suspended){if(!cU[sp]){cU[sp]={type:'grp',key:'g:'+sp,species:sp,contracts:[]};display.push(cU[sp])}cU[sp].contracts.push(c)}else{display.push({type:'one',key:'c'+c.id,contract:c})}})
 display=display.map(function(d){return(d.type==='grp'&&d.contracts.length===1)?{type:'one',key:'c'+d.contracts[0].id,contract:d.contracts[0]}:d})
-I(bL,cS,display,function(d){return d.key},function(d){return d.type==='grp'?bA():(function(){var fx=bK(d.contract.id)
+I(bL,cT,display,function(d){return d.key},function(d){return d.type==='grp'?bA():(function(){var fx=bK(d.contract.id)
 return{el:fx.el,sync:function(st,dd){fx.sync(st,dd.contract)}}})()},s)
-I(ck,gi,e.solicitations?e.solicitations():[],function(o){return's'+o.id},function(o){return ee(o.id)},s)
-I(eu,aB,s.a1.trees,function(t){return t.id},function(t){return gh(t.id,function(di){if(aC!==null&&aC!==di&&aB[aC]){aB[aC].collapse()}aC=di
-if(aB[di])ep(aB[di].el)})},s)
+I(cl,gi,e.solicitations?e.solicitations():[],function(o){return's'+o.id},function(o){return ee(o.id)},s)
+I(eu,aB,s.a1.trees,function(t){return t.id},function(t){return gh(t.id,function(dj){if(aC!==null&&aC!==dj&&aB[aC]){aB[aC].collapse()}aC=dj
+if(aB[dj])ep(aB[dj].el)})},s)
 if(!p.__taught&&s.a1.trees.length){p.__taught=!0
 var first=aB[s.a1.trees[0].id]
 if(first&&first.expand){first.expand();aC=s.a1.trees[0].id}}pv.setCount(s.a1.trees.length+' · '+whole(s.a1.netRep)+' rep')
 if(s.a1.trees.length||s.a1.contracts.length)pv.unempty()
-else pv.empty(cu()?cu().EMPTY.trees:'')}
+else pv.empty(cw()?cw().EMPTY.trees:'')}
 p.view=pv
 return pv}
 function bB(v,p){var pv=panel('adaptations',{title:STR.p_adaptations})
@@ -15939,7 +15947,7 @@ function pick(Q){if(!Q.buyable||!Q.cost()){haptic(U.HAP_ERROR,'ui.error')
 announce(Q.priceTag)
 return
 }commit(function(){PJ().purchase(Q.id)})
-cc()}
+ce()}
 p.__sync=function(s){var pj=PJ()
 if(!pj)return
 var list=pj.visible().filter(function(e){return e.act===s.act})
@@ -15957,10 +15965,10 @@ if(v.cards[k].el.parentNode)v.cards[k].el.parentNode.removeChild(v.cards[k].el)
 delete v.cards[k]})
 pv.setCount(list.length)
 if(list.length)pv.unempty()
-else pv.empty(cu()?cu().EMPTY.adaptations:'')}
+else pv.empty(cw()?cw().EMPTY.adaptations:'')}
 p.view=pv
 return pv}
-function cU(v,p){var pv=panel('patches',{title:STR.p_patches})
+function cV(v,p){var pv=panel('patches',{title:STR.p_patches})
 var r=row({})
 var l0=r.line()
 var have=span(l0,'row-name','')
@@ -15975,10 +15983,10 @@ var aO=z(STR.claim,function(b){var s=E()
 if(!s||!A1())return
 if(!commit(function(){return A1().claimPatch(s.a1.patches+1)}))refuse(b)})
 acts.appendChild(aO)
-var be=r.line()
-var V=span(be,'row-sub','')
+var bf=r.line()
+var V=span(bf,'row-sub','')
 setData(V,'tone','cost')
-be.appendChild(acts)
+bf.appendChild(acts)
 pv.body.appendChild(r.el)
 p.__sync=function(s){var A=T().A1
 var next=s.a1.patches+1
@@ -16003,15 +16011,15 @@ return
 }var ef=num(s.res.biomass)>=spec.biomass&&num(s.res.minerals)>=spec.minerals&&num(s.a1.netRep)>=bS
 prog.set(Math.min(1,num(s.res.biomass)/spec.biomass),ef?'':'warn',C().fmtMass(num(s.res.biomass))+' of '+C().fmtMass(spec.biomass))
 setData(aO,'s',ef?'afford':'want')
-var dB=Math.max(0,spec.biomass-num(s.res.biomass))
-var dC=Math.max(0,spec.minerals-num(s.res.minerals))
-var dD=Math.max(0,bS-num(s.a1.netRep))
-var ao=dB>U.SHORT_EPS?interp(STR.short,{n:C().fmtMass(dB)}):dC>U.SHORT_EPS?interp(STR.short,{n:C().fmt(dC)+' '+B.minerals}):dD>U.SHORT_EPS?interp(STR.short,{n:C().fmt(dD)+' rep'}):''
+var dC=Math.max(0,spec.biomass-num(s.res.biomass))
+var dD=Math.max(0,spec.minerals-num(s.res.minerals))
+var dE=Math.max(0,bS-num(s.a1.netRep))
+var ao=dC>U.SHORT_EPS?interp(STR.short,{n:C().fmtMass(dC)}):dD>U.SHORT_EPS?interp(STR.short,{n:C().fmt(dD)+' '+B.minerals}):dE>U.SHORT_EPS?interp(STR.short,{n:C().fmt(dE)+' rep'}):''
 aO.dataset.short=ao
 setText(V,ef?'':ao)}
 p.view=pv
 return pv}
-function dE(v,p){var pv=panel('signal',{title:STR.p_signal})
+function dF(v,p){var pv=panel('signal',{title:STR.p_signal})
 var r=row({})
 var l0=r.line()
 span(l0,'row-name',STR.p_signal)
@@ -16034,7 +16042,7 @@ p.view=pv
 return pv}
 function aG(f,d){var v=fill(f)*100
 return d>0?v.toFixed(d):String(Math.round(v))}
-function dj(f,d){return aG(f,d)+' %'}
+function dk(f,d){return aG(f,d)+' %'}
 function aj(n,f,d){setSlot(n,aG(f,d),'%')}
 function eg(s){var f=HY.forest
 var r=s.a2&&s.a2.regions
@@ -16043,7 +16051,7 @@ var best=-1,bv=-1,i
 for(i=0;i<r.flags.length;i++){if(!(r.flags[i]&0x04)||(r.flags[i]&0x10))continue
 var c=num(f.canopy(i,s))
 if(c>bv){bv=c;best=i}}return best}
-function dF(v){return isFinite(v)?C().fmtTime(Math.max(0,v)):STR.nothing}
+function dG(v){return isFinite(v)?C().fmtTime(Math.max(0,v)):STR.nothing}
 function D(r,label){var l=r.line()
 span(l,'row-name',label)
 var n=slot('row-num')
@@ -16054,7 +16062,7 @@ var m=meter('fill',0)
 m.classList.add('meter--grow')
 r.line().appendChild(m)
 return m}
-function dG(v,p){var pv=panel('forest',{title:STR.p_forest})
+function dH(v,p){var pv=panel('forest',{title:STR.p_forest})
 var r=row({})
 var eaten=D(r,STR.consumed)
 var fz=af(r,null)
@@ -16071,7 +16079,7 @@ var w=HY.world
 if(!f)return
 var fc=f.forestConsumed?num(f.forestConsumed(s)):0
 aj(eaten,fc)
-fz.set(fc,fc>.88?'warn':'signal',dj(fc)+' '+STR.consumed)
+fz.set(fc,fc>.88?'warn':'signal',dk(fc)+' '+STR.consumed)
 var n=w&&w.claimedCount?w.claimedCount():0
 setSlot(held,interp(STR.stands,{n:n}),'')
 setSlot(hA,C().fmt(f.totalInterface?num(f.totalInterface(s)):0),STR.area)
@@ -16079,8 +16087,8 @@ setSlot(conn,(w&&w.connectivity?num(w.connectivity()):1).toFixed(2),'×')
 pv.setCount(aG(fc),'%')
 show(dial,!!rev.retention)
 if(rev.retention&&f.globalRho){var g2=num(f.globalRho(s))/T().A2.RHO_MAX
-if(!dial.__seeded){dial.__seeded=1;dial.setValue(Math.round(g2*U.SLIDER_STEPS))}dial.setReadout(aG(g2),'%',STR.retention+' '+dj(g2))
-dial.setNote(STR.humus+' '+(f.minHumus?dj(num(f.minHumus(s))):STR.nothing))}}
+if(!dial.__seeded){dial.__seeded=1;dial.setValue(Math.round(g2*U.SLIDER_STEPS))}dial.setReadout(aG(g2),'%',STR.retention+' '+dk(g2))
+dial.setNote(STR.humus+' '+(f.minHumus?dk(num(f.minHumus(s))):STR.nothing))}}
 p.view=pv
 return pv}
 function fA(){var r=row({expand:!0})
@@ -16100,44 +16108,44 @@ hW.parentNode.appendChild(dens)
 var ex=r.expander()
 var litter=el('div','row-line')
 var eR=span(litter,'row-sub',STR.litter)
-var cL=slot('row-num')
-litter.appendChild(cL)
+var cM=slot('row-num')
+litter.appendChild(cM)
 ex.appendChild(litter)
 var humus=el('div','row-line')
 span(humus,'row-sub',STR.humus)
-var dH=slot('row-num')
-humus.appendChild(dH)
+var dI=slot('row-num')
+humus.appendChild(dI)
 ex.appendChild(humus)
 var acts=el('div','row-actions')
 ex.appendChild(acts)
-var cV=z(STR.advance,function(b){var w=HY.world
+var cW=z(STR.advance,function(b){var w=HY.world
 if(!w||!commit(function(){return w.startAdvance(api.id)}))refuse(b)})
-var cW=z(STR.denser,function(b){var w=HY.world
+var cX=z(STR.denser,function(b){var w=HY.world
 if(!w||!commit(function(){return w.buyDensity(api.id)}))refuse(b)})
 var ew=z(STR.kill,function(b){var f=HY.forest
 if(!f||!commit(function(){return f.killStand(api.id)}))refuse(b)})
-acts.appendChild(cV)
 acts.appendChild(cW)
+acts.appendChild(cX)
 acts.appendChild(ew)
 void eR
 var api={el:r.el,id:-1,sync:function(s,c){api.id=c.id
 setText(name,c.name||STR.unknown)
 setText(hV,c.terrain?(c.terrain+' · '+c.species):STR.fog)
 setText(note,c.necrotized?STR.dead:(c.advancing?STR.colonising:''))
-if(c.density)ar(state,c.density.cost)
-else if(!c.claimed&&c.advance)ar(state,c.advance.cost)
+if(c.density)as(state,c.density.cost)
+else if(!c.claimed&&c.advance)as(state,c.advance.cost)
 else setSlot(state,c.claimed?STR.standing:STR.fog,'')
-col.set(c.col,'',STR.colonising+' '+dj(c.col))
-dens.set(c.d,'',STR.density+' '+dj(c.d))
-ar(cL,c.L)
-aj(dH,c.h)
-show(cV,!c.claimed&&!!c.advance)
-show(cW,!!c.density)
+col.set(c.col,'',STR.colonising+' '+dk(c.col))
+dens.set(c.d,'',STR.density+' '+dk(c.d))
+as(cM,c.L)
+aj(dI,c.h)
+show(cW,!c.claimed&&!!c.advance)
+show(cX,!!c.density)
 show(ew,!!c.claimed&&!c.necrotized&&!!(view&&view.rev&&view.rev.necro))
-if(c.advance){setData(cV,'s',c.advance.blocked?'want':'afford')
-setAttr(cV,'aria-label',STR.advance+' '+c.name+', '+C().fmtMass(c.advance.cost))}if(c.density){setAttr(cW,'aria-label',STR.denser+', '+C().fmtMass(c.density.cost))}r.label(c.name+', '+(c.claimed?STR.standing:STR.advance)+', '+STR.density+' '+dj(c.d))}}
+if(c.advance){setData(cW,'s',c.advance.blocked?'want':'afford')
+setAttr(cW,'aria-label',STR.advance+' '+c.name+', '+C().fmtMass(c.advance.cost))}if(c.density){setAttr(cX,'aria-label',STR.denser+', '+C().fmtMass(c.density.cost))}r.label(c.name+', '+(c.claimed?STR.standing:STR.advance)+', '+STR.density+' '+dk(c.d))}}
 return api}
-function dI(v,p){var pv=panel('stands',{title:STR.p_stands})
+function dJ(v,p){var pv=panel('stands',{title:STR.p_stands})
 var bP={}
 p.__sync=function(s){var w=HY.world
 if(!w||!w.list)return
@@ -16171,14 +16179,14 @@ setSlot(sig,C().fmt(held)+' / '+C().fmt(cap),B.signal)
 hb.set(cap>0?held/cap:0,g.saturated(s)?'warn':'signal',C().fmt(held)+' of '+C().fmt(cap)+' '+STR.capacity)
 setSlot(ey,'+'+C().fmt(sr),B.signal+'/s')
 if(g.saturated(s))setSlot(gD,STR.saturated,'')
-else setSlot(gD,dF(g.fillsIn(s)),STR.toFull)
+else setSlot(gD,dG(g.fillsIn(s)),STR.toFull)
 pv.setCount(C().fmt(held),B.signal)
 show(r2.el,!!rev.insight)
 if(!rev.insight)return
 var rp=num(g.ripeness(s))
 setSlot(ins,C().fmt(num(s.res.insight)),B.insight)
 aj(ripe,rp)
-gj.set(rp,g.saturated(s)?'signal':'',STR.ripeness+' '+dj(rp))}
+gj.set(rp,g.saturated(s)?'signal':'',STR.ripeness+' '+dk(rp))}
 p.view=pv
 return pv}
 function eT(v,p){var pv=panel('diff',{title:STR.p_diff})
@@ -16206,7 +16214,7 @@ setData(ez,'s',un>0?'afford':'want')
 setData(fC,'s',un>0?'afford':'want')}
 p.view=pv
 return pv}
-function cX(v,p){var pv=panel('weather',{title:STR.p_weather})
+function cY(v,p){var pv=panel('weather',{title:STR.p_weather})
 var r=row({})
 var wet=D(r,STR.moisture)
 var hc=af(r,null)
@@ -16225,7 +16233,7 @@ setSlot(hD,w.mast?STR.on:STR.nothing,'')
 pv.setCount(aG(w.W),'%')}
 p.view=pv
 return pv}
-function cz(){var r=row({expand:!0})
+function cA(){var r=row({expand:!0})
 var l0=r.line()
 var name=span(l0,'row-name','')
 var mode=span(l0,'row-sub','')
@@ -16235,14 +16243,14 @@ var hY=span(r.line(),'row-sub',STR.maturity)
 var hE=meter('ascii',0)
 hY.parentNode.appendChild(hE)
 var ex=r.expander()
-var cl=el('div','row-line')
-span(cl,'row-sub',STR.riskNow)
+var cn=el('div','row-line')
+span(cn,'row-sub',STR.riskNow)
 var gE=slot('row-num')
-cl.appendChild(gE)
-ex.appendChild(cl)
-var dJ=el('div','row-line')
-var gk=span(dJ,'row-sub','')
-ex.appendChild(dJ)
+cn.appendChild(gE)
+ex.appendChild(cn)
+var dK=el('div','row-line')
+var gk=span(dK,'row-sub','')
+ex.appendChild(dK)
 var acts=el('div','row-actions')
 var he=z(STR.release,function(b){var fl=HY.flush
 if(!fl||!commit(function(){return fl.release(api.id)}))refuse(b)})
@@ -16256,11 +16264,11 @@ api.held=!!c.held
 setText(name,c.name)
 setText(mode,c.held?STR.hold:'')
 setSlot(fD,C().fmt(c.now),B.spores)
-hE.set(c.m,c.risk>.02?'warn':'',STR.maturity+' '+dj(c.m))
+hE.set(c.m,c.risk>.02?'warn':'',STR.maturity+' '+dk(c.m))
 aj(gE,1-c.survive)
-setText(gk,interp(STR.bestIn,{v:dF(c.bestIn)})+' · '+C().fmt(c.best)+' '+B.spores)
+setText(gk,interp(STR.bestIn,{v:dG(c.bestIn)})+' · '+C().fmt(c.best)+' '+B.spores)
 setText(eA,c.held?STR.resume:STR.hold)
-r.label(c.name+', '+STR.maturity+' '+dj(c.m)+', '+C().fmt(c.now)+' spores if released now')}}
+r.label(c.name+', '+STR.maturity+' '+dk(c.m)+', '+C().fmt(c.now)+' spores if released now')}}
 return api}
 function eh(v,p){var pv=panel('flush',{title:STR.p_flush})
 var fore=el('canvas','strip-canvas')
@@ -16284,18 +16292,18 @@ var hf=D(head,STR.slots)
 var gl=D(head,STR.spores)
 var hQ=slider({label:STR.stake,steps:U.SLIDER_STEPS,tone:'signal',value:Math.round(U.FLUSH_BET_DEFAULT*U.SLIDER_STEPS)})
 head.line().appendChild(hQ)
-var cn=z(STR.fruit,function(b){var s=E()
+var co=z(STR.fruit,function(b){var s=E()
 var fl=HY.flush
 if(!s||!fl)return
 var i=eg(s)
 var vol=num(s.res.biomass)*(hQ.value()/U.SLIDER_STEPS)*U.FLUSH_BET_MAX
 if(i<0||!commit(function(){return fl.newPrimordium(i,vol)}))refuse(b)})
-var be=head.line()
-var fE=span(be,'row-sub','')
+var bf=head.line()
+var fE=span(bf,'row-sub','')
 setData(fE,'tone','cost')
 var acts=el('div','row-actions')
-acts.appendChild(cn)
-be.appendChild(acts)
+acts.appendChild(co)
+bf.appendChild(acts)
 pv.body.appendChild(head.el)
 var bP={}
 p.__sync=function(s){var fl=HY.flush
@@ -16306,10 +16314,10 @@ setSlot(hf,interp(STR.slotsUsed,{n:fl.used(),k:fl.slots()}),'')
 setSlot(gl,C().fmt(num(s.res.spores)),B.spores)
 var vol=num(s.res.biomass)*(hQ.value()/U.SLIDER_STEPS)*U.FLUSH_BET_MAX
 hQ.setMassReadout(vol,STR.stake+' '+C().fmtMass(vol))
-show(cn,fB)
-setData(cn,'s',fB&&vol>0?'afford':'want')
+show(co,fB)
+setData(co,'s',fB&&vol>0?'afford':'want')
 setText(fE,fB?'':STR.slotsFull)
-I(pv.body,bP,list,function(c){return c.id},function(){return cz()},s)
+I(pv.body,bP,list,function(c){return c.id},function(){return cA()},s)
 pv.setCount(list.length)
 if(list.length)pv.unempty()
 else pv.empty(STR.noPrimordia)
@@ -16336,17 +16344,17 @@ span(fG,'row-sub',STR.strain)
 var strain=meter('fill',0)
 strain.classList.add('meter--grow')
 fG.appendChild(strain)
-var cY=slot('row-num')
-fG.appendChild(cY)
+var cZ=slot('row-num')
+fG.appendChild(cZ)
 var ex=r.expander()
-var co=el('div','row-line')
-span(co,'row-sub',STR.bond)
+var cp=el('div','row-line')
+span(cp,'row-sub',STR.bond)
 var gF=slot('row-num')
-co.appendChild(gF)
-ex.appendChild(co)
-var dK=el('div','row-line')
-var gn=span(dK,'row-sub','')
-ex.appendChild(dK)
+cp.appendChild(gF)
+ex.appendChild(cp)
+var dL=el('div','row-line')
+var gn=span(dL,'row-sub','')
+ex.appendChild(dL)
 var acts=el('div','row-actions')
 acts.appendChild(z(STR.comply,function(b){var pb=HY.pactbook
 if(!pb||!commit(function(){return pb.comply(api.id)}))refuse(b)}))
@@ -16360,13 +16368,13 @@ setText(name,c.name)
 setText(guild,c.guild+(c.notice?' · notice':''))
 setSlot(ey,c.rateText||C().fmt(c.rate),c.rateUnit||'')
 pips.set(c.chMax>0?c.ch/c.chMax:0,'',c.ch+' of '+c.chMax+' '+STR.channels)
-strain.set(c.strain,c.warn?'warn':'signal',STR.strain+' '+dj(c.strain))
-aj(cY,c.strain)
-setData(cY,'tone',c.warn?'warn':'')
+strain.set(c.strain,c.warn?'warn':'signal',STR.strain+' '+dk(c.strain))
+aj(cZ,c.strain)
+setData(cZ,'tone',c.warn?'warn':'')
 setData(r.el,'live',c.warn?'warn':'1')
 setSlot(gF,c.bond.toFixed(2),'×'+c.bondMult.toFixed(2))
-setText(gn,interp(STR.termLeft,{v:dF(c.termLeft)}))
-r.label(c.name+', '+c.guild+', '+STR.strain+' '+dj(c.strain))}}
+setText(gn,interp(STR.termLeft,{v:dG(c.termLeft)}))
+r.label(c.name+', '+c.guild+', '+STR.strain+' '+dk(c.strain))}}
 return api}
 function fH(){var r=row({expand:!0})
 var l0=r.line()
@@ -16385,7 +16393,7 @@ ex.appendChild(bC)
 ex.appendChild(ap)
 var bT=el('div','row-line')
 ex.appendChild(bT)
-var cZ=null
+var da=null
 var acts=el('div','row-actions')
 acts.appendChild(z(STR.sign,function(b){var pb=HY.pactbook
 if(!pb||!commit(function(){return pb.sign(api.id)}))refuse(b)}))
@@ -16395,18 +16403,18 @@ ex.appendChild(acts)
 var api={el:r.el,id:-1,sync:function(s,o){api.id=o.id
 setText(name,o.name)
 setText(guild,o.guild)
-ar(stake,o.stake)
-setText(terms,interp(STR.channelsOf,{n:o.ch,k:o.chMax})+' '+STR.channels+' · '+interp(STR.seasons,{n:o.termPeriods})+' · '+dF(o.left))
+as(stake,o.stake)
+setText(terms,interp(STR.channelsOf,{n:o.ch,k:o.chMax})+' '+STR.channels+' · '+interp(STR.seasons,{n:o.termPeriods})+' · '+dG(o.left))
 setData(r.el,'s',o.affordable?'afford':'want')
 bC.setMax(Math.max(1,o.chMax))
 if(!bC.__seeded){bC.__seeded=1;bC.setValue(o.ch)}bC.setReadout(String(o.ch),'',STR.channels+' '+o.ch)
 ap.setMax(Math.max(1,o.maxTerm))
 if(!ap.__seeded){ap.__seeded=1;ap.setValue(o.termPeriods)}ap.setReadout(String(o.termPeriods),'',interp(STR.seasons,{n:o.termPeriods}))
 ap.setNote(STR.collateral+' '+C().fmtMass(o.stake))
-if(o.rootTypes&&!cZ){cZ=seg(o.rootTypes.map(function(t){return{label:t,value:t}}),o.rootType,function(val){var pb=HY.pactbook
+if(o.rootTypes&&!da){da=seg(o.rootTypes.map(function(t){return{label:t,value:t}}),o.rootType,function(val){var pb=HY.pactbook
 if(pb&&pb.setOfferType)pb.setOfferType(api.id,String(val).toUpperCase())})
 span(bT,'row-sub',STR.rootType)
-bT.appendChild(cZ)}show(bT,!!o.rootTypes)
+bT.appendChild(da)}show(bT,!!o.rootTypes)
 r.label(o.aria)}}
 return api}
 function eU(v,p){var pv=panel('pact',{title:STR.p_pact})
@@ -16428,7 +16436,7 @@ if(list.length)pv.unempty()
 else pv.empty(STR.noPacts)}
 p.view=pv
 return pv}
-function dL(v,p){var pv=panel('offers',{title:STR.p_offers})
+function dM(v,p){var pv=panel('offers',{title:STR.p_offers})
 var bP={}
 p.__sync=function(s){var pb=HY.pactbook
 if(!pb||!pb.offers)return
@@ -16482,9 +16490,9 @@ var sur=D(il,STR.surplus)
 var res=D(il,STR.resource)
 var acts=el('div','row-actions')
 ex.appendChild(acts)
-var cp=z(STR.reach,function(b){var bl=BL()
+var cq=z(STR.reach,function(b){var bl=BL()
 if(!bl||!commit(function(){return bl.reach(api.id)}))refuse(b)})
-acts.appendChild(cp)
+acts.appendChild(cq)
 var api={el:r.el,id:-1,sync:function(s,c){api.id=c.id
 var bl=BL()
 setText(name,c.name)
@@ -16496,16 +16504,16 @@ show(tag,!!tag.textContent)
 setSlot(bD,C().fmt(c.n),B.craft)
 setText(state,c.reached?STR.harvest+' '+C().fmt(c.harvest)+' '+B.carbon+'/s':(can?STR.unreached:STR.needsFirst))
 var f=c.NCAP>0?c.n/c.NCAP:0
-occ.set(f,'',STR.occupancy+' '+dj(f))
+occ.set(f,'',STR.occupancy+' '+dk(f))
 setSlot(sur,aH(c.surplus),B.carbon+'/s')
 setData(sur,'tone',c.surplus>=0?'pos':'neg')
 setSlot(res,C().fmt(c.X),B.carbon)
-show(cp,!c.reached)
-setData(cp,'s',can&&num(s.res.signal)>=cost?'afford':'want')
+show(cq,!c.reached)
+setData(cq,'s',can&&num(s.res.signal)>=cost?'afford':'want')
 setData(r.el,'live',c.reached?'1':'0')
 r.label(c.name+', '+(c.reached?STR.reached:STR.unreached)+', '+C().fmt(c.n)+' craft, '+STR.surplus+' '+aH(c.surplus))}}
 return api}
-function dM(v,p){var pv=panel('canopy',{title:STR.p_canopy})
+function dN(v,p){var pv=panel('canopy',{title:STR.p_canopy})
 note(pv.body,STR.canopyNote)
 var head=row({})
 var bD=D(head,STR.craft)
@@ -16558,27 +16566,27 @@ setData(eV,'tone',c.surplus>0?'pos':(c.surplus<0?'neg':''))
 var f=c.NCAP>0?c.n/c.NCAP:0
 setSlot(gq,C().fmt(c.n),B.craft)
 occ.set(f,c.surplus<0?'warn':'signal',C().fmt(c.n)+' of '+C().fmt(c.NCAP)+' '+STR.occupancy,c.showStar&&c.NCAP>0?c.nStar/c.NCAP:undefined)
-setText(hj,STR.explored+' '+dj(c.e))
+setText(hj,STR.explored+' '+dk(c.e))
 setSlot(gI,c.richKnown?c.rich.toFixed(2):STR.nothing,'×')
-var bf=num(c.wild)
-setText(tag,bf>0?STR.wild:'')
-setData(tag,'tone',bf>c.n?'neg':'warn')
-show(tag,bf>0)
+var bg=num(c.wild)
+setText(tag,bg>0?STR.wild:'')
+setData(tag,'tone',bg>c.n?'neg':'warn')
+show(tag,bg>0)
 setData(r.el,'live',c.surplus<0?'warn':(c.n>0?'1':'0'))
 setSlot(ia,C().fmt(c.X),B.carbon)
 setSlot(fM,C().fmt(c.harvest),B.carbon+'/s')
 setSlot(hk,C().fmt(c.subsist),B.carbon+'/s')
-setSlot(hH,C().fmt(bf),B.craft)
+setSlot(hH,C().fmt(bg),B.craft)
 setSlot(hI,c.showStar?C().fmt(c.nStar):STR.nothing,c.showStar?B.craft:'')
-r.label(interp(STR.band,{n:c.id})+', '+STR.surplus+' '+aH(c.surplus)+' carbon per second, '+C().fmt(c.n)+' craft of '+C().fmt(c.NCAP)+', '+STR.explored+' '+dj(c.e))}}
+r.label(interp(STR.band,{n:c.id})+', '+STR.surplus+' '+aH(c.surplus)+' carbon per second, '+C().fmt(c.n)+' craft of '+C().fmt(c.NCAP)+', '+STR.explored+' '+dk(c.e))}}
 return api}
 function eW(v,p){var pv=panel('void',{title:STR.p_void})
 var head=row({})
 var gq=D(head,STR.p_bands)
 var bD=D(head,STR.craft)
 var fL=D(head,STR.surplus)
-var da=span(head.line(),'row-sub','')
-setData(da,'tone','cost')
+var db=span(head.line(),'row-sub','')
+setData(db,'tone','cost')
 pv.body.appendChild(head.el)
 note(pv.body,STR.voidKey)
 var bP={}
@@ -16593,13 +16601,13 @@ var lam=num(bl.Lambda(s))
 setSlot(fL,aH(lam),B.carbon+'/s')
 setData(fL,'tone',lam>=0?'pos':'neg')
 var w=bl.stellarWarnings?bl.stellarWarnings():[]
-setText(da,w.length?interp(STR.stellar,{v:dF(w[0].inS)})+' · '+interp(STR.band,{n:w[0].band}):'')
-show(da,w.length>0)
+setText(db,w.length?interp(STR.stellar,{v:dG(w[0].inS)})+' · '+interp(STR.band,{n:w[0].band}):'')
+show(db,w.length>0)
 I(pv.body,bP,list,function(c){return c.id},gp,s)
 pv.setCount(occ+' / '+list.length)}
 p.view=pv
 return pv}
-function cq(v,p){var pv=panel('synchrony',{title:STR.p_synchrony})
+function cr(v,p){var pv=panel('synchrony',{title:STR.p_synchrony})
 var cv=el('canvas','wheel-canvas')
 cv.id='wheel'
 cv.setAttribute('role','img')
@@ -16668,7 +16676,7 @@ setAttr(n,'aria-label',e.title+', '+(e.taken?STR.endTaken:e.available?STR.endTak
 ay(n,function(){var fin=hG()
 if(fin&&fin.takeEnding)fin.takeEnding(api.key)})
 return api}
-function db(v,p){var pv=panel('endings',{title:STR.p_endings})
+function dc(v,p){var pv=panel('endings',{title:STR.p_endings})
 var bP={}
 p.__sync=function(s){var fin=hG()
 if(!fin||!fin.endings)return
@@ -16685,30 +16693,30 @@ span(l0,'row-name',key.toLowerCase())
 var fN=slot('row-num')
 l0.appendChild(fN)
 var st=el('div','stepper')
-var dN=btn('','−')
+var dO=btn('','−')
 var plus=btn('','+')
-setAttr(dN,'aria-label','lower '+bk[key])
-setAttr(plus,'aria-label','raise '+bk[key])
-st.appendChild(dN)
+setAttr(dO,'aria-label','lower '+bm[key])
+setAttr(plus,'aria-label','raise '+bm[key])
+st.appendChild(dO)
 st.appendChild(plus)
 l0.appendChild(st)
-span(r.line(),'row-sub',bk[key])
+span(r.line(),'row-sub',bm[key])
 r.el.appendChild(el('p','row-note',eH[key]))
 function step(d){var s=E()
 var bl=BL()
 if(!s||!bl)return!1
 return commit(function(){return bl.setLocus(hL,num(s.a3.loci[hL])+d)})}
 F(plus,function(){if(!step(1))refuse(plus)},{onUp:!0})
-F(dN,function(){if(!step(-1))refuse(dN)},{onUp:!0})
+F(dO,function(){if(!step(-1))refuse(dO)},{onUp:!0})
 return{el:r.el,sync:function(s){var bl=BL()
 var have=num(s.a3.loci[hL])
 setSlot(fN,String(have),'')
 var gu=!!(bl&&bl.rewriting&&bl.rewriting(s))&&have>0
 var cost=bl&&bl.nextLocusCost?num(bl.nextLocusCost(s)):Infinity
-setData(dN,'s',gu?'afford':'want')
+setData(dO,'s',gu?'afford':'want')
 setData(plus,'s',num(s.res.insight)>=cost?'afford':'want')
 setData(r.el,'live',have>0?'1':'0')}}}
-function dO(v,p){var pv=panel('genome',{title:STR.p_genome})
+function dP(v,p){var pv=panel('genome',{title:STR.p_genome})
 var head=row({})
 var ic=D(head,STR.genomeLen)
 var eC=D(head,STR.craftMass)
@@ -16753,7 +16761,7 @@ var capCost=dv&&dv.capCost?num(dv.capCost(s)):Infinity
 aK(ej,STR.raiseCap,C().fmt(capCost)+' '+B.alleles)
 setData(ej,'s',num(s.res.alleles)>=capCost?'afford':'want')
 var rw=!!bl.rewriting(s)
-if(rw)aK(ak.lastChild,interp(STR.rewriting,{v:dF(num(s.a3.regenomeAt)-num(s.t))}),'')
+if(rw)aK(ak.lastChild,interp(STR.rewriting,{v:dG(num(s.a3.regenomeAt)-num(s.t))}),'')
 else aK(ak.lastChild,STR.regenome,C().fmt(num(bl.regenomeCost(s)))+' '+B.carbon)
 setData(ak,'s',!rw&&num(s.res.carbon)>=num(bl.regenomeCost(s))?'afford':'want')
 for(var k=0;k<rows.length;k++)rows[k].sync(s)
@@ -16767,16 +16775,16 @@ var hk=D(head,STR.subsist)
 var eV=D(head,STR.surplus)
 pv.body.appendChild(head.el)
 var body=el('div','row')
-var cA=[null,null,null]
+var cB=[null,null,null]
 var fO=[STR.replicate,STR.disperse,STR.bank]
 function push(){var s=E()
 var bl=BL()
 if(!s||!bl)return
-bl.setAlloc(cA[0].value(),cA[1].value(),cA[2].value())
+bl.setAlloc(cB[0].value(),cB[1].value(),cB[2].value())
 s.stats.reallocations=num(s.stats.reallocations)+1}
 var i
-for(i=0;i<3;i++){cA[i]=slider({label:fO[i],steps:U.ALLOC_STEPS,tone:'signal',onInput:push})
-body.appendChild(cA[i])}pv.body.appendChild(body)
+for(i=0;i<3;i++){cB[i]=slider({label:fO[i],steps:U.ALLOC_STEPS,tone:'signal',onInput:push})
+body.appendChild(cB[i])}pv.body.appendChild(body)
 note(pv.body,STR.allocNote)
 var fP=!1
 p.__sync=function(s){var bl=BL()
@@ -16789,9 +16797,9 @@ setSlot(hk,C().fmt(sub),B.carbon+'/s')
 setSlot(eV,aH(h-sub),B.carbon+'/s')
 setData(eV,'tone',h-sub>=0?'pos':'neg')
 if(!fP){fP=!0
-for(k=0;k<3;k++)cA[k].setValue(Math.round(a[k]*U.ALLOC_STEPS))}for(k=0;k<3;k++){cA[k].setReadout(aG(a[k]),'%',fO[k]+' '+dj(a[k]))}cA[0].setNote(C().fmt((h-sub)*a[0])+' '+B.carbon+'/s '+STR.replicate)
-cA[1].setNote(C().fmt((h-sub)*a[1])+' '+B.carbon+'/s '+STR.disperse)
-cA[2].setNote(C().fmt((h-sub)*a[2])+' '+B.carbon+'/s '+STR.bank)
+for(k=0;k<3;k++)cB[k].setValue(Math.round(a[k]*U.ALLOC_STEPS))}for(k=0;k<3;k++){cB[k].setReadout(aG(a[k]),'%',fO[k]+' '+dk(a[k]))}cB[0].setNote(C().fmt((h-sub)*a[0])+' '+B.carbon+'/s '+STR.replicate)
+cB[1].setNote(C().fmt((h-sub)*a[1])+' '+B.carbon+'/s '+STR.disperse)
+cB[2].setNote(C().fmt((h-sub)*a[2])+' '+B.carbon+'/s '+STR.bank)
 pv.setCount(aG(a[0])+' / '+aG(a[1])+' / '+aG(a[2]),'%')}
 p.view=pv
 return pv}
@@ -16809,13 +16817,13 @@ bl.appendChild(bar)
 H.appendChild(bl)
 var q=el('p','row-note',hazard.line)
 H.appendChild(q)
-return{name:hazard.name,set:function(r){bar.set(r.frac,r.frac>.4?'warn':'',hazard.name.toLowerCase()+' '+dj(r.frac))
+return{name:hazard.name,set:function(r){bar.set(r.frac,r.frac>.4?'warn':'',hazard.name.toLowerCase()+' '+dk(r.frac))
 setSlot(n,r.count>0?C().fmt(r.count):STR.nothing,r.count>0?B.craft:'')
 if(r.count>0)aj(aP,r.frac)
 else setSlot(aP,'','')
 setData(aP,'tone',r.frac>.4?'warn':'')
 show(q,r.count>0)}}}
-function cr(v,p){var pv=panel('mortality',{title:STR.p_mortality})
+function cs(v,p){var pv=panel('mortality',{title:STR.p_mortality})
 var rows=[]
 var body=el('div','row')
 pv.body.appendChild(body)
@@ -16846,23 +16854,23 @@ var stake=slider({label:STR.commit,steps:U.SLIDER_STEPS,tone:'signal',value:U.CO
 ex.appendChild(stake)
 var acts=el('div','row-actions')
 ex.appendChild(acts)
-var dc=z(STR.sequence,function(b){var dv=DV()
+var de=z(STR.sequence,function(b){var dv=DV()
 if(!dv||!commit(function(){return dv.sequence(api.id)}))refuse(b)})
-var de=z(STR.engage,function(b){var dv=DV()
+var df=z(STR.engage,function(b){var dv=DV()
 if(!dv||!commit(function(){return dv.engage(api.id,stake.value()/U.SLIDER_STEPS)})){refuse(b)}})
 var eD=z(STR.reinforce,function(b){var dv=DV()
 if(!dv||!commit(function(){return dv.reinforce(api.id)}))refuse(b)})
 var gK=z(STR.withdraw,function(b){var dv=DV()
 if(!dv||!commit(function(){return dv.withdraw(api.id)}))refuse(b)})
-var df=z(STR.absorb,function(b){var dv=DV()
+var dg=z(STR.absorb,function(b){var dv=DV()
 if(!dv||!commit(function(){return dv.absorb(api.id)}))refuse(b)})
 var eE=z(STR.quarantine,function(b){var dv=DV()
 if(!dv||!commit(function(){return dv.quarantine(api.id)}))refuse(b)})
-acts.appendChild(dc)
 acts.appendChild(de)
+acts.appendChild(df)
 acts.appendChild(eD)
 acts.appendChild(gK)
-acts.appendChild(df)
+acts.appendChild(dg)
 acts.appendChild(eE)
 var api={el:r.el,id:-1,sync:function(s,e){api.id=e.id
 var dv=DV()
@@ -16875,32 +16883,32 @@ var mass=0,i
 for(i=0;i<e.w.length;i++)mass+=num(e.w[i])
 setSlot(eC,C().fmt(mass),B.craft)
 var d=dv&&dv.distance?dv.distance(e,s):0
-setText(where,interp(STR.band,{n:e.origin})+' · '+interp(STR.distance,{n:d})+(succ?' · '+interp(STR.successorAge,{v:dF(dv.succAge(s))}):''))
+setText(where,interp(STR.band,{n:e.origin})+' · '+interp(STR.distance,{n:d})+(succ?' · '+interp(STR.successorAge,{v:dG(dv.succAge(s))}):''))
 var pr=dv&&dv.predict?dv.predict(e.id,stake.value()/U.SLIDER_STEPS):null
 if(!pr)setText(bU,'')
-else if(pr.wide){setText(bU,interp(STR.predictWide,{lo:(pr.lo.win?'+':'−')+C().fmt(pr.lo.survivors),hi:(pr.hi.win?'+':'−')+C().fmt(pr.hi.survivors)}))}else{setText(bU,interp(pr.win?STR.predictLine:STR.predictLose,{v:C().fmt(pr.survivors)})+' · '+interp(STR.resolveIn,{v:dF(pr.tResolve)}))}var hn=dv&&dv.maxConcurrent?dv.maxConcurrent(s):1
+else if(pr.wide){setText(bU,interp(STR.predictWide,{lo:(pr.lo.win?'+':'−')+C().fmt(pr.lo.survivors),hi:(pr.hi.win?'+':'−')+C().fmt(pr.hi.survivors)}))}else{setText(bU,interp(pr.win?STR.predictLine:STR.predictLose,{v:C().fmt(pr.survivors)})+' · '+interp(STR.resolveIn,{v:dG(pr.tResolve)}))}var hn=dv&&dv.maxConcurrent?dv.maxConcurrent(s):1
 var hJ=dv&&dv.engagements?dv.engagements(s).length:0
-show(dc,!e.sequenced&&!succ)
-show(de,!ag)
+show(de,!e.sequenced&&!succ)
+show(df,!ag)
 show(eD,ag)
 show(gK,ag)
-show(df,!ag&&!succ)
+show(dg,!ag&&!succ)
 show(eE,!ag&&!succ)
 var seq=dv&&dv.seqCost?num(dv.seqCost(s)):Infinity
-setText(dc,STR.sequence+' · '+C().fmt(seq)+' '+B.insight)
-setData(dc,'s',num(s.res.insight)>=seq?'afford':'want')
-setData(de,'s',hJ<hn?'afford':'want')
-setAttr(de,'aria-label',hJ<hn?STR.engage:interp(STR.engageFull,{n:hn}))
+setText(de,STR.sequence+' · '+C().fmt(seq)+' '+B.insight)
+setData(de,'s',num(s.res.insight)>=seq?'afford':'want')
+setData(df,'s',hJ<hn?'afford':'want')
+setAttr(df,'aria-label',hJ<hn?STR.engage:interp(STR.engageFull,{n:hn}))
 var ab=dv&&dv.absorbCost?num(dv.absorbCost(s)):Infinity
-setText(df,STR.absorb+' · '+C().fmt(ab)+' '+B.insight)
-setData(df,'s',num(s.res.insight)>=ab?'afford':'want')
+setText(dg,STR.absorb+' · '+C().fmt(ab)+' '+B.insight)
+setData(dg,'s',num(s.res.insight)>=ab?'afford':'want')
 var qt=dv&&dv.quarantineCost?num(dv.quarantineCost(e.origin)):Infinity
 setText(eE,STR.quarantine+' · '+C().fmt(qt)+' '+B.carbon)
 setData(eE,'s',num(s.res.carbon)>=qt?'afford':'want')
 setData(r.el,'live',succ?'neg':ag?'warn':'1')
 r.label((e.name||STR.strainName)+', '+C().fmt(mass)+' craft, '+(e.sequenced?STR.sequenced:STR.unsequenced)+(ag?', '+STR.inEngagement:''))}}
 return api}
-function cB(v,p){var pv=panel('lineages',{title:STR.p_lineages})
+function cC(v,p){var pv=panel('lineages',{title:STR.p_lineages})
 var head=row({})
 var gv=D(head,STR.p_lineages)
 var ho=D(head,STR.theirMass)
@@ -16915,7 +16923,7 @@ if(s.a3&&s.a3.succ)list.push(s.a3.succ)
 setSlot(gv,String(list.length),'')
 var aP=dv.strainShare?num(dv.strainShare(s)):0
 aj(ho,aP)
-fQ.set(aP,aP>.5?'bad':(aP>.25?'warn':''),STR.theirMass+' '+dj(aP))
+fQ.set(aP,aP>.5?'bad':(aP>.25?'warn':''),STR.theirMass+' '+dk(aP))
 aj(hp,dv.driftFraction?num(dv.driftFraction(s)):0)
 I(pv.body,bP,list,function(e){return e.id},fa,s)
 pv.setCount(list.length)
@@ -16923,34 +16931,34 @@ if(list.length)pv.unempty()
 else pv.empty(STR.noStrains)}
 p.view=pv
 return pv}
-function bg(v){def(v,'floor',function(s,rev){return rev.substrate},eb,null,ea)
+function bj(v){def(v,'floor',function(s,rev){return rev.substrate},eb,null,ea)
 def(v,'tips',function(s,rev){return rev.tips},eO,null,ea)
-def(v,'market',function(s,rev){return rev.market},dz,null,ea)
-def(v,'seasons',function(s,rev){return rev.seasons},cQ,null,ea)
+def(v,'market',function(s,rev){return rev.market},dA,null,ea)
+def(v,'seasons',function(s,rev){return rev.seasons},cR,null,ea)
 def(v,'understory',function(s,rev){return rev.trees},bO,null,ea)
-def(v,'patches',dx,cU,null,ea)
-def(v,'signal',function(s,rev){return s.act===1&&rev.signal},dE,null,ea)
-def(v,'forest',function(s,rev){return s.act>=2&&rev.forest},dG,'forest',bJ)
-def(v,'stands',function(s,rev){return s.act>=2&&rev.stands},dI,'forest',bJ)
+def(v,'patches',dy,cV,null,ea)
+def(v,'signal',function(s,rev){return s.act===1&&rev.signal},dF,null,ea)
+def(v,'forest',function(s,rev){return s.act>=2&&rev.forest},dH,'forest',bJ)
+def(v,'stands',function(s,rev){return s.act>=2&&rev.stands},dJ,'forest',bJ)
 def(v,'mind',function(s,rev){return s.act>=2&&rev.signal},eS,'mind',bJ)
 def(v,'diff',function(s,rev){return s.act>=2&&rev.diff},eT,'mind',bJ)
 def(v,'adaptations',function(s,rev){return rev.projects},bB,'mind',function(s,rev){return s.act<3||!Y(rev,'mind')})
 def(v,'flush',function(s,rev){return s.act>=2&&rev.flush},eh,'flush',bJ)
-def(v,'weather',function(s,rev){return s.act>=2&&rev.flush},cX,'flush',bJ)
+def(v,'weather',function(s,rev){return s.act>=2&&rev.flush},cY,'flush',bJ)
 def(v,'pact',function(s,rev){return s.act>=2&&rev.pact},eU,'pact',bJ)
-def(v,'offers',function(s,rev){return s.act>=2&&rev.pact},dL,'pact',bJ)
-def(v,'canopy',function(s,rev){return s.act>=3&&rev.canopy},dM,'forest',function(s,rev){return s.act>=3&&rev.canopy&&!Y(rev,'forest')})
-def(v,'void',function(s,rev){return s.act>=3&&rev.voidPhase},eW,'forest',aV('forest'))
-def(v,'synchrony',function(s,rev){return s.act>=3&&rev.wheel},cq,'forest',aV('forest'))
-def(v,'endings',function(s,rev){return s.act>=3&&rev.endings},db,'forest',aV('forest'))
-def(v,'genome',function(s,rev){return s.act>=3&&rev.genome},dO,'mind',aV('mind'))
-def(v,'fleet',function(s,rev){return s.act>=3&&rev.fleet},ek,'flush',aV('flush'))
-def(v,'mortality',function(s,rev){return s.act>=3&&rev.fleet},cr,'flush',aV('flush'))
-def(v,'lineages',function(s,rev){return s.act>=3&&rev.lineages},cB,'pact',aV('pact'))
+def(v,'offers',function(s,rev){return s.act>=2&&rev.pact},dM,'pact',bJ)
+def(v,'canopy',function(s,rev){return s.act>=3&&rev.canopy},dN,'forest',function(s,rev){return s.act>=3&&rev.canopy&&!Y(rev,'forest')})
+def(v,'void',function(s,rev){return s.act>=3&&rev.voidPhase},eW,'forest',aW('forest'))
+def(v,'synchrony',function(s,rev){return s.act>=3&&rev.wheel},cr,'forest',aW('forest'))
+def(v,'endings',function(s,rev){return s.act>=3&&rev.endings},dc,'forest',aW('forest'))
+def(v,'genome',function(s,rev){return s.act>=3&&rev.genome},dP,'mind',aW('mind'))
+def(v,'fleet',function(s,rev){return s.act>=3&&rev.fleet},ek,'flush',aW('flush'))
+def(v,'mortality',function(s,rev){return s.act>=3&&rev.fleet},cs,'flush',aW('flush'))
+def(v,'lineages',function(s,rev){return s.act>=3&&rev.lineages},cC,'pact',aW('pact'))
 def(v,'log',function(s){return s.act>=2},fJ,'log',function(s){return s.act>=2})}
-var dP='auto'
-function bV(){if(aw()&&aw().save)aw().save()}
-function cC(){var s=E();['log','projects','act1','economy1'].forEach(function(n){if(!HY[n]||!HY[n].init)return
+var dQ='auto'
+function bV(){if(ax()&&ax().save)ax().save()}
+function cD(){var s=E();['log','projects','act1','economy1'].forEach(function(n){if(!HY[n]||!HY[n].init)return
 try{HY[n].init(s)}catch(e){}})}
 function eF(){if(!view)return
 var root=view.root
@@ -16974,44 +16982,44 @@ bV()}))
 settingRow(body,STR.slow,seg([{value:'off',label:STR.off},{value:'on',label:STR.on}],s&&s.set.slow?'on':'off',function(val){if(s)s.set.slow=val==='on'
 bV()}))
 settingRow(body,STR.verbose,seg([{value:'off',label:STR.off},{value:'on',label:STR.on}],verbose?'on':'off',function(val){verbose=val==='on'
-dk('hyphae.verbose',verbose?'1':'0')}))
-settingRow(body,STR.tier,seg([{value:'auto',label:STR.auto},{value:'high',label:STR.high},{value:'med',label:STR.med},{value:'low',label:STR.low}],dP,function(val){dP=val
+dl('hyphae.verbose',verbose?'1':'0')}))
+settingRow(body,STR.tier,seg([{value:'auto',label:STR.auto},{value:'high',label:STR.high},{value:'med',label:STR.med},{value:'low',label:STR.low}],dQ,function(val){dQ=val
 if(J()&&J().setTier&&val!=='auto')J().setTier(val.toUpperCase())}))
 body.appendChild(el('p','sheet-note',STR.textSize+' — '+STR.textSizeNote))
 var code=el('textarea','sheet-code')
 setAttr(code,'aria-label',STR.save)
 code.spellcheck=!1
 body.appendChild(code)
-var dg=el('div','row-actions')
-dg.appendChild(z(STR.copy,function(){if(!aw())return
-code.value=aw().exportB64()
+var dh=el('div','row-actions')
+dh.appendChild(z(STR.copy,function(){if(!ax())return
+code.value=ax().exportB64()
 code.select()
 var n=typeof navigator==='undefined'?null:navigator
 if(n&&n.clipboard)n.clipboard.writeText(code.value).catch(function(){})
 toast(STR.toastCopied)}))
-dg.appendChild(z(STR.load,function(){if(!aw())return
-if(!aw().importB64(code.value.trim())){toast(STR.toastImportBad)
+dh.appendChild(z(STR.load,function(){if(!ax())return
+if(!ax().importB64(code.value.trim())){toast(STR.toastImportBad)
 return
 }eF()}))
-body.appendChild(dg)
+body.appendChild(dh)
 var reset=btn('sheet-btn hold hero--danger')
 reset.appendChild(el('span','hold-fill'))
 reset.appendChild(el('span','hold-lab',STR.reset))
-ay(reset,function(){if(!aw())return
+ay(reset,function(){if(!ax())return
 var cur=E()
-aw().init(aw().newGame(cur?cur.seed:0,cur?cur.meta:null))
-cC()
+ax().init(ax().newGame(cur?cur.seed:0,cur?cur.meta:null))
+cD()
 eF()
 toast(STR.toastReset)})
-var dQ=el('div','row-actions')
-dQ.appendChild(reset)
-body.appendChild(dQ)
+var dR=el('div','row-actions')
+dR.appendChild(reset)
+body.appendChild(dR)
 body.appendChild(el('p','sheet-note',STR.resetNote))}})
 sh.open()
 return sh}
 var am=null
-var cD={canvasFull:1,voidCanvas:1,wheelConverge:1,wheelCollapse:1,fillWhite:1,holdWhite:1}
-function fR(e){if(cu()&&cu().advanceSequence)cu().advanceSequence()
+var cE={canvasFull:1,voidCanvas:1,wheelConverge:1,wheelCollapse:1,fillWhite:1,holdWhite:1}
+function fR(e){if(cw()&&cw().advanceSequence)cw().advanceSequence()
 e.stopPropagation()
 e.preventDefault()}
 function gw(){var els=[view.ledger,view.stack,view.hero,view.endbar,view.fab]
@@ -17022,9 +17030,9 @@ function seqFadeEl(e,to,ms){if(!e)return
 e.style.transition='opacity '+(ms>0?ms:0)+'ms linear'
 e.style.opacity=String(to)
 if(am&&am.faded.indexOf(e)<0)am.faded.push(e)}
-function aX(){if(!am.curtain){am.curtain=el('div','curtain')
+function aY(){if(!am.curtain){am.curtain=el('div','curtain')
 view.main.appendChild(am.curtain)}return am.curtain}
-function dh(fadeMs){if(!am)return
+function di(fadeMs){if(!am)return
 var d=am
 am=null
 var ms=fadeMs>0?fadeMs:0
@@ -17036,15 +17044,15 @@ if(ms>0){c.style.transition='opacity '+ms+'ms linear'
 c.style.opacity='0'
 setTimeout(function(){if(c.parentNode)c.parentNode.removeChild(c)},ms+60)}else if(c.parentNode){c.parentNode.removeChild(c)}}if(view.shell.dataset.fullplate){delete view.shell.dataset.fullplate
 if(J()&&J().resize)J().resize()}if(J()&&J().stopMotion)J().stopMotion()
-var dd=dS()
+var dd=dT()
 if(dd)dd.removeEventListener('pointerdown',fR,!0)}
 function fb(p){var cv=J()
-if(p.what==='cut'){aX().style.background=p.to==='white'?'#FFFFFF':'#000000'
+if(p.what==='cut'){aY().style.background=p.to==='white'?'#FFFFFF':'#000000'
 if(cv&&cv.motion)cv.motion(p.what,p)
 return
-}if(cv&&cv.motion&&cv.motion(p.what,p)!==null){if(cD[p.what]===1&&view.shell.dataset.fullplate!=='1'){setData(view.shell,'fullplate','1')
+}if(cv&&cv.motion&&cv.motion(p.what,p)!==null){if(cE[p.what]===1&&view.shell.dataset.fullplate!=='1'){setData(view.shell,'fullplate','1')
 if(cv.resize)cv.resize()}if(p.what==='holdWhite'&&p.skipHintAt>=0){var hint=el('span','curtain-hint',STR.skip)
-aX().appendChild(hint)
+aY().appendChild(hint)
 setTimeout(function(){setData(hint,'on','1')},p.skipHintAt)}return
 }if(p.what==='panelsFade'){var rows=gw(),i
 for(i=0;i<rows.length;i++)seqFadeEl(rows[i],p.to,p.ms)
@@ -17057,31 +17065,31 @@ for(k=0;k<fe.length;k++){if(fe[k].hidden)continue
 n++}}}
 function gx(st){if(!view||!st)return
 var p=st.payload||{}
-if(st.kind==='begin'){dh(0)
+if(st.kind==='begin'){di(0)
 am={id:p.seq,curtain:null,faded:[]}
 haptic(U.HAP_ACT[0],'act.begin')
-var d=dS()
+var d=dT()
 if(d)d.addEventListener('pointerdown',fR,!0)
 return
 }if(!am)return
-if(st.kind==='word'){aX().appendChild(el('p','curtain-word',p.text))
-haptic(U.HAP_ACT[1],'act.mid')}else if(st.kind==='motion'){fb(p)}else if(st.kind==='shell'){dh(p.fadeMs)
+if(st.kind==='word'){aY().appendChild(el('p','curtain-word',p.text))
+haptic(U.HAP_ACT[1],'act.mid')}else if(st.kind==='motion'){fb(p)}else if(st.kind==='shell'){di(p.fadeMs)
 if(p.panel)setTab(String(p.panel).toLowerCase())
-haptic(U.HAP_ACT[2],'act.end')}else if(st.kind==='end'){dh(U.SEQ_END_MS)}}
+haptic(U.HAP_ACT[2],'act.end')}else if(st.kind==='end'){di(U.SEQ_END_MS)}}
 function __selftest(){var f=[]
 function ok(cond,label){if(!cond)f.push(label)}
-var d=dS()
+var d=dT()
 if(!d)return f
 var H=d.createElement('div')
 var fS=view
 var ff=G
 view=ca(H)
-bg(view)
-var s=aw().newGame(0,null)
+bj(view)
+var s=ax().newGame(0,null)
 var i
 N(view,s,bt)
 view.order.forEach(function(id){ok(!view.panels[id].need(s,bt),'D02: panel "'+id+'" is revealed at t=0')})
-cI(view,s)
+cJ(view,s)
 ok(H.querySelectorAll('.plate').length===1,'D02: expected exactly one canvas plate')
 ok(H.querySelectorAll('.plate canvas').length===2,'D02: expected net and flux canvases')
 ok(H.querySelector('#net').getAttribute('aria-hidden')==='true','D02: the structural canvas must be aria-hidden')
@@ -17097,31 +17105,31 @@ ok(r.querySelector('.ledger-val .mant').textContent===gL[0],'D02: biomass must r
 ok(r.querySelector('.ledger-val .unit').textContent===' g','D02: biomass must be shown in grams, a real space away from the number')
 ok(r.dataset.lead==='solo','D02: alone on screen, biomass is the display size')
 ok(r.querySelector('.ledger-rate').dataset.sign==='zero','D02: a zero rate renders as an em dash, never +0.00')}ok(!H.querySelector('.ledger-sub[data-kind="pool"]'),'D02: nothing is purchasable at t=0, so the labile line is not on the cold-boot screen')
-var aT=aw().newGame(0,null)
-aT.res.cumBiomass=13500
-aT.res.biomass=655
+var aU=ax().newGame(0,null)
+aU.res.cumBiomass=13500
+aU.res.biomass=655
 var aq={}
 for(var rk in bt)if(Object.prototype.hasOwnProperty.call(bt,rk))aq[rk]=bt[rk]
 aq.tips=!0
-N(view,aT,aq)
+N(view,aU,aq)
 var head=H.querySelectorAll('.ledger-row')[0]
 var pool=H.querySelector('.ledger-sub[data-kind="pool"]')
-var bj=function(){return head.querySelector('.ledger-val .mant').textContent}
-var dR=function(){return pool.querySelector('.row-num .mant').textContent}
+var bk=function(){return head.querySelector('.ledger-val .mant').textContent}
+var dS=function(){return pool.querySelector('.row-num .mant').textContent}
 ok(!!pool,'the labile pool has a line of its own once anything can be bought')
-if(pool){ok(bj()===P(C().fmtMass(13500))[0],'the headline is the standing mass, not the spendable pool')
-ok(dR()===P(C().fmtMass(655))[0],'the second line is the spendable pool')
-var gy=bj()
-aT.res.biomass=55
-N(view,aT,aq)
-ok(bj()===gy,'a purchase did not shrink the organism')
-ok(dR()===P(C().fmtMass(55))[0],'a purchase did empty the pool')
-aT.res.pruned=4500
-N(view,aT,aq)
-ok(bj()===P(C().fmtMass(9e3))[0],'giving up tissue is the one thing that makes the organism smaller')}aq.sugar=!0
-aT.res.sugar=593
-aT.a1.tips=67
-N(view,aT,aq)
+if(pool){ok(bk()===P(C().fmtMass(13500))[0],'the headline is the standing mass, not the spendable pool')
+ok(dS()===P(C().fmtMass(655))[0],'the second line is the spendable pool')
+var gy=bk()
+aU.res.biomass=55
+N(view,aU,aq)
+ok(bk()===gy,'a purchase did not shrink the organism')
+ok(dS()===P(C().fmtMass(55))[0],'a purchase did empty the pool')
+aU.res.pruned=4500
+N(view,aU,aq)
+ok(bk()===P(C().fmtMass(9e3))[0],'giving up tissue is the one thing that makes the organism smaller')}aq.sugar=!0
+aU.res.sugar=593
+aU.a1.tips=67
+N(view,aU,aq)
 var bE=H.querySelectorAll('.ledger-row')[1]
 ok(bE&&bE.querySelector('.ledger-lab').textContent===STR.sugar,'the second ledger row is sugar once sugar is revealed')
 if(bE){ok(/^[^/]+ \/ [^/]+$/.test(bE.querySelector('.ledger-val .mant').textContent),'the sugar pair is not written `held / cap`: '+bE.querySelector('.ledger-val .mant').textContent)
@@ -17141,10 +17149,10 @@ ok(H.querySelectorAll('[aria-live]:not(.vh)').length===1,'D02: exactly one visib
 ok(inner&&inner.childNodes.length<=1,'D02: the console holds at most one line at t=0')
 ok(U.CONSOLE_ROWS===5,'D02: the console is a five-row window')
 ok(!!view.announcer&&view.announcer.className==='vh'&&view.announcer.getAttribute('aria-live')==='polite','the announcer is a visually hidden live region')
-var cE=inner?inner.childNodes.length:-1
+var cF=inner?inner.childNodes.length:-1
 announce('240 g short')
 ok(view.announcer.textContent==='240 g short','announce writes to the announcer')
-ok(inner&&inner.childNodes.length===cE,'announce must not add a line to the narrative console')
+ok(inner&&inner.childNodes.length===cF,'announce must not add a line to the narrative console')
 announce('240 g short')
 ok(view.announcer.textContent!=='240 g short','a repeated announcement must change the node or the reader stays silent')
 view.announcer.textContent=''
@@ -17192,7 +17200,7 @@ ok(short<1,'the curve reached the wall early; this test can no longer see the ga
 ok(Math.round(short*1e3)/1e3>=1,'the ripe latch and the fill must agree on what "full" is')}ok(!J()||typeof J().surge==='function','the canvas cannot answer a release')
 if(view){var was=extendMode()
 ok(extendMode('tap')==='tap'&&view.shell.dataset.verb==='tap','the tap verb cannot be selected')
-ok(aY()===!1,'the tap verb still charges')
+ok(aZ()===!1,'the tap verb still charges')
 ok(extendMode('nonsense')==='turgor','an unknown verb is not the hold')
 extendMode(was)}ok(U.DISPLAY_MS===1e3/T().CLOCK.DISPLAY_HZ,'BIBLE §4.2: the display slot period must equal the display timer period')
 var rv={rates:{}}
@@ -17206,9 +17214,9 @@ ok(rv.rates.biomass.step===0,'a step is consumed by the sample that follows it')
 ok(eo.length===Object.keys(TYPE_NAME).length,'seven typed pools have seven queue positions')
 ok(Object.keys(TYPE_NAME).length===7,'seven typed pools have seven names')
 ok(B.minerals==='⛬'&&B.signal==='Σ'&&B.sugar==='sug','BIBLE §2.1: one name, one symbol, one unit')
-function hq(cM,table){for(var k in table){if(!Object.prototype.hasOwnProperty.call(table,k))continue
-ok(!/[A-Z]/.test(table[k]),'D68: '+cM+'.'+k+' contains a capital letter')
-ok(table[k].indexOf('!')<0,'D67: '+cM+'.'+k+' contains an exclamation')}}
+function hq(cN,table){for(var k in table){if(!Object.prototype.hasOwnProperty.call(table,k))continue
+ok(!/[A-Z]/.test(table[k]),'D68: '+cN+'.'+k+' contains a capital letter')
+ok(table[k].indexOf('!')<0,'D67: '+cN+'.'+k+' contains an exclamation')}}
 hq('STR',STR)
 hq('TYPE_NAME',TYPE_NAME)
 hq('SPECIES_NAME',SPECIES_NAME)
@@ -17219,17 +17227,17 @@ if(!p.tab)return
 ok(Object.prototype.hasOwnProperty.call(aE,p.tab),'panel "'+id+'" is on tab "'+p.tab+'", which is not one of the five slots')
 aE[p.tab]+=1})
 for(var key in aE){if(!Object.prototype.hasOwnProperty.call(aE,key))continue
-ok(aE[key]>0,'tab "'+key+'" has no panel behind it')}var a2=aw().newGame(0,null)
+ok(aE[key]>0,'tab "'+key+'" has no panel behind it')}var a2=ax().newGame(0,null)
 a2.act=2
 a2.phase='network'
-var cs=bu(a2)
-ok(cs.forest===!0,'§5.3: the FOREST panel must be there from the act break')
-ok(cs.signal===!0,'§5.3: cognition is live from the act break')
-ok(cs.stands===!1,'§5.3: STANDS is gated on chemotaxis')
-ok(cs.insight===!1,'§5.3: Insight is gated on turgor')
-ok(cs.flush===!1,'§5.3: FLUSH is gated on primordium')
-ok(cs.diff===!1,'§5.3: D allocation is gated on differentiation')
-ok(cs.pulse===!1,'§5.3: PULSE is gated on action_potential_ii')
+var cu=bu(a2)
+ok(cu.forest===!0,'§5.3: the FOREST panel must be there from the act break')
+ok(cu.signal===!0,'§5.3: cognition is live from the act break')
+ok(cu.stands===!1,'§5.3: STANDS is gated on chemotaxis')
+ok(cu.insight===!1,'§5.3: Insight is gated on turgor')
+ok(cu.flush===!1,'§5.3: FLUSH is gated on primordium')
+ok(cu.diff===!1,'§5.3: D allocation is gated on differentiation')
+ok(cu.pulse===!1,'§5.3: PULSE is gated on action_potential_ii')
 a2.proj.flags.chemotaxis=1
 a2.proj.flags.turgor=1
 a2.proj.flags.primordium=1
@@ -17239,15 +17247,15 @@ a2.proj.flags.humic_retention=1
 var warm=bu(a2)
 ok(warm.stands&&warm.insight&&warm.flush&&warm.diff&&warm.pulse&&warm.retention,'§5.3: an Act II gate did not open when its flag was set')
 view.tab='forest'
-ok(dw(view,{tab:'forest'},a2),'the selected tab does not show its own panels')
-ok(!dw(view,{tab:'mind'},a2),'an unselected tab is painting')
-ok(!dw(view,{tab:null},a2),'an Act I panel survived DECIDE on screen')
-ok(dw(view,{tab:null},{act:1}),'an Act I panel is hidden during Act I')
+ok(dx(view,{tab:'forest'},a2),'the selected tab does not show its own panels')
+ok(!dx(view,{tab:'mind'},a2),'an unselected tab is painting')
+ok(!dx(view,{tab:null},a2),'an Act I panel survived DECIDE on screen')
+ok(dx(view,{tab:null},{act:1}),'an Act I panel is hidden during Act I')
 view=fS
 G=ff
 return f}
 HY.ui={mount:mount,render:render,panel:panel,card:card,row:row,meter:meter,sheet:sheet,toast:toast,setTab:setTab,revealTab:revealTab,revealPanel:revealPanel,setTheme:setTheme,setAct:setAct,announce:announce,consolePos:consolePos,extendMode:extendMode,display:function(){var s=E()
-if(view&&s)display(view,s,ax())},layout:layout,openSettings:openSettings,reveals:function(){var s=E();return s?bI(s):null},get mounted(){return!!view},__selftest:__selftest}})(window.HY=window.HY||{})
+if(view&&s)display(view,s,ar())},layout:layout,openSettings:openSettings,reveals:function(){var s=E();return s?bI(s):null},get mounted(){return!!view},__selftest:__selftest}})(window.HY=window.HY||{})
 ;
 //js/loop.js
 ;(function(HY){'use strict'
