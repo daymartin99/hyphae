@@ -2107,6 +2107,8 @@
     if (!a || !a.onExtend || !a.onExtend(heldS)) return false
     var cv = CANVAS()
     if (cv && cv.surge) cv.surge(a.turgor ? a.turgor(heldS) : 0)
+    // The press landed. Say so where the player is looking — on the number it landed in.
+    flashGain()
     return true
   }
 
@@ -2574,6 +2576,23 @@
     if (!view) return
     var r = view.ledgerRows[0]
     flashSlot(r.poolVal && r.pool && !r.pool.hidden ? r.poolVal : r.val, 'loss')
+  }
+
+  // R5's other half, and it had no caller. A discrete LOSS snapped and flashed from the day
+  // purchases existed; a discrete GAIN was specified to brighten and nothing ever asked it to —
+  // least of all the game's primary verb.
+  //
+  // Why it matters more than it sounds: the ledger prints three significant figures, so at 6.70 t
+  // an EXTEND worth kilograms cannot move a digit. The owner filmed eight seconds of pressing with
+  // BIOMASS and LABILE frozen on screen and called it "the extend not registering" — and from the
+  // hand, it wasn't: the button took the press, the simulation banked the grams, and the interface
+  // said nothing back. The brightening is the answer, and it is legible at every scale because it
+  // is not made of digits.
+  function flashGain () {
+    if (!view) return
+    var r = view.ledgerRows[0]
+    flashSlot(r.val, 'gain')
+    if (r.poolVal && r.pool && !r.pool.hidden) flashSlot(r.poolVal, 'gain')
   }
 
   function rotLine (r, rot) {

@@ -110,12 +110,12 @@
      shows, and at cold boot it shows the seed height only — a third of the phone spent on one
      12 px hairline is a third of the phone spent on nothing. Opening the window is a crop, not a
      resize: only ui.js resizes the canvas, and only it can tell the renderer it did. */
-  --plate-cap:30svh; --plate-seed:17svh;
+  --plate-cap:30dvh; --plate-seed:17dvh;
   --plate-min:48px;      /* 06 §4.3: the stage-2 map collapses to a strip, never to nothing */
-  --panels-min:14svh;    /* the list keeps this much even when 200% text squeezes the column */
+  --panels-min:14dvh;    /* the list keeps this much even when 200% text squeezes the column */
   /* The atrium's living wall, 900 px and up: a specimen panel beside the column, not a slab. It
      earns its height on the same terms the plate does. */
-  --wall-w:min(40vw,480px); --wall-h:min(70svh,640px); --wall-seed:min(48svh,420px);
+  --wall-w:min(40vw,480px); --wall-h:min(70dvh,640px); --wall-seed:min(48dvh,420px);
   --wall-gap:var(--sp-48);
 }
 
@@ -338,11 +338,15 @@ canvas{ display:block; }
   --plate-full:min(var(--plate-px), var(--plate-cap));
   --plate-open:var(--plate-full);
   display:flex; flex-direction:column;
-  /* svh, not dvh. The dynamic unit re-measures live as Safari's toolbar collapses and expands,
-     so the shell — and every band derived from it — resized under the thumb on every scroll:
-     the whole game visibly jumped. The small unit is the stable one; in the installed app the
-     two are equal, and in the browser the shell simply keeps the toolbar-visible height. */
-  height:100vh; height:100svh;
+  /* dvh — the DYNAMIC viewport, which is whatever is actually visible right now.
+     This was svh for one round, on my guess that the owner's "screen jumps up and down" was
+     Safari's collapsing toolbar re-measuring the unit. It was not: the jitter probe later caught
+     the real cause (a market row pulsing ±27 px at 1 Hz) and fixed it at the row. Meanwhile svh
+     — the height with browser chrome FULLY EXPANDED — was costing a phone whose chrome is
+     collapsed or absent a band of dead screen at the bottom exactly as tall as that chrome:
+     measured at 65 pt of 956 on the owner's iPhone 17 Pro Max, 7% of his display, below EXTEND.
+     The dynamic unit fills what is there. The guess cost more than the bug. */
+  height:100vh; height:100dvh;
   max-width:1680px; margin:0 auto;
   padding-top:env(safe-area-inset-top);
   padding-left:env(safe-area-inset-left);
@@ -1159,7 +1163,7 @@ canvas{ display:block; }
 .sheet{
   position:fixed; inset-inline:0; bottom:0; z-index:80;
   width:100%; max-width:var(--col-max); margin:0 auto;
-  max-height:86svh; display:flex; flex-direction:column;
+  max-height:86dvh; display:flex; flex-direction:column;
   background:var(--surface-2); border-top:1px solid var(--line-strong);
   border-radius:var(--r-xl) var(--r-xl) 0 0;
   transform:translateY(100%);
@@ -1414,7 +1418,7 @@ canvas{ display:block; }
    plus the plate were taking 46% of it before a single row of the game appeared. Both give a
    little; the list and the tab bar give nothing. */
 @media (max-height:700px){
-  :root{ --plate-cap:22svh; --con-rows:4; }
+  :root{ --plate-cap:22dvh; --con-rows:4; }
   .ledger-row{ min-height:32px; }
   .ledger-row[data-lead="1"]{ min-height:40px; }
 }
