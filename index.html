@@ -2073,7 +2073,7 @@ if(!p.rearm&&s.proj.bought.indexOf(p.id)>=0)return!1
 return!0}
 function L(s){var out=[],i,p
 for(i=0;i<CATALOG.length;i++){p=CATALOG[i]
-if(ak(s,p))out.push(p)}return out}
+if(ak(s,p)&&aq(p,s))out.push(p)}return out}
 function y(s){var i,n=0,r=L(s)
 for(i=0;i<r.length;i++)if(!r[i].pinned)n++
 return n}
@@ -2514,12 +2514,12 @@ manageProjects(fb)
 ok(K(fb,'fruiting_body'),'fruiting body did not reveal in the autumn it needs')
 fb.a1.season=(T().A1.SEASON_AUTUMN+1)%4
 manageProjects(fb)
-ok(L(fb).indexOf(J.fruiting_body)>=0,'a revealed entry vanished when its season passed')
-ok(refusal('fruiting_body')==='now','a condition that has passed does not read as a refusal: the card still offers itself')
-ok(isDisabled('fruiting_body'),'a card whose condition has passed was still lit as buyable')
+ok(L(fb).indexOf(J.fruiting_body)<0,'a card whose season has passed is still on the shelf')
+ok(K(fb,'fruiting_body'),'hiding the card unlearned the reveal: it will announce itself as new again')
+ok(refusal('fruiting_body')==='now','a condition that has passed does not read as a refusal')
 ok(purchase('fruiting_body')===!1,'fruiting body sold itself out of season')
 var fr=L(fb),fi
-for(fi=0;fi<fr.length;fi++)ok(isDisabled(fr[fi].id)===!!refusal(fr[fi].id),fr[fi].id+': the greying and the refusal disagree — a lit card can still swallow the tap')
+for(fi=0;fi<fr.length;fi++)ok(refusal(fr[fi].id)!=='now',fr[fi].id+': on the shelf with its condition passed — the tap it takes will vanish')
 var fbR=num(fb.a1.netRep)
 fb.a1.season=T().A1.SEASON_AUTUMN
 manageProjects(fb)
@@ -15976,7 +15976,9 @@ return pv}
 function bB(v,p){var pv=panel('adaptations',{title:STR.p_adaptations})
 function pick(Q){var pj=PJ()
 var c=v.cards[Q.id]
-if(!pj||pj.refusal(Q.id)||!commit(function(){return pj.purchase(Q.id)})){if(c)c.deny()
+var w=pj?pj.refusal(Q.id):'gone'
+if(w||!commit(function(){return pj.purchase(Q.id)})){if(c){c.setShort(w==='cost'?Q.priceTag:STR.notNow)
+c.deny()}
 else{haptic(U.HAP_ERROR,'ui.error')
 announce(Q.priceTag)}
 return
@@ -15991,10 +15993,9 @@ if(!c){c=card({id:Q.id,title:Q.title,cost:Q.priceTag,desc:Q.description,pinned:Q
 v.cards[Q.id]=c
 c.markNew()
 if(!M())c.el.classList.add('reveal')
-pv.body.appendChild(c.el)}var tag=pj.blockedBy(Q.id)==='now'?STR.notNow:Q.priceTag
-c.setCost(tag)
-c.setShort(tag)
-c.setLabel(Q.title+'. '+tag+'.')})
+pv.body.appendChild(c.el)}c.setCost(Q.priceTag)
+c.setShort(Q.priceTag)
+c.setLabel(Q.title+'. '+Q.priceTag+'.')})
 Object.keys(v.cards).forEach(function(k){if(live[k])return
 if(v.cards[k].el.parentNode)v.cards[k].el.parentNode.removeChild(v.cards[k].el)
 delete v.cards[k]})
