@@ -14685,8 +14685,8 @@ function toggle(){var next=!api.isExpanded()
 api.setExpanded(next)
 if(next&&spec.onOpen)spec.onOpen()}
 if(spec.expand){api.expander()
-F(main,toggle,{state:n})
-au(main,toggle,n)}else if(spec.onPick){F(main,spec.onPick,{state:n})
+F(main,toggle,{state:n,onUp:!0})
+au(main,toggle,n)}else if(spec.onPick){F(main,spec.onPick,{state:n,onUp:!0})
 if(spec.onHold)au(main,spec.onHold,n)}return api}
 function span(parent,gM,text){var s=el('span',gM,text)
 parent.appendChild(s)
@@ -14708,7 +14708,7 @@ gz.forEach(function(o){var b=btn('',o.label)
 b.dataset.value=String(o.value)
 setAttr(b,'aria-pressed',String(o.value)===String(current)?'true':'false')
 F(b,function(){n.set(o.value)
-onPick(o.value)})
+onPick(o.value)},{onUp:!0})
 buttons.push(b)
 n.appendChild(b)})
 n.set=function(v){buttons.forEach(function(b){setAttr(b,'aria-pressed',b.dataset.value===String(v)?'true':'false')})}
@@ -14756,7 +14756,7 @@ setAttr(b,'aria-pressed','false')
 F(b,function(e){if(e&&e.stopPropagation)e.stopPropagation()
 var next=b.getAttribute('aria-pressed')!=='true'
 setAttr(b,'aria-pressed',next?'true':'false')
-fU(next)})
+fU(next)},{onUp:!0})
 b.isOn=function(){return b.getAttribute('aria-pressed')==='true'}
 b.setNote=function(s){setText(n,s)}
 return b}
