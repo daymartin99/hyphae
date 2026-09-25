@@ -298,11 +298,51 @@
     if (s.act !== 1) return
     var a = A()
     var target = a.SEASON_MOIST[s.a1.season] * num(s.a1.weatherMoistMod)
+    // The floor answers back: no cover and the target sags; held water pulls a dry season's
+    // target back toward the optimum.
+    var fl = floorState(s)
+    if (fl.live) {
+      target *= 1 - a.FLOOR_DRY_K * (1 - fl.cover)
+      if (target < a.MOIST_OPT) target += (a.MOIST_OPT - target) * a.FLOOR_SPONGE_W * fl.sponge
+    }
     // The exact integral of the relaxation, so a 0.1 s live tick and a 120 s offline macro-step
     // land on the same moisture. The linear form overshoots past dt ≈ 25 s and inverts past 50 s.
     var f = 1 - Math.exp(-a.MOIST_RELAX_PER_S * dt)
     var m = s.a1.moisture + (target - s.a1.moisture) * f
     s.a1.moisture = C().clamp(m, a.MOIST_MIN, a.MOIST_MAX)
+  }
+
+  // The floor as an ecology rather than seven shelves. cover: leaf + needle on hand against what
+  // the floor needs to stay damp. sponge: log + stump against what carries a dry season. Both
+  // needs scale with base throughput and cap at FLOOR_CAP_FRAC of the rows' capacity, so the
+  // bars on the rows read them directly. mix: the evenness of what is held across the unlocked
+  // layers (carrion aside, being a mineral dose rather than a layer), as a throughput bonus. All
+  // of it sleeps until the market opens, so the opening minutes are untouched.
+  function floorState (state) {
+    var s = state || S(), a = A()
+    var out = { live: false, cover: 1, sponge: 0, mix: 1, kinds: 0 }
+    if (!s || s.act !== 1 || !(num(s.t) >= a.MARKET_T)) return out
+    out.live = true
+    var sub = s.a1.sub, un = s.a1.unlockedTypes || []
+    var base = Math.max(1, a.TIP_THROUGHPUT * num(s.a1.tips) * enzymeStructure(s))
+    var E1 = HY.economy1
+    var cap = function (k) { return E1 && E1.capOf && un.indexOf(k) >= 0 ? num(E1.capOf(k)) : 0 }
+    var needTop = Math.min(base * a.FLOOR_COVER_S, a.FLOOR_CAP_FRAC * (cap('leaf') + cap('needle')))
+    var needDeep = Math.min(base * a.FLOOR_SPONGE_S, a.FLOOR_CAP_FRAC * (cap('log') + cap('stump')))
+    out.cover = needTop > 0 ? C().clamp((num(sub.leaf) + num(sub.needle)) / needTop, 0, 1) : 1
+    out.sponge = needDeep > 0 ? C().clamp((num(sub.log) + num(sub.stump)) / needDeep, 0, 1) : 0
+    var i, k, v, tot = 0, h = 0, n = 0
+    for (i = 0; i < un.length; i++) { k = un[i]; if (k === 'carrion') continue; n++; tot += num(sub[k]) }
+    if (n >= 2 && tot > 0) {
+      for (i = 0; i < un.length; i++) {
+        k = un[i]
+        if (k === 'carrion') continue
+        v = num(sub[k]) / tot
+        if (v > 0) { h -= v * Math.log(v); out.kinds++ }
+      }
+      out.mix = 1 + a.FLOOR_MIX_MAX * C().clamp(h / Math.log(n), 0, 1)
+    }
+    return out
   }
 
   function moistureMult (state) {
@@ -721,7 +761,7 @@
     var v = A().TIP_THROUGHPUT * s.a1.tips *
       enzymeStructure(s) * concentration(s) * num(s.mult.prestigeGrowth) *
       num(s.mult.patchMult) *
-      moistureMult(s) * tempMult(s)
+      moistureMult(s) * tempMult(s) * floorState(s).mix
     if (s.a1.claimInFlight) v *= A().CLAIM_THROUGHPUT
     return v > 0 ? v : 0
   }
@@ -1821,6 +1861,7 @@
   }
 
   HY.act1 = {
+    floorState: floorState,
     // BIBLE §6 M6
     onExtend: onExtend,
     tipCost: tipCost,

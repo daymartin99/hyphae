@@ -47,7 +47,7 @@
         pactSlots: 9,           // count
         channels: 19,           // count
         strains: 6,             // count
-        projects: 163           // count (BIBLE §7 C2; supersedes 08 P1's 145)
+        projects: 164           // count (BIBLE §7 C2; supersedes 08 P1's 145)
       }
     },
 
@@ -153,7 +153,7 @@
       FAIR_EXP: 1.60,           // dimensionless, scarcity premium exponent
       PRICE_FLOOR: 0.30,        // × base, hard floor on price
       PRICE_CEIL: 5.00,         // × base, hard ceiling on price
-      INFL: 0.060,              // permanent base drift per cap-unit purchased (K07); guard ≤ 0.10
+      INFL: 0.090,              // permanent base drift per cap-unit purchased (K07); guard ≤ 0.10. Raised from 0.06 so the market leans back when you lean on it
       IMPACT: 0.350,            // momentum kick per 5%-of-cap traded
       SPREAD: 0.720,            // you sell back at this fraction of mid (K08); guard ≤ 0.80
       SELL_BASE_DROP: 0.020,    // base drop per cap-unit sold back
@@ -186,6 +186,17 @@
       REVEAL_SUGAR_TIPS: 3,         // tips
       MARKET_SUB_G: 500,            // g total substrate, or
       MARKET_T: 210,                // s elapsed
+      // The floor as an ecology. It wakes at MARKET_T, so the opening minutes are untouched.
+      // Cover is leaf + needle on hand; strip it and the moisture target sags by up to DRY_K.
+      // Held water is log + stump; it pulls a dry season's target back toward MOIST_OPT.
+      // Both needs scale with throughput and cap at CAP_FRAC of the rows' capacity, so the
+      // bars on the rows read it directly. Variety is the evenness of what is held.
+      FLOOR_COVER_S: 240,           // s of base throughput the top layer should cover
+      FLOOR_CAP_FRAC: 0.3,          // × leaf+needle (or log+stump) capacity, the need's ceiling
+      FLOOR_DRY_K: 0.32,            // × moisture target lost with no cover at all
+      FLOOR_SPONGE_S: 900,          // s of base throughput the deep layer should hold
+      FLOOR_SPONGE_W: 0.45,         // × of the gap to MOIST_OPT held water closes
+      FLOOR_MIX_MAX: 0.16,          // × throughput at a perfectly even spread of layers
       SEASONS_T: 300,               // s elapsed, exactly
       TREES_SUGAR_G: 250,           // g sugar, and season == WINTER
       PROJECTS_BIOMASS_G: 2000,     // g biomass
@@ -344,6 +355,8 @@
       PHOTO_FC: 0.88,           // fc, the anti-softlock floor arms
       PHOTO_FLOOR: 0.40,        // × SrPeak, the mercy floor on Sr
       PHOTO_COST: 1300,         // Ψ
+      VACUOLE_A: 260,           // Ψ, first Vacuolation (Insight into one more D)
+      VACUOLE_E: 1.45,          // × per Vacuolation bought
       ASCOSPORE_FC: 0.97,       // fc, the transition becomes purchasable
       // the transition (BIBLE §2.2, §2.3)
       SPORE_DIVISOR: 270,       // g of held biomass per banked spore (K28, S7)
@@ -529,9 +542,9 @@
       DAI_MEDIAN: [2, 4],       // target median band
       DEAD_AIR_MAX: 480,        // s, longest permitted run with nothing affordable (HARD)
       COUNT_A1: 45,             // entries
-      COUNT_A2: 68,             // entries
+      COUNT_A2: 69,             // entries
       COUNT_A3: 50,             // entries
-      COUNT: 163,               // entries total
+      COUNT: 164,               // entries total
       NEAR_RATIO: 0.35          // affordRatio at or above which an entry counts as NEAR
     },
 
@@ -543,7 +556,7 @@
       BURST_WINDOW: 20,         // s, the rolling window
       OBS_COOLDOWN: 240,        // s between idle observations
       RING: 200,                // lines retained for the LOG tab
-      ROWS: 5,                  // rows visible; lines wrap (BIBLE §7 C15)
+      ROWS: 7,                  // rows visible at most; lines wrap (BIBLE §7 C15). The CSS --con-rows may show fewer on a short screen, and the trim follows it
       RETURN_GAP: 1.2           // s between return-burst lines
     },
 
@@ -671,6 +684,41 @@
     if (parseFloat(s) >= GROUP) { e += 1; m /= GROUP; s = mantissa(m, sig) }
     if (e >= MASS_SUF.length) return INF
     return s + ' ' + MASS_SUF[e]
+  }
+
+  // A stock reading split into what to read and what to watch: [head, tail, unit]. The head is
+  // the three significant figures fmt/fmtMass would print, truncated rather than rounded so head
+  // and tail always add back up to the value; the tail is the next K digits, which move on every
+  // tap. mass picks the fmtMass unit table, otherwise the plain suffixes. null when there is
+  // nothing honest to split (NaN, infinities, beyond the table).
+  function fine (n, K, mass) {
+    var TAB = mass ? MASS_SUF : SUF
+    if (typeof n !== 'number') n = Number(n)
+    if (n !== n || n === Infinity || n === -Infinity) return null
+    var neg = n < 0
+    if (neg) n = -n
+    var sig = TUNE.NUM.SIG, e, m, d, full, dot, cut
+    if (n < GROUP) { e = 0; m = n } else {
+      e = Math.floor(Math.log10(n) / 3)
+      if (e < 1) e = 1
+      m = n / Math.pow(GROUP, e)
+      if (m >= GROUP) { e += 1; m /= GROUP }
+    }
+    if (e >= TAB.length) return null
+    d = sig - 1 - (m < 10 ? 0 : m < 100 ? 1 : 2)
+    if (d < 0) d = 0
+    full = m.toFixed(d + K)
+    if (parseFloat(full) >= GROUP) {
+      if (e + 1 >= TAB.length) return null
+      e += 1
+      m /= GROUP
+      d = sig - 1 - (m < 10 ? 0 : m < 100 ? 1 : 2)
+      if (d < 0) d = 0
+      full = m.toFixed(d + K)
+    }
+    dot = full.indexOf('.')
+    cut = dot < 0 ? full.length : (d > 0 ? dot + 1 + d : dot)
+    return [(neg ? MINUS : '') + full.slice(0, cut), full.slice(cut).replace('.', ''), TAB[e]]
   }
 
   // Two shapes are needed and both are named in BIBLE §6: the countdown/elapsed form of 06 R7
@@ -859,6 +907,29 @@
     eq(fmtMass(5.33e11), '533 kt', 'fmtMass(5.33e11)')
     eq(fmtMass(NaN), DASH, 'fmtMass(NaN)')
 
+    // fine(): the head is what fmtMass shows, the tail is the next five digits, and the two add
+    // back up to the value across the whole reachable range.
+    var FI = [[29318402, '29.3', '18402', 't'], [847.2913, '847', '29130', 'g'], [1000, '1.00', '00000', 'kg'],
+      [2250.418, '2.25', '04180', 'kg'], [5.33e11, '533', '00000', 'kt']]
+    for (i = 0; i < FI.length; i++) {
+      var fp = fine(FI[i][0], 5, true)
+      eq(fp ? fp.join('|') : 'null', FI[i][1] + '|' + FI[i][2] + '|' + FI[i][3], 'fine(' + FI[i][0] + ')')
+    }
+    eq(fine(2250.418, 5, false).join('|'), '2.25|04180|k', 'fine(2250.418) unscaled')
+    for (p = -2; p <= 14; p++) {
+      for (mm = 1; mm < 10; mm++) {
+        var fx = mm * Math.pow(10, p) * 1.0000191
+        var fr = fine(fx, 5, true)
+        ok(!!fr, 'fine(' + fx + ') gave nothing')
+        if (!fr) continue
+        ok(fr[0].indexOf('.') < 0 ? fr[0].length <= 3 : fr[0].length <= 4, 'fine(' + fx + ') head "' + fr[0] + '" is not three figures')
+        ok(fr[1].length === 5, 'fine(' + fx + ') fine part "' + fr[1] + '" is not five digits')
+        ok(fmtMass(fx).split(' ')[1] === fr[2], 'fine(' + fx + ') unit "' + fr[2] + '" is not the unit fmtMass picks')
+        ok(Math.abs(parseFloat(fr[0] + (fr[0].indexOf('.') < 0 ? '.' : '') + fr[1]) * Math.pow(GROUP, MASS_SUF.indexOf(fr[2])) - fx) <= fx * 1e-6 + 1e-9,
+          'fine(' + fx + ') does not add back up to the value it split')
+      }
+    }
+
     eq(fmtTime(231), '3:51', 'fmtTime(231)')
     eq(fmtTime(8040), '2:14', 'fmtTime(8040)')
     eq(fmtTime(100000), '1d 03:46', 'fmtTime(100000)')
@@ -941,6 +1012,7 @@
     SUF: SUF,
     fmt: fmt,
     fmtMass: fmtMass,
+    fine: fine,
     fmtTime: fmtTime,
     rng: rng,
     hash32: hash32,

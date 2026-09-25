@@ -474,7 +474,10 @@
     // triggerRaw is the design's own predicate, unaltered. It is what the reachability self-test
     // proves, so a withheld entry is still known to arrive correctly the day its reader lands.
     p.triggerRaw = trigger
-    p.trigger = p.needs ? function (s) { return !!p.needs() && !!trigger(s) } : trigger
+    // A latching entry, once seen, stays eligible: a threshold on something the player spends
+    // (Insight, minerals) must not pull the card off the shelf the moment they save toward it.
+    var gate = opts.latch ? function (s) { return isSeen(s, id) || !!trigger(s) } : trigger
+    p.trigger = p.needs ? function (s) { return !!p.needs() && !!gate(s) } : gate
     p.cost = function () { return canAfford(p, S()) }
     p.pay = function () { return payFor(p, S()) }
     // The tag is READ, not stored: it is derived from `price` on every read, through the same two
@@ -674,11 +677,12 @@
     'Lignin is only a rumour of a wall. (Unlocks fallen logs)',
     ['rulechange'])
 
-  // Forty purchases arrive minutes into the act, when 15,000 g is ~29× the bank — an automation
-  // dangled a session away is noise, not a goal. The chore is real from purchase forty; the card
-  // waits until the price is inside ~4× reach, the band the reveal queue is built around.
+  // Feel the market, then hand it off: twelve purchases is enough to have learned what a price
+  // is, and the clicking should not outlast the lesson (it was forty, and players waited the
+  // market out rather than learn it). The card still waits until the price is inside ~4× reach,
+  // the band the reveal queue is built around.
   E('standing_order', 'Standing Order', 1, { g: 15000 },
-    function (s) { return stat(s, 'purchases') >= 40 && s.res.biomass >= 4000 },
+    function (s) { return stat(s, 'purchases') >= 12 && s.res.biomass >= 4000 },
     function () { /* per-type price ceiling and floor stock; economy1 fills them */ },
     'It buys badly and it never sleeps, and you will take that trade. (Automated, 8% worse than you)',
     ['automation'])
@@ -1016,7 +1020,9 @@
     'Say all of it at once, in one direction. (Unlocks PULSE)',
     ['panel', 'verb'])
 
-  E('differentiation', 'Differentiation', 2, { sig: 3200 },
+  // 1,400 Σ, not 3,200: a small network's capacity must be able to reach the one panel that
+  // grows capacity, or the act can wall before the player has seen the way over.
+  E('differentiation', 'Differentiation', 2, { sig: 1400 },
     function (s) { return s.res.cumBiomass >= T().A2.D_TRIGGER },
     function () { /* cognition opens D allocation across dCond and dVes */ },
     'Not every thread needs to do everything. (Unlocks Differentiation)',
@@ -1077,7 +1083,7 @@
     function (s) { return minHumus(s) < T().A2.HUMIC_RETENTION_H },
     function () { /* forest.setRho(): one global dial plus five pinned per-region overrides */ },
     'Give some of it back. You will not see why for an hour. (Unlocks Retention)',
-    ['dial', 'panel'])
+    ['dial', 'panel'], { latch: true })
 
   // Same shape as `septal_gating`: the trade counter is a verb counter, and a bank of 150,000 ⛬ is
   // the state that says the same thing — nobody accumulates that without having been in the market.
@@ -1085,7 +1091,7 @@
     function (s) { return stat(s, 'mineralTrades') >= 30 || s.res.minerals >= 1.5e5 },
     function () { /* the mineral exchange gains its sparkline, true Pbar, momentum and LIMIT orders */ },
     'The price was never random. It just never told you. (Market instruments)',
-    ['information', 'verb'])
+    ['information', 'verb'], { latch: true })
 
   // ── II-C Appetite ──────────────────────────────────────────────────────────
 
@@ -1129,7 +1135,20 @@
     function (s) { return s.res.insight >= 350 },
     function (s) { mul(s.mult, 'insightMult', 1.55); set(s.mult, 'ripeT', T().A2.RIPE_T_MEMORY) },
     'The network remembers where the good wood was, and is not sentimental about it. (+55% Insight)',
-    ['multiplier', 'rulechange'])
+    ['multiplier', 'rulechange'], { latch: true })
+
+  // The Insight sink the act was missing. Insight piles up exactly when the player is stuck
+  // (it accrues only while Signal is saturated), so turning it into another D is the way over a
+  // capacity wall that does not depend on having allocated well. Escalating, and rearming.
+  E('vacuolation', 'Vacuolation', 2,
+    function (s) { return { psi: Math.ceil(T().A2.VACUOLE_A * Math.pow(T().A2.VACUOLE_E, num(s.proj.uses.vacuolation))) } },
+    function (s) {
+      return flag(s, 'differentiation') && !!s.stats.everSaturated && num(s.res.D) < T().A2.D_MAX &&
+        num(s.res.insight) >= 0.5 * T().A2.VACUOLE_A * Math.pow(T().A2.VACUOLE_E, num(s.proj.uses.vacuolation))
+    },
+    function (s) { grantD(s, 1) },
+    'Hollow out a cell and call the hollow room. What you understood becomes somewhere to put things. (+1 D)',
+    ['rearm'], { rearm: true, latch: true })
 
   E('reabsorption', 'Reabsorption', 2, { psi: 150 },
     function (s) { return s.res.D >= 5 },
@@ -1165,7 +1184,7 @@
     function (s) { return claimed(s) >= 22 && edgesPerNode(s) < 1.2 },
     function () { /* up to 3 artificial edges at hexDist ≤ 3, 2,000 ⛬ each to place */ },
     'Two parts of you that were never neighbours agree to be adjacent. (+3 network edges)',
-    ['rulechange'])
+    ['rulechange'], { latch: true })
 
   E('isotope_ledger', 'Isotope Ledger', 2, { psi: 460 },
     function (s) { return fc(s) >= 0.35 },
@@ -1363,7 +1382,7 @@
     function (s) { return s.res.insight >= 55 },
     function (s) { grantD(s, 1) },
     'Physarum solved the Tokyo rail network with oat flakes and no nervous system. (+1 D)',
-    ['flavour'])
+    ['flavour'], { latch: true })
 
   E('the_wood_wide_web', 'The Wood Wide Web', 2, { psi: 180 },
     function (s) { return pactCount(s) >= 3 },
@@ -2157,15 +2176,30 @@
     var out = [], i, p
     for (i = 0; i < CATALOG.length; i++) {
       p = CATALOG[i]
-      if (isRevealed(s, p)) out.push(p)
+      // A revealed entry whose moment has passed leaves the shelf: greying it would say "you
+      // cannot have this" without saying it was the season and not the price.
+      if (isRevealed(s, p) && safeTrigger(p, s)) out.push(p)
     }
     return out
   }
 
   function nonPinnedRevealed (s) {
     var i, n = 0, r = revealedList(s)
-    for (i = 0; i < r.length; i++) if (!r[i].pinned) n++
+    for (i = 0; i < r.length; i++) if (!r[i].pinned && !beyond(r[i], s)) n++
     return n
+  }
+
+  // Priced in more Signal than the vessel can hold right now. Such a card stays visible (marked
+  // so) but does not take a slot: a shelf full of walls hid the Insight cards queued behind
+  // them, which were the way over the walls.
+  function beyond (id, st) {
+    var s = st || S()
+    var p = typeof id === 'string' ? BY_ID[id] : id
+    if (!s || !p || s.act < 2 || !HY.cognition || !HY.cognition.Sc) return false
+    var pr = priceOf(p, s) || {}
+    var cap = Number(HY.cognition.Sc(s))
+    if (!(cap < Infinity)) return false
+    return num(pr.sig) > 0 && num(pr.sig) > cap
   }
 
   // ── affordability ──────────────────────────────────────────────────────────
@@ -2206,7 +2240,7 @@
     if (!p || EXCLUDED[p.id]) return false
     if (!isSeen(s, p.id)) s.proj.seen.push(p.id)
     dequeue(s, p.id)
-    DISABLED[p.id] = !p.cost()
+    DISABLED[p.id] = refusal(p)
     return true
   }
 
@@ -2227,7 +2261,7 @@
     while (nonPinnedRevealed(s) < cap && s.proj.queue.length) {
       var id = s.proj.queue.shift()
       if (EXCLUDED[id] || !BY_ID[id]) continue
-      DISABLED[id] = !BY_ID[id].cost()
+      DISABLED[id] = refusal(id)
     }
   }
 
@@ -2239,6 +2273,17 @@
 
   function safeCost (p) {
     try { return !!p.cost() } catch (e) { C().faults.count += 1; C().faults.last = 'cost:' + p.id; return false }
+  }
+
+  // Which wall a card is behind, or null when a tap would buy it: 'gone' (not on offer at all),
+  // 'now' (its moment has not come or has passed) or 'cost'. The card says the one that applies.
+  function refusal (id) {
+    var s = S()
+    var p = typeof id === 'string' ? BY_ID[id] : id
+    if (!s || !p || EXCLUDED[p.id] || !p.buyable || !isRevealed(s, p)) return 'gone'
+    if (!safeTrigger(p, s)) return 'now'
+    if (!safeCost(p)) return 'cost'
+    return null
   }
 
   // Tick step 15, and the last step that can change what the player may do this frame.
@@ -2265,7 +2310,7 @@
     promote(s)
 
     var r = revealedList(s)
-    for (i = 0; i < r.length; i++) DISABLED[r[i].id] = !safeCost(r[i])
+    for (i = 0; i < r.length; i++) DISABLED[r[i].id] = refusal(r[i])
   }
 
   // ── purchase ───────────────────────────────────────────────────────────────
@@ -2333,11 +2378,7 @@
   function purchase (id) {
     var s = S()
     var p = typeof id === 'string' ? BY_ID[id] : id
-    if (!p || EXCLUDED[p.id]) return false
-    if (!p.buyable) return false
-    if (!isRevealed(s, p)) return false
-    if (!safeTrigger(p, s)) return false
-    if (!safeCost(p)) return false
+    if (!p || refusal(p)) return false
 
     var snap = snapshot(s)
     var spent = 0, pr = priceOf(p, s), k
@@ -2391,7 +2432,11 @@
     return pin.concat(rest)
   }
 
-  function isDisabled (id) { return DISABLED[id] !== false }
+  function isDisabled (id) { return blockedBy(id) !== null }
+  function blockedBy (id) {
+    var w = DISABLED[id]
+    return w === undefined ? 'gone' : w
+  }
 
   // DAI and NEAR, `08` §5.2's two counters, over the triggered-but-unbought set. NEAR_RATIO is
   // stated as balance/cost, so it is compared against the reciprocal of affordRatio.
@@ -2647,6 +2692,10 @@
         if (i < 7 || i % 2 === 0) sparse.a2.regions.flags[i] &= ~RF_CLAIMED
       }
       probes.push(sparse)
+      // A run that has differentiated and spent every D: the state Vacuolation exists for.
+      var spent = makeProbe(18)
+      spent.res.D = 20; spent.cog.dCond = 10; spent.cog.dVes = 10
+      probes.push(spent)
 
       // triggerRaw, not trigger: a withheld entry must still be proved reachable, or the day its
       // reader lands it would arrive broken and nothing here would have said so.
@@ -2808,6 +2857,10 @@
       x.res.insight = 10000
       x.res.biomass = 1e12                      // the fork's second leg, added when it was repriced
       x.res.extracted = T().A2.EXTRACT_TARGET * 0.7
+      // This test is about the queue, so capacity must not be what opens a slot: a card beyond
+      // the vessel does not hold one (see beyond()), and this probe's vessel is empty.
+      var scStub = HY.cognition && HY.cognition.Sc
+      if (scStub) HY.cognition.Sc = function () { return Infinity }
       for (i = 0; i < x.a2.regions.T.length; i++) { x.a2.regions.T0[i] = 1e9; x.a2.regions.T[i] = 1e9 }
       manageProjects(x)
       ok(isSeen(x, 'the_charter'), 'The Charter did not trigger at LEGACY_LIFE 1.0 and fc 0.70')
@@ -2818,6 +2871,7 @@
       ok(CATALOG.length === n0 - 1, 'the excluded entry was hidden rather than removed')
       for (i = 0; i < CATALOG.length; i++) ok(CATALOG[i].id !== 'total_conversion',
         'the excluded entry is still in CATALOG')
+      if (scStub) HY.cognition.Sc = scStub
       x.res.insight = 10000
       for (i = 0; i < x.a2.regions.T.length; i++) x.a2.regions.T[i] = 1e6
       manageProjects(x)
@@ -2910,6 +2964,32 @@
           'chemotaxis (' + num(chemo.sig) + ' Σ) does not fit the worst legal opening capacity (' +
           openCap.toFixed(1) + ' Σ): the Act I → II transition can hard-softlock again')
       }
+
+      // The shelf holds only what will take a tap: a card whose moment has passed leaves it, and
+      // comes back — not as news — when the moment returns.
+      var fb = HY.state.newGame(37, null)
+      HY.state.init(fb)
+      init(fb)
+      fb.res.biomass = 1e9; fb.res.minerals = 1e7; fb.a1.tips = 300; fb.a1.moisture = 1
+      fb.a1.season = T().A1.SEASON_AUTUMN
+      manageProjects(fb)
+      ok(isSeen(fb, 'fruiting_body'), 'fruiting body did not reveal in the autumn it needs')
+      fb.a1.season = (T().A1.SEASON_AUTUMN + 1) % 4
+      manageProjects(fb)
+      ok(revealedList(fb).indexOf(BY_ID.fruiting_body) < 0, 'a card whose season has passed is still on the shelf')
+      ok(isSeen(fb, 'fruiting_body'), 'hiding the card unlearned the reveal: it will announce itself as new again')
+      ok(refusal('fruiting_body') === 'now', 'a condition that has passed does not read as a refusal')
+      ok(purchase('fruiting_body') === false, 'fruiting body sold itself out of season')
+      var shelf = revealedList(fb), si2
+      for (si2 = 0; si2 < shelf.length; si2++) {
+        ok(refusal(shelf[si2].id) !== 'now', shelf[si2].id + ': on the shelf with its condition passed — the tap it takes will vanish')
+      }
+      var repBefore = num(fb.a1.netRep)
+      fb.a1.season = T().A1.SEASON_AUTUMN
+      manageProjects(fb)
+      ok(refusal('fruiting_body') === null, 'the season came back and the card did not')
+      ok(purchase('fruiting_body') === true, 'fruiting body refused a legal buy in its own season')
+      ok(num(fb.a1.netRep) > repBefore, 'fruiting body took the tap and paid nothing back')
     } catch (e) {
       f.push('threw: ' + (e && e.stack ? e.stack : e))
     }
@@ -2934,6 +3014,10 @@
   indexTerritory()
 
   HY.projects = {
+    beyond: beyond,
+    blockedBy: blockedBy,
+    refusal: refusal,
+    canBuy: function (id) { return refusal(id) === null },
     CATALOG: CATALOG,
     manageProjects: manageProjects,
     reveal: reveal,
