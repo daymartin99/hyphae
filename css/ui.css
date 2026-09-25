@@ -100,7 +100,7 @@
      else — --console-h is built from --con-row, so the row height carries the
      whole strip and the layout above yields per the --panels-min discipline.
      1.1875rem/.8125rem are 19px/13px at the default root size. */
-  --con-row:1.1875rem; --con-rows:5; --con-pad:6px;
+  --con-row:1.1875rem; --con-rows:7; --con-pad:6px;
   --con-size:.8125rem;
   --console-h:calc(var(--con-rows) * var(--con-row) + var(--con-pad) * 2 +
                    env(safe-area-inset-bottom));
@@ -518,6 +518,8 @@ canvas{ display:block; }
    `0.00g`. */
 .unit{ color:var(--text-tertiary); }
 .ledger-val .unit{ color:var(--text-secondary); }
+/* The digits under a stock reading: small, quiet, and moving on every tap. */
+.fine{ font-size:.56em; color:inherit; opacity:.5; letter-spacing:0; }
 .unit[data-fade="in"]{ animation:sufIn var(--d-fade) linear; }
 @keyframes sufIn{ from{opacity:0} to{opacity:1} }
 
@@ -829,7 +831,7 @@ canvas{ display:block; }
             font-weight:500; white-space:nowrap; color:var(--attention-dim); }
 .card-desc{ margin-top:var(--sp-6); font:var(--t-body); color:var(--text-body);
             text-wrap:pretty;
-            display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+            display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
             overflow:hidden; }
 
 /* Triggered-but-unaffordable is where cards live most of their lives, and it must look good, not
@@ -841,6 +843,9 @@ canvas{ display:block; }
 .card[data-s="unbuyable"] .card-title{ color:var(--text-locked); }
 .card[data-s="unbuyable"] .card-cost{ color:var(--text-tertiary); }
 .card[data-s="unbuyable"][data-press="1"]{ transform:none; }
+.card[data-refuse="1"]{ border-color:var(--attention); border-inline-start-color:var(--attention);
+                        transition:none; }
+.card[data-refuse="1"] .card-cost{ color:var(--attention); }
 
 /* ══ ROW · 06 §5.5 ═════════════════════════════════════════════════════════ */
 
@@ -892,10 +897,13 @@ canvas{ display:block; }
 .row-expand{ margin-top:var(--sp-12); padding-top:var(--sp-12);
              border-top:1px solid var(--line-soft); }
 .row-actions{ display:flex; gap:var(--sp-8); flex-wrap:wrap; margin-top:var(--sp-12); }
+/* A row of act buttons shares the line evenly, so CONDUCTION fits beside VESICLES at 390px. */
+.row-line>.row-actions{ flex:1 1 100%; width:100%; }
 .summary{ margin-top:var(--sp-12); }
 .pool-list,.sub-list{ display:block; }
 
 .act-btn{
+  padding-inline:var(--sp-6); white-space:nowrap;
   flex:1 1 auto; min-width:88px; min-height:var(--tap);
   border-radius:var(--r-md); background:var(--surface-2);
   border:1px solid var(--line-strong); color:var(--text-primary);
@@ -1044,10 +1052,12 @@ canvas{ display:block; }
 .console-inner{ max-width:var(--col-max); margin:0 auto; }
 .console-line{ display:flex; }
 .console-line:nth-last-child(1){ opacity:1;   color:var(--text-primary); }
-.console-line:nth-last-child(2){ opacity:.62; }
-.console-line:nth-last-child(3){ opacity:.44; }
-.console-line:nth-last-child(4){ opacity:.30; }
-.console-line:nth-last-child(5){ opacity:.20; }
+.console-line:nth-last-child(2){ opacity:.8; }
+.console-line:nth-last-child(3){ opacity:.66; }
+.console-line:nth-last-child(4){ opacity:.54; }
+.console-line:nth-last-child(5){ opacity:.44; }
+.console-line:nth-last-child(6){ opacity:.36; }
+.console-line:nth-last-child(n+7){ opacity:.28; }
 /* HELD FOR THE RELEASE. ui.js stamps a row that arrived while a charge was building; the stamp
    comes off the moment the thumb lifts. The row is in the DOM the whole time — the five-row window,
    the fade above and the trimming all keep counting it, and the live region has already spoken it —
@@ -1147,6 +1157,16 @@ canvas{ display:block; }
           transition:transform var(--d-reveal) var(--ease-out); }
 .tab[aria-selected="true"] .tab-ind{ transform:scaleX(1); }
 /* Badges are dots, never counts: a count invites completionism, a dot says "something is here". */
+.tab[data-need="1"]::after{ content:''; position:absolute; top:6px;
+  inset-inline-start:calc(50% + 10px); width:6px; height:6px; border-radius:var(--r-full);
+  background:var(--amber-600); animation:needPulse 2.4s ease-in-out infinite; }
+@keyframes needPulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+@media (prefers-reduced-motion:reduce){ .tab[data-need="1"]::after{ animation:none; } }
+/* A card priced in more Signal than the vessel can hold says so, so a wall reads as a wall. */
+.card[data-beyond="1"] .card-cost{ color:var(--amber-600); }
+.card[data-beyond="1"] .card-cost::after{ content:' · more than you can hold'; display:block;
+  font-size:.6875rem; letter-spacing:.02em; text-align:end; opacity:.9; }
+.row-num[data-warn="1"]{ color:var(--attention); }
 .tab-badge{ position:absolute; top:6px; inset-inline-end:calc(50% - 14px);
             width:6px; height:6px; border-radius:var(--r-full); background:var(--positive); }
 
@@ -1418,7 +1438,7 @@ canvas{ display:block; }
    plus the plate were taking 46% of it before a single row of the game appeared. Both give a
    little; the list and the tab bar give nothing. */
 @media (max-height:700px){
-  :root{ --plate-cap:22dvh; --con-rows:4; }
+  :root{ --plate-cap:22dvh; --con-rows:5; }
   .ledger-row{ min-height:32px; }
   .ledger-row[data-lead="1"]{ min-height:40px; }
 }

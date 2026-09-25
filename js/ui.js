@@ -36,7 +36,8 @@
     // shell (06 §4.3)
     PLATE_FRAC: [0.38, 0.22, 0.18],   // fraction of shell height at stage 0 / 1 / 2
     PLATE_MIN_PX: 40,
-    CONSOLE_ROWS: 5,
+    PLATE_AUTO_PX: 40,        // px of panel scroll before the map folds itself away
+    CONSOLE_ROWS: 7,
     LEDGER_MAX_ROWS: 4,
 
     // motion (06 §6.2)
@@ -85,6 +86,7 @@
     DISPLAY_MS: 100,
     RATE_TAU_S: 1.6,
     RATE_ZERO: 1e-6,
+    FINE: 5,                  // digits a moving stock shows below its reading (core.fine)
     ARIA_STRIP_MS: 3000, ARIA_CANVAS_MS: 5000, ARIA_STATUS_MS: 5000,
     SCROLL_QUIET_MS: 120,
     DPR_MAX: 2,
@@ -125,6 +127,12 @@
   // ───────────────────────────────────────────────────────────────────────────
 
   var STR = {
+    floorCover: 'cover',
+    floorWater: 'held water',
+    floorMix: 'variety',
+    beyond: 'more than you can hold',
+    reabsorb: 'reabsorb',
+    holds: 'would hold',
     extend: 'extend',
     biomass: 'biomass',
     // PROVISIONAL, pending the narrative writer (09 §1.1). `labile` is the mycological term for
@@ -142,6 +150,7 @@
     p_seasons: 'the year',
     p_understory: 'the understory',
     p_adaptations: 'adaptations',
+    notNow: 'not now',
     p_patches: 'patches',
     p_signal: 'signal',
 
@@ -413,6 +422,17 @@
     dismantling: 'dismantling'
   }
 
+  // What each layer is and does, shown when its row is opened: the floor is an ecology, and the
+  // player cannot balance what they cannot see.
+  var TYPE_NOTE = {
+    leaf: 'quick and thin. while it lies here, the floor stays damp.',
+    needle: 'slow and sour. it keeps the ground from drying too.',
+    twig: 'a middling meal. more sugar than leaf, less water held.',
+    bark: 'tough going. there is a little mineral in it.',
+    log: 'slow and rich. it holds water through a dry season.',
+    stump: 'the longest meal on the floor. it holds water too.',
+    carrion: 'minerals, fast. it does not last.'
+  }
   var TYPE_NAME = {
     leaf: 'leaf litter', needle: 'needle mat', twig: 'fine deadfall',
     bark: 'bark slough', log: 'fallen log', stump: 'heartwood stump', carrion: 'carrion'
@@ -889,7 +909,17 @@
 
   // A locked control is tappable and it answers. UP's greyed buttons are inert; the information
   // the player wants is exactly "how much more", and we have it (06 §5.2).
+  var VERB = { 'eat sooner': 'sooner', 'eat later': 'later', 'raise cap': 'locus' }
+  // Every press gets a story beat (log.press); a refused one gets the world pushing back.
+  function beat (verb, ok, ctx) {
+    var L = LOG()
+    if (!L || !L.press) return false
+    return L.press(ok ? (VERB[verb] || verb) : 'refused', ctx || null)
+  }
+
   function refuse (node) {
+    if (node) node.__refused = 1
+    beat('refused', true)
     haptic(U.HAP_ERROR, 'ui.error')
     if (node && node.dataset && node.dataset.short) announce(node.dataset.short)
   }
@@ -916,8 +946,13 @@
   function slot (cls) {
     var n = el('span', cls + ' num')
     n.__m = el('span', 'mant')
+    // The fine digits sit between the reading and its unit. aria-hidden: they are motion, not a
+    // reading, and a screen reader re-announcing five churning digits is noise.
+    n.__f = el('span', 'fine')
+    setAttr(n.__f, 'aria-hidden', 'true')
     n.__u = el('span', 'unit')
     n.appendChild(n.__m)
+    n.appendChild(n.__f)
     n.appendChild(n.__u)
     return n
   }
@@ -954,10 +989,37 @@
     n.__fadeT = setTimeout(function () { delete n.__u.dataset.fade }, U.D_FADE)
   }
 
+  function setFine (n, str) {
+    str = str || ''
+    if (!n.__f || n.__f.__t === str) return
+    n.__f.__t = str
+    n.__f.textContent = str
+  }
+
+  function scaleUnit (scale, unit) { return scale ? (unit ? scale + ' ' + unit : scale) : (unit || '') }
+
+  // A stock that moves under the player: three significant figures to read, and the next digits,
+  // small and quiet, to watch. At 28 t a tap adds grams, and a reading that never moves makes a
+  // growing organism look dead. Costs and stakes do not move and keep setMass/setSlot.
+  function setStockFine (n, v, unit, mass) {
+    var p = v ? C().fine(v, U.FINE, mass) : null
+    if (!p) {
+      var q = mass ? splitMass(C().fmtMass(v)) : [C().fmt(v), '']
+      setFine(n, '')
+      setSlot(n, q[0], mass ? q[1] : scaleUnit('', unit))
+      return
+    }
+    setFine(n, p[1])
+    setSlot(n, p[0], mass ? p[2] : scaleUnit(p[2], unit))
+  }
+
   function setMass (n, g) {
     var p = splitMass(C().fmtMass(g))
+    setFine(n, '')
     setSlot(n, p[0], p[1])
   }
+
+  function setStock (n, g) { setStockFine(n, g, undefined, true) }
 
   // R6: rates are always signed and always suffixed with `/s`. The `/s` is not the caller's to
   // write. A rate is the unit of its own quantity, per second — and every call site handed the
@@ -1134,15 +1196,27 @@
     n.appendChild(top)
     n.appendChild(el('p', 'card-desc', spec.desc || ''))
     var dot = null
+    var denyT = null
     var api = {
       el: n,
       setCost: function (s) { setText(cost, s) },
+      // What refuse() announces: the price when the wall is the price, "not now" when it is the
+      // moment. A tap that is refused must say which.
+      setShort: function (s) { n.dataset.short = s || '' },
       setState: function (s) {
         if (n.dataset.s === s) return
         n.dataset.s = s
         setAttr(n, 'aria-disabled', s === 'afford' ? 'false' : 'true')
       },
       setLabel: function (s) { setAttr(n, 'aria-label', s) },
+      // A refused tap is visible at the card: the border and the price flash the attention colour
+      // for one release beat, so the tap does not look like it vanished.
+      deny: function () {
+        refuse(n)
+        setData(n, 'refuse', '1')
+        if (denyT) clearTimeout(denyT)
+        denyT = setTimeout(function () { delete n.dataset.refuse }, U.D_RELEASE)
+      },
       markNew: function () {
         if (dot) return
         dot = el('span', 'newdot')
@@ -1199,12 +1273,14 @@
     }
     if (spec.expand) {
       api.expander()
-      bindPress(main, toggle, { state: n })
+      // On release, not on down: a swipe that starts on a row must scroll the list, not open it.
+      // bindPress refuses a release that moved past the slop or landed mid-scroll.
+      bindPress(main, toggle, { state: n, onUp: true })
       // Long-press is the secondary action, everywhere and only (01 §12.1). Where a row's primary
       // action *is* the expansion the two agree, which is what makes the gesture learnable.
       bindLongPress(main, toggle, n)
     } else if (spec.onPick) {
-      bindPress(main, spec.onPick, { state: n })
+      bindPress(main, spec.onPick, { state: n, onUp: true })
       if (spec.onHold) bindLongPress(main, spec.onHold, n)
     }
     return api
@@ -1234,7 +1310,11 @@
     var b = btn('act-btn', label)
     bindPress(b, function (e) {
       if (e && e.stopPropagation) e.stopPropagation()
+      b.__refused = 0
       fn(b)
+      // The label is the verb, so every action button gets its beat for free. A refusal has
+      // already spoken through refuse().
+      if (!b.__refused) beat(label, true, opts && opts.ctx ? opts.ctx() : null)
     }, { onUp: !(opts && opts.instant) })
     return b
   }
@@ -1250,7 +1330,7 @@
       bindPress(b, function () {
         n.set(o.value)
         onPick(o.value)
-      })
+      }, { onUp: true })
       buttons.push(b)
       n.appendChild(b)
     })
@@ -1330,7 +1410,7 @@
       var next = b.getAttribute('aria-pressed') !== 'true'
       setAttr(b, 'aria-pressed', next ? 'true' : 'false')
       onToggle(next)
-    })
+    }, { onUp: true })
     // `isOn`, not `value`: HTMLButtonElement already owns a string `value` property and would
     // stringify a function assigned to it.
     b.isOn = function () { return b.getAttribute('aria-pressed') === 'true' }
@@ -1722,6 +1802,15 @@
     con.appendChild(cur)
     v.console = con
     v.consoleInner = inner
+    // Seven rows are a window, not the record. From Act II a tap on the console opens the log,
+    // once the log tab has been earned.
+    bindPress(con, function () {
+      var s = liveState()
+      if (!s || s.act < 2 || !view || view.tab === 'log') return
+      var lt = null
+      view.tabs.forEach(function (x) { if (x.key === 'log') lt = x })
+      if (lt && lt.earned) setTab('log')
+    }, { onUp: true })
     shell.appendChild(con)
 
     // ── the interface's own voice: shortfalls and refusals, spoken, never drawn ──
@@ -2024,6 +2113,7 @@
       if (!view) return
       if (e.target === view.stack) {
         setData(view.ledger, 'scrolled', view.stack.scrollTop > 0 ? '1' : '0')
+        autoPlate()
       }
       view.scrolling = true
       if (view.scrollT) clearTimeout(view.scrollT)
@@ -2076,7 +2166,10 @@
       // and reported the game as crashed, and they were right to: tappable and silent is a crash
       // as far as a hand can tell.
       if (!extend(heldS)) refuseHero()
-    } else if (verb === 'settle' && HY.bloom) commit(function () { return HY.bloom.settle() })
+      else beat('extend', true)
+    } else if (verb === 'settle' && HY.bloom) {
+      if (commit(function () { return HY.bloom.settle() })) beat('settle', true)
+    }
     else if (verb === 'newgrowth' && HY.finale && HY.finale.newGrowth) HY.finale.newGrowth()
     // feel.js fires the extend haptic from act1's own call site; this is the fallback for a build
     // in which it has not been concatenated yet.
@@ -2159,7 +2252,10 @@
       }
       return k
     })
-    if (done) flashSpend()
+    if (done) {
+      flashSpend()
+      beat('tip', true)
+    }
     return done
   }
 
@@ -2178,10 +2274,32 @@
     return true
   }
 
+  // From Act II the map folds itself while the panels scroll and unfolds at the top, so the list
+  // gets the room when the player is reading it. It is not a preference and is not stored; a
+  // player who folds or opens the map by hand takes it back. The panels scroll inside their own
+  // box below the plate, so the fold grows the box and moves nothing under the thumb. It only
+  // folds when the list is long enough to stay scrolled once the box grows.
+  function autoPlate () {
+    var s = liveState(), st = view.stack
+    var w = win()
+    if (!s || s.act < 2 || (w && w.innerWidth >= 900)) return
+    var top = st.scrollTop
+    if (view.autoMin) {
+      if (top <= 0) { view.autoMin = false; setPlate(false) }
+      return
+    }
+    if (view.shell.dataset.plate === 'min') return
+    if (top > U.PLATE_AUTO_PX && st.scrollHeight - st.clientHeight > U.PLATE_AUTO_PX * 3) {
+      view.autoMin = true
+      setPlate(true)
+    }
+  }
+
   // The plate's window, opened and closed by the player and remembered. It is not a game state and
   // has no owning module, so it lives here beside the theme, which is the same kind of thing.
   function togglePlate () {
     if (!view) return false
+    view.autoMin = false
     var min = view.shell.dataset.plate === 'min'
     setPlate(!min)
     store('hyphae.plate', min ? 'open' : 'min')
@@ -2583,7 +2701,7 @@
       r.el.parentNode.insertBefore(r.pool, r.el.nextSibling)
     }
     show(r.pool, true)
-    setMass(r.poolVal, g)
+    setStock(r.poolVal, g)
   }
 
   // A purchase is a fall in the labile pool and in nothing else, so that is the only slot that may
@@ -2635,7 +2753,7 @@
     var r0 = v.ledgerRows[0]
     show(r0.el, true)
     setText(r0.lab, STR.biomass)
-    setMass(r0.val, num(HY.state.standing(s)))
+    setStock(r0.val, num(HY.state.standing(s)))
     setRate(r0.rate, rateOf(v, 'standing'), GLYPH.biomass)
     poolLine(r0, num(s.res.biomass), true)
     setData(r0.el, 'lead', '1')
@@ -2740,7 +2858,7 @@
     var r0 = v.ledgerRows[0]
     show(r0.el, true)
     setText(r0.lab, STR.biomass)
-    setMass(r0.val, num(HY.state.standing(s)))
+    setStock(r0.val, num(HY.state.standing(s)))
     setRate(r0.rate, rateOf(v, 'standing'), GLYPH.biomass)
     // Before the first tip there is nothing to spend on and the two numbers are the same number,
     // so the second line would be noise on the cold-boot screen. It arrives with the surface that
@@ -2779,7 +2897,7 @@
       shown += 1
       show(r2.el, true)
       setText(r2.lab, STR.minerals)
-      setSlot(r2.val, C().fmt(num(s.res.minerals)), GLYPH.minerals)
+      setStockFine(r2.val, num(s.res.minerals), GLYPH.minerals)
       setRate(r2.rate, rateOf(v, 'minerals'), GLYPH.minerals)
     } else {
       show(r2.el, false)
@@ -2951,6 +3069,7 @@
     var okd = commit(function () { return g.pulse(m, pulseEpicentre(s)) })
     if (okd) {
       haptic(U.HAP_HOLD, 'ui.pulse')
+      beat('pulse', true, { mode: String(m).toLowerCase() })
       s.stats.pulses = num(s.stats.pulses) + 1
     } else {
       haptic(U.HAP_ERROR, 'ui.error')
@@ -3109,14 +3228,25 @@
   function syncCards (v) {
     var pj = PJ()
     if (!pj) return
-    var k, c, entry
+    var k, c, entry, wall
     for (k in v.cards) {
       if (!Object.prototype.hasOwnProperty.call(v.cards, k)) continue
       c = v.cards[k]
       entry = pj.byId(k)
       if (!entry) continue
-      c.setState(!entry.buyable ? 'unbuyable' : (entry.cost() ? 'afford' : 'want'))
+      // The same verdict purchase() reaches, so a card that looks buyable is one a tap will buy.
+      wall = pj.blockedBy(k)
+      c.setState(!entry.buyable || wall === 'gone' ? 'unbuyable' : wall ? 'want' : 'afford')
     }
+  }
+
+  // MIND carries a dot while D sits unspent: the one allocation the act cannot be finished
+  // without is otherwise a panel the player may never scroll to.
+  function needDot (v, s) {
+    var g = HY.cognition
+    var on = s.act >= 2 && !!g && !!g.unallocated && num(g.unallocated(s)) > 0 &&
+      !!v.panels.diff && v.panels.diff.shown && v.tab !== 'mind'
+    v.tabs.forEach(function (t) { if (t.key === 'mind') setData(t.el, 'need', on ? '1' : '0') })
   }
 
   // The 10 Hz slot: rates, panel bodies, cooldown rings and every ARIA label (BIBLE §4.2).
@@ -3133,6 +3263,7 @@
     updateRates(v, s)
     stage(v, s, rev)
     tabs(v, s, rev)
+    needDot(v, s)
     v.order.forEach(function (id) {
       var p = v.panels[id]
       if (p.need(s, rev) && !p.shown) revealPanel(id)
@@ -3299,6 +3430,7 @@
     acts.appendChild(actionButton(STR.later, function (b) {
       if (!reorderPool(type, U.LATER)) refuse(b)
     }))
+    if (TYPE_NOTE[type]) r.expander().appendChild(el('p', 'row-note', TYPE_NOTE[type]))
     r.expander().appendChild(acts)
 
     return {
@@ -3338,6 +3470,15 @@
     util.line().appendChild(utilBar)
     pv.body.appendChild(util.el)
 
+    // The floor's state, once the market wakes it: how much of the top layer is left to keep it
+    // damp, how much deep wood is holding water, and what the spread of layers is worth.
+    var floorRow = row({})
+    var coverNum = statLine(floorRow, STR.floorCover)
+    var waterNum = statLine(floorRow, STR.floorWater)
+    var mixNum = statLine(floorRow, STR.floorMix)
+    floorRow.el.hidden = true
+    pv.body.appendChild(floorRow.el)
+
     var cond = row({})
     var cl0 = cond.line()
     span(cl0, 'row-name', STR.conduction)
@@ -3373,6 +3514,15 @@
       setPct(utilNum, u)
       utilBar.set(u, u >= T().A1.UTIL_ALARM ? 'warn' : '',
         Math.round(fill(u) * 100) + ' percent of what falls', T().A1.UTIL_ALARM)
+
+      var fl = a && a.floorState ? a.floorState(s) : null
+      show(floorRow.el, !!fl && fl.live)
+      if (fl && fl.live) {
+        setSlot(coverNum, String(Math.round(fl.cover * 100)), '%')
+        setData(coverNum, 'warn', fl.cover < 0.35 ? '1' : '0')
+        setSlot(waterNum, String(Math.round(fl.sponge * 100)), '%')
+        setSlot(mixNum, '+' + Math.round((fl.mix - 1) * 100), '%')
+      }
 
       show(cond.el, !!s.proj.flags.anastomosis)
       if (s.proj.flags.anastomosis) setText(condNum, STR.nothing)
@@ -3444,7 +3594,7 @@
     bindHold(cutBtn, function () {
       var a = A1()
       if (!a || !a.canDeadhead()) { refuse(cutBtn); return }
-      commit(function () { return a.deadhead() })
+      if (commit(function () { return a.deadhead() })) beat('deadhead', true)
       // The one action in the game allowed to flash the size row, because it is the only one that
       // took mass out of the organism rather than out of the pool underneath it.
       if (view) flashSlot(view.ledgerRows[0].val, 'loss')
@@ -3595,6 +3745,7 @@
         g = (grams === null || grams === undefined) ? held * frac : Math.min(grams, held)
         if (!(g > 0)) { refuse(source); return }
         if (!commit(function () { return e.sell(type, g) })) { refuse(source); return }
+        beat('sell', true)
         if (view) flashSlot(view.ledgerRows[1].val, 'gain')
         // The floor answers the trade: sold matter visibly lifts off the litter band, scaled by
         // the grams moved. Playtesters read a trade with no picture as the button not working.
@@ -3607,6 +3758,7 @@
       g = (grams === null || grams === undefined) ? ceiling * frac : Math.min(grams, ceiling)
       if (!(g > 0)) { refuse(source); return }
       commit(function () { e.buy(type, g) })
+      beat('buy', true, { type: (LOG() && LOG().BOUGHT && LOG().BOUGHT[type]) || type })
       if (view) flashSlot(view.ledgerRows[1].val, 'loss')
       // And bought matter visibly falls onto it.
       if (CANVAS() && CANVAS().trade) CANVAS().trade('in', g / U.MARKET_BUY_G[U.MARKET_BUY_G.length - 1])
@@ -4108,12 +4260,14 @@
         haptic(U.HAP_ERROR, 'ui.error')
         // Refusal is a counter-offer, never a wall: the largest legal position today.
         var ct = e1.counter(tree, t.volume, t.term, t.exclusive)
+        beat('refused', true)
         if (ct) {
           announce(interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm }))
         }
         return
       }
       commit(function () { e1.signContract(id, t.volume, t.term, t.collateral, t.exclusive) })
+      beat('sign', true)
       r.setExpanded(false)
     }, { onUp: true })
 
@@ -4236,13 +4390,24 @@
   function buildAdaptations (v, p) {
     var pv = panel('adaptations', { title: STR.p_adaptations })
 
+    // One verdict, projects.refusal(), decides both what the card shows and whether the tap buys:
+    // a card that looked buyable and swallowed the tap was the bug. A refused tap is answered at
+    // the card — the price when the wall is the price, "not now" when it is the moment.
     function pick (entry) {
-      if (!entry.buyable || !entry.cost()) {
-        haptic(U.HAP_ERROR, 'ui.error')
-        announce(entry.priceTag)
+      var pj = PJ()
+      var c = v.cards[entry.id]
+      var wall = pj ? pj.refusal(entry.id) : 'gone'
+      if (wall || !commit(function () { return pj.purchase(entry.id) })) {
+        beat('refused', true)
+        if (c) {
+          c.setShort(wall === 'cost' ? entry.priceTag : STR.notNow)
+          c.deny()
+        } else {
+          haptic(U.HAP_ERROR, 'ui.error')
+          announce(entry.priceTag)
+        }
         return
       }
-      commit(function () { PJ().purchase(entry.id) })
       flashSpend()
     }
 
@@ -4271,7 +4436,10 @@
           pv.body.appendChild(c.el)
         }
         c.setCost(entry.priceTag)
-        c.setLabel(entry.title + '. ' + entry.priceTag + '.')
+        var far = !!(pj.beyond && pj.beyond(entry.id, s))
+        setData(c.el, 'beyond', far ? '1' : '0')
+        c.setShort(far ? entry.priceTag + ' · ' + STR.beyond : entry.priceTag)
+        c.setLabel(entry.title + '. ' + entry.priceTag + (far ? ', ' + STR.beyond : '') + '.')
       })
       // A bought project is removed from the DOM. There is no completed tab.
       Object.keys(v.cards).forEach(function (k) {
@@ -4541,18 +4709,23 @@
     var acts = el('div', 'row-actions')
     ex.appendChild(acts)
 
+    // The stand's name goes into its beat, where a line has a {region} for it.
+    var named = { ctx: function () {
+      var c = HY.world && HY.world.card ? HY.world.card(api.id) : null
+      return c && c.name ? { region: c.name } : null
+    } }
     var advBtn = actionButton(STR.advance, function (b) {
       var w = HY.world
       if (!w || !commit(function () { return w.startAdvance(api.id) })) refuse(b)
-    })
+    }, named)
     var densBtn = actionButton(STR.denser, function (b) {
       var w = HY.world
       if (!w || !commit(function () { return w.buyDensity(api.id) })) refuse(b)
-    })
+    }, named)
     var killBtn = actionButton(STR.kill, function (b) {
       var f = HY.forest
       if (!f || !commit(function () { return f.killStand(api.id) })) refuse(b)
-    })
+    }, named)
     acts.appendChild(advBtn)
     acts.appendChild(densBtn)
     acts.appendChild(killBtn)
@@ -4681,15 +4854,47 @@
       var g = HY.cognition
       if (!g || !g.allocate('ves', 1)) refuse(b)
     })
+    // Reabsorption could be bought and had no button: the respec existed only for the harness.
+    var reBtn = actionButton(STR.reabsorb, function (b) {
+      var g = HY.cognition
+      if (!g || !g.respec()) refuse(b)
+    })
     acts.appendChild(condBtn)
     acts.appendChild(vesBtn)
     r.line().appendChild(acts)
+    // What the next point would do, while there is one to spend. Capacity is the wall Act II is
+    // built around, and the one allocation that moves it was a guess.
+    var preview = span(r.line(), 'row-sub', '')
+    var acts2 = el('div', 'row-actions')
+    acts2.appendChild(reBtn)
+    r.line().appendChild(acts2)
     pv.body.appendChild(r.el)
+
+    function peek (s, g, dv, dc) {
+      var v0 = s.cog.dVes, c0 = s.cog.dCond, o = {}
+      s.cog.dVes = num(v0) + dv; s.cog.dCond = num(c0) + dc
+      o.cap = num(g.Sc(s)); o.rate = num(g.Sr(s))
+      s.cog.dVes = v0; s.cog.dCond = c0
+      return o
+    }
 
     p.__sync = function (s) {
       var g = HY.cognition
       if (!g) return
       var un = num(g.unallocated(s))
+      if (un > 0) {
+        var pv1 = peek(s, g, 1, 0), pc1 = peek(s, g, 0, 1)
+        setText(preview, STR.vesicles + ' ' + STR.holds + ' ' + C().fmt(pv1.cap) + ' ' + GLYPH.signal + ' · ' +
+          STR.conduction + ' +' + C().fmt(pc1.rate) + ' ' + GLYPH.signal + '/s')
+      } else setText(preview, '')
+      show(preview, un > 0)
+      var canRe = !!(s.proj && s.proj.flags && s.proj.flags.reabsorption) && num(g.allocated(s)) > 0
+      show(reBtn, canRe)
+      if (canRe) {
+        var rc = num(g.respecCost(s))
+        setBtnPrice(reBtn, STR.reabsorb, C().fmt(rc) + ' ' + GLYPH.insight)
+        setData(reBtn, 's', num(s.res.insight) >= rc ? 'afford' : 'want')
+      }
       // The unit belongs to the number, not to the end of the phrase: `3 unspent D` strands the
       // glyph on a word it does not measure. Same shape as the ledger's `45.3 sug/s owed` —
       // number, unit, then the state word.
@@ -5090,11 +5295,14 @@
     var pv = panel('log', { title: STR.p_log })
     var host = el('div', 'logring')
     pv.body.appendChild(host)
-    var lastN = -1
+    var lastKey = -1
     p.__sync = function (s) {
       var ring = s.log && s.log.ring ? s.log.ring : []
-      if (ring.length === lastN) return
-      lastN = ring.length
+      // Length alone stops moving once the ring is full at LOG.RING, and the tab froze there. The
+      // newest line joins the key so a full ring still repaints.
+      var key = ring.length + '|' + (ring.length ? ring[ring.length - 1] : '')
+      if (key === lastKey) return
+      lastKey = key
       clear(host)
       // Newest first: the console below reads bottom-up, and a player opening the tab is looking
       // for the line that just went past, not the one from an hour ago.
@@ -5484,8 +5692,11 @@
       sync: function (s, e) {
         api.key = e.key
         setText(title, e.title)
-        setText(state, e.taken ? STR.endTaken
-          : (e.available ? STR.endTake : interp(STR.endShort, { n: e.unmet.length })))
+        var mark = e.taken ? STR.endTaken
+          : (e.available ? STR.endTake : interp(STR.endShort, { n: e.unmet.length }))
+        setText(state, mark)
+        // What a refused hold announces: how far short, in the card's own words.
+        n.dataset.short = mark
         n.dataset.s = e.taken ? 'unbuyable' : (e.available ? 'afford' : 'want')
         setAttr(n, 'aria-disabled', e.available && !e.taken ? 'false' : 'true')
         var i
@@ -5494,17 +5705,14 @@
           rows[i].set(e.conditions[i])
         }
         for (i = e.conditions.length; i < rows.length; i++) show(rows[i].el, false)
-        setAttr(n, 'aria-label', e.title + ', ' +
-          (e.taken ? STR.endTaken
-            : e.available ? STR.endTake
-              : interp(STR.endShort, { n: e.unmet.length })))
+        setAttr(n, 'aria-label', e.title + ', ' + mark)
       }
     }
     // An ending is the most irreversible thing in the game, so it is the 400 ms hold and not a tap
     // (06 §5.5's destructive commit, used here for its fourth and last time).
     bindHold(n, function () {
       var fin = FIN()
-      if (fin && fin.takeEnding) fin.takeEnding(api.key)
+      if (!(fin && fin.takeEnding && fin.takeEnding(api.key))) refuse(n)
     })
     return api
   }
@@ -5550,7 +5758,9 @@
       var s = liveState()
       var bl = BL()
       if (!s || !bl) return false
-      return commit(function () { return bl.setLocus(idx, num(s.a3.loci[idx]) + d) })
+      var okd = commit(function () { return bl.setLocus(idx, num(s.a3.loci[idx]) + d) })
+      if (okd) beat('locus', true)
+      return okd
     }
     bindPress(plus, function () { if (!step(1)) refuse(plus) }, { onUp: true })
     bindPress(minus, function () { if (!step(-1)) refuse(minus) }, { onUp: true })
@@ -5604,6 +5814,7 @@
     bindHold(regenBtn, function () {
       var bl = BL()
       if (!bl || !commit(function () { return bl.regenome() })) refuse(regenBtn)
+      else beat('regenome', true)
     })
     acts.appendChild(capBtn)
     acts.appendChild(regenBtn)
@@ -6424,7 +6635,7 @@
     ok(host.querySelectorAll('[aria-live]:not(.vh)').length === 1,
       'D02: exactly one visible aria-live region exists')
     ok(inner && inner.childNodes.length <= 1, 'D02: the console holds at most one line at t=0')
-    ok(U.CONSOLE_ROWS === 5, 'D02: the console is a five-row window')
+    ok(U.CONSOLE_ROWS === 7, 'D02: the console is a seven-row window')
 
     // The interface's own voice is a separate, visually hidden channel: a diagnostic must never
     // land in the console, which is the game speaking and log.js's alone.

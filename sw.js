@@ -8,7 +8,7 @@
 // background costs one launch of staleness on the rare occasion the file
 // changes, which for a game that keeps its progress in its own save is nothing,
 // and it is what makes the thing open instantly on a train.
-const CACHE = 'hyphae-v2'
+const CACHE = 'hyphae-v4'
 
 // The document is precached at install under both names a host can serve it by
 // — some static hosts answer './', some only './index.html' — so the FIRST

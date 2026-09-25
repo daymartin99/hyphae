@@ -1541,6 +1541,8 @@
       }
     }
 
+    drainAfter(s)
+    nudge(s)
     maybeObserve(s)
     drain(s)
   }
@@ -1615,7 +1617,7 @@
     // landed. There is no catalog entry behind those ids and there must not be — there are 163 of
     // them — so the call falls through to the receipt, which is assembled from the project's own
     // title: the string that was printed on the card the player pressed.
-    if (!e) return id.indexOf(PROJECT_PREFIX) === 0 ? bought(projectTitle(id.slice(8))) : false
+    if (!e) return id.indexOf(PROJECT_PREFIX) === 0 ? afterBuy(id.slice(8)) : false
     if (e.act !== 0 && e.act !== s.act) return false
     if (e.once && firedHas(s, e.id)) return false
     // The guard is the executable half of the entry's own trigger string, so a caller that fires
@@ -1688,6 +1690,859 @@
   function projectTitle (id) {
     var p = HY.projects && HY.projects.byId ? HY.projects.byId(id) : null
     return p && p.title ? p.title : ''
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // BEATS: a line for every press, and the aftermath of every purchase
+  // ───────────────────────────────────────────────────────────────────────────
+  //
+  // A press that only goes "bloop" teaches nothing, and a purchase that lands as a bare
+  // `[ title ]` leaves the player hunting for what changed. So every verb draws a beat from a
+  // shuffled pool for its act, and every catalog entry has an aftermath line that follows its
+  // receipt: what changed and roughly where to look, never a tooltip. Refusals answer too.
+  //
+  // Beats are spoken through emitRaw, so they reach the ring and the LOG tab, but they leave
+  // lastLineAt where it was: they are the player's own noise, and must not starve the idle
+  // observations that only speak into silence. Per-verb and global cooldowns keep a held
+  // button or a busy thumb from filling the console.
+  //
+  // nudge() is the other half: when the game can see the player stuck — Signal full with D
+  // unspent, a shelf priced beyond the vessel, a bare or drying floor — it says so, obliquely,
+  // on a long cooldown.
+
+  var PRESS = {
+    extend: {
+      1: [
+        'a thread goes out into the dark. the dark gives a little.',
+        'the soil parts for you, one grain at a time.',
+        'you push. something in the leaf mould pushes back, then yields.',
+        'further than yesterday. the roots do not notice yet.',
+        'each press is a millimetre. the forest is measured in them.',
+        'there is more ground than there is you. for now.',
+        'the thread finds a crack and follows it.'
+      ]
+    },
+    tip: {
+      1: [
+        'a new tip. it knows only forward.',
+        'one more mouth in the dark.',
+        'the tip tastes the soil and chooses a side.',
+        'somewhere below the leaves, a point begins to wander.',
+        'tips are cheap. the ground they open is not.',
+        'a pale end, softer than anything around it.',
+        'another tip. the network gets hungrier and wider together.'
+      ]
+    },
+    deadhead: {
+      1: [
+        'the old thread goes grey. you let it go.',
+        'what stops feeding you stops being you.',
+        'a dead length, cut loose. the soil takes it back without comment.',
+        'pruned. the living parts breathe a little easier.',
+        'you shed a piece of yourself. it was not doing much.',
+        'the network forgets a path it no longer walks.'
+      ]
+    },
+    buy: {
+      1: [
+        '{type}, bought in. it will rot on your schedule now.',
+        'you take on {type}. the market does not ask what for.',
+        'a load of {type} settles into your ground.',
+        'more to digest. {type} is patient, until it is not.',
+        '{type} changes hands. hands is a generous word here.',
+        'the litter is yours now, and so is its decay.',
+        'paid for. the beetles were bidding too.'
+      ]
+    },
+    sell: {
+      1: [
+        'you let some go. someone else will rot it.',
+        'sold. the sugar comes back lighter than the leaves went.',
+        'the litter leaves your ground. the ground is emptier for it.',
+        'a trade. the soil does not keep books, but the market does.',
+        'what you could not eat in time, you turn into sugar.',
+        'gone, at the going rate. there was always a going rate.'
+      ]
+    },
+    sign: {
+      1: [
+        'the tree agrees to feed you. it expects something back.',
+        'a root touches a thread and the terms are set.',
+        'signed in sugar. the tree will be watching the seasons.',
+        'you wrap a root. the tree sends down the first sweetness.',
+        'it cannot read you, the tree. it signs anyway.',
+        'a contract with something a hundred years older than you.'
+      ],
+      2: [
+        'A pact. The root offers sugar and asks for reach.',
+        'Signed. You are bound to something that will outlive you.',
+        'The partner agrees without knowing what you are.',
+        'A new bond forms at the root tip. Terms flow both ways.',
+        'You take the offer. The forest notes another alliance.',
+        'Joined. Your threads wrap the root and the exchange begins.'
+      ]
+    },
+    renegotiate: {
+      1: [
+        'you ask for more. the tree takes a season to answer.',
+        'new terms. the old ones are still in the wood.',
+        'the tree listens slowly. trees do everything slowly.',
+        'less for you, or more. the root does not flinch either way.',
+        'rewritten. the sugar tastes the same, for now.',
+        'it has not forgotten the first price. neither have you.'
+      ]
+    },
+    exit: {
+      1: [
+        'you let go of the root. it closes over where you were.',
+        'the contract ends. the tree will tell the others.',
+        'no more sugar from this one. no more owing, either.',
+        'released. the tree does not look for you.',
+        'a gap in the ground where an agreement used to be.',
+        'the root hairs go quiet where you were.'
+      ]
+    },
+    accept: {
+      1: [
+        'yes. it is done before you feel it.',
+        'accepted. the ground rearranges itself around the new terms.',
+        'you take it. the offer was never going to be better.',
+        'agreed. somewhere a root relaxes.',
+        'the deal holds. the soil has seen worse.',
+        'taken as offered. the forest keeps receipts in its rings.'
+      ]
+    },
+    decline: {
+      1: [
+        'no. the offer sinks back into the leaf mould.',
+        'you let it pass. there will be others, or there will not.',
+        'declined. the tree goes back to its own business.',
+        'not this one. the sugar stays where it was.',
+        'silence is the answer. the tree understands silence.',
+        'turned down. the root withdraws a hair\'s width.'
+      ],
+      2: [
+        'Declined. The offer dissolves into the soil.',
+        'You let the root pass. It will find another fungus.',
+        'No pact. The partner withdraws its hairs.',
+        'Turned down, in the only language roots use: silence.',
+        'The offer lapses. Other roots will hear you said no.',
+        'Nothing signed. The network stays as it was.'
+      ]
+    },
+    claim: {
+      1: [
+        'new ground. it was never empty, only unclaimed.',
+        'a patch, marked in threads no one can see.',
+        'you spread into fresh soil. the old tenants are bacteria.',
+        'the edge of you moves. the forest does not redraw its maps.',
+        'another patch. more to feed, more to be fed by.',
+        'a clearing, and now it is yours.',
+        'claimed. the worms were here first and will be here after.'
+      ]
+    },
+    sooner: {
+      1: [
+        'you eat faster. the pile shrinks, the sugar comes early.',
+        'sooner, then. the rot quickens under you.',
+        'hurrying the decay. it does not mind being hurried.',
+        'the litter goes first. the hunger comes after.',
+        'the meal pulled forward. later will be leaner.',
+        'faster digestion. the soil warms a degree around you.'
+      ]
+    },
+    later: {
+      1: [
+        'you wait. the leaves will keep, mostly.',
+        'later, then. the pile sits in the damp and softens.',
+        'the meal is pushed back. patience is also a kind of eating.',
+        'slower. what you save now you will need in the cold.',
+        'you let it lie. the rain will do some of the work.',
+        'held over. the litter does not know it has been spared.'
+      ]
+    },
+    refused: {
+      1: [
+        'not enough. the ground stays as it is.',
+        'the soil does not give. not yet.',
+        'nothing moves. there is not enough of you for that.',
+        'the thread stops short. it needs more sugar behind it.',
+        'the market shrugs. you cannot cover it.',
+        'the root turns away. it is not the season.',
+        'no room in the ground for more.',
+        'the dark holds still. something is missing.',
+        'you reach, and the reach falls short.'
+      ],
+      2: [
+        'The signal will not stretch that far.',
+        'Not enough. The network settles back.',
+        'The soil refuses. It is not the season for it.',
+        'Nothing happens. The pressure is not there yet.',
+        'The roots will not have it. Not now.',
+        'Too thin. The threads cannot carry that much.',
+        'The stand resists. Something else has to give first.',
+        'The forest holds its ground.',
+        'Not yet. The weather is wrong for it.'
+      ],
+      3: [
+        'The void does not answer. Not yet.',
+        'Too far. The signal fades before it lands.',
+        'Not enough. The genome stays as it was.',
+        'The biome resists. It is not ready for you.',
+        'No room in the bands for that.',
+        'The rival holds. Your edge is too thin.',
+        'Nothing gives. Something else has to change first.',
+        'The ground is wrong for it.',
+        'The network strains and settles back.'
+      ]
+    },
+    advance: {
+      2: [
+        'The front edge leans into {region}.',
+        'You begin to cross into {region}. It will take a while.',
+        'Threads mass at the border of {region} and wait for a gap.',
+        'Colonisation starts. The stand will not notice until it is too late.',
+        'A slow tide moves into {region}, one root at a time.',
+        'Another stand. The network gets longer than your signal.',
+        'The soil of {region} tastes different. You start anyway.'
+      ]
+    },
+    denser: {
+      2: [
+        'You fill in the gaps in {region}.',
+        'Denser now. Each handful of {region} holds more of you.',
+        'The weave in {region} tightens.',
+        'More threads through the same soil. The yield follows.',
+        'The stand grows heavy with you.',
+        'Thicker mats in {region}. Harder to dislodge, harder to leave.',
+        'Ground you already own, walked over twice.'
+      ]
+    },
+    'kill stand': {
+      2: [
+        'You stop feeding {region}. It goes brown from the edges.',
+        'Necrosis spreads through {region}. The soil will have it back.',
+        'A stand dies on purpose. The network is lighter by one.',
+        'The threads in {region} collapse. What they held, you take.',
+        'Cut off, the stand darkens in a day.',
+        'The dead stand feeds the living ones. It always did.',
+        'Letting go of ground is also a way to move.'
+      ]
+    },
+    conduction: {
+      2: [
+        'The channels widen. Signal moves faster through you.',
+        'Quicker now. The far stands hear sooner.',
+        'A point spent on speed. The network feels shorter.',
+        'Conduction improves. The pulse arrives before it fades.',
+        'Walls thin, lumens clear. News travels.',
+        'The same distance, crossed in less time.'
+      ]
+    },
+    vesicles: {
+      2: [
+        'New hollows open in the threads. Room for more.',
+        'Small chambers form along the walls. They fill slowly.',
+        'The network grows pockets. Signal has somewhere to wait.',
+        'More vessel, same pressure. The ceiling lifts.',
+        'You make room. Capacity is just emptiness you have kept.',
+        'Swollen cells along the hyphae, holding what used to spill.',
+        'Storage, in the only way you know: space that stays open.'
+      ]
+    },
+    reabsorb: {
+      2: [
+        'Everything you built, taken back in. Insight pays for it.',
+        'The specialised cells dissolve. The points return to you.',
+        'You pull it all back into the centre. Nothing is anything yet.',
+        'Unmade. The network waits to be shaped again.',
+        'Reabsorbed. The cost is a little of what you understood.',
+        'The channels close and the hollows fill in. You start again.'
+      ]
+    },
+    fruit: {
+      2: [
+        'A knot forms under {region}. It is pushing up.',
+        'A primordium. The part of you that is leaving.',
+        'Something pale gathers beneath the litter in {region}.',
+        'The network pools its sugar into one point below {region}.',
+        'A mushroom begins. It is not the organism.',
+        'You commit to a body above ground. It will be seen.',
+        'Fruiting. Everything else slows to feed it.'
+      ]
+    },
+    release: {
+      2: [
+        'The gills open. Spores leave on air you will never touch.',
+        'Released. Most land nowhere, and some land somewhere.',
+        'A brown haze drifts off the cap. It carries you.',
+        'The flush lets go. It was always meant to leave.',
+        'Spores in the wind. The forest is wider than your threads.',
+        'Millions of you, too small to see, gone downhill.'
+      ]
+    },
+    hold: {
+      2: [
+        'You keep the cap closed. The weather may turn.',
+        'Held. Waiting costs something, but so does the wrong wind.',
+        'Not yet. The rain is still two days off.',
+        'The flush waits under the leaves, ripening.',
+        'Patience at the surface. The spores gather weight.',
+        'Wetter air is coming. The mushroom does not argue.'
+      ]
+    },
+    pulse: {
+      2: [
+        'A signal runs out through the threads and back.',
+        'The network flinches at once, everywhere.',
+        'A {mode} pulse. The far stands feel it last.',
+        'Pressure moves through you like a wave through water.',
+        'You speak in the only way you can. The whole floor hears.',
+        'Signal spent. The stands lean toward the message.'
+      ],
+      3: [
+        'The signal crosses bands of space and comes back thinner.',
+        'A pulse across the whole of you. It takes a long time now.',
+        'Everything you are hears the same thing, eventually.',
+        'A {mode} wave, spread over biomes. The far ends answer late.',
+        'The wave moves through soil, then through something that is not soil.',
+        'You send a signal into the void. Some of it returns.'
+      ]
+    },
+    comply: {
+      2: [
+        'You deliver what was agreed. The root takes it without thanks.',
+        'Complied. The partner will say so to the others.',
+        'Terms met. Trust accrues slowly, like humus.',
+        'The phosphorus goes up the root. The sugar comes down.',
+        'You keep your word. It is noted somewhere below.',
+        'Done as promised. Roots do not praise, they continue.'
+      ]
+    },
+    renew: {
+      2: [
+        'Renewed. Another season bound to the same root.',
+        'The pact continues. Both sides are a little older.',
+        'You extend the terms. The partner extends its patience.',
+        'Same agreement, new year. The rings will show it.',
+        'Another cycle signed. The root was not going anywhere.',
+        'The bond holds for now, because you asked it to.'
+      ]
+    },
+    sever: {
+      2: [
+        'You cut the tie. The root seals the wound in a week.',
+        'Severed. The partner says nothing to you and plenty to the others.',
+        'The pact ends. The sugar stops at the border.',
+        'A connection closes. The network is smaller and freer.',
+        'You withdraw from the root. The soil between you goes quiet.',
+        'Broken off. Other partners will hear of this.'
+      ]
+    },
+    retention: {
+      2: [
+        'You give more back to the soil. The humus thickens, slowly.',
+        'Less given, more kept. The ground notices before you do.',
+        'The dial turns. What stays with you, the forest does not get.',
+        'More returned. The humus at your edges darkens a shade.',
+        'Retention shifts. Nothing you can see is different.',
+        'A share of everything, left behind on purpose.'
+      ]
+    },
+    undeployed: {
+      2: [
+        'Some of the network has not been told what to be.',
+        'Cells wait at the junctions, unassigned.',
+        'Potential idles in the threads. It could be speed, or room.',
+        'Parts of you are still blank, waiting for a shape.',
+        'Unshaped tissue sits in the channels, listening.',
+        'A few points of growth hang unspent, like held breath.'
+      ],
+      3: [
+        'The rooms you built are empty again. You are still the one who builds them.',
+        'Nothing up here has been told what to become yet.',
+        'Some of you is waiting to be sorted. It will not sort itself.',
+        'The old roles did not survive the trip. New ones are unassigned.',
+        'There is structure in you with no purpose written on it.'
+      ]
+    },
+    overflow: {
+      2: [
+        'It costs more than you can hold. That is about the vessel, not the price.',
+        'The price is higher than your ceiling. The ceiling can move.',
+        'You could never gather that much at once. Not in this body.',
+        'Even full, you fall short. The cup is too small, not the pour.',
+        'That much signal would not fit inside you. Yet.',
+        'The cost spills over you before it can be paid. Room comes first.',
+        'The pressure has filled every hollow you have. It needs more hollows.',
+        'Signal pools at the walls with nowhere left to settle.',
+        'Full. More keeps arriving and there is no room to put it.',
+        'The threads are tight as drums. More of them could hold more.',
+        'Every chamber is brimming. The network aches for space.',
+        'What you make now spills. A bigger vessel would keep it.',
+        'The signal presses outward, looking for a pocket that is not there.',
+        'Nothing more fits. The walls could be hollowed further.'
+      ]
+    },
+    reach: {
+      3: [
+        'A new biome at the edge of the map. The soil there is unlike yours.',
+        'You cross into ground no strain of you has tasted.',
+        'The network stretches across a border older than the trees.',
+        'Reached. The chemistry shifts under the leading edge.',
+        'Another biome. The world gets larger when you touch it.',
+        'Far threads find a different kind of dark.'
+      ]
+    },
+    settle: {
+      3: [
+        'You settle. The new ground learns your shape.',
+        'Settled. The first stands take hold in foreign soil.',
+        'The front stops and thickens. This is home now, for a while.',
+        'Roots here speak differently. You begin to answer.',
+        'Established. The biome counts you among its residents.',
+        'A foothold becomes a floor.'
+      ]
+    },
+    locus: {
+      3: [
+        'One locus shifts. The next generation will be slightly other.',
+        'A gene turns. The network does not feel it yet.',
+        'You edit what you are, one letter deep.',
+        'The locus changes. Something small will be different everywhere.',
+        'A switch in the genome. The spores will carry it.',
+        'Rewritten at one site. The rest of the code waits.'
+      ]
+    },
+    regenome: {
+      3: [
+        'The whole genome reshuffles. Same threads, someone else.',
+        'Everything written, rewritten. The old you is compost.',
+        'A new genome settles into every nucleus at once.',
+        'Regenomed. The shape stays and the instructions do not.',
+        'You start over from the inside out.',
+        'The code resets. The network holds its breath.'
+      ]
+    },
+    sequence: {
+      3: [
+        'Read out, base by base. Now you know what you are carrying.',
+        'Sequenced. The genome is less of a secret to you.',
+        'Letters in long rows. Some of them are not yours.',
+        'The strain is mapped. It looks smaller written down.',
+        'You read yourself. It takes a long time.',
+        'Each locus, named. Knowing does not change them.'
+      ]
+    },
+    engage: {
+      3: [
+        'Your threads meet the rival strain. Neither gives ground.',
+        'Contact. The soil between you turns sour.',
+        'You push into their territory. They push back.',
+        'Engaged. Two networks, one patch of dark.',
+        'Enzymes cross the border. So do theirs.',
+        'The rival feels you and hardens its edge.'
+      ]
+    },
+    reinforce: {
+      3: [
+        'More threads to the front. The line thickens.',
+        'Reinforced. The contested ground holds a little longer.',
+        'You send sugar to the border. The border stays.',
+        'Walls thicken where the rival presses hardest.',
+        'Supply moves forward. The far stands go lean for it.',
+        'The edge stiffens. It will not break today.'
+      ]
+    },
+    withdraw: {
+      3: [
+        'You pull back. The rival fills the space without hurry.',
+        'Withdrawn. The border is a little closer to home.',
+        'The front recedes. What you lose, you do not have to feed.',
+        'Retreat, in the slow way fungi retreat.',
+        'You give the ground up. It was never only yours.',
+        'The threads let go of the contested soil.'
+      ]
+    },
+    absorb: {
+      3: [
+        'The rival\'s threads go slack. You take them in.',
+        'Absorbed. Their nuclei become your nuclei.',
+        'What was another strain is now more of you.',
+        'You digest the loser. The soil does not take sides.',
+        'Their network folds into yours. A few genes survive the crossing.',
+        'The border between you disappears into you.'
+      ]
+    },
+    quarantine: {
+      3: [
+        'You wall off the stand. Nothing crosses either way.',
+        'Quarantined. The sickness stays where it is, and so does that part of you.',
+        'Septa close along the edge. The sick ground is on its own.',
+        'A clean line, cut through your own threads.',
+        'Sealed off. It is a loss you chose.',
+        'The rival\'s spread stops at a wall of your own tissue.'
+      ]
+    },
+    bare: {
+      1: [
+        'the floor is bare. the tips are reaching into nothing.',
+        'nothing left underneath you. other things have food, and a price for it.',
+        'you have eaten everything you were standing on.',
+        'the tips find nothing to take. the market is still there.',
+        'empty ground. the growth waits for something to fall, or to be bought.'
+      ]
+    },
+    drying: {
+      1: [
+        'the top layer is thin. the ground under it is drying.',
+        'no leaves left to hold the damp. the floor is giving it up.',
+        'bare soil loses water fast. you ate the cover.',
+        'the floor is drying from the top down.',
+        'without litter on top, the rain does not stay.'
+      ]
+    },
+    sponge: {
+      1: [
+        'the logs are holding water the sky will not give.',
+        'dry weather, damp wood. the deep litter is keeping you wet.',
+        'the fallen wood gives back what it soaked up.'
+      ]
+    },
+    mix: {
+      1: [
+        'several kinds of wood at once. the enzymes do not compete.',
+        'a mixed floor feeds better than a deep one.',
+        'leaf, bark and branch together. each one opens the next.'
+      ]
+    },
+    season0: {
+      1: [
+        'the floor is damp enough without help now.',
+        'wet ground, soft litter. the market fills again.'
+      ]
+    },
+    season1: {
+      1: [
+        'less falls now, and the floor dries. anything holding water is worth more.',
+        'the floor wants cover. what lies on top of it matters now.'
+      ]
+    },
+    season2: {
+      1: [
+        'more is falling than anything can eat. leaves are cheap.',
+        'the leaf market is full, and nothing is hungry enough to empty it.'
+      ]
+    },
+    season3: {
+      1: [
+        'very little falls now. what is on the market is what there is.',
+        'the price of anything left is going up.'
+      ]
+    }
+  }
+
+  var AFTER = {
+    rhizomorph_cords: 'the cords thicken. every thread now carries a little more than it did, and the numbers climb to match.',
+    reflex_arc: 'your tips no longer wait for you. hold, and they keep reaching on their own.',
+    assay_plate: 'a table surfaces beside the litter, seven rows long. each kind of dead now has a number.',
+    cellulase_titre: 'soft litter gives up its sugar faster. the same leaves, eaten more thoroughly.',
+    hydrophobic_sheath: 'frost settles on the coat and stays there. dry spells cost you half of what they did.',
+    foraging_front: 'new tips cost less at the edge, and they will keep costing less. the middle is left to itself.',
+    mycelial_ledger: 'prices begin to leave a trail behind them. the market now has a past you can read.',
+    dormancy_clause: 'while you sleep, the contracts hold. nothing defaults in the dark anymore.',
+    hemicellulase: 'bark loosens from the fallen branches. a new litter joins the list of things you can eat.',
+    osmotic_priming: 'you take and the floor barely stirs. prices move half as far when you lean on them.',
+    two_sided_book: 'a second column opens in the market. you can give things back now, and it will be written down.',
+    sclerotia: 'small hard knots gather in the soil. the sugar ceiling rises, and winter has somewhere to wait.',
+    trade_memory: 'the trees become legible. their hunger now shows under each name in the stand.',
+    antifreeze_glycoproteins: 'winter no longer thins you out. the cold months pay better than they did.',
+    the_deer_in_the_gully: 'something large stops moving in the gully. carrion now appears among the litter.',
+    patch_second_shadow: 'a second patch of floor darkens at the edge of the map. it is yours to spread into.',
+    peroxidase_mn: 'fallen logs soften under you. they are on the list now, heavy and slow.',
+    standing_order: 'somewhere below you, something starts buying on its own. it pays a little too much and never stops.',
+    necromass_recycling: 'dead ends fold back into you. a small share of every loss returns as substrate.',
+    chemotropic_sensing: 'the litter that has not fallen yet leaves a taste. the next drops show before they land.',
+    common_mycorrhizal_network: 'the trees pass your name root to root. reputation gathers faster now.',
+    ghost_pipe_compact: 'a white stem rises with no leaves. four parts in a hundred now go to it, and always will.',
+    hartig_net_refinement: 'the lattice around each root grows finer. every mineral trickles in a little quicker.',
+    forward_contracts: 'the prices are fixed now, in your own chemistry. when they turn against you, they stay turned.',
+    patch_windthrow_gap: 'an opening in the canopy, logs lying where the wind left them. a new patch, heavy with wood.',
+    laccase: 'stumps begin to open. the oldest wood on the floor is now food.',
+    diel_rhythm: 'dark and light are now two different wages. the hours away pay more than they did.',
+    bacterial_antagonism: 'the bacteria back off from the soft litter. it costs you less to take it now.',
+    exudate_pump: 'the trees drink deeper than they meant to. every contract swells.',
+    contract_arbitration: 'the forest listens before it punishes. a broken term will sting less.',
+    seasonal_forecast: 'the coming weather lays itself out ahead of you. three months, readable.',
+    perennial_mycelium: 'the good years and the bad years are gone. there is only the average now, and it will not move.',
+    fruiting_body: 'a cap breaks the litter for one night. the forest counts you, and your standing rises.',
+    autolysis: 'part of you dissolves on command now. a way to shrink, fast, and it is not free.',
+    patch_under_the_hemlocks: 'needle-dark ground opens under the hemlocks. a new patch, quiet and sour.',
+    oxalate_weathering: 'stone softens where you touch it. a slow stream of mineral starts on its own.',
+    patch_old_coppice: 'old stools stand in rows no one planted twice. a new patch, thick with stumps.',
+    patch_oak_rise: 'the rise comes into view, and the oak on it. a new patch, and a patient partner.',
+    windfall: 'sugar arrives that you did not earn. the forest is keeping count of it.',
+    a_gift_of_phosphorus: 'one tree takes the phosphorus and softens toward you. its regard climbs a little.',
+    sever_the_elm: 'the elm is cut out of the network. its roots go quiet, and they stay quiet.',
+    the_hollow_beech: 'the beech pays at once and pays well. somewhere in the terms, a long time is waiting.',
+    anastomosis: 'separate threads fuse. the substrate pools, a new view opens, and everything flows faster.',
+    action_potential: 'a pulse crosses the whole network in one breath. something new is listening at the far end.',
+    decide: 'the tasting is over. the floor will never be read the old way again.',
+    chemotaxis: 'A gradient sharpens on the map. Your tips can now climb it toward richer ground.',
+    apical_growth: 'Every tip sprints. Advances land almost half again as fast.',
+    turgor: 'Pressure gathers into something that is not food. A new measure, Insight, begins to fill.',
+    primordium: 'A tight knot forms under the litter. Something here can now be made to fruit.',
+    substrate_assay: 'Ground can be tasted before you grow into it. A survey is yours to run.',
+    action_potential_ii: 'The whole network can speak in a single burst now. A pulse is yours to send.',
+    differentiation: 'Threads begin to specialise. A new panel sorts them into roles.',
+    manganese_peroxidase: 'Enzymes bite with rust behind them. Wood gives way far quicker.',
+    rhizomorphs: 'Three fronts move where one did. The cables carry advances in parallel.',
+    anemophily: 'Spores ride the weather now, landing where you never grew. Seeding reaches past your edge.',
+    barometric_sense: 'The forecast grows longer, and fruits ripen sooner under falling pressure.',
+    antibiosis: 'A bitterness spreads ahead of your tips. Rivals can be pushed back, and your yield rises.',
+    vesicular_storage: 'The walls thicken. There is more room inside you than there was an hour ago.',
+    septal_gating: 'Every septum can open at once. Neighbouring threads will come when you call them.',
+    humic_retention: 'Some carbon now stays in the soil on purpose. A new dial sets how much, and the return is slow.',
+    cation_exchange: 'The market shows its machinery. New instruments sit beside the prices.',
+    necrotrophic_conversion: 'The partners are no longer partners. What was traded is now simply taken.',
+    laccase_cascade: 'Rings of lignin fall one after another. Enzyme power more than doubles.',
+    turgor_regulation: 'Density sets itself thread by thread. Your attention is free for something else.',
+    rhizomorph_highways: 'Mass moves along the cords without you. Advances continue while you look away.',
+    bridging_strands: 'Water is no longer the end of the map. Strands cross on dead branches overnight.',
+    sporulation_reflex: 'Spores leave when they are ready, not when you say. Release runs on its own.',
+    mycelial_memory: 'Good wood is recalled, bad wood forgotten. Insight gathers at half again the pace.',
+    vacuolation: 'A hollow opens in the old cells, and what you understood settles into it. One more D.',
+    reabsorption: 'Old choices can be dissolved and spent again. Nothing you chose is permanent now.',
+    aerenchyma: 'Air channels open through waterlogged ground. Peat joins the substrates you can work.',
+    alarm_contracts: 'Drought news travels through the roots ahead of the weather. A new term appears in the contracts.',
+    hypogeous_fruiting: 'Fruit forms underground, safe and unseen. Nothing is lost, and nothing is carried away.',
+    sclerotial_bank: 'Surplus no longer spills. Something else drains instead, slowly, where you are not looking.',
+    anastomotic_grafting: 'Distant parts of you join. Three new edges cross the network map.',
+    isotope_ledger: 'A ledger opens with every carbon atom\'s history. Some of the entries are hard to read.',
+    armillaria_accord: 'The honey fungus takes its share of the ground. What stays buried is no longer yours to choose.',
+    mycelial_monoculture: 'Every enzyme turns to the same task. It is very fast, and there is no second answer now.',
+    quiescence: 'The rivals are gone from the map for good. The silence costs almost half your spores.',
+    mast_synchrony: 'Every tree answers the same signal in the same year. Mast years now mark the calendar.',
+    fenton_chemistry: 'Iron and peroxide tear through the wood. Enzyme power climbs past anything before.',
+    saltatory_conduction: 'Signal jumps between nodes instead of crawling. The pool deepens and the pulse arrives sooner.',
+    synchronous_flush: 'Every primordium can open in the same minute. A bloom is yours to call.',
+    homeostatic_soil: 'The soil holds its own number now. Retention adjusts without your hand on it.',
+    firebreak_mycelium: 'Wet ground spreads ahead of any flame. Fire can be stopped where you choose to stop it.',
+    deep_substrate_hyphae: 'Old buried wood comes within reach. Yield swells, and more litter shows on the floor.',
+    the_quiet_ring: 'Seven stands are set apart and will never be touched. Whatever comes next goes around them.',
+    the_charter: 'The living stands sign on forever. They pay well, and the other road has closed behind you.',
+    total_conversion: 'The forest is fuel now, all of it. No stand will be a partner again.',
+    ballistospory: 'Spores leave under their own force. Everything moves faster, all at once.',
+    photoreception: 'Canopy light reaches down to you as a floor. Signal cannot fall below it again.',
+    seed_bank: 'Labile carbon flows away into spores. What you make now leaves with them.',
+    ascospore_discharge: 'The ground lets go of you. Everything rooted is left behind.',
+    slime_mould_correspondence: 'A letter arrives in oat flakes, the routes already solved. One D, filed.',
+    the_wood_wide_web: 'Someone gave the network a name, and it stuck. One D for the headline.',
+    zombie_ant_fungus: 'An ant climbs a stem it has no reason to climb. The borrowed mind is worth one D.',
+    the_humongous_fungus: 'Somewhere in Oregon, a single body spans a mountain. Two D, for scale.',
+    prototaxites: 'A trunk of hyphae stands over the Devonian shore. Two D for the ancestors.',
+    lichen: 'Alga and fungus stopped counting themselves separately. Two D settle into the ledger.',
+    pact_first: 'The Pact Book lies open. Two slots wait, and three channels to fill them with.',
+    pact_slot_b: 'A third place appears in the Pact Book. Another partner can be held at once.',
+    pact_bandwidth_1: 'One more channel runs through the cores. Each pact can carry an extra voice.',
+    pact_slot_c: 'The book gains a fourth page. There is room for another partner now.',
+    pact_chemotaxis: 'Exposure lines draw themselves across your pacts. A new view shows where stress would land.',
+    pact_slot_d: 'A fifth slot holds terms that survive the seasons that made them.',
+    pact_attunement: 'Partners show their traits sooner the longer you keep them.',
+    pact_perennial: 'Pacts renew themselves at the second term. The accord they honour is thinner for it.',
+    pact_bandwidth_2: 'Translocation runs deeper and wider. Another channel opens under every pact.',
+    pact_slot_e: 'Seven slots, and partners can be set against each other. A rival sits in the book.',
+    pact_plasticity: 'Breaking a long pact hurts far less than it did. Your partners are easier to change.',
+    pact_slot_f: 'An eighth slot opens. You can stand between two partners now and take a share.',
+    pact_bandwidth_3: 'Two channels join along the same road. The pacts run heavy with traffic.',
+    pact_slot_g: 'The ninth slot fills out the book. There will be no tenth.',
+    pact_refixation: 'One scar closes over. The next repair will cost more than this one did.',
+    germ_tube: 'New ground is settled without you. The tubes find carbon by smell alone.',
+    appressorium: 'A pressure cell pushes through the hard surface. Reach is yours now, with a panel of its own.',
+    translocation: 'A triangle appears, and carbon moves between its corners. You set where the weight sits.',
+    osmotic_adjustment: 'The salt flats stop burning. A new biome opens to settlement.',
+    antifreeze_glycoprotein: 'Two cold places stop punishing you. The ice on them grows the wrong shape now.',
+    secondary_metabolites: 'Nothing here has an answer to your chemistry. One biome penalty lifts.',
+    facultative_anaeroby: 'Airless ground takes you in without complaint. Another biome penalty is gone.',
+    aspergillus_on_the_station: 'The swabs come back fuller every week. Someone files a note, and you gain one D.',
+    endolith: 'Something inside the stone divides, once, after ten thousand years. One D.',
+    the_ediacaran_silence: 'Soft bodies lie still on an ancient sea floor. The quiet is worth one D.',
+    genome: 'A genome panel unfolds with four loci blank. What goes in them is up to you.',
+    escape_velocity: 'The planet falls away behind you. Nothing that stayed can follow.',
+    radial_survey: 'Rings of distance draw out from the centre. The bands are mapped, and all of them lead away.',
+    thrust: 'Spores can be pushed into the dark now. Dispersal is a thing you do, not wait for.',
+    chemotropism: 'The gradient bends across light-years. Exploration runs far faster along it.',
+    sclerotial_coat: 'Each spore hardens into a shell. Fewer are lost between the stars.',
+    recruit: 'The ones already travelling can be urged on. Your call reaches across the gap.',
+    hyphal_continuity: 'Pulses cross the void with less delay. The slow thought gets a little quicker.',
+    pyomelanin: 'Your walls go black. Melanisation rises, and harvesting no longer pays for it.',
+    saltatory_conduction_void: 'Signal leaps the empty stretches. Each pulse lands sooner out here.',
+    allometry: 'A curve appears with its peak marked. The best size sits lower than you would guess.',
+    neutrino_precursor: 'A faint flicker arrives before the light. Forty seconds of warning, every time.',
+    the_deep_biosphere: 'Richness no longer drops to nothing. There is always something living underneath.',
+    radiotrophy: 'Radiation turns from harm into food. The dark near the hot stars feeds you now.',
+    plasmogamy: 'Nuclei share a wall without a fight. Starting over costs less and comes sooner.',
+    isotropy: 'Every direction is the same distance, and each crossing is a fifth shorter.',
+    interference_competition: 'Poisoned ground can be left behind you. Quarantine is something you can do now.',
+    proofreading: 'Each copy is checked before it leaves. Fidelity edges upward.',
+    antagonise: 'The pulse can be turned against them. A new mode sits beside the old ones.',
+    anastomosis_offer: 'The ones that drifted away can be taken back in. Absorption becomes possible.',
+    conserved_core: 'The oldest genes lock in place. Fidelity climbs another step.',
+    sequencer: 'The strays can be read. What they turned into shows up in a new readout.',
+    parallel_antagonism: 'A second front opens. You can engage on two sides at once.',
+    chaperone: 'Proteins fold correctly on the first try. Fidelity rises a little more.',
+    the_armillaria_problem: 'Nine hundred hectares, and not one place to call the middle. One D.',
+    somatic_incompatibility: 'Whatever is not you is refused at the wall. Far fewer of you are eaten.',
+    tropism: 'The triangle steers itself now, clumsily. Something is lost in the handing over.',
+    circadian_entrainment: 'Every part of you agrees on the hour. Phase becomes something to set.',
+    isochrony: 'The far colonies keep closer time. Their periods narrow toward yours.',
+    heterokaryon_incompatibility: 'The walls close to outside nuclei. Fidelity rises, and nothing foreign gets in.',
+    chronometry: 'The drift between clocks becomes visible. A readout shows who is out of step.',
+    pilobolus: 'A tiny cannon on a dung heap fires at the light. One D for the aim.',
+    bloom: 'Everything you are opens at once. There is no closing it again.',
+    the_fruiting_body: 'You stay, and the world grows around you. This is where it ends.',
+    cede: 'You step back and let them have it. The rest goes on without you.',
+    encyst: 'Your walls close and harden. What you have is kept, and nothing more will come.',
+    anti_organ: 'Twenty-seven voices wait to be answered. The Antiphony opens, and no exchange comes twice.',
+    drone_register: 'A low note sits under everything. A new register is yours to play.',
+    invert_register: 'Their melody returns to them, reversed. Another register joins the organ.',
+    the_offer: 'The others go quiet for a moment. Something has been offered, and it is waiting on you.'
+  }
+
+  var PU = { GAP: 1.4, CD: 5, AFTER_S: 1.3, NUDGE_SAT_S: 45, NUDGE_CD: { undeployed: 150, overflow: 210 } }
+  var pressBag = {}, pressAt = {}, afterQueue = [], nudgeAt = {}, satSince = -1, lastSeason = -1, seasonDue = -1
+
+  function num (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
+
+  function shuffled (a) {
+    var r = C().rng(C().hash32('press', (S() ? S().seed : 1) + a.length + Math.floor(Math.random() * 1e6)))
+    var i, j, t
+    for (i = a.length - 1; i > 0; i--) { j = Math.floor(r.next() * (i + 1)); t = a[i]; a[i] = a[j]; a[j] = t }
+    return a
+  }
+
+  function beatsOpen (s) {
+    return !!s && !frozen && !soft && !consoleOff(s) && s.log.openingLines >= 5
+  }
+
+  function sayBeat (s, id, text, tone) {
+    var keep = s.log.lastLineAt
+    if (recentlySaid(s, text)) return false
+    emitRaw(s, id, text, tone || null, 'world')
+    s.log.lastLineAt = keep
+    return true
+  }
+
+  // A bag, not a die: every line in the pool is heard once before any repeats. A line whose
+  // tokens the caller did not supply is skipped rather than printed with its braces showing.
+  function pick (key, list, ctx) {
+    var bag = pressBag[key], n = 0, t
+    if (!bag || !bag.length) bag = pressBag[key] = shuffled(list.slice())
+    while (bag.length && n < list.length) {
+      t = bag.pop(); n++
+      t = interpolate(t, ctx || null, S(), null)
+      if (!/\{\w+\}/.test(t)) return t
+      if (!bag.length) bag = pressBag[key] = shuffled(list.slice())
+    }
+    return ''
+  }
+
+  function press (verb, ctx, force) {
+    var s = S()
+    if (!beatsOpen(s)) return false
+    var set = PRESS[verb], list = set && (set[s.act] || set[0])
+    if (!list || !list.length) return false
+    if (!force) {
+      if (pressAt[verb] !== undefined && s.t - pressAt[verb] < PU.CD) return false
+      if (s.t - num(s.log.lastLineAt) < PU.GAP) return false
+      if (pressAt._any !== undefined && s.t - pressAt._any < PU.GAP) return false
+    }
+    var text = pick(verb + s.act, list, ctx)
+    if (!text) return false
+    pressAt[verb] = s.t
+    pressAt._any = s.t
+    return sayBeat(s, 'press.' + verb, text, verb === 'refused' ? 'amb' : null)
+  }
+
+  // The receipt, then — a beat later — what it did. The one-way kinds read warn.
+  function afterBuy (id) {
+    var s = S()
+    if (!s) return false
+    var title = projectTitle(id)
+    var p = HY.projects && HY.projects.byId ? HY.projects.byId(id) : null
+    var heavy = !!p && !!p.kinds && /irreversible|removes|trap|fork/.test(p.kinds.join(' '))
+    var shown = bought(title)
+    if (AFTER[id] && beatsOpen(s)) afterQueue.push({ at: s.t + PU.AFTER_S, id: 'after.' + id, text: AFTER[id], tone: heavy ? 'warn' : null })
+    pressAt.refused = s.t
+    return shown
+  }
+
+  function drainAfter (s) {
+    var i
+    for (i = afterQueue.length - 1; i >= 0; i--) {
+      if (s.t >= afterQueue[i].at || afterQueue.length > 3) {
+        var z = afterQueue.splice(i, 1)[0]
+        if (beatsOpen(s)) sayBeat(s, z.id, z.text, z.tone)
+      }
+    }
+  }
+
+  // Act I: the floor. A market line ~45 s into each season (after the season's own line has
+  // spoken, and retried past a running sequence), else whichever of bare / drying / held water /
+  // variety is true, each on its own cooldown.
+  function nudgeFloor (s) {
+    var a1 = HY.act1, A = T().A1
+    if (!a1 || !a1.floorState) return
+    var fs = a1.floorState(s)
+    if (!fs.live) return
+    var key = null
+    if (lastSeason < 0) lastSeason = s.a1.season
+    if (s.a1.season !== lastSeason) { lastSeason = s.a1.season; seasonDue = s.t + 45; return }
+    if (seasonDue > 0 && s.t >= seasonDue) {
+      if (s.t - seasonDue > 120) { seasonDue = -1; return }
+      key = 'season' + lastSeason
+      nudgeAt[key] = -1e9
+    } else if (a1.starving && s.a1.tips > 0) key = 'bare'
+    else if (fs.cover < 0.3 && num(s.a1.moisture) < A.MOIST_OPT * 0.85) key = 'drying'
+    else if (fs.sponge > 0.5 && A.SEASON_MOIST[s.a1.season] < A.MOIST_OPT * 0.8) key = 'sponge'
+    else if (fs.mix > 1.1) key = 'mix'
+    if (!key) return
+    var cd = { bare: 150, drying: 240, sponge: 900, mix: 1200 }[key] || 0
+    if (nudgeAt[key] !== undefined && s.t - nudgeAt[key] < cd) return
+    if (key.indexOf('season') < 0 && s.t - num(s.log.lastLineAt) < PU.GAP * 4) return
+    if (press(key, null, true)) {
+      nudgeAt[key] = s.t
+      if (key.indexOf('season') === 0) seasonDue = -1
+    }
+  }
+
+  // Acts II and III: Signal has sat full for a while. Either D is waiting to be told what to
+  // become, or the cheapest thing on the shelf costs more than the vessel holds.
+  function nudge (s) {
+    if (s.act === 1 && beatsOpen(s)) { nudgeFloor(s); return }
+    if (s.act < 2 || !beatsOpen(s)) return
+    var g = HY.cognition, pj = HY.projects
+    if (!g || !g.saturated || !g.Sc) return
+    if (!g.saturated(s)) { satSince = -1; return }
+    if (satSince < 0) satSince = s.t
+    if (s.t - satSince < PU.NUDGE_SAT_S) return
+    var un = g.unallocated ? num(g.unallocated(s)) : 0
+    var key = null
+    if (un > 0 && (s.act === 3 || F.flag(s, 'differentiation'))) key = 'undeployed'
+    else if (pj && pj.visible && pj.priceOf) {
+      var cap = num(g.Sc(s)), list = pj.visible(), i, pr, lo = Infinity
+      for (i = 0; i < list.length; i++) {
+        if (list[i].act !== s.act) continue
+        pr = pj.priceOf(list[i].id) || {}
+        if (num(pr.sig) > 0 && num(pr.sig) < lo) lo = num(pr.sig)
+      }
+      if (lo < Infinity && lo > cap) key = 'overflow'
+    }
+    if (!key) return
+    if (nudgeAt[key] !== undefined && s.t - nudgeAt[key] < PU.NUDGE_CD[key]) return
+    if (s.t - num(s.log.lastLineAt) < PU.GAP * 4) return
+    nudgeAt[key] = s.t
+    press(key, null, true)
   }
 
   function bought (name) {
@@ -2017,7 +2872,7 @@
     var s = S()
     if (!s || !mountEl || typeof document === 'undefined') return
     while (mountEl.firstChild) mountEl.removeChild(mountEl.firstChild)
-    var r = s.log.ring, i = Math.max(0, r.length - T().LOG.ROWS)
+    var r = s.log.ring, i = Math.max(0, r.length - rowsNow())
     for (; i < r.length; i++) {
       // The ring stores tone and text and nothing else. `amb` is the observation tone and no other
       // line in the corpus carries it, so it is what tells a repainted row to keep its bare gutter;
@@ -2027,6 +2882,19 @@
       var channel = code === '=' ? 'ending' : (tone === 'amb' ? 'observation' : null)
       render({ id: null, text: r[i].slice(1), tone: tone, channel: channel }, true)
     }
+  }
+
+  // The console's height is the CSS's call (--con-rows drops on a short screen); LOG.ROWS is the
+  // most it will ever show. Trimming to the CSS row count keeps the newest line from being the
+  // one that is clipped.
+  function rowsNow () {
+    var n = 0
+    try {
+      if (typeof window !== 'undefined' && window.getComputedStyle && typeof document !== 'undefined') {
+        n = parseInt(window.getComputedStyle(document.documentElement).getPropertyValue('--con-rows'), 10)
+      }
+    } catch (e) { n = 0 }
+    return n > 0 && n <= T().LOG.ROWS ? n : T().LOG.ROWS
   }
 
   function render (line, quiet) {
@@ -2079,13 +2947,13 @@
     // the nth-last-child fade dimming the report behind the sentence being spoken.
     var guard = 0
     if (ending) {
-      while (mountEl.childNodes.length > T().LOG.ROWS && mountEl.firstChild) {
+      while (mountEl.childNodes.length > rowsNow() && mountEl.firstChild) {
         mountEl.removeChild(mountEl.firstChild)
         if (++guard > T().LOG.RING) break
       }
       return
     }
-    var budget = T().LOG.ROWS * rowPx
+    var budget = rowsNow() * rowPx
     while (mountEl.scrollHeight > budget && mountEl.firstChild && mountEl.childNodes.length > 1) {
       mountEl.removeChild(mountEl.firstChild)
       if (++guard > T().LOG.RING) break
@@ -2114,6 +2982,7 @@
   function init (s) {
     s = s || S()
     queue.length = 0
+    pressBag = {}; pressAt = {}; afterQueue.length = 0; nudgeAt = {}; satSince = -1; lastSeason = -1; seasonDue = -1
     pendingReturn.length = 0
     delayed.length = 0
     recent.length = 0
@@ -2731,6 +3600,9 @@
   // ───────────────────────────────────────────────────────────────────────────
 
   HY.log = {
+    press: press,
+    PRESS: PRESS,
+    AFTER: AFTER,
     LINES: LINES,
     BY_ID: BY_ID,
     SEQUENCES: SEQUENCES,
