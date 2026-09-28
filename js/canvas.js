@@ -696,7 +696,7 @@
   // The stylesheet is the only authority on colour; these are the resolved dark primitives of
   // 06 §2.2 and exist purely so a headless or pre-first-paint call has something finite to write.
   // Every real draw calls refreshPalette() first, and the first such call always re-reads.
-  var pal = { at: 0, hyphae: [232, 225, 211], rich: [245, 210, 143], melanin: [122, 131, 113],
+  var pal = { at: 0, gen: 0, sig: '', hyphae: [232, 225, 211], rich: [245, 210, 143], melanin: [122, 131, 113],
               bg: [7, 9, 6], signal: [98, 195, 154],
               tertiary: [122, 131, 113], spore: [239, 235, 221], negative: [162, 75, 50],
               attention: [217, 154, 43], line: [44, 51, 41], lineStrong: [58, 66, 54],
@@ -749,6 +749,11 @@
     // Luminance of the canvas background is a more reliable theme probe than the media query,
     // because the player may have forced a theme in settings.
     lightTheme = (pal.bg[0] * 0.2126 + pal.bg[1] * 0.7152 + pal.bg[2] * 0.0722) > 128
+    // A generation, so a pass that caches its picture can ask "has the ink moved" with one compare
+    // instead of re-reading fourteen colours every frame.
+    var sig = [pal.hyphae, pal.rich, pal.melanin, pal.bg, pal.signal, pal.negative, pal.line,
+               pal.lineStrong, pal.surface2].join('|')
+    if (sig !== pal.sig) { pal.sig = sig; pal.gen++ }
   }
 
   function mq (q) {
@@ -951,7 +956,7 @@
   // shift, a resize — because those leave every already-stroked colour wrong, and nothing short of
   // restroking the buffer can fix a bitmap. It is never set by growth; growth is always additive.
   var repaint = true
-  function invalidate () { repaint = true; lastFlux = 0 }
+  function invalidate () { repaint = true; lastFlux = 0; plate.key = '' }
 
   // ───────────────────────────────────────────────────────────────────────────
   // GROWTH — driven by the game, not by the clock (06 §7.3)
@@ -1692,15 +1697,60 @@
     }
   }
 
+  // The later acts' plates are full restrokes — the network underlay, then the hexes or the arcs —
+  // and ui.js asks for one every display frame. A plate that has not changed is not redrawn: `key`
+  // is everything the pass reads apart from the act's own data (geometry, backing store, ink, form,
+  // network), and `data` is a hash of the data, quantised below what a pixel can show. A change to
+  // `key` is a repaint and goes out in this frame; a change to `data` alone is the simulation
+  // moving, and is drawn at CANVAS_HZ, which is the rate these passes were always meant to run at.
+  // Nothing on this surface animates between states — pulses, tips and transitions are all on the
+  // flux layer — so this holds under reduced motion unchanged: a draw on a state change, never on a
+  // clock. invalidate() clears `key`, so every repaint cause the network honours reaches here too.
+  var plate = { key: '', data: 0, at: 0 }
+
+  function plateDue (kind, data) {
+    refreshPalette(false)
+    readForm(false)
+    var el = surf.netEl
+    var key = kind + '|' + surf.W + 'x' + surf.H + '@' + surf.dpr + '|' + el.width + 'x' + el.height +
+      '|' + pal.gen + '|' + form.key + '|' + (net ? net.seed + '/' + net.n + '/' + net.live : '-')
+    var t = nowMs()
+    if (key === plate.key) {
+      if (data === plate.data) return false
+      var hz = C() ? C().TUNE.CLOCK.CANVAS_HZ : 4
+      if (t - plate.at < 1000 / hz) return false
+    }
+    plate.key = key; plate.data = data; plate.at = t
+    return true
+  }
+
+  // FNV-1a over small integers: allocation-free, which matters for something run every frame.
+  function mix32 (h, v) { return Math.imul(h ^ (v | 0), 16777619) }
+
+  function regionsHash (regions) {
+    var h = 2166136261 | 0
+    var n = regions.q.length
+    h = mix32(h, n)
+    for (var j = 0; j < n; j++) {
+      h = mix32(h, regions.flags ? regions.flags[j] : 0)
+      h = mix32(h, regions.terrain ? regions.terrain[j] : 0)
+      // 1/256 of colonisation moves a face's alpha by under one 8-bit step.
+      h = mix32(h, regions.col ? Math.round(clamp01(regions.col[j]) * 256) : 0)
+      h = mix32(h, regions.barriers ? regions.barriers[j] : 0)
+      h = mix32(h, regions.rival ? regions.rival[j] : -1)
+    }
+    return h
+  }
+
   function drawMap (regions) {
     sampleFrame()
     if (!surf.attached && !attach()) return
     if (!regions || !regions.q) return
     if (!net) { ensureNet(); if (!net) return }
     if (!mapGeom || mapDirty) { buildMapGeom(); mapDirty = false }
+    if (!plateDue('map', regionsHash(regions))) return
     var ctx = surf.netCtx
     var t0 = nowMs()
-    refreshPalette(false)
 
     // The map owns the whole surface for this pass, so the append-only contract is suspended and
     // the structural layer is redrawn beneath it at the alpha of 06 §7.6.
@@ -1822,21 +1872,43 @@
     return Math.max(1, (t.X0_BASE * Math.pow(t.X0_GROWTH, b)) / t.NCAP_DIV)
   }
 
+  function bandCount (bands) { return Math.min(bands.e.length, C() ? C().TUNE.A3.BANDS : 13) }
+
+  // A band's arc width in plate units, before the fit: log occupancy, capped.
+  function bandW (bands, b) {
+    var occ = bands.n ? bands.n[b] / ncapOf(bands, b) : 0
+    var w = VOID.W_MIN + VOID.W_K * Math.log10(1 + (occ > 0 ? occ : 0))
+    return w > VOID.W_MAX ? VOID.W_MAX : w
+  }
+
+  function bandsHash (bands) {
+    var h = 2166136261 | 0
+    var nb = bandCount(bands)
+    h = mix32(h, nb)
+    for (var b = 0; b < nb; b++) {
+      // 1/4096 of a turn is under a pixel of arc on the outermost band of a 1280 px plate, and
+      // 1/16 of a unit of width is under a pixel at any fit a screen has.
+      h = mix32(h, Math.round(clamp01(bands.e[b]) * 4096))
+      h = mix32(h, Math.round(bandW(bands, b) * 16))
+    }
+    return h
+  }
+
   // Sweep is exploration, width is occupancy: thirteen arc() calls, cheap enough to redraw whole.
   function drawVoid (bands) {
     sampleFrame()
     if (!surf.attached && !attach()) return
     if (!bands || !bands.e) return
-    var ctx = surf.netCtx
-    var t0 = nowMs()
-    refreshPalette(false)
-    ctx.clearRect(0, 0, surf.W, surf.H)
     // The void is sky over the ground the colony grew in: the Act I network stays under it, as it
     // stayed under the hexes, and the rings are drawn over it.
     if (!net) ensureNet()
+    if (!plateDue('void', bandsHash(bands))) return
+    var ctx = surf.netCtx
+    var t0 = nowMs()
+    ctx.clearRect(0, 0, surf.W, surf.H)
     strokeUnderlay(ctx, 1)
     var cx = surf.W / 2, cy = surf.H / 2
-    var nb = Math.min(bands.e.length, C() ? C().TUNE.A3.BANDS : 13)
+    var nb = bandCount(bands)
     var fit = Math.min(surf.W, surf.H) / VOID.SIZE
     ctx.save()
     ctx.lineCap = 'butt'
@@ -1844,8 +1916,6 @@
       var r = (VOID.R0 + VOID.STEP * b) * fit
       if (r <= 0) continue
       var e = clamp01(bands.e[b])
-      var occ = bands.n ? bands.n[b] / ncapOf(bands, b) : 0
-      var w = VOID.W_MIN + VOID.W_K * Math.log10(1 + (occ > 0 ? occ : 0))
       // The unexplored remainder is a hairline track at every band, never the band's own width:
       // an empty ring drawn eight pixels thick reads as a fleet that is not there.
       ctx.lineWidth = VOID.TRACK_W
@@ -1854,7 +1924,7 @@
       if (e <= 0) continue
       // Widths scale with the plate for the same reason the radii do: the sky between two bands
       // is the reading, and it has to survive a 900 px viewport as well as a 360 px one.
-      ctx.lineWidth = (w > VOID.W_MAX ? VOID.W_MAX : w) * fit
+      ctx.lineWidth = bandW(bands, b) * fit
       ctx.strokeStyle = rgba(pal.signal, 0.85)
       ctx.beginPath(); ctx.arc(cx, cy, r, VOID.START, VOID.START + Math.PI * 2 * e); ctx.stroke()
     }
@@ -2896,6 +2966,34 @@
        shedMetres(0.4) === 0, 'shed: metres are not converted at SEG_PER_M')
     net = wasNet
     shedGhost = null
+
+    // 7e · THE PLATE GATE. An unchanged hex map or void is not redrawn; a change to its data is,
+    // at CANVAS_HZ; a repaint cause is, at once. Hashes are driven directly, and the gate only
+    // where there is a real surface to key on, with its memory restored either way.
+    var rg = { q: [0, 1], r: [0, 0], flags: [1, 0], terrain: [2, 3], col: [0.5, 0], barriers: [0, 0], rival: [-1, -1] }
+    var rh = regionsHash(rg)
+    rg.col[0] = 0.5 + 0.2 / 256
+    ok(regionsHash(rg) === rh, 'plate: a sub-pixel colonisation step would repaint the map')
+    rg.flags[1] = 1
+    ok(regionsHash(rg) !== rh, 'plate: discovering a region did not change the map key')
+    var bd = { e: [0.3, 0], n: [4, 0], ncap: [10, 10] }
+    var bh = bandsHash(bd)
+    bd.e[1] = 0.2
+    ok(bandsHash(bd) !== bh, 'plate: exploring a band did not change the void key')
+    if (surf.netEl) {
+      var wasPlate = { key: plate.key, data: plate.data, at: plate.at }
+      plate.key = ''
+      ok(plateDue('probe', 1) === true, 'plate: a cleared key did not draw')
+      ok(plateDue('probe', 1) === false, 'plate: an unchanged plate was drawn twice')
+      plate.at = nowMs()
+      ok(plateDue('probe', 2) === false, 'plate: a data change drew faster than CANVAS_HZ')
+      plate.at -= 1000
+      ok(plateDue('probe', 2) === true, 'plate: a data change was never drawn')
+      invalidate()
+      plate.at = nowMs()
+      ok(plateDue('probe', 2) === true, 'plate: invalidate() did not force the plate through')
+      plate.key = wasPlate.key; plate.data = wasPlate.data; plate.at = wasPlate.at
+    }
 
     // 8 · the transitions. Every `motion` step log.js can emit is either owned here or is DOM, and
     // the durations this module reports have to agree with the clock 09 §4 and §5 authored — a
