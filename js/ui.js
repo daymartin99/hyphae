@@ -213,6 +213,7 @@
     // `standing` to mean a *state* (a tree is standing, a stand is standing), two panels from the
     // tree list where the same quantity reads `100 rep`.
     needsStanding: 'needs {n} rep',
+    notTalking: 'will not talk for {t}',
 
     short: '{n} short',
     skip: 'tap to continue',
@@ -2158,9 +2159,11 @@
     layout()
 
     // loop.js owns the single rAF in the build; when it is present we ride in it and start none of
-    // our own (BIBLE §4.2).
+    // our own (BIBLE §4.2). It already calls render() itself on every frame, so this callback only
+    // advances the charge, which writes to the DOM on its own. It used to render as well, and every
+    // frame was drawn twice — 2.00 plate draws per rAF tick, measured.
     if (HY.loop && HY.loop.onFrame) {
-      HY.loop.onFrame(function () { stepCharge(); render(liveState()) })
+      HY.loop.onFrame(function () { stepCharge() })
     }
 
     render(s)
@@ -2224,12 +2227,18 @@
   function refuseHero () {
     if (!view) return
     if (!view.hero.dataset.short) view.hero.dataset.short = STR.floorBare
-    refuse(view.hero)
-    setData(view.hero, 'refuse', '1')
-    if (view.__refuseT) clearTimeout(view.__refuseT)
-    view.__refuseT = setTimeout(function () {
-      if (view) delete view.hero.dataset.refuse
-    }, U.D_RELEASE)
+    refuseFlash(view.hero)
+  }
+
+  // A refused press on a hero-shaped button: the buzz, the flash, and its `data-short` shown for
+  // the length of a release. Until the contract SIGN used it, only the pinned hero could reach
+  // this, and a blocked SIGN only buzzed — the reason went solely to the hidden live region.
+  function refuseFlash (node) {
+    if (!node) return
+    refuse(node)
+    setData(node, 'refuse', '1')
+    if (node.__refuseT) clearTimeout(node.__refuseT)
+    node.__refuseT = setTimeout(function () { delete node.dataset.refuse }, U.D_RELEASE)
   }
 
   // EXTEND, and the one place the release becomes visible somewhere other than under the thumb.
@@ -4282,6 +4291,20 @@
       }
     }
 
+    // The two refusals counter() has no counter-offer for — a tree sulking after a default, and one
+    // whose standing floor is unmet — are the two the player can do least about, and they were the
+    // two the game explained least: counter() returned null and the row printed nothing at all.
+    function refusalWhy (s, tree) {
+      var e1 = E1()
+      if (!s || !tree || !e1) return ''
+      if (num(tree.refuseUntil) > num(s.t)) {
+        return interp(STR.notTalking, { t: C().fmtTime(num(tree.refuseUntil) - num(s.t)) })
+      }
+      var need = e1.repFloor ? e1.repFloor(tree) : 0
+      if (num(tree.rep) < need) return interp(STR.needsStanding, { n: Math.ceil(need) })
+      return ''
+    }
+
     function refresh () {
       var s = liveState()
       var e1 = E1()
@@ -4322,10 +4345,13 @@
       var ok = e1.accepts(tree, t.volume, t.term, t.exclusive, t.collateral)
       setData(signBtn, 'state', ok ? 'idle' : 'locked')
       var ct = ok ? null : e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral)
-      setText(counterTxt, ct
+      var why = ok ? '' : (ct
         ? interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm })
-        : '')
-      show(counterLine, !!ct)
+        : refusalWhy(s, tree))
+      setText(counterTxt, why)
+      show(counterLine, !!why)
+      if (why) signBtn.dataset.short = why
+      else if (signBtn.dataset.short) delete signBtn.dataset.short
     }
 
     var signBtn = btn('hero hero--wide')
@@ -4338,13 +4364,14 @@
       if (!s || !tree) return
       var t = readTerms(s, tree)
       if (!e1.accepts(tree, t.volume, t.term, t.exclusive, t.collateral)) {
-        haptic(U.HAP_ERROR, 'ui.error')
-        // Refusal is a counter-offer, never a wall: the largest legal position today.
+        // Refusal is a counter-offer, never a wall: the largest legal position today — or, when
+        // there is none, the reason there is none. Said on the button, not only to the live region.
         var ct = e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral)
-        beat('refused', true)
-        if (ct) {
-          announce(interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm }))
-        }
+        var why = ct
+          ? interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm })
+          : refusalWhy(s, tree)
+        if (why) signBtn.dataset.short = why
+        refuseFlash(signBtn)   // the beat, the buzz, and `why` read out — refuse() does all three
         return
       }
       commit(function () { e1.signContract(id, t.volume, t.term, t.collateral, t.exclusive) })

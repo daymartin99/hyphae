@@ -607,8 +607,13 @@
     _bFrontD = _bFront < 0 ? Infinity : Math.sqrt(bestFront)
   }
 
-  // One growth step (06 §7.2). O(attractors × frontier-cells), never O(nodes).
-  function grow (o) {
+  // One growth step (06 §7.2). O(attractors × frontier-cells), never O(nodes). `lim` caps what
+  // this step may emit: growNetwork asks for exactly its deficit, because a full batch of 24 when
+  // one segment was wanted overshot the target, and the next call — 23 over, past SHED.MIN — shed
+  // them again: a full restroke and the 1100 ms retraction ghost, every nineteenth tap or so, the
+  // growth visibly undoing itself. regenerate() passes none and keeps the full batch.
+  function grow (o, lim) {
+    if (!(lim > 0) || lim > GROW.NEW_MAX) lim = GROW.NEW_MAX
     var added = 0, pulled = 0
     var pullCap = GROW.NEW_MAX * GROW.PULL_MAX
     var a = 0
@@ -632,7 +637,7 @@
 
     // 2 · spawn. appendNode clears the accumulator of any slot it recycles, so a frontier slot
     // evicted inside this loop is simply skipped when the loop reaches it.
-    for (var s = 0; s < o.fCount && added < GROW.NEW_MAX; s++) {
+    for (var s = 0; s < o.fCount && added < lim; s++) {
       if (!o.accN[s]) continue
       var i = o.frontier[s]
       var dx = o.accX[s], dy = o.accY[s]
@@ -974,15 +979,18 @@
     // TISSUE LOST. See SHED above for the contract: the metres are the whole of it. A mechanic
     // that takes hyphae away is a mechanic that takes branches away, and this is where the picture
     // is made to agree with the number without either side knowing about the other.
-    var raw = targetRaw(hyphaeM)
+    // Measured against the CAPPED target, the one growth aims at. Against the raw one, a device
+    // demoted to a lower tier sat above its new cap forever — neither growing nor shedding — and
+    // the demotion that exists to protect the frame rate did nothing (3000 segments held at a 600
+    // cap across forty calls; it now sheds to exactly 600).
+    var want = targetFor(hyphaeM)
     // …and only while the colony is still a colony. `hyphae` reaching zero is not a loss inside a
     // life, it is DECIDE deleting the body, and that is not shed branch by branch — the transition
     // conducts through the whole network and then cuts, and the next network arrives with the next
     // seed. Unzipping the mat to nothing on the frames before that would take the cinematic's
     // subject away from it.
-    if (raw > GROW.MIN_TARGET && net.live - raw >= SHED.MIN) { shedTo(raw); return 0 }
+    if (want > GROW.MIN_TARGET && net.live - want >= SHED.MIN) { shedTo(want); return 0 }
 
-    var want = targetFor(hyphaeM)
     if (net.live >= want) return 0
 
     // A sudden jump — a patch claim is 30 m and therefore 60 nodes, an offline return can be 800 —
@@ -993,7 +1001,7 @@
     var t0 = nowMs()
     var added = 0, guard = 0
     while (net.live < want && added < budget && guard++ < 64) {
-      var k = grow(net)
+      var k = grow(net, want - net.live)
       added += k
       if (k === 0 && net.aCount === 0) break
       if (k === 0 && guard > 3) break

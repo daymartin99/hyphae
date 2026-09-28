@@ -337,6 +337,9 @@ canvas{ display:block; }
      staged shell of 06 §4.3 — the layout as the progress bar — never once ran. */
   --plate-full:min(var(--plate-px), var(--plate-cap));
   --plate-open:var(--plate-full);
+  /* The home indicator is paid for once, by whatever is last on the screen. The tail carries it
+     unless something beneath it already pads for it (the tab bar, a bottom console): see below. */
+  --tail-safe:env(safe-area-inset-bottom);
   display:flex; flex-direction:column;
   /* dvh — the DYNAMIC viewport, which is whatever is actually visible right now.
      This was svh for one round, on my guess that the owner's "screen jumps up and down" was
@@ -452,7 +455,7 @@ canvas{ display:block; }
    screen the button docks beside it (ui.js dockFab, and the dock rules at the end of this sheet);
    without it the button floats over the list, and the list pads its end by the button's height
    and gaps so the last card — "standing", a band's richness — always scrolls clear of it. */
-.tail{ flex:0 0 auto; height:calc(var(--sp-8) + env(safe-area-inset-bottom)); }
+.tail{ flex:0 0 auto; height:calc(var(--sp-8) + var(--tail-safe)); }
 .shell[data-fab="1"]:not([data-dock="1"]) .panels{ padding-bottom:calc(64px + var(--sp-24) + var(--sp-8)); }
 
 /* ══ LEDGER / STATUS STRIP · 06 §5.1 ═══════════════════════════════════════ */
@@ -476,7 +479,7 @@ canvas{ display:block; }
   /* Wraps at 200% text so a value can never be clipped: every row is min-height, never height,
      and the numeric slots keep their reserved `ch` widths on whichever line they land (06 §1.1). */
   display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--sp-8);
-  min-height:36px; padding:0 var(--gutter);
+  min-height:32px; padding:0 var(--gutter);
 }
 /* The gear lives in the strip's corner, so the strip reserves its width the moment it appears —
    which is the same moment the second row arrives and the strip re-lays out anyway. */
@@ -521,7 +524,10 @@ canvas{ display:block; }
    size; it steps down to hero the instant a second row arrives. */
 .ledger-row[data-lead="solo"]{ min-height:68px; align-items:center; }
 .ledger-row[data-lead="solo"] .ledger-val{ font:var(--t-display); letter-spacing:-.022em; }
-.ledger-row[data-lead="1"]{ min-height:48px; }
+/* The strip's heights are the compact ones everywhere, not only on a short phone: it was the one
+   block whose height was spacing rather than substance (five readouts in 183 px at 430×932), and
+   the 20 px it gives back puts the third floor card above the fold. */
+.ledger-row[data-lead="1"]{ min-height:40px; }
 .ledger-row[data-lead="1"] .ledger-val{ font:var(--t-hero); letter-spacing:-.014em; }
 
 /* A capped stock draws its fill as a 2 px hairline along the row's bottom edge. */
@@ -568,12 +574,13 @@ canvas{ display:block; }
 
 /* ══ HERO · 06 §5.2 ════════════════════════════════════════════════════════ */
 
-/* With the console at the top the hero is the last band on the screen, so it — not the console —
-   is what has to clear the home indicator. Both judges caught the button sitting ~14 px off the
-   bottom edge, inside the iOS gesture strip, where one tap in a few hundred becomes an app switch
-   instead of a turn of play. */
+/* With the console at the top the hero is the last control on the screen and has to clear the
+   home indicator — both judges caught it ~14 px off the bottom edge, inside the iOS gesture strip,
+   where one tap in a few hundred becomes an app switch. The tail beneath it carries the inset, so
+   the hero adds only its own gap: adding the inset here as well reserved it twice, 88 px of dead
+   ground under EXTEND on a notched phone, taken straight out of the panel column. */
 .shell[data-console="top"] .hero{
-  margin-bottom:calc(var(--sp-12) + env(safe-area-inset-bottom));
+  margin-bottom:var(--sp-12);
 }
 
 .hero{
@@ -1133,6 +1140,9 @@ canvas{ display:block; }
    one node into the frame under the plate and stamps data-console on the shell, and the rules
    below are the whole cost of that move. This is an A/B waiting on two blind critics, not a
    setting — whichever wins, the other one leaves. */
+/* Something beneath the tail already pads for the inset: a bottom console, or the tab bar. */
+.shell[data-console="bottom"]{ --tail-safe:0px; }
+.shell:has(.tabbar:not([hidden])){ --tail-safe:0px; }
 .shell[data-console="top"] .console{
   /* Inside the frame now, so it is no longer the shell's last row and owns no part of the safe
      area at the foot of the phone. The plate's own bottom edge is the line above it. */
@@ -1477,8 +1487,6 @@ canvas{ display:block; }
    little; the list and the tab bar give nothing. */
 @media (max-height:700px){
   :root{ --plate-cap:22dvh; --con-rows:5; }
-  .ledger-row{ min-height:32px; }
-  .ledger-row[data-lead="1"]{ min-height:40px; }
 }
 
 @media (max-width:359px){
@@ -1512,6 +1520,9 @@ canvas{ display:block; }
    Every fixed part is positioned against the shell instead of the viewport, so the composition
    stays centred inside the 1680 px cap on very wide displays. */
 @media (min-width:900px){
+  /* The tab bar leaves the flow here (a rail, padding-bottom 0), so it no longer pays for the
+     inset and the tail is the true floor again. */
+  .shell:has(.tabbar:not([hidden])){ --tail-safe:env(safe-area-inset-bottom); }
   .shell{
     flex-direction:row; align-items:stretch; justify-content:center;
     --stage-edge:calc((100% - var(--wall-w) - var(--wall-gap) - var(--col-max) - var(--rail)) / 2);

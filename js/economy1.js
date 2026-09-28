@@ -218,6 +218,12 @@
     NEW_REP_B: 0.45,
     NEW_REP_MIN: 5,
     NEW_REP_MAX: 70,
+    // A tree's standing drifts up toward what the network's reputation implies (the same formula a
+    // new tree is born at), this many points a season: never down, and never while it is still
+    // refusing you. Without it a tree born under its species' signing floor could never be signed —
+    // it rose only on a completed contract with itself — and the oak (floor 50, born 39.75 at the
+    // netRep 55 that unlocks its patch) and the hemlock (30.7, born 24.9) were permanent dead ends.
+    REP_DRIFT: 2,
     SOLICIT_P: 0.35,          // per tree per season, once the deficit has moved this far
     SOLICIT_D: 0.25,
     SOLICIT_VOL: 1.95,        // × the current volume — nearly double, for a 2.5% better rate
@@ -1011,6 +1017,18 @@
     if (reason === 'windthrow') say('a1.windthrow_kill')
   }
 
+  // The forest talks: a tree comes round to the standing the network has earned, slowly, and only
+  // upward — the oak goes on declining until the forest respects you, and then it signs, which is
+  // what its own narration always claimed. A tree still refusing you after a default does not move.
+  function driftRep (t, dt, season) {
+    var s = S()
+    if (num(t.refuseUntil) > num(s.t)) return
+    var implied = C().clamp(CT.NEW_REP_A + CT.NEW_REP_B * num(s.a1.netRep),
+      CT.NEW_REP_MIN, CT.NEW_REP_MAX)
+    if (num(t.rep) >= implied) return
+    t.rep = Math.min(implied, num(t.rep) + CT.REP_DRIFT * dt / season)
+  }
+
   function stepTrees (dt) {
     var s = S()
     if (!s || s.act !== 1) return
@@ -1036,6 +1054,7 @@
       // Cached for cross-module reads (projects.js tests `tree.d`). Recomputed every tick and never
       // trusted on load; §3.1 R1's ban is on storing derived values, not on caching them within a
       // frame, and the alternative is 163 project triggers each recomputing a deficit.
+      driftRep(t, dt, SEASON)
       t.d = carbonDeficit(t)
     }
 
@@ -1190,6 +1209,13 @@
       (1 + CT.NEED_K * Math.pow(d, CT.NEED_E)) *
       (CT.INTAKE_REP_A + CT.INTAKE_REP_B * num(tree.rep)) * num(s.mult.exudatePump) *
       balanceSheet(tree, extra)
+  }
+
+  // The standing a tree must hold before it will sign at all: the inverse of the repMult floor
+  // accepts() tests. Exported so the negotiation row can name the number rather than hardcode it.
+  function repFloor (tree) {
+    if (!tree) return 0
+    return Math.max(0, (sp(tree).minRep - CT.REP_A) / CT.REP_B)
   }
 
   function maxTerm (tree) {
@@ -1779,13 +1805,40 @@
     // handed back to init() as its own backup. The run is parked as a serialised copy instead.
     var saved = HY.state.serialise()
 
+    // ── Standing drifts toward what the network implies: up only, and not while refused.
+    ;(function () {
+      var st = S(), SEASON = T().CLOCK.SEASON_S
+      var keepNet = st.a1.netRep, keepT = st.t
+      st.a1.netRep = 80                      // implies clamp(15 + 0.45·80) = 51
+      var implied = CT.NEW_REP_A + CT.NEW_REP_B * 80
+      var t0 = { rep: 10, refuseUntil: 0 }
+      driftRep(t0, SEASON, SEASON)
+      near(t0.rep, 10 + CT.REP_DRIFT, 1e-9, 'drift: a season moved standing by the wrong amount')
+      var t1 = { rep: implied - 0.5, refuseUntil: 0 }
+      driftRep(t1, SEASON, SEASON)
+      near(t1.rep, implied, 1e-9, 'drift: standing overshot what the network implies')
+      var t2 = { rep: 60, refuseUntil: 0 }
+      driftRep(t2, SEASON, SEASON)
+      ok(t2.rep === 60, 'drift: standing above the implied level was pulled down')
+      st.t = 100
+      var t3 = { rep: 10, refuseUntil: 500 }
+      driftRep(t3, SEASON, SEASON)
+      ok(t3.rep === 10, 'drift: a tree still refusing you came round anyway')
+      // The dead end it exists for: an oak born under its floor becomes signable.
+      var oak = { species: 'oak', rep: CT.NEW_REP_A + CT.NEW_REP_B * 55, refuseUntil: 0 }
+      var floor = repFloor(oak), seasons = 0
+      while (oak.rep < floor && seasons < 200) { driftRep(oak, SEASON, SEASON); seasons++ }
+      ok(oak.rep >= floor, 'drift: an oak born under its floor never became signable')
+      st.a1.netRep = keepNet; st.t = keepT
+    })()
+
     // ── D21, part one: no dice roll exists anywhere in contract pricing.
     // Asserted against the source text of every function that can move a mineral rate, so a future
     // edit that reaches for a draw fails the build rather than the review.
     var priced = [carbonDeficit, canopyLight, deficitAt, mastYearOf, mastActive, mastEligible, offer,
       maxIntake, maxTerm, accepts, counter, signContract, renegotiate, exitContract,
       deliverContracts, completeContract, defaultContract, syncStand, spawnTree, treeContracts,
-      committedTo, reserveSugar, nextK, nextType, onSeasonBoundary]
+      committedTo, reserveSugar, nextK, nextType, onSeasonBoundary, driftRep, repFloor]
     var banned = ['Math.random', 'walkGauss', '.gauss(', '.next(', '.int(', '.pick(']
     for (var pi = 0; pi < priced.length; pi++) {
       var src = Function.prototype.toString.call(priced[pi])
@@ -2559,6 +2612,7 @@
     counter: counter,
     maxIntake: maxIntake,
     maxTerm: maxTerm,
+    repFloor: repFloor,
     treeById: treeById,
     contractById: contractById,
     committedSugarPerSec: committedSugarPerSec,
