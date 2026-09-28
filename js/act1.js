@@ -602,7 +602,9 @@
     if (mineral > 0) C().setStock(s.res, 'minerals', num(s.res.minerals) - mineral)
     s.a1.tips = n + 1
     if (s.a1.tips > num(s.a1.tipsPeak)) s.a1.tipsPeak = s.a1.tips
-    feel('buy', { what: 'tip', n: s.a1.tips })
+    // The count travels as `count`: the sound engine reads `n` as the note's harmonic, and the tip
+    // count sent as `n` plucked 55 Hz × tips — out of hearing by ~130 tips.
+    feel('buy', { what: 'tip', count: s.a1.tips })
     fire('a1.first_tip')
     if (HY.log && HY.log.bought) HY.log.bought('tip')
     return true
@@ -685,7 +687,7 @@
     if (back > 0) C().setStock(s.res, 'biomass', num(s.res.biomass) + back)
     // A cut is a commit, not an extension: the same sound the interface makes for every other
     // thing the player decides to spend. What it costs is on the strip, not in the mix.
-    feel('buy', { what: 'deadhead', n: k })
+    feel('buy', { what: 'deadhead', count: k })
     fire('a1.deadhead')
     return true
   }

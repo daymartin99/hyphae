@@ -2037,7 +2037,7 @@
     if (!isFinite(cost) || num(s.res.accord) < cost) return false
     C().setStock(s.res, 'accord', num(s.res.accord) - cost)
     b.accordChannels = num(b.accordChannels) + 1
-    feel('pact_channel', { n: b.accordChannels })
+    feel('pact_channel', { count: b.accordChannels })
     if (HY.log && HY.log.bought) HY.log.bought('channel')
     return cost
   }

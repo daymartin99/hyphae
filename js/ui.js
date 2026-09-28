@@ -1029,6 +1029,8 @@
   // Zero renders as an em dash, because a hard zero is information and a floating zero is noise.
   function setRate (n, v, unit) {
     var per = (unit || '') + '/s'
+    // A rate never carries trailing digits; a row reused from a stock must not keep its old ones.
+    setFine(n, '')
     var a = Math.abs(v)
     if (!(a > U.RATE_ZERO)) {
       setSlot(n, STR.nothing, per)
@@ -2766,6 +2768,9 @@
     // Held only. `held / cap` is fifteen characters against an eight-character slot (BIBLE §2.5)
     // and it wrapped the strip; the capacity is what the hairline under the row is *for*, and the
     // MIND panel prints both in full.
+    // Acts II and III reuse Act I's rows, and a stock row's trailing digits would stay behind,
+    // frozen, under whatever the row reads now — so every row that is not a stock clears them.
+    setFine(r1.val, '')
     setSlot(r1.val, C().fmt(held), GLYPH.signal)
     show(r1.cap, true)
     var f = cap > 0 ? held / cap : 0
@@ -2781,6 +2786,7 @@
       shown += 1
       show(r2.el, true)
       setText(r2.lab, STR.insight)
+      setFine(r2.val, '')
       setSlot(r2.val, C().fmt(num(s.res.insight)), GLYPH.insight)
       setRate(r2.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
     } else {
@@ -2791,6 +2797,7 @@
     shown += 1
     show(r3.el, true)
     setText(r3.lab, STR.minerals)
+    setFine(r3.val, '')
     setSlot(r3.val, C().fmt(num(s.res.minerals)), GLYPH.minerals)
     setRate(r3.rate, rateOf(v, 'minerals'), GLYPH.minerals)
 
@@ -2810,6 +2817,7 @@
     var r0 = v.ledgerRows[0]
     show(r0.el, true)
     setText(r0.lab, STR.carbon)
+    setFine(r0.val, '')
     setSlot(r0.val, C().fmt(num(s.res.carbon)), GLYPH.carbon)
     setRate(r0.rate, rateOf(v, 'carbon'), GLYPH.carbon)
     setData(r0.el, 'lead', '1')
@@ -2822,6 +2830,7 @@
     setText(r1.lab, STR.p_signal)
     var held = num(s.res.signal)
     var cap = g && g.Sc ? num(g.Sc(s)) : 0
+    setFine(r1.val, '')
     setSlot(r1.val, C().fmt(held), GLYPH.signal)
     show(r1.cap, true)
     r1.cap.style.setProperty('--v', fill(cap > 0 ? held / cap : 0).toFixed(4))
@@ -2837,12 +2846,14 @@
     var r2 = v.ledgerRows[2]
     show(r2.el, true)
     setText(r2.lab, STR.craft)
+    setFine(r2.val, '')
     setSlot(r2.val, C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0), GLYPH.craft)
     setRate(r2.rate, rateOf(v, 'craft'), GLYPH.craft)
 
     var r3 = v.ledgerRows[3]
     show(r3.el, true)
     setText(r3.lab, STR.insight)
+    setFine(r3.val, '')
     setSlot(r3.val, C().fmt(num(s.res.insight)), GLYPH.insight)
     setRate(r3.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
 
@@ -2881,6 +2892,7 @@
       // so the widest pair this row can ever hold is `12.4 k / 12.4 k`, and that measures to the
       // same row height as the tight form at 320, 360, 390 and 430 px. It bought nothing and cost
       // the player a second reading of `593/2.41 k`.
+      setFine(r1.val, '')
       setSlot(r1.val, C().fmt(held) + ' / ' + C().fmt(cap), SUG)
       setRate(r1.rate, rateOf(v, 'sugar'), SUG)
       show(r1.cap, true)

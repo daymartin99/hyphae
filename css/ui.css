@@ -481,9 +481,18 @@ canvas{ display:block; }
 .ledger[data-gear="1"] .ledger-row{ padding-inline-end:calc(var(--gutter) + var(--tap)); }
 .ledger-lab{ font:var(--t-label); letter-spacing:.14em; text-transform:uppercase;
              color:var(--text-secondary); min-width:72px; flex:0 0 auto; }
-.ledger-val{ font:var(--t-value); color:var(--text-max); min-width:8ch;
-             margin-inline-start:auto; text-align:end; }
+.ledger-val{ font:var(--t-value); color:var(--text-max);
+             flex:1 1 0; display:flex; justify-content:flex-end; align-items:baseline;
+             white-space:nowrap; margin-inline-start:auto; text-align:end; }
+/* The trailing digits give way before the rate does: they drop off whole from the right when the
+   row is short of room, instead of pushing the rate onto a line of its own and the strip with it. */
+.ledger-val > .mant,.ledger-val > .unit{ flex:0 0 auto; }
+.ledger-val > .unit{ white-space:pre; }
+.ledger-val > .fine{ flex:1 1 auto; width:0; max-width:max-content; white-space:normal;
+                     word-break:break-all; line-height:1.25; height:1.25em; overflow:hidden; }
+.ledger-val > .fine::before{ content:"\200B"; }
 .ledger-rate{ font:var(--t-meta); min-width:9ch; text-align:end; margin-inline-start:auto;
+              flex:0 0 auto; white-space:nowrap;
               color:var(--text-tertiary); transition:color var(--d-state) linear; }
 .ledger-rate[data-sign="pos"]{ color:var(--positive-text); }
 /* A falling rate WARNS; it does not mourn. */
@@ -1451,6 +1460,10 @@ canvas{ display:block; }
   .tab-lab{ display:none; }
   .burst > button{ min-width:var(--tap); }
 }
+/* Below 375 the label stops reserving 72 px it does not need; the value takes the room. */
+@media (max-width:374px){
+  .ledger-lab{ min-width:0; }
+}
 
 /* Large phone landscape and small tablet: the column pins to 420 px and the canvas leaves it to
    become a full-bleed backdrop with a static vignette. Not a filter — a gradient overlay. */
@@ -1505,6 +1518,9 @@ canvas{ display:block; }
             inset-inline-end:calc(var(--stage-edge) + var(--rail)); width:var(--col-max); }
   .fab{ position:absolute;
         inset-inline-end:calc(var(--stage-edge) + var(--rail) + var(--gutter)); }
+  /* The console is pinned under the column here, so the pulse button rises above it rather than
+     sitting on its text. */
+  .shell .fab,.shell[data-console="top"] .fab{ bottom:calc(var(--console-h) + var(--sp-24)); }
   /* Everything that rises out of the column rises out of the column, not out of the middle of
      the display: a sheet centred on the viewport would open over the wall it has nothing to do
      with. */
