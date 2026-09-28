@@ -673,7 +673,7 @@
   // ───────────────────────────────────────────────────────────────────────────
 
   var surf = {
-    netEl: null, netCtx: null,
+    netEl: null, netCtx: null, ro: null,
     fluxEl: null, fluxCtx: null,
     wheelEl: null, wheelCtx: null,
     foreEl: null, foreCtx: null,
@@ -807,6 +807,15 @@
     surf.fluxEl = fluxEl; surf.fluxCtx = ctxOf(fluxEl)
     refreshOptional(d)
     surf.attached = !!(surf.netCtx && surf.fluxCtx)
+    // The box is not only resized by the window. On a wide screen the framed plate's height is
+    // state (--wall-h grows from the seed band as the strip fills), and nothing dispatched a resize
+    // for it: the bitmap kept the seed's height and was stretched over the taller frame. Watching
+    // the element itself catches every cause; a geometry that did not change regenerates nothing.
+    if (typeof ResizeObserver === 'function') {
+      if (!surf.ro) surf.ro = new ResizeObserver(function () { debounced() })
+      surf.ro.disconnect()
+      surf.ro.observe(netEl)
+    }
 
     if (!attach.bound) {
       attach.bound = true

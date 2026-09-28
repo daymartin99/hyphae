@@ -1491,8 +1491,11 @@ canvas{ display:block; }
 @media (min-width:640px) and (max-width:899px){
   .plate{ position:fixed; inset:0; height:auto; z-index:0; opacity:.14;
           border-bottom:0; pointer-events:none; }
-  /* Out of the column, so there is nothing to crop: the canvas fills the backdrop again. */
-  .plate > canvas{ inset:0; height:auto; }
+  /* Out of the column, so there is nothing to crop: the canvas fills the backdrop again. 100%, not
+     auto: a canvas is a replaced element, and `height:auto` between two insets resolves from its
+     bitmap's aspect ratio rather than stretching — the plate was drawn into a 2:1 band across the
+     top of the box and the rest of it stood empty. */
+  .plate > canvas{ inset:0; height:100%; }
   .plate::after{ content:""; position:absolute; inset:0;
                  background:radial-gradient(ellipse at center, transparent 30%, var(--bg) 82%); }
   .panels{ padding-top:var(--sp-16); }
@@ -1528,7 +1531,9 @@ canvas{ display:block; }
           top:50%; height:min(var(--wall-h), calc(100% - var(--sp-64)));
           transform:translateY(-50%);
           border:1px solid var(--line); border-radius:var(--r-lg); }
-  .plate > canvas{ inset:0; height:auto; }
+  /* 100% for the reason above: at `auto` the framed specimen drew its network, its hexes and its
+     void into the top 239 px of a 630 px frame. */
+  .plate > canvas{ inset:0; height:100%; }
   .tabbar{ position:absolute; inset-block:0; inset-inline-end:var(--stage-edge);
            width:var(--rail-w); max-width:var(--rail-w);
            height:auto; grid-template-columns:1fr; grid-auto-rows:var(--rail-w);
