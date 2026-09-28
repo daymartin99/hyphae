@@ -13069,92 +13069,92 @@ HY.feel={feel:feel,audioBoot:audioBoot,bedParams:bedParams,suspendAll:suspendAll
 ;(function(HY){'use strict'
 function C(){return HY.core}
 function S(){return HY.state&&HY.state.state}
-function cT(){return typeof document!=='undefined'?document:null}
-function E(){return(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now()}
+function cY(){return typeof document!=='undefined'?document:null}
+function D(){return(typeof performance!=='undefined'&&performance.now)?performance.now():Date.now()}
 var z={SEG:4.2,SEG_BOOT:9,SEG_LERP_A:40,SEG_LERP_B:120,D_INF:30,D_KILL:6.5,JITTER:.14,FRONTIER:400,NEW_MAX:24,PULL_MAX:3,BUCKET:12,CAP:4e3,A0_DIV:220,A0_MIN:500,A0_MAX:1800,REPLENISH_AT:.25,REPLENISH_ADD:.5,STALE_STEPS:600,PLASTIC:1.324717957244746,R2_BIAS:.72,SEED_INSET:4,SEG_PER_M:2,MIN_TARGET:2}
-var ad={WIDTHS:[1.15,.85,.58],GEN_B0:6,GEN_B1:16,ALPHA:.35,ALPHA_LIGHT:.42,ALPHA_CONTRAST:.55,PALETTE_MS:1e3,AGE_BINS:6,AGE_FLOOR:.4}
-var V={MS:400,Q:24,WARM_MAX:.34,MELAN_MAX:.44,CORD_W:.6,CORD_A:.11,CORD_GEN:2,FORK_JIT:1.7,FORK_DENS:.95,TIP_MIN:4,TIP_R_K:.45,TYPES_FULL:7,ENZ_FULL:2.2,STRUCT_FULL:1.5,PROJ_FULL:26,TIPS_FULL:96,PATCH_FULL:8,LOCUS_FULL:6}
-var cc={MIN:6,MS:1100,HZ:20,A:.5,DRIFT:7,GHOST_MAX:600}
+var ag={WIDTHS:[1.15,.85,.58],GEN_B0:6,GEN_B1:16,ALPHA:.35,ALPHA_LIGHT:.42,ALPHA_CONTRAST:.55,PALETTE_MS:1e3,AGE_BINS:6,AGE_FLOOR:.4}
+var Z={MS:400,Q:24,WARM_MAX:.34,MELAN_MAX:.44,CORD_W:.6,CORD_A:.11,CORD_GEN:2,FORK_JIT:1.7,FORK_DENS:.95,TIP_MIN:4,TIP_R_K:.45,TYPES_FULL:7,ENZ_FULL:2.2,STRUCT_FULL:1.5,PROJ_FULL:26,TIPS_FULL:96,PATCH_FULL:8,LOCUS_FULL:6}
+var ck={MIN:6,MS:1100,HZ:20,A:.5,DRIFT:7,GHOST_MAX:600}
 var B={TIP_N:60,TIP_R:1.6,TIP_A:.1,TIP_AMP:.1,TIP_PERIOD:6,TIP_SPREAD:.7,TIP_STARVE_A:.04,TIP_STATIC_A:.15,PULSE_U:.22,PULSE_DOT:2,PULSE_TRAIL:5,PULSE_A:.7,PULSE_TRAIL_A:.2,PULSE_PATH_MIN:10,PULSE_SPAWN_S:1.4,FB_MAX:3,FB_CAP_R:7,FB_STIPE_W:2,FB_STIPE_H:9,FB_A:.55,HAZ_MAX:2,HAZ_R:3,HAZ_A:.4,HAZ_AMP:.2,HAZ_PERIOD:1.5,REDUCED_BATCH:240,REDUCED_FLUSH_S:8,SURGE_N:24,SURGE_PX:3.2,SURGE_SPAN:9.4,SURGE_RISE:150,SURGE_FALL:520,SURGE_A:.55,SURGE_HEAD:.62,SURGE_HZ:30}
-var J={BAND_PX:26,MAX_N:110,FULL_G:6e4,R_MIN:.7,R_SPAN:1.1,A_MIN:.14,A_SPAN:.2,FX_N_MIN:5,FX_N_SPAN:17,FX_MS:700,FX_RISE_PX:34,FX_A:.5,FX_HZ:30}
-var bx={RINGS:4,PAD:6,NET_ALPHA:.12,TERRAIN_A:[.34,.16,.26,.1,.44,.06],STROKE_A:[.2,.34,.72,.52],BARRIER_INSET:2.5,BARRIER_W:2,BARRIER_DASH:[3,2],RIVAL_R:2.2,RIVAL_A:.75,DRAIN_W:3,DOT_R:1.1}
-var av={SIZE:260,R0:22,STEP:8.6,W_MIN:1,W_MAX:6,W_K:2.4,TRACK_W:1,GAP_A:.16,START:-Math.PI/2}
-var aw={R:96,DOT_R:3,DOT_R_MAX:6.5,RING_AT:.8,RING_DASH:[3,3],RESULT_W:2}
-var D={H:44,SAMPLES:120,AMP:38,STROKE_W:1.5,FORE_A:.55,FORE_DASH:[4,3],MARK_W:2,MARK_TRI:6,BAND_A:.17,DANGER_A:.42,DANGER_DASH:[2,4],GRAZE_H:9,GRAZE_A:.22,HZ:1}
-var F={BINS:6,BAND_W:.17,WAVE_BASE:.12,PASSES:8,PEAK:.55,WAVE_HZ:.18,REDRAW_HZ:8,WAVE_MS:3600,DRAIN_MS:700,HOLD_MS:1200,LIFT_MS:1600,LIFT_STAGGER_MS:400,LIFT_RISE:[4,40],VOID_MS:1200,CONVERGE_MS:1400,COLLAPSE_MS:2400,COLLAPSE_AT:.35,WHITE_MS:2600,WHITE_HOLD_MS:6e3,DOT_R:3.2,CROSSFADE_MS:900}
-var ae={HIGH:{dpr:2,fluxHz:8,segCap:3600,pulses:24},MED:{dpr:2,fluxHz:4,segCap:2400,pulses:12},LOW:{dpr:1,fluxHz:2,segCap:1e3,pulses:4},FLOOR:{dpr:1,fluxHz:0,segCap:600,pulses:0}}
-var af=['FLOOR','LOW','MED','HIGH']
-var ao={WARMUP:90,WIN:180,RECOMPUTE:30,HIGH_P95:12,HIGH_CORES:6,LOW_P95:22,FLOOR_P95:30,CADENCE_SPREAD_MS:8,HOLD_S:3,MEM_FLOOR_GB:2,PROMOTE_S:60,AFTER_DEMOTE_S:10,FRAME_MAX_MS:100,FRAME_60_MS:16.7}
-var ag={GROW_MS:2,FRAME_MS:8,DRAW_MS:.95,OWN_P95_MS:3,OWN_WIN:60}
-var bi=4
-var form={at:0,key:'',warm:0,cord:0,fork:0,melan:0,tips:V.TIP_MIN}
+var K={BAND_PX:26,MAX_N:110,FULL_G:6e4,R_MIN:.7,R_SPAN:1.1,A_MIN:.14,A_SPAN:.2,FX_N_MIN:5,FX_N_SPAN:17,FX_MS:700,FX_RISE_PX:34,FX_A:.5,FX_HZ:30}
+var bF={RINGS:4,PAD:6,NET_ALPHA:.12,TERRAIN_A:[.34,.16,.26,.1,.44,.06],STROKE_A:[.2,.34,.72,.52],BARRIER_INSET:2.5,BARRIER_W:2,BARRIER_DASH:[3,2],RIVAL_R:2.2,RIVAL_A:.75,DRAIN_W:3,DOT_R:1.1}
+var aC={SIZE:260,R0:22,STEP:8.6,W_MIN:1,W_MAX:6,W_K:2.4,TRACK_W:1,GAP_A:.16,START:-Math.PI/2}
+var aD={R:96,DOT_R:3,DOT_R_MAX:6.5,RING_AT:.8,RING_DASH:[3,3],RESULT_W:2}
+var E={H:44,SAMPLES:120,AMP:38,STROKE_W:1.5,FORE_A:.55,FORE_DASH:[4,3],MARK_W:2,MARK_TRI:6,BAND_A:.17,DANGER_A:.42,DANGER_DASH:[2,4],GRAZE_H:9,GRAZE_A:.22,HZ:1}
+var G={BINS:6,BAND_W:.17,WAVE_BASE:.12,PASSES:8,PEAK:.55,WAVE_HZ:.18,REDRAW_HZ:8,WAVE_MS:3600,DRAIN_MS:700,HOLD_MS:1200,LIFT_MS:1600,LIFT_STAGGER_MS:400,LIFT_RISE:[4,40],VOID_MS:1200,CONVERGE_MS:1400,COLLAPSE_MS:2400,COLLAPSE_AT:.35,WHITE_MS:2600,WHITE_HOLD_MS:6e3,DOT_R:3.2,CROSSFADE_MS:900}
+var ah={HIGH:{dpr:2,fluxHz:8,segCap:3600,pulses:24},MED:{dpr:2,fluxHz:4,segCap:2400,pulses:12},LOW:{dpr:1,fluxHz:2,segCap:1e3,pulses:4},FLOOR:{dpr:1,fluxHz:0,segCap:600,pulses:0}}
+var aj=['FLOOR','LOW','MED','HIGH']
+var au={WARMUP:90,WIN:180,RECOMPUTE:30,HIGH_P95:12,HIGH_CORES:6,LOW_P95:22,FLOOR_P95:30,CADENCE_SPREAD_MS:8,HOLD_S:3,MEM_FLOOR_GB:2,PROMOTE_S:60,AFTER_DEMOTE_S:10,FRAME_MAX_MS:100,FRAME_60_MS:16.7}
+var ak={GROW_MS:2,FRAME_MS:8,DRAW_MS:.95,OWN_P95_MS:3,OWN_WIN:60}
+var bq=4
+var form={at:0,key:'',warm:0,cord:0,fork:0,melan:0,tips:Z.TIP_MIN}
 function norm(v,lo,hi){if(typeof v!=='number'||v!==v)return 0
 return clamp01((v-lo)/(hi-lo))}
-function quant(v){return Math.round(clamp01(v)*V.Q)/V.Q}
-function aG(cE){var t=E()
-if(!cE&&t-form.at<V.MS)return
+function quant(v){return Math.round(clamp01(v)*Z.Q)/Z.Q}
+function aE(force){var t=D()
+if(!force&&t-form.at<Z.MS)return
 form.at=t
 var s=S()
-var warm=0,cord=0,fork=0,melan=0,tips=V.TIP_MIN
+var warm=0,cord=0,fork=0,melan=0,tips=Z.TIP_MIN
 if(s){var m=s.mult||{}
 var a1=s.a1||{}
 var kn=0,ks=0,kk
-for(kk in m.enzymeK){if(typeof m.enzymeK[kk]==='number'){ks+=m.enzymeK[kk];kn++}}warm=.5*norm(a1.unlockedTypes?a1.unlockedTypes.length:0,1,V.TYPES_FULL)+.5*norm(kn?ks/kn:1,1,V.ENZ_FULL)
-cord=.6*norm(m.structureMult,1,V.STRUCT_FULL)+.4*norm(s.proj&&s.proj.bought?s.proj.bought.length:0,0,V.PROJ_FULL)
-fork=.65*norm(a1.tips,0,V.TIPS_FULL)+.35*norm(a1.patches,1,V.PATCH_FULL)
+for(kk in m.enzymeK){if(typeof m.enzymeK[kk]==='number'){ks+=m.enzymeK[kk];kn++}}warm=.5*norm(a1.unlockedTypes?a1.unlockedTypes.length:0,1,Z.TYPES_FULL)+.5*norm(kn?ks/kn:1,1,Z.ENZ_FULL)
+cord=.6*norm(m.structureMult,1,Z.STRUCT_FULL)+.4*norm(s.proj&&s.proj.bought?s.proj.bought.length:0,0,Z.PROJ_FULL)
+fork=.65*norm(a1.tips,0,Z.TIPS_FULL)+.35*norm(a1.patches,1,Z.PATCH_FULL)
 var loci=s.a3&&s.a3.loci
-if(loci&&loci.length>bi)melan=norm(loci[bi],0,V.LOCUS_FULL)
-tips=V.TIP_MIN+(typeof a1.tips==='number'&&a1.tips>0?a1.tips:0)}form.tips=tips>B.TIP_N?B.TIP_N:tips
+if(loci&&loci.length>bq)melan=norm(loci[bq],0,Z.LOCUS_FULL)
+tips=Z.TIP_MIN+(typeof a1.tips==='number'&&a1.tips>0?a1.tips:0)}form.tips=tips>B.TIP_N?B.TIP_N:tips
 var key=quant(warm)+'|'+quant(cord)+'|'+quant(fork)+'|'+quant(melan)
 if(key===form.key)return
 form.key=key
 form.warm=quant(warm);form.cord=quant(cord)
 form.fork=quant(fork);form.melan=quant(melan)
-if(net)bj(net)
+if(net)br(net)
 invalidate()}
-function dI(a,b,f){return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f]}
-function K(){var c=pal.hyphae
-if(form.warm>0)c=dI(c,pal.rich,V.WARM_MAX*form.warm)
-if(form.melan>0)c=dI(c,pal.melanin,V.MELAN_MAX*form.melan)
+function dT(a,b,f){return[a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f]}
+function M(){var c=pal.hyphae
+if(form.warm>0)c=dT(c,pal.rich,Z.WARM_MAX*form.warm)
+if(form.melan>0)c=dT(c,pal.melanin,Z.MELAN_MAX*form.melan)
 return[Math.round(c[0]),Math.round(c[1]),Math.round(c[2])]}
 var net=null
-function ap(seed,W,H){var A0=cU(Math.round(W*H/z.A0_DIV),z.A0_MIN,z.A0_MAX)
+function av(seed,W,H){var A0=dc(Math.round(W*H/z.A0_DIV),z.A0_MIN,z.A0_MAX)
 var CELL=z.D_INF
 var GW=Math.max(1,Math.ceil(W/CELL))
 var GH=Math.max(1,Math.ceil(H/CELL))
 var n={seed:seed>>>0,W:W,H:H,A0:A0,CELL:CELL,GW:GW,GH:GH,x:new Float32Array(z.CAP),y:new Float32Array(z.CAP),par:new Int32Array(z.CAP),gen:new Uint8Array(z.CAP),fslot:new Int32Array(z.CAP),epoch:new Uint8Array(z.CAP),childN:new Uint8Array(z.CAP),lost:new Uint8Array(z.CAP),n:0,live:0,wash:0,drawn:0,steps:0,jit:z.JITTER,dens:1,frontier:new Int32Array(z.FRONTIER),fCount:0,fHead:0,accX:new Float32Array(z.FRONTIER),accY:new Float32Array(z.FRONTIER),accN:new Uint8Array(z.FRONTIER),ax:new Float32Array(z.A0_MAX),ay:new Float32Array(z.A0_MAX),aMiss:new Uint16Array(z.A0_MAX),aCount:0,aNext:0,cell:new Int32Array(GW*GH*z.BUCKET),cellN:new Uint8Array(GW*GH),cellW:new Uint8Array(GW*GH)}
-bj(n)
-aV(n,W/2,H-z.SEED_INSET,-1,0)
-au(n,Math.round(A0*n.dens))
+br(n)
+ba(n,W/2,H-z.SEED_INSET,-1,0)
+aB(n,Math.round(A0*n.dens))
 return n}
-function bj(o){o.jit=z.JITTER*(1+V.FORK_JIT*form.fork)
-o.dens=1+V.FORK_DENS*form.fork}
-function cU(v,lo,hi){return v<lo?lo:(v>hi?hi:v)}
+function br(o){o.jit=z.JITTER*(1+Z.FORK_JIT*form.fork)
+o.dens=1+Z.FORK_DENS*form.fork}
+function dc(v,lo,hi){return v<lo?lo:(v>hi?hi:v)}
 function hash01(seed,i){var x=(seed^Math.imul(i|0,2654435761))>>>0
 x^=x<<13;x>>>=0
 x^=x>>>17
 x^=x<<5;x>>>=0
 return x/4294967296}
-function au(o,k){var A1=1/z.PLASTIC
+function aB(o,k){var A1=1/z.PLASTIC
 var A2=A1/z.PLASTIC
-var dQ=o.seed&0xFFF
+var eb=o.seed&0xFFF
 for(var j=0;j<k&&o.aCount<z.A0_MAX;j++){var i=o.aNext++
-var kk=i+dQ
+var kk=i+eb
 var u=(.5+A1*kk)%1
 var v=(.5+A2*kk)%1
 o.ax[o.aCount]=u*o.W
 o.ay[o.aCount]=o.H-Math.pow(v,z.R2_BIAS)*o.H
 o.aMiss[o.aCount]=0
 o.aCount++}}
-function aE(o,a){var last=o.aCount-1
+function aK(o,a){var last=o.aCount-1
 o.ax[a]=o.ax[last];o.ay[a]=o.ay[last];o.aMiss[a]=o.aMiss[last]
 o.aCount=last}
-function cd(o,px,py){var gx=(px/o.CELL)|0
+function cl(o,px,py){var gx=(px/o.CELL)|0
 var gy=(py/o.CELL)|0
 if(gx<0)gx=0;else if(gx>=o.GW)gx=o.GW-1
 if(gy<0)gy=0;else if(gy>=o.GH)gy=o.GH-1
 return gy*o.GW+gx}
-function aV(o,px,py,parent,g){if(o.n>=z.CAP)return-1
+function ba(o,px,py,parent,g){if(o.n>=z.CAP)return-1
 var i=o.n
 o.x[i]=px;o.y[i]=py;o.par[i]=parent;o.gen[i]=g
 o.epoch[i]=o.wash<255?o.wash:255
@@ -13162,7 +13162,7 @@ o.childN[i]=0
 o.lost[i]=0
 o.live++
 if(parent>=0&&o.childN[parent]<255)o.childN[parent]++
-var c=cd(o,px,py)
+var c=cl(o,px,py)
 var w=o.cellW[c]
 o.cell[c*z.BUCKET+w]=i
 o.cellW[c]=(w+1)%z.BUCKET
@@ -13179,36 +13179,36 @@ function segLen(i){if(i<=z.SEG_LERP_A)return z.SEG_BOOT
 if(i>=z.SEG_LERP_B)return z.SEG
 var u=(i-z.SEG_LERP_A)/(z.SEG_LERP_B-z.SEG_LERP_A)
 return z.SEG_BOOT+(z.SEG-z.SEG_BOOT)*u}
-var bV=-1,_bAnyD=0,_bFront=-1,_bFrontD=0
-function cG(o,px,py){bV=-1;var bk=Infinity
-_bFront=-1;var aL=Infinity
-var dJ=(px/o.CELL)|0
-var dK=(py/o.CELL)|0
-var dR=dK+1,gx1=dJ+1
-for(var gy=dK-1;gy<=dR;gy++){if(gy<0||gy>=o.GH)continue
+var ce=-1,_bAnyD=0,_bFront=-1,_bFrontD=0
+function cN(o,px,py){ce=-1;var bt=Infinity
+_bFront=-1;var aP=Infinity
+var dU=(px/o.CELL)|0
+var dV=(py/o.CELL)|0
+var ec=dV+1,gx1=dU+1
+for(var gy=dV-1;gy<=ec;gy++){if(gy<0||gy>=o.GH)continue
 var row=gy*o.GW
-for(var gx=dJ-1;gx<=gx1;gx++){if(gx<0||gx>=o.GW)continue
+for(var gx=dU-1;gx<=gx1;gx++){if(gx<0||gx>=o.GW)continue
 var c=row+gx
 var cn=o.cellN[c]
-var bl=c*z.BUCKET
-for(var k=0;k<cn;k++){var i=o.cell[bl+k]
+var bu=c*z.BUCKET
+for(var k=0;k<cn;k++){var i=o.cell[bu+k]
 if(o.lost[i])continue
 var dx=px-o.x[i],dy=py-o.y[i]
 var d2=dx*dx+dy*dy
-if(d2<bk){bk=d2;bV=i}if(d2<aL&&o.fslot[i]>=0){aL=d2;_bFront=i}}}}_bAnyD=bV<0?Infinity:Math.sqrt(bk)
-_bFrontD=_bFront<0?Infinity:Math.sqrt(aL)}
-function grow(o,dr){if(!(dr>0)||dr>z.NEW_MAX)dr=z.NEW_MAX
-var aW=0,pulled=0
-var cH=z.NEW_MAX*z.PULL_MAX
+if(d2<bt){bt=d2;ce=i}if(d2<aP&&o.fslot[i]>=0){aP=d2;_bFront=i}}}}_bAnyD=ce<0?Infinity:Math.sqrt(bt)
+_bFrontD=_bFront<0?Infinity:Math.sqrt(aP)}
+function grow(o,dF){if(!(dF>0)||dF>z.NEW_MAX)dF=z.NEW_MAX
+var bb=0,pulled=0
+var cO=z.NEW_MAX*z.PULL_MAX
 var a=0
-while(a<o.aCount&&pulled<cH){cG(o,o.ax[a],o.ay[a])
-if(bV>=0&&_bAnyD<z.D_KILL){aE(o,a);continue}if(_bFront>=0&&_bFrontD<=z.D_INF&&_bFrontD>0){var f=o.fslot[_bFront]
+while(a<o.aCount&&pulled<cO){cN(o,o.ax[a],o.ay[a])
+if(ce>=0&&_bAnyD<z.D_KILL){aK(o,a);continue}if(_bFront>=0&&_bFrontD<=z.D_INF&&_bFrontD>0){var f=o.fslot[_bFront]
 o.accX[f]+=(o.ax[a]-o.x[_bFront])/_bFrontD
 o.accY[f]+=(o.ay[a]-o.y[_bFront])/_bFrontD
 if(o.accN[f]<255)o.accN[f]++
 o.aMiss[a]=0
-pulled++}else if(++o.aMiss[a]>z.STALE_STEPS){aE(o,a);continue
-}a++}for(var s=0;s<o.fCount&&aW<dr;s++){if(!o.accN[s])continue
+pulled++}else if(++o.aMiss[a]>z.STALE_STEPS){aK(o,a);continue
+}a++}for(var s=0;s<o.fCount&&bb<dF;s++){if(!o.accN[s])continue
 var i=o.frontier[s]
 var dx=o.accX[s],dy=o.accY[s]
 o.accX[s]=0;o.accY[s]=0;o.accN[s]=0
@@ -13219,78 +13219,80 @@ var th=Math.atan2(dy,dx)+(hash01(o.seed,o.n)*2-1)*o.jit
 var L=segLen(o.n)
 var nx=o.x[i]+Math.cos(th)*L
 var ny=o.y[i]+Math.sin(th)*L
-if(aV(o,nx,ny,i,o.gen[i]<255?o.gen[i]+1:255)<0)break
-aW++}var pool=o.A0*o.dens
-if(o.aCount<pool*z.REPLENISH_AT)au(o,Math.round(pool*z.REPLENISH_ADD))
+if(ba(o,nx,ny,i,o.gen[i]<255?o.gen[i]+1:255)<0)break
+bb++}var pool=o.A0*o.dens
+if(o.aCount<pool*z.REPLENISH_AT)aB(o,Math.round(pool*z.REPLENISH_ADD))
 o.steps++
-return aW}
-function regenerate(seed,W,H,want,budgetMs){var o=ap(seed,W,H)
-var by=budgetMs>0?E()+budgetMs:0
-var aX=0
-while(o.n<want&&aX++<z.CAP){if(grow(o)===0&&o.aCount===0)break
-if(by&&(aX&15)===0&&E()>by)break
+return bb}
+function regenerate(seed,W,H,want,budgetMs){var o=av(seed,W,H)
+var bG=budgetMs>0?D()+budgetMs:0
+var bc=0
+while(o.n<want&&bc++<z.CAP){if(grow(o)===0&&o.aCount===0)break
+if(bG&&(bc&15)===0&&D()>bG)break
 }return o}
 var surf={netEl:null,netCtx:null,ro:null,fluxEl:null,fluxCtx:null,wheelEl:null,wheelCtx:null,foreEl:null,foreCtx:null,W:360,H:296,dpr:1,attached:!1}
 var tier='MED'
-var M=!1
+var O=!1
 var reduced=!1
-var aY=!1
+var be=!1
 var contrast=!1
-var pal={at:0,hyphae:[232,225,211],rich:[245,210,143],melanin:[122,131,113],bg:[7,9,6],signal:[98,195,154],tertiary:[122,131,113],spore:[239,235,221],negative:[162,75,50],attention:[217,154,43],line:[44,51,41],lineStrong:[58,66,54],surface1:[21,25,20],surface2:[27,32,26],text:[232,225,211]}
+var pal={at:0,gen:0,sig:'',hyphae:[232,225,211],rich:[245,210,143],melanin:[122,131,113],bg:[7,9,6],signal:[98,195,154],tertiary:[122,131,113],spore:[239,235,221],negative:[162,75,50],attention:[217,154,43],line:[44,51,41],lineStrong:[58,66,54],surface1:[21,25,20],surface2:[27,32,26],text:[232,225,211]}
 function rgba(c,a){return'rgba('+c[0]+','+c[1]+','+c[2]+','+a+')'}
 function parseColor(str,fallback){if(!str)return fallback
 var s=(''+str).trim()
 if(s.charAt(0)==='#'){if(s.length===4){return[parseInt(s[1]+s[1],16),parseInt(s[2]+s[2],16),parseInt(s[3]+s[3],16)]}if(s.length>=7){return[parseInt(s.substr(1,2),16),parseInt(s.substr(3,2),16),parseInt(s.substr(5,2),16)]}return fallback}var m=s.match(/(-?\d*\.?\d+)/g)
 if(m&&m.length>=3)return[Math.round(+m[0]),Math.round(+m[1]),Math.round(+m[2])]
 return fallback}
-function refreshPalette(cE){var d=cT()
+function refreshPalette(force){var d=cY()
 if(!d||!d.documentElement||typeof getComputedStyle!=='function')return
-var t=E()
-if(!cE&&t-pal.at<ad.PALETTE_MS)return
+var t=D()
+if(!force&&t-pal.at<ag.PALETTE_MS)return
 pal.at=t
 var cs=getComputedStyle(d.documentElement)
-function bW(name,fb){return parseColor(cs.getPropertyValue(name),fb)}
-pal.hyphae=bW('--hyphae-stroke',pal.hyphae)
-pal.rich=bW('--hyphae-rich',pal.rich)
-pal.melanin=bW('--hyphae-melanin',pal.melanin)
-pal.bg=bW('--canvas-bg',pal.bg)
-pal.signal=bW('--signal',pal.signal)
-pal.tertiary=bW('--text-tertiary',pal.tertiary)
-pal.spore=bW('--spore-000',pal.spore)
-pal.negative=bW('--negative',pal.negative)
-pal.attention=bW('--attention',pal.attention)
-pal.line=bW('--line',pal.line)
-pal.lineStrong=bW('--line-strong',pal.lineStrong)
-pal.surface1=bW('--surface-1',pal.surface1)
-pal.surface2=bW('--surface-2',pal.surface2)
-pal.text=bW('--text-primary',pal.text)
-aY=(pal.bg[0]*.2126+pal.bg[1]*.7152+pal.bg[2]*.0722)>128}
+function cf(name,fb){return parseColor(cs.getPropertyValue(name),fb)}
+pal.hyphae=cf('--hyphae-stroke',pal.hyphae)
+pal.rich=cf('--hyphae-rich',pal.rich)
+pal.melanin=cf('--hyphae-melanin',pal.melanin)
+pal.bg=cf('--canvas-bg',pal.bg)
+pal.signal=cf('--signal',pal.signal)
+pal.tertiary=cf('--text-tertiary',pal.tertiary)
+pal.spore=cf('--spore-000',pal.spore)
+pal.negative=cf('--negative',pal.negative)
+pal.attention=cf('--attention',pal.attention)
+pal.line=cf('--line',pal.line)
+pal.lineStrong=cf('--line-strong',pal.lineStrong)
+pal.surface1=cf('--surface-1',pal.surface1)
+pal.surface2=cf('--surface-2',pal.surface2)
+pal.text=cf('--text-primary',pal.text)
+be=(pal.bg[0]*.2126+pal.bg[1]*.7152+pal.bg[2]*.0722)>128
+var sig=[pal.hyphae,pal.rich,pal.melanin,pal.bg,pal.signal,pal.negative,pal.line,pal.lineStrong,pal.surface2].join('|')
+if(sig!==pal.sig){pal.sig=sig;pal.gen++}}
 function mq(q){return typeof matchMedia==='function'?matchMedia(q):null}
 function readMotion(){var s=S()
 if(s&&s.set&&s.set.reduceMotion!==null&&s.set.reduceMotion!==undefined){reduced=!!s.set.reduceMotion
 return
 }var m=mq('(prefers-reduced-motion: reduce)')
 reduced=!!(m&&m.matches)}
-function al(){var bl=contrast?ad.ALPHA_CONTRAST:(aY?ad.ALPHA_LIGHT:ad.ALPHA)
-var a=bl+V.CORD_A*form.cord
+function ap(){var bu=contrast?ag.ALPHA_CONTRAST:(be?ag.ALPHA_LIGHT:ag.ALPHA)
+var a=bu+Z.CORD_A*form.cord
 return a>1?1:a}
-function T(){return ae[tier]||ae.MED}
-function bX(el){if(!el||typeof el.getContext!=='function')return null
+function T(){return ah[tier]||ah.MED}
+function bH(el){if(!el||typeof el.getContext!=='function')return null
 try{return el.getContext('2d')}catch(e){return null}}
 function init(){attach();return surf.attached}
-function U(d){var w=d.getElementById('wheel')
-if(w!==surf.wheelEl){surf.wheelEl=w;surf.wheelCtx=bX(w)}var f=d.getElementById('forecast')
-if(f!==surf.foreEl){surf.foreEl=f;surf.foreCtx=bX(f)}}
-function attach(){var d=cT()
+function V(d){var w=d.getElementById('wheel')
+if(w!==surf.wheelEl){surf.wheelEl=w;surf.wheelCtx=bH(w)}var f=d.getElementById('forecast')
+if(f!==surf.foreEl){surf.foreEl=f;surf.foreCtx=bH(f)}}
+function attach(){var d=cY()
 if(!d)return!1
 var netEl=d.getElementById('net')
 var fluxEl=d.getElementById('flux')
 if(!netEl||!fluxEl)return!1
-if(surf.netEl===netEl&&surf.fluxEl===fluxEl&&surf.attached){U(d)
+if(surf.netEl===netEl&&surf.fluxEl===fluxEl&&surf.attached){V(d)
 resize()
-return!0}surf.netEl=netEl;surf.netCtx=bX(netEl)
-surf.fluxEl=fluxEl;surf.fluxCtx=bX(fluxEl)
-U(d)
+return!0}surf.netEl=netEl;surf.netCtx=bH(netEl)
+surf.fluxEl=fluxEl;surf.fluxCtx=bH(fluxEl)
+V(d)
 surf.attached=!!(surf.netCtx&&surf.fluxCtx)
 if(typeof ResizeObserver==='function'){if(!surf.ro)surf.ro=new ResizeObserver(function(){debounced()})
 surf.ro.disconnect()
@@ -13300,173 +13302,173 @@ if(typeof window!=='undefined'){window.addEventListener('resize',debounced,!1)
 window.addEventListener('orientationchange',debounced,!1)}var m1=mq('(prefers-reduced-motion: reduce)')
 var m2=mq('(prefers-contrast: more)')
 var m3=mq('(prefers-color-scheme: light)')
-bK(m1,function(){readMotion();invalidate()})
-bK(m2,function(){contrast=!!(m2&&m2.matches);invalidate()})
-bK(m3,function(){refreshPalette(!0);invalidate()})
+bT(m1,function(){readMotion();invalidate()})
+bT(m2,function(){contrast=!!(m2&&m2.matches);invalidate()})
+bT(m3,function(){refreshPalette(!0);invalidate()})
 contrast=!!(m2&&m2.matches)
-if(typeof MutationObserver==='function'){new MutationObserver(function(){readMotion();refreshPalette(!0);invalidate()}).observe(d.documentElement,{attributes:!0,attributeFilter:['data-theme','data-act','data-motion']})}d.addEventListener('visibilitychange',function(){if(!d.hidden){P=0;frames.n=0}},!1)}readMotion()
+if(typeof MutationObserver==='function'){new MutationObserver(function(){readMotion();refreshPalette(!0);invalidate()}).observe(d.documentElement,{attributes:!0,attributeFilter:['data-theme','data-act','data-motion']})}d.addEventListener('visibilitychange',function(){if(!d.hidden){U=0;frames.n=0}},!1)}readMotion()
 refreshPalette(!0)
 resize()
 return surf.attached}
-function bK(m,fn){if(!m)return
+function bT(m,fn){if(!m)return
 if(m.addEventListener)m.addEventListener('change',fn)
 else if(m.addListener)m.addListener(fn)}
-var am=0
+var aq=0
 function debounced(){if(typeof window==='undefined')return
-if(am)clearTimeout(am)
-am=setTimeout(function(){am=0;resize()},250)}
-function aN(el,dpr){var w=el.clientWidth||surf.W
+if(aq)clearTimeout(aq)
+aq=setTimeout(function(){aq=0;resize()},250)}
+function aS(el,dpr){var w=el.clientWidth||surf.W
 var h=el.clientHeight||surf.H
 if(!(w>0&&h>0))return null
 return{w:w,h:h,bw:Math.round(w*dpr),bh:Math.round(h*dpr)}}
-function aU(el,l,dpr){if(!el||!l)return
-var s=aN(el,dpr)
+function aZ(el,l,dpr){if(!el||!l)return
+var s=aS(el,dpr)
 if(!s)return
 if(el.width!==s.bw||el.height!==s.bh){el.width=s.bw;el.height=s.bh}l.setTransform(dpr,0,0,dpr,0,0)}
 function resize(){if(!surf.attached)return
-var cV=T().dpr
-var dS=(typeof window!=='undefined'&&window.devicePixelRatio)||1
-surf.dpr=Math.min(dS,cV)
-var s=aN(surf.netEl,surf.dpr)
+var dd=T().dpr
+var ed=(typeof window!=='undefined'&&window.devicePixelRatio)||1
+surf.dpr=Math.min(ed,dd)
+var s=aS(surf.netEl,surf.dpr)
 if(!s)return
-var bz=(s.w!==surf.W||s.h!==surf.H)
-aU(surf.netEl,surf.netCtx,surf.dpr)
-aU(surf.fluxEl,surf.fluxCtx,surf.dpr)
-if(surf.wheelEl)aU(surf.wheelEl,surf.wheelCtx,surf.dpr)
-if(surf.foreEl)aU(surf.foreEl,surf.foreCtx,surf.dpr)
+var bI=(s.w!==surf.W||s.h!==surf.H)
+aZ(surf.netEl,surf.netCtx,surf.dpr)
+aZ(surf.fluxEl,surf.fluxCtx,surf.dpr)
+if(surf.wheelEl)aZ(surf.wheelEl,surf.wheelCtx,surf.dpr)
+if(surf.foreEl)aZ(surf.foreEl,surf.foreCtx,surf.dpr)
 surf.W=s.w;surf.H=s.h
-if(!net){net=ap(bL(),surf.W,surf.H)}else if(bz){net=regenerate(net.seed,surf.W,surf.H,net.live,40)
-aP.length=0
+if(!net){net=av(bU(),surf.W,surf.H)}else if(bI){net=regenerate(net.seed,surf.W,surf.H,net.live,40)
+aU.length=0
 pulses.length=0
 surge=null
-O=null
-depthN=-1}aj=!0
+P=null
+depthN=-1}am=!0
 invalidate()}
-function bL(){var s=S()
+function bU(){var s=S()
 return(s&&typeof s.seed==='number'?s.seed:0x9E3779B9)>>>0}
-function aq(){var want=bL()
-if(!net){net=ap(want,surf.W,surf.H);return}if(net.seed!==want){net=ap(want,surf.W,surf.H)
-aP.length=0
+function aw(){var want=bU()
+if(!net){net=av(want,surf.W,surf.H);return}if(net.seed!==want){net=av(want,surf.W,surf.H)
+aU.length=0
 pulses.length=0
 surge=null
-O=null
+P=null
 depthN=-1
-bA()}}
-function bA(){if(!surf.netCtx)return
+bJ()}}
+function bJ(){if(!surf.netCtx)return
 surf.netCtx.clearRect(0,0,surf.W,surf.H)
 net.drawn=0}
-var aH=!0
-function invalidate(){aH=!0;P=0}
-function ce(hyphaeM){var m=typeof hyphaeM==='number'&&hyphaeM===hyphaeM?hyphaeM:0
+var repaint=!0
+function invalidate(){repaint=!0;U=0;plate.key='';F.key=''}
+function cm(hyphaeM){var m=typeof hyphaeM==='number'&&hyphaeM===hyphaeM?hyphaeM:0
 var want=Math.floor(m*z.SEG_PER_M)
 return want<z.MIN_TARGET?z.MIN_TARGET:want}
-function Z(hyphaeM){var want=ce(hyphaeM)
+function ac(hyphaeM){var want=cm(hyphaeM)
 var cap=Math.min(T().segCap,z.CAP)
 return want>cap?cap:want}
-function growNetwork(hyphaeM){if(!net){attach();aq()}else aq()
+function growNetwork(hyphaeM){if(!net){attach();aw()}else aw()
 if(!net)return 0
-aG(!1)
-var want=Z(hyphaeM)
-if(want>z.MIN_TARGET&&net.live-want>=cc.MIN){bm(want);return 0}if(net.live>=want)return 0
+aE(!1)
+var want=ac(hyphaeM)
+if(want>z.MIN_TARGET&&net.live-want>=ck.MIN){bv(want);return 0}if(net.live>=want)return 0
 var budget=reduced?z.CAP:z.NEW_MAX
-var t0=E()
-var aW=0,aX=0
-while(net.live<want&&aW<budget&&aX++<64){var k=grow(net,want-net.live)
-aW+=k
+var t0=D()
+var bb=0,bc=0
+while(net.live<want&&bb<budget&&bc++<64){var k=grow(net,want-net.live)
+bb+=k
 if(k===0&&net.aCount===0)break
-if(k===0&&aX>3)break
-if(E()-t0>ag.FRAME_MS)break
-}return aW}
-var O=null
-function bm(want){var o=net
+if(k===0&&bc>3)break
+if(D()-t0>ak.FRAME_MS)break
+}return bb}
+var P=null
+function bv(want){var o=net
 if(!o)return 0
-var cf=o.live-(want>0?want:0)
-if(cf<=0)return 0
+var co=o.live-(want>0?want:0)
+if(co<=0)return 0
 var seg=[]
-var cm=0
-for(var i=o.n-1;i>=1&&cm<cf;i--){if(o.lost[i]||o.childN[i]!==0)continue
+var cw=0
+for(var i=o.n-1;i>=1&&cw<co;i--){if(o.lost[i]||o.childN[i]!==0)continue
 var j=i
-while(j>=1&&cm<cf&&!o.lost[j]&&o.childN[j]===0){var p=o.par[j]
+while(j>=1&&cw<co&&!o.lost[j]&&o.childN[j]===0){var p=o.par[j]
 o.lost[j]=1
 o.live--
-cm++
+cw++
 if(p>=0){if(o.childN[p]>0)o.childN[p]--
-if(seg.length<cc.GHOST_MAX*4)seg.push(o.x[p],o.y[p],o.x[j],o.y[j])}var f=o.fslot[j]
+if(seg.length<ck.GHOST_MAX*4)seg.push(o.x[p],o.y[p],o.x[j],o.y[j])}var f=o.fslot[j]
 if(f>=0){o.frontier[f]=-1;o.fslot[j]=-1
-o.accX[f]=0;o.accY[f]=0;o.accN[f]=0}j=p}}if(!cm)return 0
+o.accX[f]=0;o.accY[f]=0;o.accN[f]=0}j=p}}if(!cw)return 0
 invalidate()
-if(!reduced&&T().fluxHz>0&&seg.length){O={at:E(),seg:Float32Array.from(seg)}}return cm}
-function ah(metres){if(!net)return 0
+if(!reduced&&T().fluxHz>0&&seg.length){P={at:D(),seg:Float32Array.from(seg)}}return cw}
+function al(metres){if(!net)return 0
 var m=typeof metres==='number'&&metres===metres?metres:0
-var cf=Math.round(m*z.SEG_PER_M)
-if(cf<=0)return 0
-return bm(net.live-cf)}
-function co(l,bf){if(!O)return
-var u=(bf-O.at)/cc.MS
-if(u>=1){O=null;P=0;return}var fall=cc.DRIFT*u*u
-var a=cc.A*(1-u)*(1-u)
-var seg=O.seg
+var co=Math.round(m*z.SEG_PER_M)
+if(co<=0)return 0
+return bv(net.live-co)}
+function cz(l,bp){if(!P)return
+var u=(bp-P.at)/ck.MS
+if(u>=1){P=null;U=0;return}var fall=ck.DRIFT*u*u
+var a=ck.A*(1-u)*(1-u)
+var seg=P.seg
 l.save()
 l.globalAlpha=a
 l.strokeStyle=rgba(pal.negative,1)
-l.lineWidth=ad.WIDTHS[2]*(1+V.CORD_W*form.cord)
+l.lineWidth=ag.WIDTHS[2]*(1+Z.CORD_W*form.cord)
 l.lineCap='round'
 l.beginPath()
 for(var k=0;k+3<seg.length;k+=4){l.moveTo(seg[k],seg[k+1]+fall)
 l.lineTo(seg[k+2],seg[k+3]+fall)}l.stroke()
 l.restore()}
-var aa=-1
-var aO=0
+var ad=-1
+var aT=0
 function drawNet(){sampleFrame()
 if(!surf.attached&&!attach())return
-if(!net){aq();if(!net)return}aG(!1)
+if(!net){aw();if(!net)return}aE(!1)
 var st=S()
 if(st&&st.act>=2)return
-bN()
-var cW=aH
-if(aH){bA();aH=!1}if(net.drawn>=net.n)return
-if(reduced){var t=E()
-var cI=net.n-net.drawn
-if(!cW&&cI<B.REDUCED_BATCH&&t-aO<B.REDUCED_FLUSH_S*1e3)return
-aO=t}var t0=E()
+bW()
+var de=repaint
+if(repaint){bJ();repaint=!1}if(net.drawn>=net.n)return
+if(reduced){var t=D()
+var cP=net.n-net.drawn
+if(!de&&cP<B.REDUCED_BATCH&&t-aT<B.REDUCED_FLUSH_S*1e3)return
+aT=t}var t0=D()
 var l=surf.netCtx
 refreshPalette(!1)
-bB(l,net.drawn,net.n)
+bK(l,net.drawn,net.n)
 net.drawn=net.n
-own(E()-t0)}
-var dh=new Uint8Array(z.CAP)
-var di=new Uint8Array(z.CAP)
-var bY=new Float32Array(256)
-function bB(l,from,to){if(from>=to)return
-var cp=1+V.CORD_W*form.cord
-var bC=1+(V.CORD_GEN-1)*form.cord
-var dT=ad.GEN_B0*bC
-var dU=ad.GEN_B1*bC
+own(D()-t0)}
+var ds=new Uint8Array(z.CAP)
+var du=new Uint8Array(z.CAP)
+var cg=new Float32Array(256)
+function bK(l,from,to){if(from>=to)return
+var cA=1+Z.CORD_W*form.cord
+var bL=1+(Z.CORD_GEN-1)*form.cord
+var ee=ag.GEN_B0*bL
+var ef=ag.GEN_B1*bL
 var wash=C()?C().TUNE.UI.AGE_WASH:.045
-var bd=1-ad.AGE_FLOOR
+var bn=1-ag.AGE_FLOOR
 var i,k
-var bn=0
+var bx=0
 for(i=from;i<to;i++){k=net.wash-net.epoch[i]
-if(k>bn)bn=k}var aR=bn>0?ad.AGE_BINS:1
-if(aR>1){for(k=0;k<=bn&&k<256;k++){var bM=Math.pow(1-wash,k)
-if(bM<ad.AGE_FLOOR)bM=ad.AGE_FLOOR
-bY[k]=Math.round((1-bM)/bd*(aR-1))}}for(i=from;i<to;i++){dh[i]=bucketOf(net.gen[i],dT,dU)
-di[i]=aR>1?bY[Math.min(net.wash-net.epoch[i],255)]:0}var bl=al()
+if(k>bx)bx=k}var aW=bx>0?ag.AGE_BINS:1
+if(aW>1){for(k=0;k<=bx&&k<256;k++){var bV=Math.pow(1-wash,k)
+if(bV<ag.AGE_FLOOR)bV=ag.AGE_FLOOR
+cg[k]=Math.round((1-bV)/bn*(aW-1))}}for(i=from;i<to;i++){ds[i]=bucketOf(net.gen[i],ee,ef)
+du[i]=aW>1?cg[Math.min(net.wash-net.epoch[i],255)]:0}var bu=ap()
 l.save()
-l.strokeStyle=rgba(K(),1)
+l.strokeStyle=rgba(M(),1)
 l.lineCap='round'
-for(var b=0;b<3;b++){l.lineWidth=ad.WIDTHS[b]*cp
-for(var q=0;q<aR;q++){l.globalAlpha=bl*(1-bd*q/(aR>1?aR-1:1))
+for(var b=0;b<3;b++){l.lineWidth=ag.WIDTHS[b]*cA
+for(var q=0;q<aW;q++){l.globalAlpha=bu*(1-bn*q/(aW>1?aW-1:1))
 l.beginPath()
 var any=!1
-for(i=from;i<to;i++){if(dh[i]!==b||di[i]!==q)continue
+for(i=from;i<to;i++){if(ds[i]!==b||du[i]!==q)continue
 var p=net.par[i]
 if(p<0||net.lost[i]||net.lost[p])continue
 l.moveTo(net.x[p],net.y[p])
 l.lineTo(net.x[i],net.y[i])
 any=!0}if(any)l.stroke()}}l.restore()}
-function bucketOf(g,b0,b1){if(!(b0>0))b0=ad.GEN_B0
-if(!(b1>0))b1=ad.GEN_B1
+function bucketOf(g,b0,b1){if(!(b0>0))b0=ag.GEN_B0
+if(!(b1>0))b1=ag.GEN_B1
 return g<b0?0:(g<b1?1:2)}
 function ageWash(){if(net&&net.wash<255)net.wash++
 if(!surf.netCtx)return
@@ -13479,605 +13481,641 @@ refreshPalette(!1)
 l.fillStyle=rgba(pal.bg,w)
 l.fillRect(0,0,surf.W,surf.H)
 l.restore()}
-function bN(){var s=S()
+function bW(){var s=S()
 if(!s||s.act!==1||!s.a1)return
 var key=(s.a1.year|0)*4+(s.a1.season|0)
-if(aa<0){aa=key;return}if(key===aa)return
-aa=key
+if(ad<0){ad=key;return}if(key===ad)return
+ad=key
 ageWash()
-P=0}
-var P=0
-var aI=''
+U=0}
+var U=0
+var aM=''
 var pulses=[]
-var aP=[]
-var az=0
+var aU=[]
+var aF=0
 var surge=null
-var cF=[0,0]
-function bo(p){if(reduced||T().fluxHz<=0)return
+var cM=[0,0]
+function by(p){if(reduced||T().fluxHz<=0)return
 var f=typeof p==='number'&&p===p?(p<0?0:(p>1?1:p)):0
-surge={at:E(),adv:B.SURGE_PX+B.SURGE_SPAN*f}}
-var ab=null
-function aA(s){if(!s||!s.a1||!s.a1.sub)return 0
+surge={at:D(),adv:B.SURGE_PX+B.SURGE_SPAN*f}}
+var ae=null
+function aG(s){if(!s||!s.a1||!s.a1.sub)return 0
 var t=0
 for(var k in s.a1.sub){if(!Object.prototype.hasOwnProperty.call(s.a1.sub,k))continue
 var v=Number(s.a1.sub[k])
 if(v>0)t+=v}return t}
-function aQ(g){if(!(g>0))return 0
-var f=Math.log(1+g)/Math.log(1+J.FULL_G)
+function aV(g){if(!(g>0))return 0
+var f=Math.log(1+g)/Math.log(1+K.FULL_G)
 if(f>1)f=1
-var n=Math.round(J.MAX_N*f)
+var n=Math.round(K.MAX_N*f)
 return n>0?n:1}
-function aS(l,s){if(!s||s.act!==1)return
-var n=aQ(aA(s))
+function aX(l,s){if(!s||s.act!==1)return
+var n=aV(aG(s))
 if(!n)return
 var col=pal.melanin||pal.hyphae
 for(var i=0;i<n;i++){var x=hash01(7,i*4)*surf.W
-var y=surf.H-2-hash01(7,i*4+1)*J.BAND_PX
-var r=J.R_MIN+hash01(7,i*4+2)*J.R_SPAN
-l.fillStyle=rgba(col,J.A_MIN+hash01(7,i*4+3)*J.A_SPAN)
+var y=surf.H-2-hash01(7,i*4+1)*K.BAND_PX
+var r=K.R_MIN+hash01(7,i*4+2)*K.R_SPAN
+l.fillStyle=rgba(col,K.A_MIN+hash01(7,i*4+3)*K.A_SPAN)
 l.fillRect(x,y,r+r,r)}}
-function bp(kind,dg){if(reduced||T().fluxHz<=0)return
-var f=typeof dg==='number'&&dg===dg?(dg<0?0:(dg>1?1:dg)):0
-ab={at:E(),out:kind==='out',n:Math.round(J.FX_N_MIN+J.FX_N_SPAN*f)}}
-function bD(l,bf){if(!ab)return
-var t=(bf-ab.at)/J.FX_MS
-if(t>=1){ab=null;P=0;return}if(t<0)t=0
-var u=ab.out?t*t:1-(1-t)*(1-t)
+function bz(kind,dr){if(reduced||T().fluxHz<=0)return
+var f=typeof dr==='number'&&dr===dr?(dr<0?0:(dr>1?1:dr)):0
+ae={at:D(),out:kind==='out',n:Math.round(K.FX_N_MIN+K.FX_N_SPAN*f)}}
+function bM(l,bp){if(!ae)return
+var t=(bp-ae.at)/K.FX_MS
+if(t>=1){ae=null;U=0;return}if(t<0)t=0
+var u=ae.out?t*t:1-(1-t)*(1-t)
 var col=pal.melanin||pal.hyphae
-var bl=(ab.out?1e5:2e5)+0
-for(var i=0;i<ab.n;i++){var x=(.5+(hash01(7,bl+i*3)-.5)*.55)*surf.W
-var cq=surf.H-3-hash01(7,bl+i*3+1)*J.BAND_PX
-var y=ab.out?cq-u*J.FX_RISE_PX:cq-(1-u)*J.FX_RISE_PX
-var a=J.FX_A*(ab.out?1-t:.4+.6*t)
-var r=J.R_MIN+hash01(7,bl+i*3+2)*J.R_SPAN
+var bu=(ae.out?1e5:2e5)+0
+for(var i=0;i<ae.n;i++){var x=(.5+(hash01(7,bu+i*3)-.5)*.55)*surf.W
+var cB=surf.H-3-hash01(7,bu+i*3+1)*K.BAND_PX
+var y=ae.out?cB-u*K.FX_RISE_PX:cB-(1-u)*K.FX_RISE_PX
+var a=K.FX_A*(ae.out?1-t:.4+.6*t)
+var r=K.R_MIN+hash01(7,bu+i*3+2)*K.R_SPAN
 l.fillStyle=rgba(col,a)
 l.fillRect(x,y,r+r,r)}}
-function aC(bf){if(!surge)return null
-var t=bf-surge.at
+function aH(bp){if(!surge)return null
+var t=bp-surge.at
 if(t<0)t=0
 if(t>=B.SURGE_RISE+B.SURGE_FALL){surge=null
-P=0
+U=0
 return null}if(t<B.SURGE_RISE){var u=1-t/B.SURGE_RISE
 return{d:surge.adv*(1-u*u*u),a:1}}var v=1-(t-B.SURGE_RISE)/B.SURGE_FALL
 return{d:surge.adv,a:v*v}}
-function bZ(i){var p=net.par[i]
+function ch(i){var p=net.par[i]
 var dx=p>=0?net.x[i]-net.x[p]:0
 var dy=p>=0?net.y[i]-net.y[p]:-1
 var m=Math.sqrt(dx*dx+dy*dy)
-if(!(m>1e-6)){cF[0]=0;cF[1]=-1;return}cF[0]=dx/m
-cF[1]=dy/m}
-function cg(l,sg){var cr=Math.max(0,net.n-B.SURGE_N)
-if(cr>=net.n)return
-var bv=Math.PI*2
+if(!(m>1e-6)){cM[0]=0;cM[1]=-1;return}cM[0]=dx/m
+cM[1]=dy/m}
+function cp(l,sg){var cC=Math.max(0,net.n-B.SURGE_N)
+if(cC>=net.n)return
+var bE=Math.PI*2
 var i
-var ink=rgba(K(),1)
-var r=B.TIP_R*(1+V.TIP_R_K*form.cord)
+var ink=rgba(M(),1)
+var r=B.TIP_R*(1+Z.TIP_R_K*form.cord)
 l.save()
 l.globalAlpha=B.SURGE_A*sg.a
 l.strokeStyle=ink
 l.fillStyle=ink
-l.lineWidth=ad.WIDTHS[2]*(1+V.CORD_W*form.cord)
+l.lineWidth=ag.WIDTHS[2]*(1+Z.CORD_W*form.cord)
 l.lineCap='round'
 l.beginPath()
-for(i=cr;i<net.n;i++){if(net.lost[i])continue
-bZ(i)
+for(i=cC;i<net.n;i++){if(net.lost[i])continue
+ch(i)
 l.moveTo(net.x[i],net.y[i])
-l.lineTo(net.x[i]+cF[0]*sg.d,net.y[i]+cF[1]*sg.d)}l.stroke()
+l.lineTo(net.x[i]+cM[0]*sg.d,net.y[i]+cM[1]*sg.d)}l.stroke()
 l.globalAlpha=B.SURGE_A*B.SURGE_HEAD*sg.a
 l.beginPath()
-for(i=cr;i<net.n;i++){if(net.lost[i])continue
-bZ(i)
-l.moveTo(net.x[i]+cF[0]*sg.d+r,net.y[i]+cF[1]*sg.d)
-l.arc(net.x[i]+cF[0]*sg.d,net.y[i]+cF[1]*sg.d,r,0,bv)}l.fill()
+for(i=cC;i<net.n;i++){if(net.lost[i])continue
+ch(i)
+l.moveTo(net.x[i]+cM[0]*sg.d+r,net.y[i]+cM[1]*sg.d)
+l.arc(net.x[i]+cM[0]*sg.d,net.y[i]+cM[1]*sg.d,r,0,bE)}l.fill()
 l.restore()}
-function ct(s){if(!s)return net?net.n+'/'+net.live:'0'
+function cD(s){if(!s)return net?net.n+'/'+net.live:'0'
 var fl=s.a2&&s.a2.flush?s.a2.flush.length:0
-return net.n+'/'+net.live+'|'+s.act+'|'+(s.a1?s.a1.tips:0)+'|'+fl+'|'+(starving()?1:0)+'|'+form.key+'|'+aQ(aA(s))}
+return net.n+'/'+net.live+'|'+s.act+'|'+(s.a1?s.a1.tips:0)+'|'+fl+'|'+(starving()?1:0)+'|'+form.key+'|'+aV(aG(s))}
 function starving(){if(HY.act1&&typeof HY.act1.throughputPerSec==='function'){try{return!(HY.act1.throughputPerSec()>0)}catch(e){return!1}}return!1}
-function drawFlux(bf){if(!surf.attached&&!attach())return
+function drawFlux(bp){if(!surf.attached&&!attach())return
 if(!net)return
-var d=cT()
+var d=cY()
 if(d&&d.hidden)return
-if(typeof bf!=='number'||bf!==bf)bf=E()
-if(aF(bf))return
+if(typeof bp!=='number'||bp!==bp)bp=D()
+if(aL(bp))return
 var s=S()
-var sg=aC(bf)
-var hz=sg?B.SURGE_HZ:(O?cc.HZ:(ab?J.FX_HZ:T().fluxHz))
-if(reduced||hz<=0){var key=ct(s)
-if(key===aI&&P)return
-aI=key}else if(bf-P<1e3/hz){return
-}P=bf
-var t0=E()
+var sg=aH(bp)
+var hz=sg?B.SURGE_HZ:(P?ck.HZ:(ae?K.FX_HZ:T().fluxHz))
+if(reduced||hz<=0){var key=cD(s)
+if(key===aM&&U)return
+aM=key}else if(bp-U<1e3/hz){return
+}U=bp
+var t0=D()
 var l=surf.fluxCtx
 l.clearRect(0,0,surf.W,surf.H)
 refreshPalette(!1)
-var aT=bf/1e3
-aG(!1)
-aS(l,s)
-bD(l,bf)
-co(l,bf)
-cu(l,aT)
-if(sg)cg(l,sg)
-if(s&&s.act>=2)bO(l,aT,s)
-if(s&&s.act===2){bq(l,s)
-bE(l,aT,s)}own(E()-t0)}
-function cu(l,aT){var cv=starving()
-var col=cv?pal.tertiary:K()
+var aY=bp/1e3
+aE(!1)
+aX(l,s)
+bM(l,bp)
+cz(l,bp)
+cE(l,aY)
+if(sg)cp(l,sg)
+if(s&&s.act>=2)bX(l,aY,s)
+if(s&&s.act===2){bA(l,s)
+bN(l,aY,s)}own(D()-t0)}
+function cE(l,aY){var cF=starving()
+var col=cF?pal.tertiary:M()
 var want=form.tips
-var r=B.TIP_R*(1+V.TIP_R_K*form.cord)
-var bv=Math.PI*2
-var cR=0
+var r=B.TIP_R*(1+Z.TIP_R_K*form.cord)
+var bE=Math.PI*2
+var cZ=0
 l.fillStyle=rgba(col,1)
-for(var i=net.n-1;i>=0&&cR<want;i--){if(net.lost[i])continue
-cR++
+for(var i=net.n-1;i>=0&&cZ<want;i--){if(net.lost[i])continue
+cZ++
 var a
-if(cv)a=B.TIP_STARVE_A
+if(cF)a=B.TIP_STARVE_A
 else if(reduced)a=B.TIP_STATIC_A
-else a=B.TIP_A+B.TIP_AMP*Math.sin(bv*aT/B.TIP_PERIOD+i*B.TIP_SPREAD)
+else a=B.TIP_A+B.TIP_AMP*Math.sin(bE*aY/B.TIP_PERIOD+i*B.TIP_SPREAD)
 l.globalAlpha=a
 l.beginPath()
-l.arc(net.x[i],net.y[i],r,0,bv)
+l.arc(net.x[i],net.y[i],r,0,bE)
 l.fill()}l.globalAlpha=1}
-function ch(k){if(net.n<B.PULSE_PATH_MIN)return null
-var bd=Math.max(1,Math.min(B.TIP_N,net.n-1))
-var du=net.n-1-(C()?C().hash32('pulse',net.seed,k):k*2654435761>>>0)%bd
-if(du<1)du=net.n-1
+function cq(k){if(net.n<B.PULSE_PATH_MIN)return null
+var bn=Math.max(1,Math.min(B.TIP_N,net.n-1))
+var dH=net.n-1-(C()?C().hash32('pulse',net.seed,k):k*2654435761>>>0)%bn
+if(dH<1)dH=net.n-1
 var chain=[]
-var i=du,aX=0
-while(i>=0&&aX++<z.CAP){if(net.lost[i])return null
+var i=dH,bc=0
+while(i>=0&&bc++<z.CAP){if(net.lost[i])return null
 chain.push(i);i=net.par[i]}if(chain.length<B.PULSE_PATH_MIN)return null
 chain.reverse()
 return Int32Array.from(chain)}
-function bO(l,aT,s){var cap=T().pulses
+function bX(l,aY,s){var cap=T().pulses
 if(cap<=0){pulses.length=0;return}var live=!!(s.res&&s.res.signal>0)
-if(live&&!reduced&&pulses.length<cap&&aT-az>B.PULSE_SPAWN_S){az=aT
+if(live&&!reduced&&pulses.length<cap&&aY-aF>B.PULSE_SPAWN_S){aF=aY
 var p
-if(aP.length<cap){p=ch(aP.length)
-if(p)aP.push(p)}else{p=aP[(pulses.length+aP.length)%aP.length]}if(p)pulses.push({path:p,u:0,at:aT})}var bv=Math.PI*2
+if(aU.length<cap){p=cq(aU.length)
+if(p)aU.push(p)}else{p=aU[(pulses.length+aU.length)%aU.length]}if(p)pulses.push({path:p,u:0,at:aY})}var bE=Math.PI*2
 for(var i=pulses.length-1;i>=0;i--){var q=pulses[i]
-q.u=reduced? .5:(aT-q.at)*B.PULSE_U
+q.u=reduced? .5:(aY-q.at)*B.PULSE_U
 if(q.u>=1){pulses.splice(i,1);continue}var L=q.path.length-1
 var f=q.u*L
 var j=f|0
-var dj=f-j
+var dv=f-j
 var a0=q.path[j],a1=q.path[Math.min(j+1,L)]
-var px=net.x[a0]+(net.x[a1]-net.x[a0])*dj
-var py=net.y[a0]+(net.y[a1]-net.y[a0])*dj
+var px=net.x[a0]+(net.x[a1]-net.x[a0])*dv
+var py=net.y[a0]+(net.y[a1]-net.y[a0])*dv
 var tf=Math.max(0,f-2)
 var tj=tf|0
-var cS=tf-tj
+var da=tf-tj
 var b0=q.path[tj],b1=q.path[Math.min(tj+1,L)]
-var tx=net.x[b0]+(net.x[b1]-net.x[b0])*cS
-var ty=net.y[b0]+(net.y[b1]-net.y[b0])*cS
+var tx=net.x[b0]+(net.x[b1]-net.x[b0])*da
+var ty=net.y[b0]+(net.y[b1]-net.y[b0])*da
 l.strokeStyle=rgba(pal.signal,B.PULSE_TRAIL_A)
 l.lineWidth=B.PULSE_TRAIL
 l.lineCap='round'
 l.beginPath();l.moveTo(tx,ty);l.lineTo(px,py);l.stroke()
 l.fillStyle=rgba(pal.signal,B.PULSE_A)
-l.beginPath();l.arc(px,py,B.PULSE_DOT,0,bv);l.fill()}}
-function bq(l,s){var cJ=s.a2&&s.a2.flush
-if(!cJ||!cJ.length)return
+l.beginPath();l.arc(px,py,B.PULSE_DOT,0,bE);l.fill()}}
+function bA(l,s){var cQ=s.a2&&s.a2.flush
+if(!cQ||!cQ.length)return
 var regions=s.a2.regions
-var k=Math.min(B.FB_MAX,cJ.length)
-var bv=Math.PI*2
+var k=Math.min(B.FB_MAX,cQ.length)
+var bE=Math.PI*2
 l.fillStyle=rgba(pal.spore,B.FB_A)
-for(var i=0;i<k;i++){var dL=cJ[i].regionId|0
-var at=I&&regions?ar(dL,regions):null
+for(var i=0;i<k;i++){var dW=cQ[i].regionId|0
+var at=J&&regions?az(dW,regions):null
 var x,y
-if(at){x=at.x;y=at.y+B.FB_STIPE_H/2}else{var bd=Math.max(1,Math.min(B.TIP_N,net.n-1))
-var id=C()?C().hash32('fb',net.seed,dL,i):i
-var node=net.n-1-(id%bd)
+if(at){x=at.x;y=at.y+B.FB_STIPE_H/2}else{var bn=Math.max(1,Math.min(B.TIP_N,net.n-1))
+var id=C()?C().hash32('fb',net.seed,dW,i):i
+var node=net.n-1-(id%bn)
 if(node<0)continue
 x=net.x[node];y=net.y[node]}l.fillRect(x-B.FB_STIPE_W/2,y,B.FB_STIPE_W,B.FB_STIPE_H)
 l.beginPath()
-l.arc(x,y,B.FB_CAP_R/2,Math.PI,bv)
+l.arc(x,y,B.FB_CAP_R/2,Math.PI,bE)
 l.fill()}}
-function bE(l,aT,s){var r=s.a2&&s.a2.regions
-if(!r||!r.fireRisk||!I)return
-var dv=C()?C().TUNE.A2.FIRE_TRIG:.85
-var a=reduced?(B.HAZ_A+B.HAZ_AMP/2):B.HAZ_A+B.HAZ_AMP*Math.sin(Math.PI*2*aT/B.HAZ_PERIOD)
+function bN(l,aY,s){var r=s.a2&&s.a2.regions
+if(!r||!r.fireRisk||!J)return
+var dI=C()?C().TUNE.A2.FIRE_TRIG:.85
+var a=reduced?(B.HAZ_A+B.HAZ_AMP/2):B.HAZ_A+B.HAZ_AMP*Math.sin(Math.PI*2*aY/B.HAZ_PERIOD)
 l.strokeStyle=rgba(pal.negative,a)
 l.lineWidth=1.5
 var drawn=0
-for(var i=0;i<r.fireRisk.length&&drawn<B.HAZ_MAX;i++){if(r.fireRisk[i]<dv)continue
-var p=ar(i,r)
+for(var i=0;i<r.fireRisk.length&&drawn<B.HAZ_MAX;i++){if(r.fireRisk[i]<dI)continue
+var p=az(i,r)
 if(!p)continue
 l.beginPath()
 l.arc(p.x,p.y,B.HAZ_R,0,Math.PI*2)
 l.stroke()
 drawn++}}
-var I=null
-var aj=!0
-var an=null
-function as(){var N=bx.RINGS
-var cX=3*N+2
-var cY=Math.sqrt(3)*(2*N+1)
-var R=Math.min((surf.W-bx.PAD*2)/cX,(surf.H-bx.PAD*2)/cY)
-I={R:R,cx:surf.W/2,cy:surf.H/2,sq3:Math.sqrt(3)}
-an=new Path2D()
+var J=null
+var am=!0
+var ar=null
+function aA(){var N=bF.RINGS
+var df=3*N+2
+var dg=Math.sqrt(3)*(2*N+1)
+var R=Math.min((surf.W-bF.PAD*2)/df,(surf.H-bF.PAD*2)/dg)
+J={R:R,cx:surf.W/2,cy:surf.H/2,sq3:Math.sqrt(3)}
+ar=new Path2D()
 for(var k=0;k<6;k++){var th=Math.PI/3*k
 var px=Math.cos(th)*R,py=Math.sin(th)*R
-if(k===0)an.moveTo(px,py);else an.lineTo(px,py)}an.closePath()}
-function ar(i,regions){if(!I||!regions||!regions.q)return null
+if(k===0)ar.moveTo(px,py);else ar.lineTo(px,py)}ar.closePath()}
+function az(i,regions){if(!J||!regions||!regions.q)return null
 var q=regions.q[i],r=regions.r[i]
-return{x:I.cx+I.R*1.5*q,y:I.cy+I.R*I.sq3*(r+q/2)}}
+return{x:J.cx+J.R*1.5*q,y:J.cy+J.R*J.sq3*(r+q/2)}}
+var plate={key:'',data:0,at:0}
+function an(kind,data){refreshPalette(!1)
+aE(!1)
+var el=surf.netEl
+var key=kind+'|'+surf.W+'x'+surf.H+'@'+surf.dpr+'|'+el.width+'x'+el.height+'|'+pal.gen+'|'+form.key+'|'+(net?net.seed:'-')
+if(net)data=ab(ab(data,net.n),net.live)
+var t=D()
+if(key===plate.key){if(data===plate.data)return!1
+var hz=C()?C().TUNE.CLOCK.CANVAS_HZ:4
+if(t-plate.at<1e3/hz)return!1}plate.key=key;plate.data=data;plate.at=t
+return!0}
+function ab(h,v){return Math.imul(h^(v|0),16777619)}
+function as(regions){var h=2166136261|0
+var n=regions.q.length
+h=ab(h,n)
+for(var j=0;j<n;j++){h=ab(h,regions.flags?regions.flags[j]:0)
+h=ab(h,regions.terrain?regions.terrain[j]:0)
+h=ab(h,regions.col?Math.round(clamp01(regions.col[j])*256):0)
+h=ab(h,regions.barriers?regions.barriers[j]:0)
+h=ab(h,regions.rival?regions.rival[j]:-1)}return h}
 function drawMap(regions){sampleFrame()
 if(!surf.attached&&!attach())return
 if(!regions||!regions.q)return
-if(!net){aq();if(!net)return}if(!I||aj){as();aj=!1}var l=surf.netCtx
-var t0=E()
-refreshPalette(!1)
+if(!net){aw();if(!net)return}if(!J||am){aA();am=!1}if(!an('map',as(regions)))return
+var l=surf.netCtx
+var t0=D()
 l.clearRect(0,0,surf.W,surf.H)
-ak(l,1)
+ao(l,1)
 var n=regions.q.length
-for(var j=0;j<n;j++){var c=ar(j,regions)
+for(var j=0;j<n;j++){var c=az(j,regions)
 if(!c)continue
 l.save()
 l.translate(c.x,c.y)
-bF(l,regions,j,1)
-l.restore()}own(E()-t0)}
-function ak(l,bM){if(!net||!(bM>0))return
-aG(!1)
-var cp=1+V.CORD_W*form.cord
-var bC=1+(V.CORD_GEN-1)*form.cord
+bO(l,regions,j,1)
+l.restore()}own(D()-t0)}
+function ao(l,bV){if(!net||!(bV>0))return
+aE(!1)
+var cA=1+Z.CORD_W*form.cord
+var bL=1+(Z.CORD_GEN-1)*form.cord
 l.save()
-l.globalAlpha=bx.NET_ALPHA*bM
-l.strokeStyle=rgba(K(),1)
+l.globalAlpha=bF.NET_ALPHA*bV
+l.strokeStyle=rgba(M(),1)
 l.lineCap='round'
-for(var b=0;b<3;b++){l.lineWidth=ad.WIDTHS[b]*cp
+for(var b=0;b<3;b++){l.lineWidth=ag.WIDTHS[b]*cA
 l.beginPath()
 for(var i=1;i<net.n;i++){var p=net.par[i]
 if(p<0||net.lost[i]||net.lost[p])continue
-if(bucketOf(net.gen[i],ad.GEN_B0*bC,ad.GEN_B1*bC)!==b)continue
+if(bucketOf(net.gen[i],ag.GEN_B0*bL,ag.GEN_B1*bL)!==b)continue
 l.moveTo(net.x[p],net.y[p]);l.lineTo(net.x[i],net.y[i])}l.stroke()}l.restore()
 net.drawn=net.n}
-function bF(l,regions,j,bM){var flags=regions.flags?regions.flags[j]:0
-var aZ=!!(flags&1)
-var state=(flags&4)?2:((flags&8)?3:(aZ?1:0))
-if(!aZ){l.globalAlpha=bx.STROKE_A[0]*bM
+function bO(l,regions,j,bV){var flags=regions.flags?regions.flags[j]:0
+var bf=!!(flags&1)
+var state=(flags&4)?2:((flags&8)?3:(bf?1:0))
+if(!bf){l.globalAlpha=bF.STROKE_A[0]*bV
 l.fillStyle=rgba(pal.lineStrong,1)
-l.beginPath();l.arc(0,0,bx.DOT_R,0,Math.PI*2);l.fill()
+l.beginPath();l.arc(0,0,bF.DOT_R,0,Math.PI*2);l.fill()
 return
-}var dw=regions.terrain?regions.terrain[j]:0
-var dk=bx.TERRAIN_A[dw%bx.TERRAIN_A.length]
+}var dJ=regions.terrain?regions.terrain[j]:0
+var dw=bF.TERRAIN_A[dJ%bF.TERRAIN_A.length]
 var col=regions.col?regions.col[j]:0
-l.globalAlpha=dk*(.45+.55*clamp01(col))*bM
+l.globalAlpha=dw*(.45+.55*clamp01(col))*bV
 l.fillStyle=rgba(state>=2?pal.signal:pal.surface2,1)
-l.fill(an)
-l.globalAlpha=bx.STROKE_A[state]*bM
+l.fill(ar)
+l.globalAlpha=bF.STROKE_A[state]*bV
 l.lineWidth=state>=2?1.5:1
 l.strokeStyle=rgba(state>=2?pal.signal:pal.line,1)
-l.stroke(an)
-var dM=regions.barriers?regions.barriers[j]:0
-if(dM)br(l,dM,I.R,bM)
-if(regions.rival&&regions.rival[j]>=0){l.globalAlpha=bx.RIVAL_A*bM
+l.stroke(ar)
+var dX=regions.barriers?regions.barriers[j]:0
+if(dX)bB(l,dX,J.R,bV)
+if(regions.rival&&regions.rival[j]>=0){l.globalAlpha=bF.RIVAL_A*bV
 l.fillStyle=rgba(pal.negative,1)
-l.beginPath();l.arc(0,-I.R*.42,bx.RIVAL_R,0,Math.PI*2);l.fill()}}
-function cZ(regions,j){var q=regions.q[j],r=regions.r[j]
+l.beginPath();l.arc(0,-J.R*.42,bF.RIVAL_R,0,Math.PI*2);l.fill()}}
+function dh(regions,j){var q=regions.q[j],r=regions.r[j]
 return(Math.abs(q)+Math.abs(r)+Math.abs(q+r))/2}
-function br(l,dG,R,bM){var ca=R-bx.BARRIER_INSET
+function bB(l,dR,R,bV){var ci=R-bF.BARRIER_INSET
 l.save()
-l.globalAlpha=bM===undefined?1:bM
-l.lineWidth=bx.BARRIER_W
+l.globalAlpha=bV===undefined?1:bV
+l.lineWidth=bF.BARRIER_W
 l.strokeStyle=rgba(pal.lineStrong,1)
-if(l.setLineDash)l.setLineDash(bx.BARRIER_DASH)
-for(var e=0;e<6;e++){if(!(dG&(1<<e)))continue
+if(l.setLineDash)l.setLineDash(bF.BARRIER_DASH)
+for(var e=0;e<6;e++){if(!(dR&(1<<e)))continue
 var a0=Math.PI/3*e
 var a1=Math.PI/3*(e+1)
 l.beginPath()
-l.moveTo(Math.cos(a0)*ca,Math.sin(a0)*ca)
-l.lineTo(Math.cos(a1)*ca,Math.sin(a1)*ca)
+l.moveTo(Math.cos(a0)*ci,Math.sin(a0)*ci)
+l.lineTo(Math.cos(a1)*ci,Math.sin(a1)*ci)
 l.stroke()}if(l.setLineDash)l.setLineDash([])
 l.restore()}
-function da(aB,b){if(aB.ncap)return aB.ncap[b]
+function di(Y,b){if(Y.ncap)return Y.ncap[b]
 var t=C()?C().TUNE.A3:null
-if(!t||!aB.X)return 1
+if(!t||!Y.X)return 1
 return Math.max(1,(t.X0_BASE*Math.pow(t.X0_GROWTH,b))/t.NCAP_DIV)}
-function drawVoid(aB){sampleFrame()
+function bs(Y){return Math.min(Y.e.length,C()?C().TUNE.A3.BANDS:13)}
+function db(Y,b){var occ=Y.n?Y.n[b]/di(Y,b):0
+var w=aC.W_MIN+aC.W_K*Math.log10(1+(occ>0?occ:0))
+return w>aC.W_MAX?aC.W_MAX:w}
+function aQ(Y){var h=2166136261|0
+var nb=bs(Y)
+h=ab(h,nb)
+for(var b=0;b<nb;b++){h=ab(h,Math.round(clamp01(Y.e[b])*4096))
+h=ab(h,Math.round(db(Y,b)*16))}return h}
+function drawVoid(Y){sampleFrame()
 if(!surf.attached&&!attach())return
-if(!aB||!aB.e)return
+if(!Y||!Y.e)return
+if(!net)aw()
+if(!an('void',aQ(Y)))return
 var l=surf.netCtx
-var t0=E()
-refreshPalette(!1)
+var t0=D()
 l.clearRect(0,0,surf.W,surf.H)
-if(!net)aq()
-ak(l,1)
+ao(l,1)
 var cx=surf.W/2,cy=surf.H/2
-var nb=Math.min(aB.e.length,C()?C().TUNE.A3.BANDS:13)
-var dl=Math.min(surf.W,surf.H)/av.SIZE
+var nb=bs(Y)
+var dz=Math.min(surf.W,surf.H)/aC.SIZE
 l.save()
 l.lineCap='butt'
-for(var b=0;b<nb;b++){var r=(av.R0+av.STEP*b)*dl
+for(var b=0;b<nb;b++){var r=(aC.R0+aC.STEP*b)*dz
 if(r<=0)continue
-var e=clamp01(aB.e[b])
-var occ=aB.n?aB.n[b]/da(aB,b):0
-var w=av.W_MIN+av.W_K*Math.log10(1+(occ>0?occ:0))
-l.lineWidth=av.TRACK_W
-l.strokeStyle=rgba(pal.lineStrong,av.GAP_A)
+var e=clamp01(Y.e[b])
+l.lineWidth=aC.TRACK_W
+l.strokeStyle=rgba(pal.lineStrong,aC.GAP_A)
 l.beginPath();l.arc(cx,cy,r,0,Math.PI*2);l.stroke()
 if(e<=0)continue
-l.lineWidth=(w>av.W_MAX?av.W_MAX:w)*dl
+l.lineWidth=db(Y,b)*dz
 l.strokeStyle=rgba(pal.signal,.85)
-l.beginPath();l.arc(cx,cy,r,av.START,av.START+Math.PI*2*e);l.stroke()}l.restore()
-own(E()-t0)}
+l.beginPath();l.arc(cx,cy,r,aC.START,aC.START+Math.PI*2*e);l.stroke()}l.restore()
+own(D()-t0)}
 function clamp01(v){return v>1?1:(v<0||v!==v?0:v)}
+var F={key:'',data:0,el:null}
+var aI=new Float32Array(3*64)
 function drawWheel(phases,mass){if(!surf.attached&&!attach())return
-if(!surf.wheelCtx&&cT()){U(cT());if(surf.wheelCtx)resize()}var l=surf.wheelCtx||surf.fluxCtx
+if(!surf.wheelCtx&&cY()){V(cY());if(surf.wheelCtx)resize()}var l=surf.wheelCtx||surf.fluxCtx
 if(!l||!phases||!phases.length)return
-var t0=E()
 refreshPalette(!1)
 var el=surf.wheelCtx?surf.wheelEl:surf.fluxEl
 var w=el.clientWidth||surf.W,h=el.clientHeight||surf.H
-l.clearRect(0,0,w,h)
 var cx=w/2,cy=h/2
-var R=Math.min(aw.R,Math.min(w,h)/2-aw.DOT_R_MAX-2)
-var bv=Math.PI*2
+var R=Math.min(aD.R,Math.min(w,h)/2-aD.DOT_R_MAX-2)
+var bE=Math.PI*2
+var nb=phases.length>64?64:phases.length
+var sx=0,sy=0,sm=0,b
+var dp=ab(2166136261|0,nb)
+for(b=0;b<nb;b++){var m=mass&&mass[b]>0?mass[b]:1
+var th=bE*(phases[b]-Math.floor(phases[b]))
+sx+=Math.cos(th)*m;sy+=Math.sin(th)*m;sm+=m
+var rad=aD.DOT_R
+if(mass&&sm>0)rad=aD.DOT_R+(aD.DOT_R_MAX-aD.DOT_R)*clamp01(m/(sm||1))
+var px=cx+Math.cos(th-Math.PI/2)*R
+var py=cy+Math.sin(th-Math.PI/2)*R
+aI[3*b]=px;aI[3*b+1]=py;aI[3*b+2]=rad
+dp=ab(ab(ab(dp,Math.round(px*4)),Math.round(py*4)),Math.round(rad*4))}var dj=cx,tipY=cy
+if(sm>0){var ux=sx/sm,uy=sy/sm
+var dY=Math.sqrt(ux*ux+uy*uy)
+var ang=Math.atan2(uy,ux)-Math.PI/2
+dj=cx+Math.cos(ang)*R*dY;tipY=cy+Math.sin(ang)*R*dY}dp=ab(ab(ab(dp,sm>0?1:0),Math.round(dj*4)),Math.round(tipY*4))
+if(surf.wheelCtx){var key=w+'x'+h+'|'+el.width+'x'+el.height+'|'+pal.gen
+if(el===F.el&&key===F.key&&dp===F.data)return
+F.el=el;F.key=key;F.data=dp}var t0=D()
+l.clearRect(0,0,w,h)
 l.save()
 l.strokeStyle=rgba(pal.line,.7)
 l.lineWidth=1
-l.beginPath();l.arc(cx,cy,R,0,bv);l.stroke()
+l.beginPath();l.arc(cx,cy,R,0,bE);l.stroke()
 l.strokeStyle=rgba(pal.attention,.75)
-if(l.setLineDash)l.setLineDash(aw.RING_DASH)
-l.beginPath();l.arc(cx,cy,R*aw.RING_AT,0,bv);l.stroke()
+if(l.setLineDash)l.setLineDash(aD.RING_DASH)
+l.beginPath();l.arc(cx,cy,R*aD.RING_AT,0,bE);l.stroke()
 if(l.setLineDash)l.setLineDash([])
-var sx=0,sy=0,sm=0
-for(var b=0;b<phases.length;b++){var m=mass&&mass[b]>0?mass[b]:1
-var th=bv*(phases[b]-Math.floor(phases[b]))
-var px=cx+Math.cos(th-Math.PI/2)*R
-var py=cy+Math.sin(th-Math.PI/2)*R
-sx+=Math.cos(th)*m;sy+=Math.sin(th)*m;sm+=m
-var rad=aw.DOT_R
-if(mass&&sm>0)rad=aw.DOT_R+(aw.DOT_R_MAX-aw.DOT_R)*clamp01(m/(sm||1))
 l.fillStyle=rgba(pal.signal,.85)
-l.beginPath();l.arc(px,py,rad,0,bv);l.fill()}if(sm>0){var ux=sx/sm,uy=sy/sm
-var dN=Math.sqrt(ux*ux+uy*uy)
-var ang=Math.atan2(uy,ux)-Math.PI/2
-l.strokeStyle=rgba(pal.text,.9)
-l.lineWidth=aw.RESULT_W
+for(b=0;b<nb;b++){l.beginPath();l.arc(aI[3*b],aI[3*b+1],aI[3*b+2],0,bE);l.fill()}if(sm>0){l.strokeStyle=rgba(pal.text,.9)
+l.lineWidth=aD.RESULT_W
 l.beginPath()
 l.moveTo(cx,cy)
-l.lineTo(cx+Math.cos(ang)*R*dN,cy+Math.sin(ang)*R*dN)
+l.lineTo(dj,tipY)
 l.stroke()}l.restore()
-own(E()-t0)}
+own(D()-t0)}
 var mo=null
-var cw=null,depthN=-1
-function cz(){return Math.sqrt(surf.W*surf.W+surf.H*surf.H)/2}
+var cG=null,depthN=-1
+function cH(){return Math.sqrt(surf.W*surf.W+surf.H*surf.H)/2}
 function coverPlate(l,colour,alpha){l.globalAlpha=alpha
 l.fillStyle=rgba(colour,1)
 l.fillRect(0,0,surf.W,surf.H)
 l.globalAlpha=1}
-function bP(){if(!net)return
-var db=1,i
-for(i=0;i<net.n;i++)if(net.gen[i]>db)db=net.gen[i]
-cw=new Float32Array(net.n)
-for(i=0;i<net.n;i++)cw[i]=net.gen[i]/db
+function bY(){if(!net)return
+var dk=1,i
+for(i=0;i<net.n;i++)if(net.gen[i]>dk)dk=net.gen[i]
+cG=new Float32Array(net.n)
+for(i=0;i<net.n;i++)cG[i]=net.gen[i]/dk
 depthN=net.n}
-function ba(l,u,o){if(!net||net.n<2)return
-if(depthN!==net.n)bP()
-var passes=o.passes>0?o.passes:F.PASSES
-var dz=o.peakAlpha>0?o.peakAlpha:F.PEAK
-var hz=o.hz>0?o.hz:F.WAVE_HZ
+function bi(l,u,o){if(!net||net.n<2)return
+if(depthN!==net.n)bY()
+var passes=o.passes>0?o.passes:G.PASSES
+var dK=o.peakAlpha>0?o.peakAlpha:G.PEAK
+var hz=o.hz>0?o.hz:G.WAVE_HZ
 var env=.5-.5*Math.cos(Math.PI*2*hz*(mo.ms/1e3)*u)
-var dA=(u*passes)%1
-var w=F.BAND_W
-var aR=F.BINS
+var dL=(u*passes)%1
+var w=G.BAND_W
+var aW=G.BINS
 var i,p,d,delta,a,b
 l.save()
 l.lineCap='round'
-l.lineWidth=ad.WIDTHS[1]
-l.strokeStyle=rgba(K(),1)
-l.globalAlpha=F.WAVE_BASE*env
+l.lineWidth=ag.WIDTHS[1]
+l.strokeStyle=rgba(M(),1)
+l.globalAlpha=G.WAVE_BASE*env
 l.beginPath()
 for(i=1;i<net.n;i++){p=net.par[i]
 if(p<0||net.lost[i]||net.lost[p])continue
 l.moveTo(net.x[p],net.y[p]);l.lineTo(net.x[i],net.y[i])}l.stroke()
-for(b=0;b<aR;b++){l.globalAlpha=dz*env*(b+1)/aR
-l.lineWidth=ad.WIDTHS[1]+(b+1)/aR
+for(b=0;b<aW;b++){l.globalAlpha=dK*env*(b+1)/aW
+l.lineWidth=ag.WIDTHS[1]+(b+1)/aW
 l.beginPath()
 var any=!1
 for(i=1;i<net.n;i++){p=net.par[i]
 if(p<0||net.lost[i]||net.lost[p])continue
-d=cw[i]
-delta=d-dA
+d=cG[i]
+delta=d-dL
 if(delta>.5)delta-=1
 else if(delta<-.5)delta+=1
 if(delta<0)delta=-delta
 if(delta>w)continue
 a=1-delta/w
-if(Math.floor(a*aR)!==b&&!(b===aR-1&&a>=1))continue
+if(Math.floor(a*aW)!==b&&!(b===aW-1&&a>=1))continue
 l.moveTo(net.x[p],net.y[p]);l.lineTo(net.x[i],net.y[i])
 any=!0}if(any)l.stroke()}l.restore()
 l.globalAlpha=1}
 function drawMapDrain(l,u,o){var s=S()
 var regions=s&&s.a2?s.a2.regions:null
 if(!regions||!regions.q)return
-if(!I||aj){as();aj=!1}var from=o.fromRing===undefined?bx.RINGS:o.fromRing
+if(!J||am){aA();am=!1}var from=o.fromRing===undefined?bF.RINGS:o.fromRing
 var to=o.toRing===undefined?0:o.toRing
 var steps=Math.max(1,from-to)
 var j,ring,k,a,c
 l.save()
 l.fillStyle=rgba(pal.bg,1)
 l.strokeStyle=rgba(pal.bg,1)
-l.lineWidth=bx.DRAIN_W
-for(j=0;j<regions.q.length;j++){ring=cZ(regions,j)
+l.lineWidth=bF.DRAIN_W
+for(j=0;j<regions.q.length;j++){ring=dh(regions,j)
 if(ring<=to)continue
 k=from-ring
 a=clamp01(u*steps-k)
 if(a<=0)continue
-c=ar(j,regions)
+c=az(j,regions)
 if(!c)continue
 l.globalAlpha=a
 l.save()
 l.translate(c.x,c.y)
-l.fill(an)
-l.stroke(an)
+l.fill(ar)
+l.stroke(ar)
 l.restore()}l.restore()
 l.globalAlpha=1}
-function bG(l,u,o){var s=S()
+function bP(l,u,o){var s=S()
 var regions=s&&s.a2?s.a2.regions:null
 coverPlate(l,pal.bg,1)
 if(!regions||!regions.q)return
-if(!I||aj){as();aj=!1}var rise=o.risePx||F.LIFT_RISE
-var stag=o.staggerMs||[0,F.LIFT_STAGGER_MS]
-var dB=o.alphaMs>0?o.alphaMs:F.LIFT_MS
-var cK=mo.ms*u
+if(!J||am){aA();am=!1}var rise=o.risePx||G.LIFT_RISE
+var stag=o.staggerMs||[0,G.LIFT_STAGGER_MS]
+var dM=o.alphaMs>0?o.alphaMs:G.LIFT_MS
+var cR=mo.ms*u
 var j,c,h,st,local,f,alpha
 l.save()
-for(j=0;j<regions.q.length;j++){c=ar(j,regions)
+for(j=0;j<regions.q.length;j++){c=az(j,regions)
 if(!c)continue
 h=hash01(mo.seed,j)
 st=stag[0]+(stag[1]-stag[0])*hash01(mo.seed^0x5BF03635,j)
-local=cK-st
-if(local<=0){f=0;alpha=1}else{f=clamp01(local/dB)
+local=cR-st
+if(local<=0){f=0;alpha=1}else{f=clamp01(local/dM)
 alpha=1-f}if(alpha<=0)continue
 l.save()
 l.translate(c.x,c.y-(rise[0]+(rise[1]-rise[0])*h)*f)
-bF(l,regions,j,alpha)
+bO(l,regions,j,alpha)
 l.restore()}l.restore()
 l.globalAlpha=1}
-function bQ(l,u,o){var rings=o.rings>0?o.rings:12
+function bZ(l,u,o){var rings=o.rings>0?o.rings:12
 var arcs=o.arcs>0?o.arcs:1
-var dl=Math.min(surf.W,surf.H)/av.SIZE
+var dz=Math.min(surf.W,surf.H)/aC.SIZE
 var cx=surf.W/2,cy=surf.H/2
 var b,r
 coverPlate(l,pal.bg,1)
-ak(l,u)
+ao(l,u)
 l.save()
 l.lineCap='butt'
-for(b=0;b<=rings;b++){r=(av.R0+av.STEP*b)*dl
+for(b=0;b<=rings;b++){r=(aC.R0+aC.STEP*b)*dz
 if(r<=0)continue
-l.lineWidth=av.TRACK_W
+l.lineWidth=aC.TRACK_W
 l.globalAlpha=u
-l.strokeStyle=rgba(pal.lineStrong,av.GAP_A)
+l.strokeStyle=rgba(pal.lineStrong,aC.GAP_A)
 l.beginPath();l.arc(cx,cy,r,0,Math.PI*2);l.stroke()
-if(b<arcs){l.lineWidth=av.W_MIN*dl
+if(b<arcs){l.lineWidth=aC.W_MIN*dz
 l.strokeStyle=rgba(pal.signal,.85)
 l.beginPath();l.arc(cx,cy,r,0,Math.PI*2);l.stroke()}}l.restore()
 l.globalAlpha=1}
-function ci(){var w=HY.finale&&HY.finale.wheel?HY.finale.wheel(S()):null
+function cr(){var w=HY.finale&&HY.finale.wheel?HY.finale.wheel(S()):null
 return(w&&w.phases&&w.phases.length)?w:null}
-function cj(ph,mass){var sx=0,sy=0,b,m,th
+function ct(ph,mass){var sx=0,sy=0,b,m,th
 for(b=0;b<ph.length;b++){m=mass&&mass[b]>0?mass[b]:1
 th=Math.PI*2*(ph[b]-Math.floor(ph[b]))
 sx+=Math.cos(th)*m;sy+=Math.sin(th)*m}return Math.atan2(sy,sx)}
-function drawWheelMotion(l,u,o,bc){var w=ci()
+function drawWheelMotion(l,u,o,bm){var w=cr()
 coverPlate(l,pal.bg,1)
 if(!w)return
 var ph=w.phases,mass=w.mass
 var cx=surf.W/2,cy=surf.H/2
-var R=Math.min(aw.R,Math.min(surf.W,surf.H)/2-aw.DOT_R_MAX-2)
-var bv=Math.PI*2
-var mean=cj(ph,mass)
-var bd=bc?F.COLLAPSE_AT:1
-var k=clamp01(u/bd)
-var grow=bc?clamp01((u-bd)/(1-bd)):0
+var R=Math.min(aD.R,Math.min(surf.W,surf.H)/2-aD.DOT_R_MAX-2)
+var bE=Math.PI*2
+var mean=ct(ph,mass)
+var bn=bm?G.COLLAPSE_AT:1
+var k=clamp01(u/bn)
+var grow=bm?clamp01((u-bn)/(1-bn)):0
 var b,th,ang,rad,px,py
 l.save()
 l.globalAlpha=(1-k)*.7
 l.strokeStyle=rgba(pal.line,1)
 l.lineWidth=1
-l.beginPath();l.arc(cx,cy,R,0,bv);l.stroke()
-rad=bc?R*(1-k):R
+l.beginPath();l.arc(cx,cy,R,0,bE);l.stroke()
+rad=bm?R*(1-k):R
 l.globalAlpha=.85
 l.fillStyle=rgba(pal.signal,1)
-for(b=0;b<ph.length;b++){th=bv*(ph[b]-Math.floor(ph[b]))
+for(b=0;b<ph.length;b++){th=bE*(ph[b]-Math.floor(ph[b]))
 ang=th+wrapPi(mean-th)*k
 px=cx+Math.cos(ang-Math.PI/2)*rad
 py=cy+Math.sin(ang-Math.PI/2)*rad
-l.beginPath();l.arc(px,py,F.DOT_R,0,bv);l.fill()}if(grow>0){l.globalAlpha=1
+l.beginPath();l.arc(px,py,G.DOT_R,0,bE);l.fill()}if(grow>0){l.globalAlpha=1
 l.beginPath()
-l.arc(cx,cy,F.DOT_R+(cz()-F.DOT_R)*grow,0,bv)
+l.arc(cx,cy,G.DOT_R+(cH()-G.DOT_R)*grow,0,bE)
 l.fill()}l.restore()
 l.globalAlpha=1}
 function wrapPi(a){while(a>Math.PI)a-=Math.PI*2
 while(a<-Math.PI)a+=Math.PI*2
 return a}
-function be(l,u,o){var cx=surf.W/2,cy=surf.H/2
+function bo(l,u,o){var cx=surf.W/2,cy=surf.H/2
 coverPlate(l,pal.bg,1)
 if(o.from==='opacity'){coverPlate(l,pal.spore,u);return}l.save()
 l.globalAlpha=1
 l.fillStyle=rgba(pal.spore,1)
-l.beginPath();l.arc(cx,cy,cz()*u,0,Math.PI*2);l.fill()
+l.beginPath();l.arc(cx,cy,cH()*u,0,Math.PI*2);l.fill()
 l.restore()
 l.globalAlpha=1}
-var MOTIONS={canvasFull:{ms:function(o){return o.ms>0?o.ms:F.WAVE_MS},hz:function(o){return o.redrawHz>0?o.redrawHz:F.REDRAW_HZ},draw:ba},mapDrain:{ms:function(o){var from=o.fromRing===undefined?bx.RINGS:o.fromRing
+var MOTIONS={canvasFull:{ms:function(o){return o.ms>0?o.ms:G.WAVE_MS},hz:function(o){return o.redrawHz>0?o.redrawHz:G.REDRAW_HZ},draw:bi},mapDrain:{ms:function(o){var from=o.fromRing===undefined?bF.RINGS:o.fromRing
 var to=o.toRing===undefined?0:o.toRing
-return Math.max(1,from-to)*(o.perRingMs>0?o.perRingMs:F.DRAIN_MS)},draw:drawMapDrain},holdCore:{ms:function(o){return o.ms>0?o.ms:F.HOLD_MS},draw:function(l,u,o){drawMapDrain(l,1,o)}},hexLift:{ms:function(o){var stag=o.staggerMs||[0,F.LIFT_STAGGER_MS]
-return(o.alphaMs>0?o.alphaMs:F.LIFT_MS)+stag[1]},draw:bG},voidCanvas:{ms:function(o){return o.ms>0?o.ms:F.VOID_MS},draw:bQ},wheelConverge:{ms:function(o){return o.ms>0?o.ms:F.CONVERGE_MS},draw:function(l,u,o){drawWheelMotion(l,u,o,!1)}},wheelCollapse:{ms:function(o){return o.ms>0?o.ms:F.COLLAPSE_MS},draw:function(l,u,o){drawWheelMotion(l,u,o,!0)}},fillWhite:{ms:function(o){return o.ms>0?o.ms:F.WHITE_MS},draw:be},holdWhite:{ms:function(o){return o.ms>0?o.ms:F.WHITE_HOLD_MS},draw:function(l){coverPlate(l,pal.spore,1)}},cut:{ms:function(o){return o.ms>0?o.ms:0},draw:function(l,u){coverPlate(l,pal.bg,u)}},crossfade:{ms:function(o){return o.ms>0?o.ms:F.CROSSFADE_MS},draw:function(l,u){coverPlate(l,pal.bg,u)}}}
+return Math.max(1,from-to)*(o.perRingMs>0?o.perRingMs:G.DRAIN_MS)},draw:drawMapDrain},holdCore:{ms:function(o){return o.ms>0?o.ms:G.HOLD_MS},draw:function(l,u,o){drawMapDrain(l,1,o)}},hexLift:{ms:function(o){var stag=o.staggerMs||[0,G.LIFT_STAGGER_MS]
+return(o.alphaMs>0?o.alphaMs:G.LIFT_MS)+stag[1]},draw:bP},voidCanvas:{ms:function(o){return o.ms>0?o.ms:G.VOID_MS},draw:bZ},wheelConverge:{ms:function(o){return o.ms>0?o.ms:G.CONVERGE_MS},draw:function(l,u,o){drawWheelMotion(l,u,o,!1)}},wheelCollapse:{ms:function(o){return o.ms>0?o.ms:G.COLLAPSE_MS},draw:function(l,u,o){drawWheelMotion(l,u,o,!0)}},fillWhite:{ms:function(o){return o.ms>0?o.ms:G.WHITE_MS},draw:bo},holdWhite:{ms:function(o){return o.ms>0?o.ms:G.WHITE_HOLD_MS},draw:function(l){coverPlate(l,pal.spore,1)}},cut:{ms:function(o){return o.ms>0?o.ms:0},draw:function(l,u){coverPlate(l,pal.bg,u)}},crossfade:{ms:function(o){return o.ms>0?o.ms:G.CROSSFADE_MS},draw:function(l,u){coverPlate(l,pal.bg,u)}}}
 function motion(name,opts){var m=MOTIONS[name]
 if(!m)return null
 opts=opts||{}
 var ms=m.ms(opts)
 if(!(ms>=0))ms=0
-mo={name:name,opts:opts,draw:m.draw,ms:ms,hz:m.hz?m.hz(opts):0,t0:E(),last:0,seed:bL()}
-P=0
+mo={name:name,opts:opts,draw:m.draw,ms:ms,hz:m.hz?m.hz(opts):0,t0:D(),last:0,seed:bU()}
+U=0
 return ms}
 function motionActive(){return!!mo}
 function stopMotion(){var was=!!mo
 mo=null
 if(was){invalidate();if(surf.fluxCtx)surf.fluxCtx.clearRect(0,0,surf.W,surf.H)}return was}
-function aF(bf){if(!mo)return!1
+function aL(bp){if(!mo)return!1
 if(!surf.attached&&!attach())return!0
 var l=surf.fluxCtx
 if(!l)return!0
-if(mo.hz>0&&mo.last&&bf-mo.last<1e3/mo.hz)return!0
-mo.last=bf
-var u=mo.ms>0?(bf-mo.t0)/mo.ms:1
+if(mo.hz>0&&mo.last&&bp-mo.last<1e3/mo.hz)return!0
+mo.last=bp
+var u=mo.ms>0?(bp-mo.t0)/mo.ms:1
 if(reduced)u=1
 if(!(u>=0))u=0
 if(u>1)u=1
-var t0=E()
+var t0=D()
 refreshPalette(!1)
 l.clearRect(0,0,surf.W,surf.H)
 mo.draw(l,u,mo.opts,mo)
 l.globalAlpha=1
-own(E()-t0)
+own(D()-t0)
 return!0}
-var bH=0
-function drawForecast(bu){if(!surf.attached&&!attach())return
-if(!surf.foreCtx&&cT()){U(cT());if(surf.foreCtx)resize()}var l=surf.foreCtx
-if(!l||!bu)return
-var t=E()
-if(t-bH<1e3/D.HZ)return
-bH=t
-var t0=E()
+var bQ=0
+function drawForecast(band){if(!surf.attached&&!attach())return
+if(!surf.foreCtx&&cY()){V(cY());if(surf.foreCtx)resize()}var l=surf.foreCtx
+if(!l||!band)return
+var t=D()
+if(t-bQ<1e3/E.HZ)return
+bQ=t
+var t0=D()
 refreshPalette(!1)
 var el=surf.foreEl
 var W=el.clientWidth||(C()?C().TUNE.UI.COLUMN_PX:420)
-var H=el.clientHeight||D.H
+var H=el.clientHeight||E.H
 l.clearRect(0,0,W,H)
-var hist=bu.hist||bu.series
-var fore=bu.fore||null
+var hist=band.hist||band.series
+var fore=band.fore||null
 if(!hist||!hist.length)return
-var nh=Math.min(hist.length,D.SAMPLES)
+var nh=Math.min(hist.length,E.SAMPLES)
 var nf=fore?fore.length:0
-var bI=nh+nf
-var step=W/Math.max(1,bI-1)
-var amp=Math.min(D.AMP,H-4)
-function cL(v){return H-clamp01(v)*amp}
+var bR=nh+nf
+var step=W/Math.max(1,bR-1)
+var amp=Math.min(E.AMP,H-4)
+function cS(v){return H-clamp01(v)*amp}
 l.save()
-var graze=bu.graze
-if(graze&&graze.length>=bI){l.beginPath()
+var graze=band.graze
+if(graze&&graze.length>=bR){l.beginPath()
 l.moveTo(0,H)
-for(var g=0;g<bI;g++)l.lineTo(g*step,H-clamp01(graze[g])*D.GRAZE_H)
-l.lineTo((bI-1)*step,H)
+for(var g=0;g<bR;g++)l.lineTo(g*step,H-clamp01(graze[g])*E.GRAZE_H)
+l.lineTo((bR-1)*step,H)
 l.closePath()
-l.fillStyle=rgba(pal.negative,D.GRAZE_A)
-l.fill()}var danger=bu.danger
+l.fillStyle=rgba(pal.negative,E.GRAZE_A)
+l.fill()}var danger=band.danger
 if(danger&&danger.length){l.save()
 l.lineWidth=1
-l.strokeStyle=rgba(pal.negative,D.DANGER_A)
-if(l.setLineDash)l.setLineDash(D.DANGER_DASH)
-for(var d=0;d<danger.length;d++){var dy=Math.round(cL(danger[d]))+.5
+l.strokeStyle=rgba(pal.negative,E.DANGER_A)
+if(l.setLineDash)l.setLineDash(E.DANGER_DASH)
+for(var d=0;d<danger.length;d++){var dy=Math.round(cS(danger[d]))+.5
 l.beginPath();l.moveTo(0,dy);l.lineTo(W,dy);l.stroke()}l.restore()}l.beginPath()
 l.moveTo(0,H)
-for(var i=0;i<nh;i++)l.lineTo(i*step,cL(hist[i]))
+for(var i=0;i<nh;i++)l.lineTo(i*step,cS(hist[i]))
 l.lineTo((nh-1)*step,H)
 l.closePath()
 l.fillStyle=rgba(pal.signal,.16)
 l.fill()
 l.beginPath()
-for(var j=0;j<nh;j++){if(j===0)l.moveTo(0,cL(hist[0]));else l.lineTo(j*step,cL(hist[j]))}l.lineWidth=D.STROKE_W
+for(var j=0;j<nh;j++){if(j===0)l.moveTo(0,cS(hist[0]));else l.lineTo(j*step,cS(hist[j]))}l.lineWidth=E.STROKE_W
 l.strokeStyle=rgba(pal.signal,1)
 l.stroke()
 if(nf){var xd=(nh-1)*step
@@ -14086,99 +14124,99 @@ l.moveTo(xd,0);l.lineTo(xd,H)
 l.lineWidth=1
 l.strokeStyle=rgba(pal.lineStrong,1)
 l.stroke()
-var lo=bu.lo,hi=bu.hi
+var lo=band.lo,hi=band.hi
 if(lo&&hi&&lo.length===nf&&hi.length===nf){l.beginPath()
-l.moveTo(xd,cL(hist[nh-1]))
-for(var e=0;e<nf;e++)l.lineTo((nh+e)*step,cL(hi[e]))
-for(e=nf-1;e>=0;e--)l.lineTo((nh+e)*step,cL(lo[e]))
+l.moveTo(xd,cS(hist[nh-1]))
+for(var e=0;e<nf;e++)l.lineTo((nh+e)*step,cS(hi[e]))
+for(e=nf-1;e>=0;e--)l.lineTo((nh+e)*step,cS(lo[e]))
 l.closePath()
-l.fillStyle=rgba(pal.signal,D.BAND_A)
+l.fillStyle=rgba(pal.signal,E.BAND_A)
 l.fill()}l.beginPath()
-l.moveTo(xd,cL(hist[nh-1]))
-for(var k=0;k<nf;k++)l.lineTo((nh+k)*step,cL(fore[k]))
-l.lineWidth=D.STROKE_W
-l.strokeStyle=rgba(pal.signal,D.FORE_A)
-if(l.setLineDash)l.setLineDash(D.FORE_DASH)
+l.moveTo(xd,cS(hist[nh-1]))
+for(var k=0;k<nf;k++)l.lineTo((nh+k)*step,cS(fore[k]))
+l.lineWidth=E.STROKE_W
+l.strokeStyle=rgba(pal.signal,E.FORE_A)
+if(l.setLineDash)l.setLineDash(E.FORE_DASH)
 l.stroke()
-if(l.setLineDash)l.setLineDash([])}var rel=bu.releases
+if(l.setLineDash)l.setLineDash([])}var rel=band.releases
 if(rel&&rel.length){l.fillStyle=rgba(pal.attention,1)
-for(var m=0;m<rel.length;m++){var x=clamp01(rel[m]/Math.max(1,bI-1))*W
-l.fillRect(x-D.MARK_W/2,0,D.MARK_W,H)
+for(var m=0;m<rel.length;m++){var x=clamp01(rel[m]/Math.max(1,bR-1))*W
+l.fillRect(x-E.MARK_W/2,0,E.MARK_W,H)
 l.beginPath()
-l.moveTo(x-D.MARK_TRI/2,0)
-l.lineTo(x+D.MARK_TRI/2,0)
-l.lineTo(x,D.MARK_TRI)
+l.moveTo(x-E.MARK_TRI/2,0)
+l.lineTo(x+E.MARK_TRI/2,0)
+l.lineTo(x,E.MARK_TRI)
 l.closePath();l.fill()}}l.restore()
-own(E()-t0)}
-var frames={buf:new Float32Array(ao.WIN),n:0,w:0,last:0,since:0,p95:0,p50:0}
-var G={buf:new Float32Array(ag.OWN_WIN),n:0,w:0,p95:0}
-var Y=0,lastDemote=-1e9,lastPromote=-1e9,boot=E()
-function own(ms){G.buf[G.w]=ms
-G.w=(G.w+1)%ag.OWN_WIN
-if(G.n<ag.OWN_WIN)G.n++}
-var cb=new Float32Array(ao.WIN)
-function dC(ring,de,q){if(de<8)return 0
-for(var i=0;i<de;i++)cb[i]=ring[i]
-var a=cb.subarray(0,de)
+own(D()-t0)}
+var frames={buf:new Float32Array(au.WIN),n:0,w:0,last:0,since:0,p95:0,p50:0}
+var I={buf:new Float32Array(ak.OWN_WIN),n:0,w:0,p95:0}
+var aa=0,lastDemote=-1e9,lastPromote=-1e9,boot=D()
+function own(ms){I.buf[I.w]=ms
+I.w=(I.w+1)%ak.OWN_WIN
+if(I.n<ak.OWN_WIN)I.n++}
+var cj=new Float32Array(au.WIN)
+function dN(ring,dn,q){if(dn<8)return 0
+for(var i=0;i<dn;i++)cj[i]=ring[i]
+var a=cj.subarray(0,dn)
 a.sort()
-return a[Math.min(de-1,Math.floor(de*q))]}
-function p95(ring,de){return dC(ring,de,.95)}
-function sampleFrame(){var t=E()
+return a[Math.min(dn-1,Math.floor(dn*q))]}
+function p95(ring,dn){return dN(ring,dn,.95)}
+function sampleFrame(){var t=D()
 if(frames.last){var dt=t-frames.last
 if(dt<1)return
-if(dt<ao.FRAME_MAX_MS){frames.buf[frames.w]=dt
-frames.w=(frames.w+1)%ao.WIN
-if(frames.n<ao.WIN)frames.n++
+if(dt<au.FRAME_MAX_MS){frames.buf[frames.w]=dt
+frames.w=(frames.w+1)%au.WIN
+if(frames.n<au.WIN)frames.n++
 frames.since++}}frames.last=t
-if(frames.since>=ao.RECOMPUTE){frames.since=0
+if(frames.since>=au.RECOMPUTE){frames.since=0
 frames.p95=p95(frames.buf,frames.n)
-frames.p50=dC(frames.buf,frames.n,.5)
-G.p95=p95(G.buf,G.n)
-bR(t)}}
-function dm(){return(typeof navigator!=='undefined'&&navigator.hardwareConcurrency)||4}
-function dn(){return(typeof navigator!=='undefined'&&navigator.deviceMemory)||4}
-function bR(t){if(M)return
-if(dn()<=ao.MEM_FLOOR_GB){ac('FLOOR',t);return}if(frames.n<ao.WARMUP&&t-boot<ao.WARMUP*ao.FRAME_60_MS)return
+frames.p50=dN(frames.buf,frames.n,.5)
+I.p95=p95(I.buf,I.n)
+ca(t)}}
+function dA(){return(typeof navigator!=='undefined'&&navigator.hardwareConcurrency)||4}
+function dB(){return(typeof navigator!=='undefined'&&navigator.deviceMemory)||4}
+function ca(t){if(O)return
+if(dB()<=au.MEM_FLOOR_GB){af('FLOOR',t);return}if(frames.n<au.WARMUP&&t-boot<au.WARMUP*au.FRAME_60_MS)return
 var p=frames.p95
 var want=null
-if(p>ao.FLOOR_P95)want='FLOOR'
-else if(p>ao.LOW_P95)want='LOW'
-if(want&&frames.p50>0&&(p-frames.p50)<ao.CADENCE_SPREAD_MS&&G.p95<=ag.OWN_P95_MS){want=null}if(!want&&G.p95>ag.OWN_P95_MS)want=bT()
-if(want){if(!Y)Y=t
-if(t-Y>=ao.HOLD_S*1e3&&bS(want)<bS(tier)){ac(want,t)
-Y=0}return
-}Y=0
-if(t-lastPromote<ao.PROMOTE_S*1e3)return
-if(t-lastDemote<ao.AFTER_DEMOTE_S*1e3)return
-var target=(p<ao.HIGH_P95&&dm()>=ao.HIGH_CORES)?'HIGH':'MED'
-if(bS(target)>bS(tier)&&G.p95<ag.DRAW_MS){ac(target,t)
+if(p>au.FLOOR_P95)want='FLOOR'
+else if(p>au.LOW_P95)want='LOW'
+if(want&&frames.p50>0&&(p-frames.p50)<au.CADENCE_SPREAD_MS&&I.p95<=ak.OWN_P95_MS){want=null}if(!want&&I.p95>ak.OWN_P95_MS)want=cc()
+if(want){if(!aa)aa=t
+if(t-aa>=au.HOLD_S*1e3&&cb(want)<cb(tier)){af(want,t)
+aa=0}return
+}aa=0
+if(t-lastPromote<au.PROMOTE_S*1e3)return
+if(t-lastDemote<au.AFTER_DEMOTE_S*1e3)return
+var target=(p<au.HIGH_P95&&dA()>=au.HIGH_CORES)?'HIGH':'MED'
+if(cb(target)>cb(tier)&&I.p95<ak.DRAW_MS){af(target,t)
 lastPromote=t}}
-function bS(name){return af.indexOf(name)}
-function bT(){var i=bS(tier)
-return af[i>0?i-1:0]}
-function ac(name,t){if(!ae[name]||name===tier)return
-var aM=ae[tier].dpr
-var cM=bS(tier)
+function cb(name){return aj.indexOf(name)}
+function cc(){var i=cb(tier)
+return aj[i>0?i-1:0]}
+function af(name,t){if(!ah[name]||name===tier)return
+var aR=ah[tier].dpr
+var cT=cb(tier)
 tier=name
-if(bS(name)<cM)lastDemote=t
-if(ae[name].dpr!==aM)resize()
+if(cb(name)<cT)lastDemote=t
+if(ah[name].dpr!==aR)resize()
 invalidate()}
 function setTier(t){var name=(''+t).toUpperCase()
 if(name==='MID')name='MED'
-if(name==='AUTO'){M=!1
-Y=0
-return tier}if(!ae[name])return tier
-M=!0
-var dD=tier
+if(name==='AUTO'){O=!1
+aa=0
+return tier}if(!ah[name])return tier
+O=!0
+var dO=tier
 tier=name
-if(ae[name].dpr!==ae[dD].dpr)resize()
+if(ah[name].dpr!==ah[dO].dpr)resize()
 invalidate()
 return tier}
 function __selftest(){var f=[]
-function ok(dH,dp){if(!dH)f.push(dp)}
+function ok(dS,dC){if(!dS)f.push(dC)}
 var W=360,H=296
-var a=ap(0x9E3779B9,W,H)
-var b=ap(0x9E3779B9,W,H)
+var a=av(0x9E3779B9,W,H)
+var b=av(0x9E3779B9,W,H)
 var steps=60
 for(var i=0;i<steps;i++){grow(a);grow(b)}ok(a.n===b.n,'determinism: node counts diverged ('+a.n+' vs '+b.n+')')
 var same=!0
@@ -14188,71 +14226,71 @@ var c=regenerate(0x9E3779B9,W,H,a.n,0)
 ok(c.n===a.n,'regenerate: reached '+c.n+' of '+a.n)
 var reg=!0
 for(var k=0;k<a.n&&reg;k++){if(c.x[k]!==a.x[k]||c.y[k]!==a.y[k]||c.par[k]!==a.par[k]){reg=!1
-f.push('regenerate: node '+k+' differs from the live network')}}var d=ap(0x12345678,W,H)
+f.push('regenerate: node '+k+' differs from the live network')}}var d=av(0x12345678,W,H)
 for(var m=0;m<steps;m++)grow(d)
 var differs=!1
 for(var q=1;q<Math.min(d.n,a.n);q++)if(d.x[q]!==a.x[q]){differs=!0;break}ok(differs,'determinism: two different seeds produced the same network')
-var bs=0,offPlate=0
+var bC=0,offPlate=0
 for(var g=1;g<a.n;g++){var p=a.par[g]
 if(p<0){f.push('geometry: node '+g+' has no parent');break}var dx=a.x[g]-a.x[p],dy=a.y[g]-a.y[p]
 var L=Math.sqrt(dx*dx+dy*dy)
-if(L>bs)bs=L
-if(a.x[g]<-z.SEG||a.x[g]>W+z.SEG||a.y[g]<-z.SEG||a.y[g]>H+z.SEG)offPlate++}ok(bs<=z.SEG_BOOT+1e-3,'geometry: a segment is '+bs+' px, above SEG_BOOT')
+if(L>bC)bC=L
+if(a.x[g]<-z.SEG||a.x[g]>W+z.SEG||a.y[g]<-z.SEG||a.y[g]>H+z.SEG)offPlate++}ok(bC<=z.SEG_BOOT+1e-3,'geometry: a segment is '+bC+' px, above SEG_BOOT')
 ok(offPlate===0,'geometry: '+offPlate+' nodes left the plate')
 ok(a.par[0]===-1&&a.gen[0]===0,'geometry: the seed node is not the root')
 ok(Math.abs(a.x[0]-W/2)<1e-6&&Math.abs(a.y[0]-(H-z.SEED_INSET))<1e-6,'geometry: the inoculation point is not at bottom-centre')
-var e=ap(0x0BADC0DE,W,H)
+var e=av(0x0BADC0DE,W,H)
 for(var w=0;w<30;w++)grow(e)
 var worst=0,totalMs=0,N=120
-for(var s=0;s<N;s++){var t0=E()
+for(var s=0;s<N;s++){var t0=D()
 grow(e)
-var el=E()-t0
+var el=D()-t0
 totalMs+=el
-if(el>worst)worst=el}var dO=totalMs/N
-ok(dO<=ag.GROW_MS,'budget: mean grow() is '+dO.toFixed(3)+' ms, over the '+ag.GROW_MS+' ms budget')
-ok(worst<=ag.FRAME_MS,'budget: worst grow() is '+worst.toFixed(3)+' ms, over the '+ag.FRAME_MS+' ms frame cap')
-var cA=regenerate(0x51ACE,W,H,z.CAP+500,0)
-ok(cA.n<=z.CAP,'cap: the network grew past CAP ('+cA.n+')')
-ok(cA.n===z.CAP,'growth: stalled at '+cA.n+' of '+z.CAP+' nodes')
-ok(cA.fCount<=z.FRONTIER,'cap: the frontier ring overflowed')
-ok(cA.aCount<=z.A0_MAX,'cap: the attractor pool overflowed')
+if(el>worst)worst=el}var dZ=totalMs/N
+ok(dZ<=ak.GROW_MS,'budget: mean grow() is '+dZ.toFixed(3)+' ms, over the '+ak.GROW_MS+' ms budget')
+ok(worst<=ak.FRAME_MS,'budget: worst grow() is '+worst.toFixed(3)+' ms, over the '+ak.FRAME_MS+' ms frame cap')
+var cI=regenerate(0x51ACE,W,H,z.CAP+500,0)
+ok(cI.n<=z.CAP,'cap: the network grew past CAP ('+cI.n+')')
+ok(cI.n===z.CAP,'growth: stalled at '+cI.n+' of '+z.CAP+' nodes')
+ok(cI.fCount<=z.FRONTIER,'cap: the frontier ring overflowed')
+ok(cI.aCount<=z.A0_MAX,'cap: the attractor pool overflowed')
 var live=0
-for(var fi=0;fi<z.FRONTIER;fi++){var ni=cA.frontier[fi]
-if(fi<cA.fCount&&ni>=0&&cA.fslot[ni]===fi)live++}ok(live===cA.fCount,'frontier: '+live+' of '+cA.fCount+' slots are self-consistent')
-var was=tier,wasManual=M
+for(var fi=0;fi<z.FRONTIER;fi++){var ni=cI.frontier[fi]
+if(fi<cI.fCount&&ni>=0&&cI.fslot[ni]===fi)live++}ok(live===cI.fCount,'frontier: '+live+' of '+cI.fCount+' slots are self-consistent')
+var was=tier,wasManual=O
 setTier('HIGH')
-ok(Z(0)===z.MIN_TARGET,'target: cold boot must ask for '+z.MIN_TARGET+' nodes')
-ok(Z(100)===200,'target: 100 m must ask for 200 nodes, got '+Z(100))
-ok(Z(1e9)===ae.HIGH.segCap,'target: HIGH did not clamp to its segCap')
+ok(ac(0)===z.MIN_TARGET,'target: cold boot must ask for '+z.MIN_TARGET+' nodes')
+ok(ac(100)===200,'target: 100 m must ask for 200 nodes, got '+ac(100))
+ok(ac(1e9)===ah.HIGH.segCap,'target: HIGH did not clamp to its segCap')
 setTier('LOW')
-ok(Z(1e9)===ae.LOW.segCap,'target: LOW did not clamp to its segCap')
+ok(ac(1e9)===ah.LOW.segCap,'target: LOW did not clamp to its segCap')
 setTier('FLOOR')
-ok(Z(0)>=z.MIN_TARGET&&ae.FLOOR.segCap>0,'target: FLOOR must still ask for a visible network')
+ok(ac(0)>=z.MIN_TARGET&&ah.FLOOR.segCap>0,'target: FLOOR must still ask for a visible network')
 ok(setTier('MID')==='MED',"setTier: 06's MID must alias BIBLE's MED")
 ok(setTier('nonsense')==='MED','setTier: an unknown tier must be ignored')
 setTier('AUTO')
-ok(M===!1,'setTier: AUTO must hand control back to the p95')
+ok(O===!1,'setTier: AUTO must hand control back to the p95')
 setTier(was)
 if(!wasManual)setTier('AUTO')
-if(C()){ok(ae.MED.fluxHz===C().TUNE.CLOCK.CANVAS_HZ,'tier: the default flux rate must equal TUNE.CLOCK.CANVAS_HZ')
-ok(z.CAP>=ae.HIGH.segCap,'cap: CAP is below the HIGH tier segCap')}for(var ti=1;ti<af.length;ti++){ok(ae[af[ti]].segCap>ae[af[ti-1]].segCap,'tier: segCap is not monotone')};(function(){var sv=[tier,M,frames.n,frames.w,frames.p95,frames.p50,G.p95,Y,lastDemote,lastPromote,new Float32Array(frames.buf)]
-var j,t1=1e6,t2=t1+(ao.HOLD_S+1)*1e3
-function run(v){M=!1
+if(C()){ok(ah.MED.fluxHz===C().TUNE.CLOCK.CANVAS_HZ,'tier: the default flux rate must equal TUNE.CLOCK.CANVAS_HZ')
+ok(z.CAP>=ah.HIGH.segCap,'cap: CAP is below the HIGH tier segCap')}for(var ti=1;ti<aj.length;ti++){ok(ah[aj[ti]].segCap>ah[aj[ti-1]].segCap,'tier: segCap is not monotone')};(function(){var sv=[tier,O,frames.n,frames.w,frames.p95,frames.p50,I.p95,aa,lastDemote,lastPromote,new Float32Array(frames.buf)]
+var j,t1=1e6,t2=t1+(au.HOLD_S+1)*1e3
+function run(v){O=!1
 tier='MED'
-for(j=0;j<ao.WIN;j++)frames.buf[j]=v(j)
-frames.n=ao.WIN
+for(j=0;j<au.WIN;j++)frames.buf[j]=v(j)
+frames.n=au.WIN
 frames.p95=p95(frames.buf,frames.n)
-frames.p50=dC(frames.buf,frames.n,.5)
-G.p95=.4
-Y=0;lastDemote=-1e9;lastPromote=t1
-bR(t1)
-bR(t2)
+frames.p50=dN(frames.buf,frames.n,.5)
+I.p95=.4
+aa=0;lastDemote=-1e9;lastPromote=t1
+ca(t1)
+ca(t2)
 return tier}
 ok(run(function(i){return 33.3+((i%5)-2)*.2})==='MED','cadence: a uniform 30 Hz clock was demoted to '+tier)
 ok(run(function(i){return i%4===0?28:12})==='LOW','cadence: spiky frames did not demote (tier '+tier+')')
-tier=sv[0];M=sv[1];frames.n=sv[2];frames.w=sv[3]
-frames.p95=sv[4];frames.p50=sv[5];G.p95=sv[6]
-Y=sv[7];lastDemote=sv[8];lastPromote=sv[9];frames.buf.set(sv[10])
+tier=sv[0];O=sv[1];frames.n=sv[2];frames.w=sv[3]
+frames.p95=sv[4];frames.p50=sv[5];I.p95=sv[6]
+aa=sv[7];lastDemote=sv[8];lastPromote=sv[9];frames.buf.set(sv[10])
 resize()})()
 ok(bucketOf(0)===0&&bucketOf(5)===0&&bucketOf(6)===1&&bucketOf(15)===1&&bucketOf(16)===2&&bucketOf(255)===2,'bucketOf: the generation buckets are wrong')
 ok(segLen(0)===z.SEG_BOOT&&segLen(1e3)===z.SEG&&segLen(80)>z.SEG&&segLen(80)<z.SEG_BOOT,'segLen: the 9 → 4.2 lerp is wrong')
@@ -14261,96 +14299,129 @@ var h1=hash01(9,9)
 ok(h1>=0&&h1<1,'hash01 is out of range')
 var pc=parseColor('#E8E1D3',null)
 ok(pc&&pc[0]===232&&pc[1]===225&&pc[2]===211,'parseColor: six-digit hex')
-var dq=parseColor('#abc',null)
-ok(dq&&dq[0]===170&&dq[1]===187&&dq[2]===204,'parseColor: three-digit hex')
-var dE=parseColor('rgb(1, 2, 3)',null)
-ok(dE&&dE[0]===1&&dE[2]===3,'parseColor: rgb()')
+var dD=parseColor('#abc',null)
+ok(dD&&dD[0]===170&&dD[1]===187&&dD[2]===204,'parseColor: three-digit hex')
+var dP=parseColor('rgb(1, 2, 3)',null)
+ok(dP&&dP[0]===1&&dP[2]===3,'parseColor: rgb()')
 ok(parseColor('','fb')==='fb','parseColor: empty must fall through to the fallback')
 ok(clamp01(2)===1&&clamp01(-1)===0&&clamp01(NaN)===0,'clamp01')
-var cB=surge
-var dc=E()
-surge={at:dc,adv:B.SURGE_PX}
-var bt=aC(dc+B.SURGE_RISE)
-surge={at:dc,adv:B.SURGE_PX+B.SURGE_SPAN}
-var aJ=aC(dc+B.SURGE_RISE)
-ok(bt&&bt.d>0,'surge: a release with no hold must still push the front somewhere')
-ok(aJ&&aJ.d>bt.d*2,'surge: a ripe hold must visibly out-travel a tap, not merely beat it')
-var cC=aC(dc+B.SURGE_RISE*.5)
-ok(cC&&cC.d<aJ.d&&cC.d>0,'surge: the push does not travel over the rise')
-var late=aC(dc+B.SURGE_RISE+B.SURGE_FALL*.5)
-ok(late&&late.d>=aJ.d-1e-9,'surge: the push retracted — a hypha never does')
+var cJ=surge
+var dl=D()
+surge={at:dl,adv:B.SURGE_PX}
+var bD=aH(dl+B.SURGE_RISE)
+surge={at:dl,adv:B.SURGE_PX+B.SURGE_SPAN}
+var aN=aH(dl+B.SURGE_RISE)
+ok(bD&&bD.d>0,'surge: a release with no hold must still push the front somewhere')
+ok(aN&&aN.d>bD.d*2,'surge: a ripe hold must visibly out-travel a tap, not merely beat it')
+var cK=aH(dl+B.SURGE_RISE*.5)
+ok(cK&&cK.d<aN.d&&cK.d>0,'surge: the push does not travel over the rise')
+var late=aH(dl+B.SURGE_RISE+B.SURGE_FALL*.5)
+ok(late&&late.d>=aN.d-1e-9,'surge: the push retracted — a hypha never does')
 ok(late&&late.a<1&&late.a>0,'surge: the ink did not fall away over the settle')
-ok(aC(dc+B.SURGE_RISE+B.SURGE_FALL)===null&&surge===null,'surge: a push outlived its own envelope')
-surge=cB
-var aD={key:form.key,warm:form.warm,cord:form.cord,fork:form.fork,melan:form.melan,tips:form.tips}
+ok(aH(dl+B.SURGE_RISE+B.SURGE_FALL)===null&&surge===null,'surge: a push outlived its own envelope')
+surge=cJ
+var aJ={key:form.key,warm:form.warm,cord:form.cord,fork:form.fork,melan:form.melan,tips:form.tips}
 form.warm=0;form.cord=0;form.fork=0;form.melan=0
-var ck=K(),bareA=al(),bareW=1+V.CORD_W*form.cord
+var cu=M(),bareA=ap(),bareW=1+Z.CORD_W*form.cord
 form.warm=1
-var rich=K()
-ok(rich[0]!==ck[0]||rich[1]!==ck[1]||rich[2]!==ck[2],'form: a full enzyme suite left the stroke exactly the colour it was at cold boot')
-ok(rich[2]<ck[2]&&rich[0]>=ck[0]-1,'form: warmth must take blue out of the stroke, not put it in')
+var rich=M()
+ok(rich[0]!==cu[0]||rich[1]!==cu[1]||rich[2]!==cu[2],'form: a full enzyme suite left the stroke exactly the colour it was at cold boot')
+ok(rich[2]<cu[2]&&rich[0]>=cu[0]-1,'form: warmth must take blue out of the stroke, not put it in')
 ok(Math.abs(rich[2]-pal.rich[2])>4,'form: warmth reached --hyphae-rich; the cap is what keeps this inside the palette')
 form.warm=0;form.melan=1
-var dark=K()
-var dP=function(c){return c[0]*.2126+c[1]*.7152+c[2]*.0722}
-ok(dP(dark)<dP(ck),'form: melanin must darken the organism — it is the one channel that takes light away')
+var dark=M()
+var ea=function(c){return c[0]*.2126+c[1]*.7152+c[2]*.0722}
+ok(ea(dark)<ea(cu),'form: melanin must darken the organism — it is the one channel that takes light away')
 form.melan=0;form.cord=1
-ok(al()>bareA,'form: cord did not thicken the ink')
-ok(al()<=1,'form: cord pushed the stroke alpha past opaque')
-ok(1+V.CORD_W*form.cord>bareW*1.5,'form: cord did not widen the stroke')
-ok(bucketOf(ad.GEN_B0+1,ad.GEN_B0*V.CORD_GEN,ad.GEN_B1*V.CORD_GEN)===0&&bucketOf(ad.GEN_B0+1)===1,'form: cord did not push the generation buckets outward — cord must run further than filament')
+ok(ap()>bareA,'form: cord did not thicken the ink')
+ok(ap()<=1,'form: cord pushed the stroke alpha past opaque')
+ok(1+Z.CORD_W*form.cord>bareW*1.5,'form: cord did not widen the stroke')
+ok(bucketOf(ag.GEN_B0+1,ag.GEN_B0*Z.CORD_GEN,ag.GEN_B1*Z.CORD_GEN)===0&&bucketOf(ag.GEN_B0+1)===1,'form: cord did not push the generation buckets outward — cord must run further than filament')
 form.cord=0;form.fork=1
-var bJ=ap(0x0F0F0F0F,W,H)
+var bS=av(0x0F0F0F0F,W,H)
 form.fork=0
-var bb=ap(0x0F0F0F0F,W,H)
-ok(bJ.jit>bb.jit&&bJ.dens>bb.dens,'form: a full front did not change how the colony grows, only how it is painted')
-for(var gi=0;gi<40;gi++){grow(bJ);grow(bb)}ok(bJ.aCount+bJ.n!==bb.aCount+bb.n,'form: two colonies with the same seed and different fronts grew identically')
+var bj=av(0x0F0F0F0F,W,H)
+ok(bS.jit>bj.jit&&bS.dens>bj.dens,'form: a full front did not change how the colony grows, only how it is painted')
+for(var gi=0;gi<40;gi++){grow(bS);grow(bj)}ok(bS.aCount+bS.n!==bj.aCount+bj.n,'form: two colonies with the same seed and different fronts grew identically')
 ok(quant(.5)===.5&&quant(2)===1&&quant(-1)===0,'form: quant does not clamp')
 ok(norm(5,0,10)===.5&&norm(NaN,0,10)===0,'form: norm is wrong or NaN-blind')
-form.key=aD.key;form.warm=aD.warm;form.cord=aD.cord
-form.fork=aD.fork;form.melan=aD.melan;form.tips=aD.tips
+form.key=aJ.key;form.warm=aJ.warm;form.cord=aJ.cord
+form.fork=aJ.fork;form.melan=aJ.melan;form.tips=aJ.tips
 var sh=regenerate(0xDEADBEEF,W,H,400,0)
-var dd=net
+var dm=net
 net=sh
-var aM=sh.live
-var cN=bm(sh.live-60)
-ok(cN>=60,'shed: asked for 60 nodes and got '+cN)
-ok(sh.live===aM-cN,'shed: the live count does not agree with what was shed')
-ok(sh.n===aM,'shed: the storage moved; the parent chain and the hash depend on it')
+var aR=sh.live
+var cU=bv(sh.live-60)
+ok(cU>=60,'shed: asked for 60 nodes and got '+cU)
+ok(sh.live===aR-cU,'shed: the live count does not agree with what was shed')
+ok(sh.n===aR,'shed: the storage moved; the parent chain and the hash depend on it')
 ok(sh.lost[0]===0,'shed: the inoculation point was shed — a colony always started somewhere')
-var bU=0,fLost=0,sn
-for(sn=1;sn<sh.n;sn++){if(sh.lost[sn]&&sh.childN[sn]>0)bU++
-if(sh.lost[sn]&&sh.fslot[sn]>=0)fLost++}ok(bU===0,'shed: '+bU+' shed nodes still carry live children')
+var cd=0,fLost=0,sn
+for(sn=1;sn<sh.n;sn++){if(sh.lost[sn]&&sh.childN[sn]>0)cd++
+if(sh.lost[sn]&&sh.fslot[sn]>=0)fLost++}ok(cd===0,'shed: '+cd+' shed nodes still carry live children')
 ok(fLost===0,'shed: '+fLost+' shed nodes are still on the frontier and can still grow')
-ok(aH===!0,'shed: the mat was not restroked; the branches would still be on screen')
-for(var ri=0;ri<40&&sh.live<aM;ri++)grow(sh)
-ok(sh.live>aM-cN,'shed: the colony could not regrow into what it had shed')
-ok(bm(sh.live+10)===0,'shed: a target above the live count shed something anyway')
-var cO=sh.live
+ok(repaint===!0,'shed: the mat was not restroked; the branches would still be on screen')
+for(var ri=0;ri<40&&sh.live<aR;ri++)grow(sh)
+ok(sh.live>aR-cU,'shed: the colony could not regrow into what it had shed')
+ok(bv(sh.live+10)===0,'shed: a target above the live count shed something anyway')
+var cV=sh.live
 growNetwork(0)
-ok(sh.live===cO,'shed: hyphae reaching zero unzipped the body DECIDE was about to cut')
-ok(ah(0)===0&&ah(-3)===0,'shed: a non-loss shed something')
-ok(ah(20)===Math.round(20*z.SEG_PER_M)||ah(.4)===0,'shed: metres are not converted at SEG_PER_M')
-net=dd
-O=null
-var cD=HY.log&&HY.log.SEQUENCES?HY.log.SEQUENCES:null
-var cl={panelsFade:1,collapseList:1,dimExcept:1,closePanel:1,reduceToButton:1,addSpore:1,clearScreen:1}
-if(cD){var sk
-for(sk in cD){if(!Object.prototype.hasOwnProperty.call(cD,sk))continue
-var aK=[cD[sk].steps,cD[sk].reduced]
-for(var li=0;li<aK.length;li++){if(!aK[li])continue
-for(var si=0;si<aK[li].length;si++){var df=aK[li][si]
-if(df.kind!=='motion')continue
-var what=df.payload.what
-var got=motion(what,df.payload)
-ok(got!==null||cl[what]===1,'motion: '+sk+"'s "+what+' is neither drawn here nor a DOM step')
+ok(sh.live===cV,'shed: hyphae reaching zero unzipped the body DECIDE was about to cut')
+ok(al(0)===0&&al(-3)===0,'shed: a non-loss shed something')
+ok(al(20)===Math.round(20*z.SEG_PER_M)||al(.4)===0,'shed: metres are not converted at SEG_PER_M')
+net=dm
+P=null
+var rg={q:[0,1],r:[0,0],flags:[1,0],terrain:[2,3],col:[.5,0],barriers:[0,0],rival:[-1,-1]}
+var rh=as(rg)
+rg.col[0]=.5+.2/256
+ok(as(rg)===rh,'plate: a sub-pixel colonisation step would repaint the map')
+rg.flags[1]=1
+ok(as(rg)!==rh,'plate: discovering a region did not change the map key')
+var bd={e:[.3,0],n:[4,0],ncap:[10,10]}
+var bh=aQ(bd)
+bd.e[1]=.2
+ok(aQ(bd)!==bh,'plate: exploring a band did not change the void key')
+if(surf.netEl){var bk={key:plate.key,data:plate.data,at:plate.at}
+plate.key=''
+ok(an('probe',1)===!0,'plate: a cleared key did not draw')
+ok(an('probe',1)===!1,'plate: an unchanged plate was drawn twice')
+plate.at=D()
+ok(an('probe',2)===!1,'plate: a data change drew faster than CANVAS_HZ')
+plate.at-=1e3
+ok(an('probe',2)===!0,'plate: a data change was never drawn')
+invalidate()
+plate.at=D()
+ok(an('probe',2)===!0,'plate: invalidate() did not force the plate through')
+plate.key=bk.key;plate.data=bk.data;plate.at=bk.at}var wd=cY(),wEl=surf.wheelEl,wCtx=surf.wheelCtx
+if(!wCtx&&wd&&wd.createElement){surf.wheelEl=wd.createElement('canvas');surf.wheelCtx=bH(surf.wheelEl)}if(surf.wheelCtx){var bl={key:F.key,data:F.data,el:F.el}
+var dE=[.1,.4,.7],wms=[1,2,3]
+F.key=''
+drawWheel(dE,wms)
+var ow=I.w
+drawWheel(dE,wms)
+ok(I.w===ow,'wheel: an unchanged wheel was drawn twice')
+dE[1]=.45
+drawWheel(dE,wms)
+ok(I.w!==ow,'wheel: a dot moved and the wheel was not redrawn')
+F.key=bl.key;F.data=bl.data;F.el=bl.el}surf.wheelEl=wEl;surf.wheelCtx=wCtx
+var cL=HY.log&&HY.log.SEQUENCES?HY.log.SEQUENCES:null
+var cv={panelsFade:1,collapseList:1,dimExcept:1,closePanel:1,reduceToButton:1,addSpore:1,clearScreen:1}
+if(cL){var sk
+for(sk in cL){if(!Object.prototype.hasOwnProperty.call(cL,sk))continue
+var aO=[cL[sk].steps,cL[sk].reduced]
+for(var li=0;li<aO.length;li++){if(!aO[li])continue
+for(var si=0;si<aO[li].length;si++){var dq=aO[li][si]
+if(dq.kind!=='motion')continue
+var what=dq.payload.what
+var got=motion(what,dq.payload)
+ok(got!==null||cv[what]===1,'motion: '+sk+"'s "+what+' is neither drawn here nor a DOM step')
 if(got===null)continue
-var cP=null,nextWhat='',sj
-for(sj=si+1;sj<aK[li].length;sj++){if(aK[li][sj].kind!=='motion'||aK[li][sj].at<=df.at)continue
-cP=aK[li][sj].at
-nextWhat=aK[li][sj].payload.what
+var cW=null,nextWhat='',sj
+for(sj=si+1;sj<aO[li].length;sj++){if(aO[li][sj].kind!=='motion'||aO[li][sj].at<=dq.at)continue
+cW=aO[li][sj].at
+nextWhat=aO[li][sj].payload.what
 break
-}if(cP!==null&&nextWhat!=='cut'){ok(got<=(cP-df.at)*1e3+1,'motion: '+sk+"'s "+what+' runs '+got+' ms into a '+Math.round((cP-df.at)*1e3)+' ms slot')}}}}stopMotion()
+}if(cW!==null&&nextWhat!=='cut'){ok(got<=(cW-dq.at)*1e3+1,'motion: '+sk+"'s "+what+' runs '+got+' ms into a '+Math.round((cW-dq.at)*1e3)+' ms slot')}}}}stopMotion()
 ok(motion('nothingLikeThis')===null,'motion: an unknown name must answer null')
 ok(motion('fillWhite',{ms:2600})===2600,'motion: fillWhite ignored its payload ms')
 ok(motionActive()===!0,'motion: a started motion is not active')
@@ -14359,13 +14430,13 @@ ok(motion('mapDrain',{fromRing:4,toRing:0,perRingMs:700})===2800,'motion: the AS
 ok(motion('hexLift',{alphaMs:1600,staggerMs:[0,400]})===2e3,'motion: the hex lift is not 2.0 s including its stagger')
 stopMotion()}try{for(var mn in MOTIONS){if(!Object.prototype.hasOwnProperty.call(MOTIONS,mn))continue
 motion(mn,{})
-aF(E())
-aF(E()+1e6)}stopMotion()}catch(cQ){f.push('motion: '+(cQ&&cQ.message?cQ.message:cQ))
+aL(D())
+aL(D()+1e6)}stopMotion()}catch(cX){f.push('motion: '+(cX&&cX.message?cX.message:cX))
 stopMotion()}ok(Math.abs(wrapPi(Math.PI*2.5)-Math.PI*.5)<1e-9,'wrapPi does not fold to ±π')
 ok(Math.abs(wrapPi(-Math.PI*2.5)+Math.PI*.5)<1e-9,'wrapPi is not symmetric')
-var dF=['growNetwork','drawNet','ageWash','drawMap','drawVoid','drawWheel','drawForecast','setTier','drawFlux','init','motion','motionActive','stopMotion']
-for(var ai=0;ai<dF.length;ai++){ok(typeof HY.canvas[dF[ai]]==='function','surface: '+dF[ai]+' is missing')}try{drawMap(null);drawVoid(null);drawWheel(null);drawForecast(null);ageWash()}catch(ds){f.push('surface: a draw call with no data threw: '+(ds&&ds.message?ds.message:ds))}return f}
-HY.canvas={growNetwork:growNetwork,drawNet:drawNet,ageWash:ageWash,drawMap:drawMap,drawVoid:drawVoid,drawWheel:drawWheel,drawForecast:drawForecast,setTier:setTier,motion:motion,motionActive:motionActive,stopMotion:stopMotion,MOTIONS:MOTIONS,surge:bo,trade:bp,shed:ah,init:init,drawFlux:drawFlux,resize:resize,invalidate:invalidate,get tier(){return tier},get nodes(){return net?net.live:0},get grown(){return net?net.n:0},get form(){return{warm:form.warm,cord:form.cord,fork:form.fork,melan:form.melan,tips:form.tips}},get frameP95(){return frames.p95},get costP95(){return G.p95},__selftest:__selftest}})(window.HY=window.HY||{})
+var dQ=['growNetwork','drawNet','ageWash','drawMap','drawVoid','drawWheel','drawForecast','setTier','drawFlux','init','motion','motionActive','stopMotion']
+for(var ai=0;ai<dQ.length;ai++){ok(typeof HY.canvas[dQ[ai]]==='function','surface: '+dQ[ai]+' is missing')}try{drawMap(null);drawVoid(null);drawWheel(null);drawForecast(null);ageWash()}catch(dG){f.push('surface: a draw call with no data threw: '+(dG&&dG.message?dG.message:dG))}return f}
+HY.canvas={growNetwork:growNetwork,drawNet:drawNet,ageWash:ageWash,drawMap:drawMap,drawVoid:drawVoid,drawWheel:drawWheel,drawForecast:drawForecast,setTier:setTier,motion:motion,motionActive:motionActive,stopMotion:stopMotion,MOTIONS:MOTIONS,surge:by,trade:bz,shed:al,init:init,drawFlux:drawFlux,resize:resize,invalidate:invalidate,get tier(){return tier},get nodes(){return net?net.live:0},get grown(){return net?net.n:0},get form(){return{warm:form.warm,cord:form.cord,fork:form.fork,melan:form.melan,tips:form.tips}},get frameP95(){return frames.p95},get costP95(){return I.p95},__selftest:__selftest}})(window.HY=window.HY||{})
 ;
 //js/ui.js
 ;(function(HY){'use strict'
