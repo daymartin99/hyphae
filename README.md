@@ -21,12 +21,14 @@ into a single self-contained HTML file.
   holds the canonical state shape, tick order and definition-of-done
 - `build.mjs` — dependency-free bundler and minifier; every build re-lexes
   its own output token-for-token and hands it to the engine's parser
-- `boot-check.mjs`, `shoot.mjs` — headless Chromium harnesses (boot +
-  self-tests, and the screenshot contact sheet)
+- `boot-check.mjs`, `shoot.mjs`, `redraw-check.mjs` — headless Chromium
+  harnesses (boot + self-tests, the screenshot contact sheet, and the redraw
+  budget: the map, the void and the phase wheel repaint only when they change)
 
 ```
 node build.mjs        # → dist/ (index.html + PWA sidecars)
 node boot-check.mjs   # boots dist headless, runs every module's self-test
+node redraw-check.mjs # repaints per second of the per-frame canvases
 ```
 
 `gh-pages` is the deploy branch: the six built files GitHub Pages serves,
