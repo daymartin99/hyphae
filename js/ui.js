@@ -3368,13 +3368,16 @@
     // The plate is the act: threads growing in Act I, sixty-one hexes in Act II, concentric arcs
     // in Act III. Growing the network past the first break would keep drawing a body that DECIDE
     // deleted, and drawing the map past the second would keep drawing a forest that is gone.
+    // The Act I network outlives its act: faint under the hexes in Act II, and its tips and signal
+    // pulses still moving under the void in Act III. A reload has to draw the same one a player who
+    // came through DECIDE is looking at, so both acts grow it to the length it had at the break —
+    // free when it is already there, a regrowth from the seed when the page is new.
+    if (s.act >= 2 && cv.growNetwork && s.a1 && num(s.a1.hyphaeFinal) > 0) {
+      cv.growNetwork(num(s.a1.hyphaeFinal))
+    }
     if (s.act >= 3) {
       if (cv.drawVoid) cv.drawVoid(a3Field(s))
     } else if (s.act >= 2) {
-      // The Act I network stays faint under the hexes, and a reload has to draw the same one a
-      // player who came through DECIDE is looking at. Growing to the length it had at the break is
-      // free when it is already there, and regrows it from the seed when the page is new.
-      if (cv.growNetwork && s.a1 && num(s.a1.hyphaeFinal) > 0) cv.growNetwork(num(s.a1.hyphaeFinal))
       if (cv.drawMap && s.a2) cv.drawMap(s.a2.regions)
     } else {
       if (cv.growNetwork && A1() && A1().hyphae) cv.growNetwork(A1().hyphae())
