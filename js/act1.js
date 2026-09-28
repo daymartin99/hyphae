@@ -1029,7 +1029,9 @@
     C().setStock(s.res, 'sugar', 0)
     s.a1.unlockedTypes.length = 0
 
-    // 3 · the body is rebuilt
+    // 3 · the body is rebuilt. Its length is kept first: the map draws the old network faint under
+    // the hexes, and a reload regrows it from this rather than from the zero about to be written.
+    s.a1.hyphaeFinal = hyphae(s)
     C().setStock(s.res, 'biomass', num(s.res.biomass) * T().HANDOFF.BIOMASS_KEPT)
     s.a1.tips = 0
     s.a1.hyphaeManual = 0

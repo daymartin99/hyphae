@@ -11,7 +11,7 @@
   // getter that builds the cold-boot save on first touch.
 
   var DEFAULT_SEED = 0x9E3779B9   // §3's literal; also the value core.rng() falls back to
-  var CURRENT = 3                 // §3 `v`. Bump on ANY key rename, removal or addition.
+  var CURRENT = 4                 // §3 `v`. Bump on ANY key rename, removal or addition.
 
   // The seven Act I substrate pools, in the order §3 writes them. This is a vocabulary, not a
   // tuning table — the per-type economics (k, etaB, etaS, price, cap, fall) belong to economy1.
@@ -287,6 +287,9 @@
         // the mat's supply does not shrink when tips are cut — so this is the only thing that has
         // to be remembered about a cut, and it fades to nothing on its own as the front regrows.
         tipsPeak: 0,
+        // The mat's length, in metres, the moment DECIDE rebuilt the body. Act II's map draws the
+        // Act I network faint under the hexes, and a reload has to be able to regrow the same one.
+        hyphaeFinal: 0,
         hyphaeManual: 0,
         season: A1.BOOT_SEASON,
         seasonPhase: A1.BOOT_SEASON_PHASE,
@@ -490,7 +493,7 @@
       },
 
       a1: {
-        tips: 'num', tipsPeak: 'num', hyphaeManual: 'num',
+        tips: 'num', tipsPeak: 'num', hyphaeFinal: 'num', hyphaeManual: 'num',
         season: 'num', seasonPhase: 'num', year: 'num',
         moisture: 'num', weatherMoistMod: 'num', weatherFallMod: numArray(TYPES.length, false),
         sub: poolsCheck, consumptionOrder: 'arr', unlockedTypes: 'arr', mkt: mktCheck,
@@ -781,6 +784,16 @@
     fillDefaults(sv, newGame(sv.seed, sv.meta))
   }
 
+  // A v3 save already past Act I never recorded the mat's final length. The widest front it ever
+  // had survives the break, and tips are most of the mat, so it regrows from that: the patches'
+  // share is lost, but a faint network under the hexes beats the bare seed a reload used to show.
+  function m3to4 (sv) {
+    fillDefaults(sv, newGame(sv.seed, sv.meta))
+    if (sv.act >= 2 && sv.a1 && !(sv.a1.hyphaeFinal > 0)) {
+      sv.a1.hyphaeFinal = TUNE().A1.HYPHAE_PER_TIP * (isNum(sv.a1.tipsPeak) ? sv.a1.tipsPeak : 0)
+    }
+  }
+
   function migrate (save, from) {
     var v = isNum(from) ? from : (isNum(save.v) ? save.v : 0)
     if (v > CURRENT) return save     // never downgrade; load() and importB64() have already refused
@@ -795,6 +808,9 @@
         /* falls through */
       case 2:
         m2to3(save)
+        /* falls through */
+      case 3:
+        m3to4(save)
         /* falls through */
       default:
         break
@@ -1150,7 +1166,15 @@
       ok(assertShape(v1).length > 0, 'a v1 save was accepted without migration')
       var up = migrate(deserialise(v1), 1)
       ok(up.v === CURRENT && up.res.pruned === 0 && up.a1.tipsPeak === 0 &&
-        assertShape(up).length === 0, 'v1 -> v3 did not fill the stocks it added')
+        up.a1.hyphaeFinal === 0 && assertShape(up).length === 0,
+        'v1 -> v4 did not fill the stocks it added')
+      // A v3 save past Act I regrows its mat from the widest front it had.
+      var v3 = serialise(newGame(78, null))
+      delete v3.a1.hyphaeFinal
+      v3.v = 3; v3.act = 2; v3.a1.tipsPeak = 200
+      var up3 = migrate(deserialise(v3), 3)
+      ok(up3.a1.hyphaeFinal === TUNE().A1.HYPHAE_PER_TIP * 200 && assertShape(up3).length === 0,
+        'v3 -> v4 left an Act II save with no network to draw under the map')
 
       // meta carries across New Growth and must survive construction.
       var g2 = newGame(9, { sclerotium: 7, runs: 3, upgrades: ['a'], archive: [{ name: 'x' }] })

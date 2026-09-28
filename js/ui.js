@@ -3371,6 +3371,10 @@
     if (s.act >= 3) {
       if (cv.drawVoid) cv.drawVoid(a3Field(s))
     } else if (s.act >= 2) {
+      // The Act I network stays faint under the hexes, and a reload has to draw the same one a
+      // player who came through DECIDE is looking at. Growing to the length it had at the break is
+      // free when it is already there, and regrows it from the seed when the page is new.
+      if (cv.growNetwork && s.a1 && num(s.a1.hyphaeFinal) > 0) cv.growNetwork(num(s.a1.hyphaeFinal))
       if (cv.drawMap && s.a2) cv.drawMap(s.a2.regions)
     } else {
       if (cv.growNetwork && A1() && A1().hyphae) cv.growNetwork(A1().hyphae())
