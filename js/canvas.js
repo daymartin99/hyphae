@@ -1699,10 +1699,11 @@
 
   // The later acts' plates are full restrokes — the network underlay, then the hexes or the arcs —
   // and ui.js asks for one every display frame. A plate that has not changed is not redrawn: `key`
-  // is everything the pass reads apart from the act's own data (geometry, backing store, ink, form,
-  // network), and `data` is a hash of the data, quantised below what a pixel can show. A change to
-  // `key` is a repaint and goes out in this frame; a change to `data` alone is the simulation
-  // moving, and is drawn at CANVAS_HZ, which is the rate these passes were always meant to run at.
+  // is everything the pass reads apart from what the simulation moves (geometry, backing store, ink,
+  // form, which network), and `data` hashes what it does move — the act's own data, quantised below
+  // what a pixel can show, and the network's size, which regrows in steps after a reload. A change
+  // to `key` is a repaint and goes out in this frame; a change to `data` alone is drawn at
+  // CANVAS_HZ, the rate these passes were always meant to run at. A shed calls invalidate().
   // Nothing on this surface animates between states — pulses, tips and transitions are all on the
   // flux layer — so this holds under reduced motion unchanged: a draw on a state change, never on a
   // clock. invalidate() clears `key`, so every repaint cause the network honours reaches here too.
@@ -1713,7 +1714,8 @@
     readForm(false)
     var el = surf.netEl
     var key = kind + '|' + surf.W + 'x' + surf.H + '@' + surf.dpr + '|' + el.width + 'x' + el.height +
-      '|' + pal.gen + '|' + form.key + '|' + (net ? net.seed + '/' + net.n + '/' + net.live : '-')
+      '|' + pal.gen + '|' + form.key + '|' + (net ? net.seed : '-')
+    if (net) data = mix32(mix32(data, net.n), net.live)
     var t = nowMs()
     if (key === plate.key) {
       if (data === plate.data) return false
