@@ -236,7 +236,7 @@ HY.core={TUNE:TUNE,SUF:SUF,fmt:fmt,fmtMass:fmtMass,fine:fine,fmtTime:fmtTime,rng
 //js/state.js
 ;(function(HY){'use strict'
 var af=0x9E3779B9
-var CURRENT=3
+var CURRENT=4
 var aa=['leaf','needle','twig','bark','log','stump','carrion']
 var ax=['leaf','needle','twig']
 var am=['BAL','GER','MYC','SPO','MEL','DOR','FID','ANT']
@@ -270,9 +270,9 @@ function ab(u8){var s='',i
 for(i=0;i<u8.length;i+=as){s+=String.fromCharCode.apply(null,u8.subarray(i,i+as))}return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'')}
 function ac(str){var s=String(str).replace(/\s+/g,'').replace(/-/g,'+').replace(/_/g,'/')
 while(s.length%4)s+='='
-var bt=atob(s)
-var u8=new Uint8Array(bt.length),i
-for(i=0;i<bt.length;i++)u8[i]=bt.charCodeAt(i)
+var bu=atob(s)
+var u8=new Uint8Array(bu.length),i
+for(i=0;i<bu.length;i++)u8[i]=bu.charCodeAt(i)
 return u8}
 function an(str){if(typeof TextEncoder==='function')return new TextEncoder().encode(str)
 var out=[],i,c,c2
@@ -294,44 +294,44 @@ s+=String.fromCharCode(0xD800+(n>>10),0xDC00+(n&0x3FF))}else s+=String.fromCharC
 function u(bi,n){return new bi(n)}
 function az(n){return{q:u(Int8Array,n),r:u(Int8Array,n),terrain:u(Uint8Array,n),sp0:u(Uint8Array,n),sp1:u(Uint8Array,n),w0:u(Float32Array,n),L0:u(Float32Array,n),L:u(Float32Array,n),T0:u(Float32Array,n),T:u(Float32Array,n),h:u(Float32Array,n),d:u(Float32Array,n),rho:u(Float32Array,n),col:u(Float32Array,n),flags:u(Uint8Array,n),rival:u(Int8Array,n),rivalStr:u(Float32Array,n),barriers:u(Uint8Array,n),fireRisk:u(Float32Array,n),phase:u(Float32Array,n)}}
 function bd(aq){var m={sclerotium:0,upgrades:[],growthLevel:0,coherenceLevel:0,divergenceLevel:0,archive:[],lineages:[],runs:0}
-if(aq&&typeof aq==='object'){if(A(aq.sclerotium))m.sclerotium=aq.sclerotium
+if(aq&&typeof aq==='object'){if(y(aq.sclerotium))m.sclerotium=aq.sclerotium
 if(Q(aq.upgrades))m.upgrades=aq.upgrades.slice()
-if(A(aq.growthLevel))m.growthLevel=aq.growthLevel
-if(A(aq.coherenceLevel))m.coherenceLevel=aq.coherenceLevel
-if(A(aq.divergenceLevel))m.divergenceLevel=aq.divergenceLevel
-if(Q(aq.archive))m.archive=y(aq.archive)
-if(Q(aq.lineages))m.lineages=y(aq.lineages)
-if(A(aq.runs))m.runs=aq.runs}return m}
+if(y(aq.growthLevel))m.growthLevel=aq.growthLevel
+if(y(aq.coherenceLevel))m.coherenceLevel=aq.coherenceLevel
+if(y(aq.divergenceLevel))m.divergenceLevel=aq.divergenceLevel
+if(Q(aq.archive))m.archive=z(aq.archive)
+if(Q(aq.lineages))m.lineages=z(aq.lineages)
+if(y(aq.runs))m.runs=aq.runs}return m}
 function newGame(seed,meta){var T=TUNE()
 var A1=T.A1,A2=T.A2,A3=T.A3
 var aP=A2.REGIONS
 var K=A3.BANDS
 var ad=A3.BIOME_X0.length
 var s,i,row
-s={v:CURRENT,seed:(seed>>>0)||af,wallClock:now(),act:1,phase:'understory',t:0,res:{biomass:0,cumBiomass:0,pruned:0,extracted:0,sugar:0,minerals:0,signal:0,insight:0,satTime:0,spores:0,accord:0,accordLifetime:0,carbon:0,cumCarbon:0,alleles:0,canon:0,D:0},mult:{enzymeMult:1,enzymeK:{leaf:1,needle:1,twig:1,bark:1,log:1,stump:1,carrion:1},structureMult:1,patchMult:1,osmoticPriming:1,hartigNet:1,exudatePump:1,cmnMult:1,arbitration:1,antifreeze:!1,sclerotiaBonus:0,perennial:!1,E:1,yieldMult:1,signalMult:1,capMult:1,insightMult:1,antibiosis:1,advCostMult:1,advanceSpeed:1,matSpeed:1,sporeMult:1,hazMult:1,necroMult:1,ripeT:A2.RIPE_T,ripenessFloor:0,harvMult:1,replMult:1,germMult:1,exploreMult:1,boughtFid:0,prestigeGrowth:1},cog:{dCond:0,dVes:0,dLag:0,respecs:0,SrPeak:0,pulseCd:0,pulseMode:'SURGE',pulseEpicentre:0,pulsesInFlight:[]},a1:{tips:0,tipsPeak:0,hyphaeManual:0,season:A1.BOOT_SEASON,seasonPhase:A1.BOOT_SEASON_PHASE,year:0,moisture:A1.BOOT_MOISTURE,weatherMoistMod:1,weatherFallMod:[],sub:{},consumptionOrder:aa.slice(),unlockedTypes:ax.slice(),mkt:[],patches:1,claimInFlight:null,netRep:0,trees:[],contracts:[],activeEvents:[]},a2:{W:A2.OU_MEAN,Wmom:0,windSpeed:A2.WIND_BOOT,windDir:0,mastAt:0,mastUntil:0,regions:az(aP),flush:[],pact:{},mineralMkt:{P:0,Pbar:0,momentum:0},legacyHumus:0,legacyLife:0},a3:{biomes:{X:u(Float64Array,ad),n:u(Float64Array,ad),reached:u(Uint8Array,ad)},bands:{X:u(Float64Array,K),e:u(Float32Array,K),rich:u(Float32Array,K),n:u(Float64Array,K),nResid:u(Float64Array,K),drift:u(Float32Array,K),phase:u(Float32Array,K)},transit:[],alloc:A3.ALLOC_BOOT.slice(),loci:u(Int8Array,am.length),lociBought:0,lociCap:A3.LOCI_CAP0,capRaises:0,regenomeAt:0,strains:[],succ:null,mortality:u(Float64Array,A3.MORTALITY_CAUSES),antiphony:{},upsilon:A3.UPSILON_FREE},carry:{legacy:0,fidelityBase:A3.FID_BASE_A,pathFlag:'mixed',sporeBank:0},proj:{bought:[],seen:[],uses:{},flags:{},queue:[]},log:{fired:[],ring:[],lastObsAt:0,lastLineAt:0,openingLines:0},stats:{taps:0,purchases:0,sugarSpentOnMarket:0,rotted:0,largestSinglePurchase:0,contractsSigned:0,contractsCompleted:0,defaults:0,mineralEarned:0,wintersEnded:0,carrionEventsSeen:0,offlineSeconds:0,densityBuys:0,flushes:0,pulses:0,seededCount:0,claimedCount:0,rivalContacts:0,barrierBlocks:0,droughtsSurvived:0,ignitions:0,signalOverflow:0,mineralTrades:0,everSaturated:!1,reallocations:0,pactsHonoured:0,pactsBreached:0,traitsRevealed:0,releases:0,targetsReached:0,engagements:0,purged:0,absorbed:0,quarantined:0,radiationHazards:0,entryAttempts:0,strainsBorn:0,respecs:0,windfalls:0,endingsReached:0},set:{theme:'auto',sound:'sparse',haptics:!0,slow:!1,calm:!1,reduceMotion:null},meta:bd(meta)}
+s={v:CURRENT,seed:(seed>>>0)||af,wallClock:now(),act:1,phase:'understory',t:0,res:{biomass:0,cumBiomass:0,pruned:0,extracted:0,sugar:0,minerals:0,signal:0,insight:0,satTime:0,spores:0,accord:0,accordLifetime:0,carbon:0,cumCarbon:0,alleles:0,canon:0,D:0},mult:{enzymeMult:1,enzymeK:{leaf:1,needle:1,twig:1,bark:1,log:1,stump:1,carrion:1},structureMult:1,patchMult:1,osmoticPriming:1,hartigNet:1,exudatePump:1,cmnMult:1,arbitration:1,antifreeze:!1,sclerotiaBonus:0,perennial:!1,E:1,yieldMult:1,signalMult:1,capMult:1,insightMult:1,antibiosis:1,advCostMult:1,advanceSpeed:1,matSpeed:1,sporeMult:1,hazMult:1,necroMult:1,ripeT:A2.RIPE_T,ripenessFloor:0,harvMult:1,replMult:1,germMult:1,exploreMult:1,boughtFid:0,prestigeGrowth:1},cog:{dCond:0,dVes:0,dLag:0,respecs:0,SrPeak:0,pulseCd:0,pulseMode:'SURGE',pulseEpicentre:0,pulsesInFlight:[]},a1:{tips:0,tipsPeak:0,hyphaeFinal:0,hyphaeManual:0,season:A1.BOOT_SEASON,seasonPhase:A1.BOOT_SEASON_PHASE,year:0,moisture:A1.BOOT_MOISTURE,weatherMoistMod:1,weatherFallMod:[],sub:{},consumptionOrder:aa.slice(),unlockedTypes:ax.slice(),mkt:[],patches:1,claimInFlight:null,netRep:0,trees:[],contracts:[],activeEvents:[]},a2:{W:A2.OU_MEAN,Wmom:0,windSpeed:A2.WIND_BOOT,windDir:0,mastAt:0,mastUntil:0,regions:az(aP),flush:[],pact:{},mineralMkt:{P:0,Pbar:0,momentum:0},legacyHumus:0,legacyLife:0},a3:{biomes:{X:u(Float64Array,ad),n:u(Float64Array,ad),reached:u(Uint8Array,ad)},bands:{X:u(Float64Array,K),e:u(Float32Array,K),rich:u(Float32Array,K),n:u(Float64Array,K),nResid:u(Float64Array,K),drift:u(Float32Array,K),phase:u(Float32Array,K)},transit:[],alloc:A3.ALLOC_BOOT.slice(),loci:u(Int8Array,am.length),lociBought:0,lociCap:A3.LOCI_CAP0,capRaises:0,regenomeAt:0,strains:[],succ:null,mortality:u(Float64Array,A3.MORTALITY_CAUSES),antiphony:{},upsilon:A3.UPSILON_FREE},carry:{legacy:0,fidelityBase:A3.FID_BASE_A,pathFlag:'mixed',sporeBank:0},proj:{bought:[],seen:[],uses:{},flags:{},queue:[]},log:{fired:[],ring:[],lastObsAt:0,lastLineAt:0,openingLines:0},stats:{taps:0,purchases:0,sugarSpentOnMarket:0,rotted:0,largestSinglePurchase:0,contractsSigned:0,contractsCompleted:0,defaults:0,mineralEarned:0,wintersEnded:0,carrionEventsSeen:0,offlineSeconds:0,densityBuys:0,flushes:0,pulses:0,seededCount:0,claimedCount:0,rivalContacts:0,barrierBlocks:0,droughtsSurvived:0,ignitions:0,signalOverflow:0,mineralTrades:0,everSaturated:!1,reallocations:0,pactsHonoured:0,pactsBreached:0,traitsRevealed:0,releases:0,targetsReached:0,engagements:0,purged:0,absorbed:0,quarantined:0,radiationHazards:0,entryAttempts:0,strainsBorn:0,respecs:0,windfalls:0,endingsReached:0},set:{theme:'auto',sound:'sparse',haptics:!0,slow:!1,calm:!1,reduceMotion:null},meta:bd(meta)}
 for(i=0;i<aa.length;i++){s.a1.sub[aa[i]]=0
 s.a1.weatherFallMod.push(1)
 row={}
 for(var j=0;j<U.length;j++)row[U[j]]=0
 s.a1.mkt.push(row)}s.a1.sub.leaf=A1.BOOT_SUB_LEAF
 return s}
-function A(v){return typeof v==='number'&&isFinite(v)}
+function y(v){return typeof v==='number'&&isFinite(v)}
 function Q(v){return Object.prototype.toString.call(v)==='[object Array]'}
 function I(v){return!!v&&typeof v==='object'&&Object.prototype.toString.call(v)==='[object Object]'}
 var N=null
 function ta(code,n){return'ta:'+code+':'+n}
 function av(n,aK){return function(v,path,out){if(!Q(v)){out.push(path+': expected an array, got '+B(v));return}if(v.length!==n)out.push(path+': expected length '+n+', got '+v.length)
 var i,sum=0
-for(i=0;i<v.length;i++){if(!A(v[i]))out.push(path+'['+i+']: expected a finite number, got '+B(v[i]))
+for(i=0;i<v.length;i++){if(!y(v[i]))out.push(path+'['+i+']: expected a finite number, got '+B(v[i]))
 else sum+=v[i]}if(aK&&v.length===n&&Math.abs(sum-1)>1e-9){out.push(path+': must sum to 1, sums to '+sum)}}}
 function aQ(v,path,out){if(!Q(v)){out.push(path+': expected an array, got '+B(v));return}if(v.length!==aa.length)out.push(path+': expected '+aa.length+' rows, got '+v.length)
-for(var i=0;i<v.length;i++){if(!I(v[i])){out.push(path+'['+i+']: expected an object');continue}for(var k=0;k<U.length;k++){if(!A(v[i][U[k]])){out.push(path+'['+i+'].'+U[k]+': expected a finite number')}}}}
-function aA(v,path,out){if(!I(v)){out.push(path+': expected an object, got '+B(v));return}for(var i=0;i<aa.length;i++){if(!A(v[aa[i]]))out.push(path+'.'+aa[i]+': expected a finite number')}}
+for(var i=0;i<v.length;i++){if(!I(v[i])){out.push(path+'['+i+']: expected an object');continue}for(var k=0;k<U.length;k++){if(!y(v[i][U[k]])){out.push(path+'['+i+'].'+U[k]+': expected a finite number')}}}}
+function aA(v,path,out){if(!I(v)){out.push(path+': expected an object, got '+B(v));return}for(var i=0;i<aa.length;i++){if(!y(v[aa[i]]))out.push(path+'.'+aa[i]+': expected a finite number')}}
 function aB(){if(N)return N
 var T=TUNE()
 var aP=T.A2.REGIONS,K=T.A3.BANDS
 var ad=T.A3.BIOME_X0.length,NCAUSE=T.A3.MORTALITY_CAUSES
-var bu=am.length
+var bv=am.length
 var reg={}
 var f32=['w0','L0','L','T0','T','h','d','rho','col','rivalStr','fireRisk','phase']
 var u8=['terrain','sp0','sp1','flags','barriers']
@@ -340,7 +340,7 @@ var i
 for(i=0;i<f32.length;i++)reg[f32[i]]=ta('f32',aP)
 for(i=0;i<u8.length;i++)reg[u8[i]]=ta('u8',aP)
 for(i=0;i<i8.length;i++)reg[i8[i]]=ta('i8',aP)
-N={v:'num',seed:'num',wallClock:'num',act:'num',phase:'str',t:'num',res:{biomass:'num',cumBiomass:'num',pruned:'num',extracted:'num',sugar:'num',minerals:'num',signal:'num',insight:'num',satTime:'num',spores:'num',accord:'num',accordLifetime:'num',carbon:'num',cumCarbon:'num',alleles:'num',canon:'num',D:'num'},mult:{enzymeMult:'num',enzymeK:{leaf:'num',needle:'num',twig:'num',bark:'num',log:'num',stump:'num',carrion:'num'},structureMult:'num',patchMult:'num',osmoticPriming:'num',hartigNet:'num',exudatePump:'num',cmnMult:'num',arbitration:'num',antifreeze:'bool',sclerotiaBonus:'num',perennial:'bool',E:'num',yieldMult:'num',signalMult:'num',capMult:'num',insightMult:'num',antibiosis:'num',advCostMult:'num',advanceSpeed:'num',matSpeed:'num',sporeMult:'num',hazMult:'num',necroMult:'num',ripeT:'num',ripenessFloor:'num',harvMult:'num',replMult:'num',germMult:'num',exploreMult:'num',boughtFid:'num',prestigeGrowth:'num'},cog:{dCond:'num',dVes:'num',dLag:'num',respecs:'num',SrPeak:'num',pulseCd:'num',pulseMode:'str',pulseEpicentre:'num',pulsesInFlight:'arr'},a1:{tips:'num',tipsPeak:'num',hyphaeManual:'num',season:'num',seasonPhase:'num',year:'num',moisture:'num',weatherMoistMod:'num',weatherFallMod:av(aa.length,!1),sub:aA,consumptionOrder:'arr',unlockedTypes:'arr',mkt:aQ,patches:'num',claimInFlight:'objOrNull',netRep:'num',trees:'arr',contracts:'arr',activeEvents:'arr'},a2:{W:'num',Wmom:'num',windSpeed:'num',windDir:'num',mastAt:'num',mastUntil:'num',regions:reg,flush:'arr',pact:'obj',mineralMkt:{P:'num',Pbar:'num',momentum:'num'},legacyHumus:'num',legacyLife:'num'},a3:{biomes:{X:ta('f64',ad),n:ta('f64',ad),reached:ta('u8',ad)},bands:{X:ta('f64',K),e:ta('f32',K),rich:ta('f32',K),n:ta('f64',K),nResid:ta('f64',K),drift:ta('f32',K),phase:ta('f32',K)},transit:'arr',alloc:av(3,!0),loci:ta('i8',bu),lociBought:'num',lociCap:'num',capRaises:'num',regenomeAt:'num',strains:'arr',succ:'objOrNull',mortality:ta('f64',NCAUSE),antiphony:'obj',upsilon:'num'},carry:{legacy:'num',fidelityBase:'num',pathFlag:'str',sporeBank:'num'},proj:{bought:'arr',seen:'arr',uses:'obj',flags:'obj',queue:'arr'},log:{fired:'arr',ring:'arr',lastObsAt:'num',lastLineAt:'num',openingLines:'num'},stats:{taps:'num',purchases:'num',sugarSpentOnMarket:'num',rotted:'num',largestSinglePurchase:'num',contractsSigned:'num',contractsCompleted:'num',defaults:'num',mineralEarned:'num',wintersEnded:'num',carrionEventsSeen:'num',offlineSeconds:'num',densityBuys:'num',flushes:'num',pulses:'num',seededCount:'num',claimedCount:'num',rivalContacts:'num',barrierBlocks:'num',droughtsSurvived:'num',ignitions:'num',signalOverflow:'num',mineralTrades:'num',everSaturated:'bool',reallocations:'num',pactsHonoured:'num',pactsBreached:'num',traitsRevealed:'num',releases:'num',targetsReached:'num',engagements:'num',purged:'num',absorbed:'num',quarantined:'num',radiationHazards:'num',entryAttempts:'num',strainsBorn:'num',respecs:'num',windfalls:'num',endingsReached:'num'},set:{theme:'str',sound:'str',haptics:'bool',slow:'bool',calm:'bool',reduceMotion:'boolOrNull'},meta:{sclerotium:'num',upgrades:'arr',growthLevel:'num',coherenceLevel:'num',divergenceLevel:'num',archive:'arr',lineages:'arr',runs:'num'}}
+N={v:'num',seed:'num',wallClock:'num',act:'num',phase:'str',t:'num',res:{biomass:'num',cumBiomass:'num',pruned:'num',extracted:'num',sugar:'num',minerals:'num',signal:'num',insight:'num',satTime:'num',spores:'num',accord:'num',accordLifetime:'num',carbon:'num',cumCarbon:'num',alleles:'num',canon:'num',D:'num'},mult:{enzymeMult:'num',enzymeK:{leaf:'num',needle:'num',twig:'num',bark:'num',log:'num',stump:'num',carrion:'num'},structureMult:'num',patchMult:'num',osmoticPriming:'num',hartigNet:'num',exudatePump:'num',cmnMult:'num',arbitration:'num',antifreeze:'bool',sclerotiaBonus:'num',perennial:'bool',E:'num',yieldMult:'num',signalMult:'num',capMult:'num',insightMult:'num',antibiosis:'num',advCostMult:'num',advanceSpeed:'num',matSpeed:'num',sporeMult:'num',hazMult:'num',necroMult:'num',ripeT:'num',ripenessFloor:'num',harvMult:'num',replMult:'num',germMult:'num',exploreMult:'num',boughtFid:'num',prestigeGrowth:'num'},cog:{dCond:'num',dVes:'num',dLag:'num',respecs:'num',SrPeak:'num',pulseCd:'num',pulseMode:'str',pulseEpicentre:'num',pulsesInFlight:'arr'},a1:{tips:'num',tipsPeak:'num',hyphaeFinal:'num',hyphaeManual:'num',season:'num',seasonPhase:'num',year:'num',moisture:'num',weatherMoistMod:'num',weatherFallMod:av(aa.length,!1),sub:aA,consumptionOrder:'arr',unlockedTypes:'arr',mkt:aQ,patches:'num',claimInFlight:'objOrNull',netRep:'num',trees:'arr',contracts:'arr',activeEvents:'arr'},a2:{W:'num',Wmom:'num',windSpeed:'num',windDir:'num',mastAt:'num',mastUntil:'num',regions:reg,flush:'arr',pact:'obj',mineralMkt:{P:'num',Pbar:'num',momentum:'num'},legacyHumus:'num',legacyLife:'num'},a3:{biomes:{X:ta('f64',ad),n:ta('f64',ad),reached:ta('u8',ad)},bands:{X:ta('f64',K),e:ta('f32',K),rich:ta('f32',K),n:ta('f64',K),nResid:ta('f64',K),drift:ta('f32',K),phase:ta('f32',K)},transit:'arr',alloc:av(3,!0),loci:ta('i8',bv),lociBought:'num',lociCap:'num',capRaises:'num',regenomeAt:'num',strains:'arr',succ:'objOrNull',mortality:ta('f64',NCAUSE),antiphony:'obj',upsilon:'num'},carry:{legacy:'num',fidelityBase:'num',pathFlag:'str',sporeBank:'num'},proj:{bought:'arr',seen:'arr',uses:'obj',flags:'obj',queue:'arr'},log:{fired:'arr',ring:'arr',lastObsAt:'num',lastLineAt:'num',openingLines:'num'},stats:{taps:'num',purchases:'num',sugarSpentOnMarket:'num',rotted:'num',largestSinglePurchase:'num',contractsSigned:'num',contractsCompleted:'num',defaults:'num',mineralEarned:'num',wintersEnded:'num',carrionEventsSeen:'num',offlineSeconds:'num',densityBuys:'num',flushes:'num',pulses:'num',seededCount:'num',claimedCount:'num',rivalContacts:'num',barrierBlocks:'num',droughtsSurvived:'num',ignitions:'num',signalOverflow:'num',mineralTrades:'num',everSaturated:'bool',reallocations:'num',pactsHonoured:'num',pactsBreached:'num',traitsRevealed:'num',releases:'num',targetsReached:'num',engagements:'num',purged:'num',absorbed:'num',quarantined:'num',radiationHazards:'num',entryAttempts:'num',strainsBorn:'num',respecs:'num',windfalls:'num',endingsReached:'num'},set:{theme:'str',sound:'str',haptics:'bool',slow:'bool',calm:'bool',reduceMotion:'boolOrNull'},meta:{sclerotium:'num',upgrades:'arr',growthLevel:'num',coherenceLevel:'num',divergenceLevel:'num',archive:'arr',lineages:'arr',runs:'num'}}
 return N}
 var aR={phase:['understory','network','canopy','void','dismantle','ended'],'cog.pulseMode':['SURGE','REPEL','RECRUIT','BLOOM','ENCYST','ANTAGONISE','ENTRAIN'],'carry.pathFlag':['symbiont','necrotroph','mixed'],'set.theme':['auto','dark','light'],'set.sound':['off','sparse','full']}
 function B(v){if(v===null)return'null'
@@ -351,7 +351,7 @@ if(Q(v))return'array'
 if(typeof v==='number'&&!isFinite(v))return String(v)
 return typeof v}
 function aH(ar,v,path,out){var aS,code,n
-switch(ar){case'num':if(!A(v))out.push(path+': expected a finite number, got '+B(v))
+switch(ar){case'num':if(!y(v))out.push(path+': expected a finite number, got '+B(v))
 return
 case'str':if(typeof v!=='string'){out.push(path+': expected a string, got '+B(v));return}if(aR[path]&&aR[path].indexOf(v)<0){out.push(path+': "'+v+'" is not one of '+aR[path].join(' | '))}return
 case'bool':if(typeof v!=='boolean')out.push(path+': expected a boolean, got '+B(v))
@@ -373,15 +373,15 @@ if(!Object.prototype.hasOwnProperty.call(v,k)){out.push(p+': missing');continue}
 function assertShape(save){var out=[]
 if(!I(save))return['<root>: expected an object, got '+B(save)]
 bm(aB(),save,'',out)
-if(A(save.act)&&(save.act<1||save.act>3||save.act!==Math.floor(save.act))){out.push('act: expected 1 | 2 | 3, got '+save.act)}if(A(save.v)&&save.v>CURRENT)out.push('v: '+save.v+' is newer than CURRENT '+CURRENT)
+if(y(save.act)&&(save.act<1||save.act>3||save.act!==Math.floor(save.act))){out.push('act: expected 1 | 2 | 3, got '+save.act)}if(y(save.v)&&save.v>CURRENT)out.push('v: '+save.v+' is newer than CURRENT '+CURRENT)
 return out}
-function y(v){var out,k,i
+function z(v){var out,k,i
 if(v===null||typeof v!=='object')return v
 if(V(v))return new v.constructor(v)
 if(Q(v)){out=new Array(v.length)
-for(i=0;i<v.length;i++)out[i]=y(v[i])
+for(i=0;i<v.length;i++)out[i]=z(v[i])
 return out}out={}
-for(k in v)if(Object.prototype.hasOwnProperty.call(v,k))out[k]=y(v[k])
+for(k in v)if(Object.prototype.hasOwnProperty.call(v,k))out[k]=z(v[k])
 return out}
 function serialise(save){return Y(save===undefined?st():save)}
 function Y(v){var out,k,i
@@ -394,7 +394,7 @@ return out}out={}
 for(k in v){if(!Object.prototype.hasOwnProperty.call(v,k))continue
 if(typeof v[k]==='function'||v[k]===undefined)continue
 out[k]=Y(v[k])}return out}
-function deserialise(bq){return Z(bq)}
+function deserialise(br){return Z(br)}
 function Z(v){var out,k,i
 if(v===null||typeof v!=='object')return v
 if(ay(v))return aN(v)
@@ -411,26 +411,29 @@ return live}
 function fillDefaults(O,bk){var k,tv,sv
 for(k in bk){if(!Object.prototype.hasOwnProperty.call(bk,k))continue
 tv=bk[k]
-if(!Object.prototype.hasOwnProperty.call(O,k)||O[k]===undefined){O[k]=y(tv)
+if(!Object.prototype.hasOwnProperty.call(O,k)||O[k]===undefined){O[k]=z(tv)
 continue
 }sv=O[k]
-if(V(tv)){if(V(sv)!==V(tv)||sv.length!==tv.length)O[k]=y(tv)}else if(I(tv)){if(I(sv))fillDefaults(sv,tv)
-else O[k]=y(tv)}else if(Q(tv)&&!Q(sv)){O[k]=y(tv)}else if(typeof tv==='number'&&!A(sv)){O[k]=tv}else if(typeof tv==='boolean'&&typeof sv!=='boolean'){O[k]=tv}else if(typeof tv==='string'&&typeof sv!=='string'){O[k]=tv}}}
+if(V(tv)){if(V(sv)!==V(tv)||sv.length!==tv.length)O[k]=z(tv)}else if(I(tv)){if(I(sv))fillDefaults(sv,tv)
+else O[k]=z(tv)}else if(Q(tv)&&!Q(sv)){O[k]=z(tv)}else if(typeof tv==='number'&&!y(sv)){O[k]=tv}else if(typeof tv==='boolean'&&typeof sv!=='boolean'){O[k]=tv}else if(typeof tv==='string'&&typeof sv!=='string'){O[k]=tv}}}
 function bn(sv){fillDefaults(sv,newGame(sv.seed,sv.meta))}
 function bo(sv){fillDefaults(sv,newGame(sv.seed,sv.meta))}
 function bp(sv){fillDefaults(sv,newGame(sv.seed,sv.meta))}
-function migrate(save,from){var v=A(from)?from:(A(save.v)?save.v:0)
+function bq(sv){fillDefaults(sv,newGame(sv.seed,sv.meta))
+if(sv.act>=2&&sv.a1&&!(sv.a1.hyphaeFinal>0)){sv.a1.hyphaeFinal=TUNE().A1.HYPHAE_PER_TIP*(y(sv.a1.tipsPeak)?sv.a1.tipsPeak:0)}}
+function migrate(save,from){var v=y(from)?from:(y(save.v)?save.v:0)
 if(v>CURRENT)return save
 switch(v){case 0:bn(save)
 case 1:bo(save)
 case 2:bp(save)
+case 3:bq(save)
 default:break
 }save.v=CURRENT
 return save}
 var mem={}
 var x=!0
 var H=0
-var z=!1
+var A=!1
 var aF=!1
 var lastError=''
 var lastBytes=0
@@ -438,13 +441,13 @@ function ai(){return x||now()>=H}
 function degrade(e){var name=e&&e.name?e.name:String(e)
 x=!1
 H=now()+TUNE().CLOCK.AUTOSAVE_S
-if(z)return
-z=!0
+if(A)return
+A=!0
 if(!aF&&HY.log&&HY.log.notice){try{HY.log.notice(/quota|full/i.test(name)?'quota':'no_storage')}catch(err){void 0}}if(typeof console!=='undefined'&&console.warn){console.warn('hyphae: local storage is unavailable ('+name+'); this session is being kept in memory only until it comes back.')}}
 function recovered(){if(x)return
 x=!0
 H=0
-z=!1
+A=!1
 if(typeof console!=='undefined'&&console.info){console.info('hyphae: local storage is writable again; the run is being persisted.')}}
 function aT(key){if(ai()){try{var v=window.localStorage.getItem(key)
 recovered()
@@ -480,8 +483,8 @@ return ok}
 function aj(raw){var ak,obj,faults
 if(typeof raw!=='string'||!raw.length)return{save:null,reason:'empty'}
 try{ak=JSON.parse(raw)}catch(e){return{save:null,reason:'unreadable'}}if(!I(ak))return{save:null,reason:'unreadable'}
-if(A(ak.v)&&ak.v>CURRENT){return{save:null,reason:'newer: save is v'+ak.v+', this build reads v'+CURRENT}}obj=deserialise(ak)
-if(obj.v!==CURRENT)migrate(obj,A(obj.v)?obj.v:0)
+if(y(ak.v)&&ak.v>CURRENT){return{save:null,reason:'newer: save is v'+ak.v+', this build reads v'+CURRENT}}obj=deserialise(ak)
+if(obj.v!==CURRENT)migrate(obj,y(obj.v)?obj.v:0)
 faults=assertShape(obj)
 if(faults.length){fillDefaults(obj,newGame(obj.seed,obj.meta))
 faults=assertShape(obj)
@@ -513,7 +516,7 @@ if(HY.loop&&HY.loop.reinitModules)HY.loop.reinitModules(st())
 return!0}
 var G=0
 var bh=!1
-function tick(s,dt,br){if(br&&br.offline)return!1
+function tick(s,dt,bs){if(bs&&bs.offline)return!1
 G+=dt
 if(G<TUNE().CLOCK.AUTOSAVE_S)return!1
 G=0
@@ -526,7 +529,7 @@ window.addEventListener('beforeunload',flush)
 if(typeof document!=='undefined'&&document.addEventListener){document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden')flush()})}}
 function init(s,slot){if(s)at(s)
 else st()
-if(A(slot))F=R(slot)
+if(y(slot))F=R(slot)
 G=0
 aJ()
 return st()}
@@ -536,15 +539,15 @@ return live}
 function standing(state){var s=state||st()
 if(!s||!s.res)return 0
 var a=s.res.cumBiomass,b=s.res.pruned
-var g=(A(a)?a:0)-(A(b)?b:0)
+var g=(y(a)?a:0)-(y(b)?b:0)
 return g>0?g:0}
 function __selftest(){var f=[]
-function ok(cond,bs){if(!cond)f.push(bs)}
-var bv=serialise(st())
+function ok(cond,bt){if(!cond)f.push(bt)}
+var bw=serialise(st())
 var aU=F
 var ap=live
 var aV=mem,savedOK=x,savedRetry=H
-var aW=z,savedWritten=l,savedQuiet=aF
+var aW=A,savedWritten=l,savedQuiet=aF
 try{var g=newGame(1234,null)
 var faults=assertShape(g)
 ok(faults.length===0,'newGame does not conform to §3: '+faults.slice(0,4).join(' | '))
@@ -568,7 +571,12 @@ delete v1.a1.tipsPeak
 v1.v=1
 ok(assertShape(v1).length>0,'a v1 save was accepted without migration')
 var up=migrate(deserialise(v1),1)
-ok(up.v===CURRENT&&up.res.pruned===0&&up.a1.tipsPeak===0&&assertShape(up).length===0,'v1 -> v3 did not fill the stocks it added')
+ok(up.v===CURRENT&&up.res.pruned===0&&up.a1.tipsPeak===0&&up.a1.hyphaeFinal===0&&assertShape(up).length===0,'v1 -> v4 did not fill the stocks it added')
+var v3=serialise(newGame(78,null))
+delete v3.a1.hyphaeFinal
+v3.v=3;v3.act=2;v3.a1.tipsPeak=200
+var bx=migrate(deserialise(v3),3)
+ok(bx.a1.hyphaeFinal===TUNE().A1.HYPHAE_PER_TIP*200&&assertShape(bx).length===0,'v3 -> v4 left an Act II save with no network to draw under the map')
 var g2=newGame(9,{sclerotium:7,runs:3,upgrades:['a'],archive:[{name:'x'}]})
 ok(g2.meta.sclerotium===7&&g2.meta.runs===3&&g2.meta.upgrades[0]==='a','newGame(meta) did not carry meta')
 ok(g2.meta.archive!==undefined&&g2.meta.archive[0]&&g2.meta.archive[0].name==='x','newGame(meta) did not deep-copy archive')
@@ -713,7 +721,7 @@ var aC={getItem:function(k){return Object.prototype.hasOwnProperty.call(ae,k)?ae
 var aG=null,swapped=!1
 try{aG=window.localStorage
 Object.defineProperty(window,'localStorage',{configurable:!0,value:aC})
-swapped=!0}catch(e){swapped=!1}if(swapped){mem={};l={};x=!1;z=!0
+swapped=!0}catch(e){swapped=!1}if(swapped){mem={};l={};x=!1;A=!0
 H=now()+TUNE().CLOCK.AUTOSAVE_S
 ok(save(0)===!1,'a degraded save touched storage inside its retry window')
 ok(ae[o(0)]===undefined,'a degraded save wrote through anyway')
@@ -722,7 +730,7 @@ st().t+=1
 ok(save(0)===!0,'a store that works again was never retried')
 ok(ae[o(0)]!==undefined,'the retried save did not reach storage')
 ok(x===!0,'a successful write did not clear the degraded flag')
-ok(z===!1,'recovery did not release the announcement latch')
+ok(A===!1,'recovery did not release the announcement latch')
 var calls={get:0,set:0}
 ae={}
 aC.getItem=function(k){calls.get++
@@ -741,7 +749,7 @@ var aZ=ae[o(2)]
 st().t+=TUNE().CLOCK.AUTOSAVE_S
 save(2)
 ok(ae[o(2)+'.bak']===aZ,'the .bak is no longer the previous slot write')
-try{Object.defineProperty(window,'localStorage',{configurable:!0,value:aG})}catch(e){}}mem={};l={};x=!0;H=0;z=!1
+try{Object.defineProperty(window,'localStorage',{configurable:!0,value:aG})}catch(e){}}mem={};l={};x=!0;H=0;A=!1
 var aw=console.warn,warnCount=0
 console.warn=function(){warnCount++}
 var ba=null,hadLS=!1
@@ -753,13 +761,13 @@ try{Object.defineProperty(window,'localStorage',{configurable:!0,value:ba})}catc
 ok(x===!1,'a throwing localStorage did not degrade to memory')
 ok(mem[o(0)]!==undefined,'the in-memory mirror was not written after degrading')
 ok(load(0)!==null,'load could not read back the in-memory mirror: '+lastError)}else{console.warn=aw}}catch(e){f.push('threw: '+(e&&e.stack?e.stack:e))}mem=aV;x=savedOK;H=savedRetry
-z=aW;l=savedWritten;aF=savedQuiet
+A=aW;l=savedWritten;aF=savedQuiet
 if(ap)live=ap
 F=aU
-at(deserialise(bv))
+at(deserialise(bw))
 G=0
 return f}
-function bb(bw){return JSON.parse(ao(ac(bw)))}
+function bb(by){return JSON.parse(ao(ac(by)))}
 HY.state={newGame:newGame,standing:standing,save:save,load:load,exportB64:exportB64,importB64:importB64,migrate:migrate,assertShape:assertShape,now:now,init:init,tick:tick,serialise:serialise,deserialise:deserialise,CURRENT:CURRENT,get lastError(){return lastError},get lastBytes(){return lastBytes},get overBudget(){return lastBytes>aI(st().act)},get slot(){return F},__selftest:__selftest}
 Object.defineProperty(HY.state,'state',{enumerable:!0,get:st})})(window.HY=window.HY||{})
 ;
@@ -3036,6 +3044,7 @@ s.a1.mkt[i].price=0
 s.a1.mkt[i].mom=0}for(i=0;i<j.length;i++)C().setStock(s.a1.sub,j[i],0)
 C().setStock(s.res,'sugar',0)
 s.a1.unlockedTypes.length=0
+s.a1.hyphaeFinal=hyphae(s)
 C().setStock(s.res,'biomass',num(s.res.biomass)*T().HANDOFF.BIOMASS_KEPT)
 s.a1.tips=0
 s.a1.hyphaeManual=0
@@ -15672,7 +15681,8 @@ O(view,s,view.rev||bz)
 eU(view)
 var cv=J()
 if(!cv)return
-if(s.act>=3){if(cv.drawVoid)cv.drawVoid(eH(s))}else if(s.act>=2){if(cv.drawMap&&s.a2)cv.drawMap(s.a2.regions)}else{if(cv.growNetwork&&A1()&&A1().hyphae)cv.growNetwork(A1().hyphae())
+if(s.act>=3){if(cv.drawVoid)cv.drawVoid(eH(s))}else if(s.act>=2){if(cv.growNetwork&&s.a1&&num(s.a1.hyphaeFinal)>0)cv.growNetwork(num(s.a1.hyphaeFinal))
+if(cv.drawMap&&s.a2)cv.drawMap(s.a2.regions)}else{if(cv.growNetwork&&A1()&&A1().hyphae)cv.growNetwork(A1().hyphae())
 if(cv.drawNet)cv.drawNet()}if(view.tab==='flush'&&s.act===2&&cv.drawForecast&&HY.flush&&HY.flush.strip){cL(view.forecastEl)
 if(view.forecastEl&&view.forecastEl.__sized)cv.drawForecast(HY.flush.strip())}if(view.tab==='forest'&&s.act>=3&&cv.drawWheel&&HY.finale&&HY.finale.wheel){var wh=HY.finale.wheel(s)
 if(wh&&wh.live){cL(view.wheel)
