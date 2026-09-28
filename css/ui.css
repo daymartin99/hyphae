@@ -443,15 +443,13 @@ canvas{ display:block; }
   bottom:0; margin-top:calc(var(--sp-16) * -1); height:var(--sp-16);
   background:linear-gradient(transparent, var(--bg)); pointer-events:none;
 }
-/* The FAB's band is reserved, not shared: a floating button that parks over a list clips the
-   right-hand value of whatever row is under it — "standing" read as "standir", a band's richness
-   unreadable — and no scroll position should be able to put a row there. While the FAB is on
-   screen the tail grows to the FAB's own height plus its two gaps, so the scroller (and the
-   pinned hero band with it) ends above the button at every scroll position. */
+/* The FAB no longer takes a band of its own under the panels: that ~96 px lane existed only to
+   give the button somewhere to be, and it cost Act III a third of its panel space. With SETTLE on
+   screen the button docks beside it (ui.js dockFab, and the dock rules at the end of this sheet);
+   without it the button floats over the list, and the list pads its end by the button's height
+   and gaps so the last card — "standing", a band's richness — always scrolls clear of it. */
 .tail{ flex:0 0 auto; height:calc(var(--sp-8) + env(safe-area-inset-bottom)); }
-.shell[data-fab="1"] .tail{
-  height:calc(64px + var(--sp-24) + var(--sp-8) + env(safe-area-inset-bottom));
-}
+.shell[data-fab="1"]:not([data-dock="1"]) .panels{ padding-bottom:calc(64px + var(--sp-24) + var(--sp-8)); }
 
 /* ══ LEDGER / STATUS STRIP · 06 §5.1 ═══════════════════════════════════════ */
 
@@ -1600,3 +1598,11 @@ canvas{ display:block; }
 .num,.mant,.unit{ text-transform:none; }
 :root[data-numfont="mono"] .num,
 :root[data-numfont="mono"] [data-num]{ font-family:var(--font-mono); }
+
+/* The docked FAB's partner: SETTLE narrows to sit centred between the column edge and the button,
+   on the button's centre line. Last in the sheet, so it wins over every earlier hero width. */
+.shell[data-dock="1"] .hero{ width:auto; min-width:0; max-width:280px; margin-top:var(--sp-8);
+                             margin-inline:calc(var(--gutter) + 64px + var(--sp-12)); }
+@media (min-width:900px){
+  .shell[data-dock="1"] .hero{ margin-inline:calc(64px + var(--sp-16)); }
+}

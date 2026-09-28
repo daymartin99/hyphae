@@ -53,6 +53,7 @@
     // flickering the row's meta text at 1 Hz.
     SHORT_EPS: 0.005, SHORT_HOLD_MS: 1200,
     ROW_SEAT_PX: 8,
+    FAB_PX: 64,               // the pulse button's diameter (css .fab)
 
     // interaction (06 §5.5, §5.8, §5.11, §6.3)
     LONGPRESS_MS: 420, LONGPRESS_SLOP_PX: 10,
@@ -3020,6 +3021,24 @@
     setAttr(v.endbar, 'aria-label', pick.title + ', ' + STR.endTake)
   }
 
+  // With a live verb pinned in the bottom band (SETTLE), the FAB docks beside it on the same row
+  // rather than being given a ~96 px lane of its own under the panels: measured, so the two share a
+  // centre line, while the hero narrows to sit centred between the edge and the button. Without
+  // one it floats over the list, and the list pads its end so the last card scrolls clear.
+  function dockFab (v, dock) {
+    if (dock) setData(v.shell, 'dock', '1')
+    else if (v.shell.dataset.dock) delete v.shell.dataset.dock
+    var b = null
+    if (dock) {
+      var hr = v.hero.getBoundingClientRect()
+      var sr = v.shell.getBoundingClientRect()
+      if (hr.height > 0) b = Math.round(sr.bottom - hr.bottom + (hr.height - U.FAB_PX) / 2)
+    }
+    if (b === v.fab.__dockB) return
+    v.fab.__dockB = b
+    v.fab.style.bottom = b === null ? '' : b + 'px'
+  }
+
   // The FAB is PULSE and only PULSE (`06` §5.3). It is the one verb in Acts II and III that is
   // never automated at any price, so it is the one thing that gets a permanent thumb position.
   function paintFab (v, s) {
@@ -3029,6 +3048,7 @@
     // The stack owes the FAB its own height at the end of the scroll, and only while it is there.
     if (on) setData(v.shell, 'fab', '1')
     else delete v.shell.dataset.fab
+    dockFab(v, on && !v.hero.hidden && v.hero.parentNode === v.scroll)
     if (!on) return
     var cd = num(s.cog.pulseCd)
     var max = g.pulseCooldown ? num(g.pulseCooldown(s)) : 0
@@ -3443,11 +3463,15 @@
       if (!reorderPool(type, U.LATER)) refuse(b)
     }))
     if (TYPE_NOTE[type]) r.expander().appendChild(el('p', 'row-note', TYPE_NOTE[type]))
+    // One row per layer. The floor and the litter market listed the same layers twice, once for
+    // holding and eating order and once for price; the market's price line joins this row's face
+    // and its verbs join the expander, between the layer note and the eating order.
+    var mk = marketRow(type, r)
     r.expander().appendChild(acts)
 
     return {
       el: r.el,
-      sync: function (s, order) {
+      sync: function (s, order, rev) {
         var held = num(s.a1.sub[type])
         var cap = E1() && E1().capOf ? E1().capOf(type) : 0
         var nth = ORDINAL[order - 1] || String(order)
@@ -3457,8 +3481,11 @@
         // The bar has no scale of its own; the number beside it is the pool's ceiling, and it
         // says so rather than sitting there as a second unexplained mass.
         setText(capTxt, interp(STR.roomFor, { v: C().fmtMass(cap) }))
+        var open = !!(rev && rev.market && E1())
+        mk.show(open)
+        var tail = open ? mk.sync(s) : ''
         r.label((TYPE_NAME[type] || type) + ', ' + C().fmtMass(held) + ' of ' + C().fmtMass(cap) +
-          ', eaten ' + nth)
+          ', eaten ' + nth + tail)
       }
     }
   }
@@ -3498,7 +3525,7 @@
     cond.el.hidden = true
     pv.body.appendChild(cond.el)
 
-    p.__sync = function (s) {
+    p.__sync = function (s, rev) {
       var seen = {}
       var n = 0
       s.a1.consumptionOrder.forEach(function (type) {
@@ -3516,7 +3543,7 @@
           r.el.dataset.pos = String(n)
           pools.appendChild(r.el)
         }
-        r.sync(s, n)
+        r.sync(s, n, rev)
       })
       Object.keys(rows).forEach(function (k) { show(rows[k].el, !!seen[k]) })
       pv.setCount(n)
@@ -3689,35 +3716,26 @@
 
   // ── THE LITTER MARKET ──────────────────────────────────────────────────────
 
-  function marketRow (type, onOpen) {
-    // The 06 §4.6 collapsed row, one act early, on the panel the money moves through. The
-    // collapsed face is two lines — name and price, then trend and stock-or-shortfall — and the
-    // verbs live on the expanded card, which is how the buy/sell bursts stop living at
-    // unpredictable scroll depths: an expanded row is scrolled to a known height, so the thumb
-    // learns ONE place the money verbs are. This renegotiates 06 §5.4's "the card is the button"
-    // — tap now means open — which is why the newest-arrived row starts expanded: the teaching
-    // face is seen once for free, and the gesture is the same one the tree cards taught.
-    var r = row({
-      expand: true,
-      onOpen: function () { if (onOpen) onOpen(type) }
-    })
+  // The market's half of a floor row (one row per layer). It owns no row of its own: it adds the
+  // price line to the host's collapsed face and the trade verbs to its expander, and the whole of
+  // it comes and goes with the market (show). The collapse rules are the host's: the verbs live on
+  // the expanded card, so the thumb still learns one place the money verbs are.
+  function marketRow (type, r) {
     var mode = { sell: false }
 
-    var l0 = r.line()
-    span(l0, 'row-name', TYPE_NAME[type] || type)
-    var price = slot('row-num')
-    l0.appendChild(price)
-
+    // Collapsed: trend, history and price.
     var l1 = r.line()
     var arrow = span(l1, 'row-arrow', '·')
     var sparkEl = span(l1, 'row-ascii', '')
-    // The stock-or-shortfall slot keeps its own edge of the line and owes nothing to anyone's
-    // width (the ±27 px wrap lesson, kept through the collapse).
-    var stockTxt = span(l1, 'row-num row-stock', '')
+    var price = slot('row-num')
+    l1.appendChild(price)
 
+    // Expanded: the fair price and the stock for sale — or how short you are, which takes the
+    // stock's slot rather than adding a line (the ±27 px wrap lesson, kept through the merge).
     var ex = r.expander()
     var exTop = el('div', 'row-line')
     var detail = span(exTop, 'row-sub num', '')
+    var stockTxt = span(exTop, 'row-sub num row-stock', '')
     var side = btn('side-btn', STR.buy)
     setAttr(side, 'aria-pressed', 'false')
     // economy1.sell() returns 0 until The Two-Sided Book is bought, so before that this toggle
@@ -3813,10 +3831,19 @@
     bindPress(side, flip, { onUp: true })
 
     var lastPrice = 0
+    var shown = null
     return {
-      el: r.el,
-      setExpanded: r.setExpanded,
-      isExpanded: r.isExpanded,
+      // Before the market opens the layer row is the floor's alone; closing it (a new act) drops
+      // a SELL toggle left on, so the verbs are never found reversed when they next appear.
+      show: function (on) {
+        if (on === shown) return
+        shown = on
+        show(l1, on)
+        show(exTop, on)
+        show(l2, on)
+        if (!on && mode.sell) flip()
+      },
+      // Returns the market's clause of the host row's accessible label.
       sync: function (s) {
         var e = E1()
         var mkt = s.a1.mkt[e.TYPES.indexOf(type)]
@@ -3838,9 +3865,11 @@
         // which is a 27 px height pulse, the exact disease the hysteresis exists to prevent. One
         // short string is guaranteed one line; the fair price and the floor stock come back the
         // moment the row is affordable again.
-        setText(detail, (s.proj.flags.mycelial_ledger
-          ? STR.fair + ' ' + C().fmt(e.fairValue(type)) + ' ' + SUG_G + ' · '
-          : '') + C().fmtMass(num(s.a1.sub[type])) + ' ' + STR.onFloor)
+        // What is on the floor is the host row's own reading now, so the line is the fair price
+        // alone.
+        setText(detail, s.proj.flags.mycelial_ledger
+          ? STR.fair + ' ' + C().fmt(e.fairValue(type)) + ' ' + SUG_G
+          : '')
         // The gap to the smallest size the player cannot yet buy: the next thing they want and
         // the only shortfall worth a line. NOT worth a NEW line. This text was its own row-sub
         // under the row, and with contract deliveries landing every sim-second the sugar balance
@@ -3877,58 +3906,9 @@
           setData(stockTxt, 'tone', '')
         }
         setText(shortTxt, '')
-        r.label((TYPE_NAME[type] || type) + ', ' + C().fmt(unit) + ' sugar per gram, ' +
-          C().fmtMass(mkt.stock) + ' for sale')
+        return ', ' + C().fmt(unit) + ' sugar per gram, ' + C().fmtMass(mkt.stock) + ' for sale'
       }
     }
-  }
-
-  function buildMarket (v, p) {
-    var pv = panel('market', { title: STR.p_market })
-    var rows = {}
-    var openType = null
-    p.__sync = function (s) {
-      var e = E1()
-      if (!e) return
-      var n = 0
-      e.TYPES.forEach(function (type) {
-        if (s.a1.unlockedTypes.indexOf(type) < 0) {
-          if (rows[type]) show(rows[type].el, false)
-          return
-        }
-        n += 1
-        if (!rows[type]) {
-          rows[type] = marketRow(type, function (t) {
-            // One open row per panel (06 §4.6): opening one closes the other in the same frame.
-            Object.keys(rows).forEach(function (k) {
-              if (k !== t && rows[k].isExpanded()) rows[k].setExpanded(false)
-            })
-            openType = t
-            seatRow(rows[t].el)
-          })
-          pv.body.appendChild(rows[type].el)
-          // The first row the market ever shows arrives expanded — the burst is the teaching
-          // face — and a type unlocked mid-run arrives expanded too: it is new content, and its
-          // face says what it is. The boot batch is one sync, so only its first row teaches;
-          // programmatic opens never seat the scroll — only a tap does.
-          if (p.__seeded || openType === null) {
-            Object.keys(rows).forEach(function (k) {
-              if (k !== type && rows[k].isExpanded()) rows[k].setExpanded(false)
-            })
-            rows[type].setExpanded(true)
-            openType = type
-          }
-        }
-        show(rows[type].el, true)
-        rows[type].sync(s)
-      })
-      if (n) p.__seeded = true
-      pv.setCount(n)
-      if (n) pv.unempty()
-      else pv.empty(LOG() ? LOG().EMPTY.market_sold_out : '')
-    }
-    p.view = pv
-    return pv
   }
 
   // ── THE YEAR ───────────────────────────────────────────────────────────────
@@ -6144,7 +6124,6 @@
   function definePanels (v) {
     def(v, 'floor', function (s, rev) { return rev.substrate }, buildFloor, null, actI)
     def(v, 'tips', function (s, rev) { return rev.tips }, buildTips, null, actI)
-    def(v, 'market', function (s, rev) { return rev.market }, buildMarket, null, actI)
     def(v, 'seasons', function (s, rev) { return rev.seasons }, buildSeasons, null, actI)
     def(v, 'understory', function (s, rev) { return rev.trees }, buildUnderstory, null, actI)
     def(v, 'patches', needPatches, buildPatches, null, actI)
