@@ -3002,6 +3002,9 @@
       rebuildFired(s)
       lastInputT = s.t - CONS.OBS_HANDS_OFF
       bootLine(s)
+      // A re-init under a live console (an import) swaps the ring the console is a window onto.
+      // Settings' LOAD remounts and so repaints; any other importer left the old run's lines up.
+      repaint()
     }
     return s
   }
