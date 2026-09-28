@@ -188,6 +188,11 @@
     youGet: 'you get',
     overTerm: 'over term',
     coverage: 'coverage',
+    collBuys: 'collateral buys',
+    collEffect: 'rate +{r}% · book +{b}%',
+    collNone: 'nothing yet',
+    collHeld: 'it raises the rate and what the tree will take. held, not spent — back when the ' +
+      'term ends; the tree keeps it if you default.',
     sign: 'sign',
     renegotiate: 'renegotiate',
     exit: 'exit',
@@ -4212,13 +4217,44 @@
     var term = slider({
       label: STR.term, steps: T().A1.TERM_MAX, value: T().A1.TERM_MIN, onInput: refresh
     })
-    var coll = slider({ label: STR.collateral, steps: U.SLIDER_STEPS, onInput: refresh })
+    var coll = slider({ label: STR.collateral, steps: U.SLIDER_STEPS, onInput: onCollateral })
+    // The volume slider is a fraction of what the tree will take, and the stake raises that. Left
+    // alone, moving collateral would slide `you pay` up with it and read as collateral costing
+    // sugar; so the thumb is re-seated to keep the asked volume where it was, and only the
+    // ceiling (the `max` note) moves.
+    var lastColl = 0
+    function onCollateral () {
+      var s = liveState()
+      var e1 = E1()
+      var tree = e1 && s ? e1.treeById(id) : null
+      if (tree) {
+        var was = Math.max(0, e1.maxIntake(tree, lastColl)) * (volume.value() / U.SLIDER_STEPS)
+        var next = num(s.res.biomass) * (coll.value() / U.SLIDER_STEPS)
+        var max = Math.max(0, e1.maxIntake(tree, next))
+        volume.setValue(max > 0 ? Math.min(U.SLIDER_STEPS, Math.round(was / max * U.SLIDER_STEPS)) : 0)
+        lastColl = next
+      }
+      refresh()
+    }
     var excl = checkbox(STR.exclusive, '', refresh)
 
     var summary = el('div', 'summary')
     var payNum = summaryLine(summary, STR.youPay)
     var getNum = summaryLine(summary, STR.youGet)
     var totNum = summaryLine(summary, STR.overTerm)
+    // What the collateral slider is doing, said where the verdict is read. Both of its effects were
+    // invisible: the rate bonus hid inside `you get`, and the bigger book it buys was not even
+    // reachable — the volume ceiling, the SIGN check and the counter-offer were all asked without
+    // the stake on the table, so only collateral already posted counted.
+    var collLine = el('div', 'row-line')
+    span(collLine, 'row-sub', STR.collBuys)
+    // Small in both states, so the line is the same height with or without a stake.
+    var collTxt = span(collLine, 'row-sub row-coll', '')
+    summary.appendChild(collLine)
+    var heldLine = el('div', 'row-line')
+    var heldTxt = span(heldLine, 'row-sub', STR.collHeld)
+    setData(heldTxt, 'tone', 'forecast')
+    summary.appendChild(heldLine)
     var covLine = el('div', 'row-line')
     span(covLine, 'row-sub', STR.coverage)
     var cov = meter('fill', 0)
@@ -4235,10 +4271,13 @@
 
     function readTerms (s, tree) {
       var e1 = E1()
+      // The volume slider spans the book the tree would carry WITH the stake on the table, so
+      // raising collateral raises the ceiling the thumb can reach.
+      var collateral = num(s.res.biomass) * (coll.value() / U.SLIDER_STEPS)
       return {
-        volume: Math.max(0, e1.maxIntake(tree)) * (volume.value() / U.SLIDER_STEPS),
+        volume: Math.max(0, e1.maxIntake(tree, collateral)) * (volume.value() / U.SLIDER_STEPS),
         term: C().clamp(term.value(), T().A1.TERM_MIN, e1.maxTerm(tree)),
-        collateral: num(s.res.biomass) * (coll.value() / U.SLIDER_STEPS),
+        collateral: collateral,
         exclusive: excl.isOn()
       }
     }
@@ -4250,23 +4289,39 @@
       var tree = e1.treeById(id)
       if (!tree) return
       var t = readTerms(s, tree)
+      lastColl = t.collateral
       var mineralRate = e1.offer(tree, t.volume, t.term, t.collateral, t.exclusive)
       volume.setReadout(C().fmt(t.volume), SUG_S, C().fmt(t.volume) + ' sugar per second')
       term.setReadout(String(t.term), '', interp(STR.seasons, { n: t.term }))  // no suffix
       coll.setMassReadout(t.collateral, C().fmtMass(t.collateral))
-      volume.setNote(C().fmt(e1.maxIntake(tree)) + ' ' + SUG_S + ' ' + STR.max)
+      volume.setNote(C().fmt(e1.maxIntake(tree, t.collateral)) + ' ' + SUG_S + ' ' + STR.max)
       term.setNote(STR.max + ' ' + e1.maxTerm(tree))
       setSlot(payNum, C().fmt(t.volume), SUG_S)
       setSlot(getNum, C().fmt(mineralRate), GLYPH.minerals + '/s')
       setSlot(totNum, C().fmt(mineralRate * t.term * T().CLOCK.SEASON_S), GLYPH.minerals)
+      if (t.collateral > 0) {
+        // The rate bonus is a multiplier on whatever volume is asked; at a volume of zero both
+        // offers are zero, so it is read at a sliver of volume rather than printed as +0%.
+        var v = t.volume > 0 ? t.volume : 1e-3
+        var bare = e1.offer(tree, v, t.term, 0, t.exclusive)
+        var rateUp = bare > 0 ? e1.offer(tree, v, t.term, t.collateral, t.exclusive) / bare - 1 : 0
+        var bookUp = e1.balanceSheet(tree, t.collateral) / e1.balanceSheet(tree, 0) - 1
+        setText(collTxt, interp(STR.collEffect, {
+          r: Math.round(rateUp * 100), b: Math.round(bookUp * 100)
+        }))
+        setData(collTxt, 'tone', 'pos')
+      } else {
+        setText(collTxt, STR.collNone)
+        setData(collTxt, 'tone', '')
+      }
       var book = e1.bookState()
       var income = e1.netSugar() + book.committed
       var coverage = income > 0 ? (book.committed + t.volume) / income : 1
       cov.set(coverage, coverage >= 1 ? 'bad' : coverage > U.COVER_WARN ? 'warn' : '',
         Math.round(coverage * 100) + ' percent of what you make')
-      var ok = e1.accepts(tree, t.volume, t.term, t.exclusive)
+      var ok = e1.accepts(tree, t.volume, t.term, t.exclusive, t.collateral)
       setData(signBtn, 'state', ok ? 'idle' : 'locked')
-      var ct = ok ? null : e1.counter(tree, t.volume, t.term, t.exclusive)
+      var ct = ok ? null : e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral)
       setText(counterTxt, ct
         ? interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm })
         : '')
@@ -4282,10 +4337,10 @@
       var tree = e1 ? e1.treeById(id) : null
       if (!s || !tree) return
       var t = readTerms(s, tree)
-      if (!e1.accepts(tree, t.volume, t.term, t.exclusive)) {
+      if (!e1.accepts(tree, t.volume, t.term, t.exclusive, t.collateral)) {
         haptic(U.HAP_ERROR, 'ui.error')
         // Refusal is a counter-offer, never a wall: the largest legal position today.
-        var ct = e1.counter(tree, t.volume, t.term, t.exclusive)
+        var ct = e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral)
         beat('refused', true)
         if (ct) {
           announce(interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm }))

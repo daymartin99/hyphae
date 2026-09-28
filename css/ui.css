@@ -915,6 +915,10 @@ canvas{ display:block; }
 .row-stock{ margin-inline-start:auto; }
 .row-sub[data-tone="cost"]{ color:var(--attention-dim); }
 .row-sub[data-tone="forecast"]{ color:var(--text-locked); }
+/* The contract's `collateral buys` reading: right-aligned like a figure, set at the sub size so
+   the summary keeps one height whether a stake is posted or not. */
+.row-coll{ margin-inline-start:auto; text-align:end; }
+.row-coll[data-tone="pos"]{ color:var(--positive-text); }
 /* t-value, not t-meta: the collapsed-row pass (06 §4.6) raised the row's one numeral from 13 px —
    the smallest thing on the screen, on the rows the money is read from — to the ledger's own
    value size. The owner's squint was a measurement. */
