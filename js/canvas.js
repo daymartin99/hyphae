@@ -956,7 +956,7 @@
   // shift, a resize — because those leave every already-stroked colour wrong, and nothing short of
   // restroking the buffer can fix a bitmap. It is never set by growth; growth is always additive.
   var repaint = true
-  function invalidate () { repaint = true; lastFlux = 0; plate.key = '' }
+  function invalidate () { repaint = true; lastFlux = 0; plate.key = ''; wheelMemo.key = '' }
 
   // ───────────────────────────────────────────────────────────────────────────
   // GROWTH — driven by the game, not by the clock (06 §7.3)
@@ -1938,20 +1938,58 @@
 
   // Thirteen dots, the resultant, and a ring at the ϒ ENDING A asks for. The wheel is fully
   // described in text elsewhere on the screen; this is the same information, drawn.
+  //
+  // The phases move on the sim tick, not the display frame, and most frames move nothing. So the
+  // picture is laid out first — every dot's centre and radius and the resultant's tip — and drawn
+  // only when that layout, to a quarter pixel, or the surface under it has changed. No clock: the
+  // dots converging after a pulse is the reading, and it keeps the sim's own rate. On the flux
+  // fallback the flux pass clears the surface every draw, so there nothing is skipped.
+  var wheelMemo = { key: '', data: 0, el: null }
+  var wheelXY = new Float32Array(3 * 64)
+
   function drawWheel (phases, mass) {
     if (!surf.attached && !attach()) return
     if (!surf.wheelCtx && doc()) { refreshOptional(doc()); if (surf.wheelCtx) resize() }
     var ctx = surf.wheelCtx || surf.fluxCtx
     if (!ctx || !phases || !phases.length) return
-    var t0 = nowMs()
     refreshPalette(false)
     var el = surf.wheelCtx ? surf.wheelEl : surf.fluxEl
     var w = el.clientWidth || surf.W, h = el.clientHeight || surf.H
-    ctx.clearRect(0, 0, w, h)
     var cx = w / 2, cy = h / 2
     var R = Math.min(WHEEL.R, Math.min(w, h) / 2 - WHEEL.DOT_R_MAX - 2)
     var TAU = Math.PI * 2
 
+    var nb = phases.length > 64 ? 64 : phases.length
+    var sx = 0, sy = 0, sm = 0, b
+    var hsh = mix32(2166136261 | 0, nb)
+    for (b = 0; b < nb; b++) {
+      var m = mass && mass[b] > 0 ? mass[b] : 1
+      var th = TAU * (phases[b] - Math.floor(phases[b]))
+      sx += Math.cos(th) * m; sy += Math.sin(th) * m; sm += m
+      var rad = WHEEL.DOT_R
+      if (mass && sm > 0) rad = WHEEL.DOT_R + (WHEEL.DOT_R_MAX - WHEEL.DOT_R) * clamp01(m / (sm || 1))
+      var px = cx + Math.cos(th - Math.PI / 2) * R
+      var py = cy + Math.sin(th - Math.PI / 2) * R
+      wheelXY[3 * b] = px; wheelXY[3 * b + 1] = py; wheelXY[3 * b + 2] = rad
+      hsh = mix32(mix32(mix32(hsh, Math.round(px * 4)), Math.round(py * 4)), Math.round(rad * 4))
+    }
+    var tipX = cx, tipY = cy
+    if (sm > 0) {
+      var ux = sx / sm, uy = sy / sm
+      var ups = Math.sqrt(ux * ux + uy * uy)
+      var ang = Math.atan2(uy, ux) - Math.PI / 2
+      tipX = cx + Math.cos(ang) * R * ups; tipY = cy + Math.sin(ang) * R * ups
+    }
+    hsh = mix32(mix32(mix32(hsh, sm > 0 ? 1 : 0), Math.round(tipX * 4)), Math.round(tipY * 4))
+
+    if (surf.wheelCtx) {
+      var key = w + 'x' + h + '|' + el.width + 'x' + el.height + '|' + pal.gen
+      if (el === wheelMemo.el && key === wheelMemo.key && hsh === wheelMemo.data) return
+      wheelMemo.el = el; wheelMemo.key = key; wheelMemo.data = hsh
+    }
+
+    var t0 = nowMs()
+    ctx.clearRect(0, 0, w, h)
     ctx.save()
     ctx.strokeStyle = rgba(pal.line, 0.7)
     ctx.lineWidth = 1
@@ -1962,27 +2000,16 @@
     ctx.beginPath(); ctx.arc(cx, cy, R * WHEEL.RING_AT, 0, TAU); ctx.stroke()
     if (ctx.setLineDash) ctx.setLineDash([])
 
-    var sx = 0, sy = 0, sm = 0
-    for (var b = 0; b < phases.length; b++) {
-      var m = mass && mass[b] > 0 ? mass[b] : 1
-      var th = TAU * (phases[b] - Math.floor(phases[b]))
-      var px = cx + Math.cos(th - Math.PI / 2) * R
-      var py = cy + Math.sin(th - Math.PI / 2) * R
-      sx += Math.cos(th) * m; sy += Math.sin(th) * m; sm += m
-      var rad = WHEEL.DOT_R
-      if (mass && sm > 0) rad = WHEEL.DOT_R + (WHEEL.DOT_R_MAX - WHEEL.DOT_R) * clamp01(m / (sm || 1))
-      ctx.fillStyle = rgba(pal.signal, 0.85)
-      ctx.beginPath(); ctx.arc(px, py, rad, 0, TAU); ctx.fill()
+    ctx.fillStyle = rgba(pal.signal, 0.85)
+    for (b = 0; b < nb; b++) {
+      ctx.beginPath(); ctx.arc(wheelXY[3 * b], wheelXY[3 * b + 1], wheelXY[3 * b + 2], 0, TAU); ctx.fill()
     }
     if (sm > 0) {
-      var ux = sx / sm, uy = sy / sm
-      var ups = Math.sqrt(ux * ux + uy * uy)
-      var ang = Math.atan2(uy, ux) - Math.PI / 2
       ctx.strokeStyle = rgba(pal.text, 0.9)
       ctx.lineWidth = WHEEL.RESULT_W
       ctx.beginPath()
       ctx.moveTo(cx, cy)
-      ctx.lineTo(cx + Math.cos(ang) * R * ups, cy + Math.sin(ang) * R * ups)
+      ctx.lineTo(tipX, tipY)
       ctx.stroke()
     }
     ctx.restore()
@@ -2996,6 +3023,27 @@
       ok(plateDue('probe', 2) === true, 'plate: invalidate() did not force the plate through')
       plate.key = wasPlate.key; plate.data = wasPlate.data; plate.at = wasPlate.at
     }
+    // The wheel: a still wheel is drawn once; a dot that moves is drawn at once. own() is the probe,
+    // since it is called for a draw and never for a skip. Act I has no wheel canvas yet, so a
+    // detached one stands in for it and the live one is put back after.
+    var wd = doc(), wEl = surf.wheelEl, wCtx = surf.wheelCtx
+    if (!wCtx && wd && wd.createElement) {
+      surf.wheelEl = wd.createElement('canvas'); surf.wheelCtx = ctxOf(surf.wheelEl)
+    }
+    if (surf.wheelCtx) {
+      var wasWheel = { key: wheelMemo.key, data: wheelMemo.data, el: wheelMemo.el }
+      var wph = [0.1, 0.4, 0.7], wms = [1, 2, 3]
+      wheelMemo.key = ''
+      drawWheel(wph, wms)
+      var ow = ownCost.w
+      drawWheel(wph, wms)
+      ok(ownCost.w === ow, 'wheel: an unchanged wheel was drawn twice')
+      wph[1] = 0.45
+      drawWheel(wph, wms)
+      ok(ownCost.w !== ow, 'wheel: a dot moved and the wheel was not redrawn')
+      wheelMemo.key = wasWheel.key; wheelMemo.data = wasWheel.data; wheelMemo.el = wasWheel.el
+    }
+    surf.wheelEl = wEl; surf.wheelCtx = wCtx
 
     // 8 · the transitions. Every `motion` step log.js can emit is either owned here or is DOM, and
     // the durations this module reports have to agree with the clock 09 §4 and §5 authored — a
