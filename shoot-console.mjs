@@ -31,7 +31,8 @@ const server = createServer((q, r) => {
 const port = server.address().port
 
 const PHONE = { width: 390, height: 844 }
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+// HY_CHROME points at a local Chromium when the sandbox path is absent (e.g. Windows).
+const EXE = process.env.HY_CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
 const MOMENTS = [
   { name: '1-first-touch', sec: 0 },
   { name: '2-six-min', sec: 360 },

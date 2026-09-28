@@ -33,7 +33,7 @@ const server = createServer((q, r) => {
 const port = server.address().port
 
 const browser = await chromium.launch({
-  executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+  executablePath: process.env.HY_CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   args: ['--no-proxy-server'],
 })
 const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })

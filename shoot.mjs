@@ -29,7 +29,8 @@ const ROOT = dirname(fileURLToPath(import.meta.url))
 const OUT = resolve(process.argv[2] || join(ROOT, 'shots'))
 mkdirSync(OUT, { recursive: true })
 
-const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+// HY_CHROME points at a local Chromium when the sandbox path is absent (e.g. Windows).
+const EXE = process.env.HY_CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
 
 // Serve the whole dist directory, not just the document: the page registers
 // dist/sw.js and links dist/manifest.webmanifest, and a server that answered
