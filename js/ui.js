@@ -978,6 +978,8 @@
     if (n.__m.__t !== value) {
       n.__m.__t = value
       n.__m.textContent = value
+      // A plain write ends a pair (the ledger rows are reused across acts).
+      if (n.__of) { n.__of = null; setData(n, 'pair', '0') }
     }
     unit = unit || ''
     if (n.__u.__t === unit) return
@@ -1012,6 +1014,27 @@
     }
     setFine(n, p[1])
     setSlot(n, p[0], mass ? p[2] : scaleUnit(p[2], unit))
+  }
+
+  // A capped pair whose denominator is set apart (`.of`) so the numerator can carry the row. The
+  // mantissa's text is still the whole `n / k` — the boundary is stated here, by the caller, and
+  // innerText reads the pair exactly as setSlot would have written it.
+  function setPair (n, held, cap, unit) {
+    var t = held + ' / ' + cap
+    if (n.__m.__t !== t || !n.__of || n.__of.parentNode !== n.__m) {
+      n.__m.__t = t
+      if (!n.__of || n.__of.parentNode !== n.__m) {
+        n.__m.textContent = ''
+        n.__held = document.createTextNode('')
+        n.__of = el('span', 'of')
+        n.__m.appendChild(n.__held)
+        n.__m.appendChild(n.__of)
+      }
+      n.__held.data = held
+      n.__of.textContent = ' / ' + cap
+    }
+    setData(n, 'pair', '1')
+    setSlot(n, t, unit)
   }
 
   function setMass (n, g) {
@@ -2701,6 +2724,10 @@
       r.pool.appendChild(el('span', 'ledger-lab', STR.labile))
       r.poolVal = slot('row-num')
       r.pool.appendChild(r.poolVal)
+      // An empty rate slot: it holds LABILE's value in the value column above and below it.
+      var spacer = el('span', 'ledger-rate num')
+      setAttr(spacer, 'aria-hidden', 'true')
+      r.pool.appendChild(spacer)
       r.el.parentNode.insertBefore(r.pool, r.el.nextSibling)
     }
     show(r.pool, true)
@@ -2894,7 +2921,7 @@
       // same row height as the tight form at 320, 360, 390 and 430 px. It bought nothing and cost
       // the player a second reading of `593/2.41 k`.
       setFine(r1.val, '')
-      setSlot(r1.val, C().fmt(held) + ' / ' + C().fmt(cap), SUG)
+      setPair(r1.val, C().fmt(held), C().fmt(cap), SUG)
       setRate(r1.rate, rateOf(v, 'sugar'), SUG)
       show(r1.cap, true)
       var f = cap > 0 ? held / cap : 0
