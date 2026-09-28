@@ -1687,15 +1687,32 @@
 
     // The map owns the whole surface for this pass, so the append-only contract is suspended and
     // the structural layer is redrawn beneath it at the alpha of 06 §7.6.
-    ctx.save()
     ctx.clearRect(0, 0, surf.W, surf.H)
-    // Under the hexes it is the same organism, in the same ink and at the same weight it has
-    // earned — at 12% of it. The age bins are not run here: at this alpha they are invisible and
-    // this pass is a full restroke at 4 Hz rather than an append.
+    strokeUnderlay(ctx, 1)
+
+    var n = regions.q.length
+    for (var j = 0; j < n; j++) {
+      var c = hexCentre(j, regions)
+      if (!c) continue
+      ctx.save()
+      ctx.translate(c.x, c.y)
+      paintHex(ctx, regions, j, 1)
+      ctx.restore()
+    }
+    own(nowMs() - t0)
+  }
+
+  // The Act I network, restroked whole beneath a later act's plate. It is the same organism, in the
+  // same ink and at the same weight it earned — at 12% of it, under the hexes and under the void
+  // alike. The age bins are not run here: at this alpha they are invisible, and this is a full
+  // restroke at the plate's own rate rather than an append. `mul` scales it with a fade.
+  function strokeUnderlay (ctx, mul) {
+    if (!net || !(mul > 0)) return
     readForm(false)
     var cordW = 1 + FORM.CORD_W * form.cord
     var gspan = 1 + (FORM.CORD_GEN - 1) * form.cord
-    ctx.globalAlpha = MAP.NET_ALPHA
+    ctx.save()
+    ctx.globalAlpha = MAP.NET_ALPHA * mul
     ctx.strokeStyle = rgba(formStroke(), 1)
     ctx.lineCap = 'round'
     for (var b = 0; b < 3; b++) {
@@ -1711,17 +1728,6 @@
     }
     ctx.restore()
     net.drawn = net.n
-
-    var n = regions.q.length
-    for (var j = 0; j < n; j++) {
-      var c = hexCentre(j, regions)
-      if (!c) continue
-      ctx.save()
-      ctx.translate(c.x, c.y)
-      paintHex(ctx, regions, j, 1)
-      ctx.restore()
-    }
-    own(nowMs() - t0)
   }
 
   // One region's face, drawn at the origin: terrain fill, state stroke, any barrier edges, any
@@ -1808,6 +1814,10 @@
     var t0 = nowMs()
     refreshPalette(false)
     ctx.clearRect(0, 0, surf.W, surf.H)
+    // The void is sky over the ground the colony grew in: the Act I network stays under it, as it
+    // stayed under the hexes, and the rings are drawn over it.
+    if (!net) ensureNet()
+    strokeUnderlay(ctx, 1)
     var cx = surf.W / 2, cy = surf.H / 2
     var nb = Math.min(bands.e.length, C() ? C().TUNE.A3.BANDS : 13)
     var fit = Math.min(surf.W, surf.H) / VOID.SIZE
@@ -2099,6 +2109,9 @@
     var cx = surf.W / 2, cy = surf.H / 2
     var b, r
     coverPlate(ctx, pal.bg, 1)
+    // The lift took the plate to bare background; the old network comes back with the void, on
+    // the same fade, so the live plate that follows does not pop it in at the end.
+    strokeUnderlay(ctx, u)
     ctx.save()
     ctx.lineCap = 'butt'
     for (b = 0; b <= rings; b++) {
