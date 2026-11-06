@@ -184,7 +184,13 @@ async function measure (kind, b64, reduce) {
     const dataPx = diff(before, snap())
     before = snap()
     const root = document.documentElement
-    root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light'
+    // Flip away from the theme actually on screen. The game writes data-theme="auto", which is the
+    // browser's own scheme; a browser that defaults to light would otherwise be "flipped"
+    // auto→light, a change that changes nothing.
+    const set = root.dataset.theme
+    const cur = set === 'light' || set === 'dark' ? set
+      : (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark')
+    root.dataset.theme = cur === 'light' ? 'dark' : 'light'
     await wait(600)
     const themePx = diff(before, snap())
 
