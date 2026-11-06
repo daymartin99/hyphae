@@ -3062,16 +3062,20 @@
     setAttr(v.endbar, 'aria-label', pick.title + ', ' + STR.endTake)
   }
 
-  // With a live verb pinned in the bottom band (SETTLE), the FAB docks beside it on the same row
-  // rather than being given a ~96 px lane of its own under the panels: measured, so the two share a
-  // centre line, while the hero narrows to sit centred between the edge and the button. Without
-  // one it floats over the list, and the list pads its end so the last card scrolls clear.
-  function dockFab (v, dock) {
-    if (dock) setData(v.shell, 'dock', '1')
+  // With a live control pinned in the bottom band (SETTLE, or the ending's hold bar), the FAB docks
+  // beside it on the same row rather than taking a ~96 px lane of its own under the panels:
+  // measured, so the two share a centre line, while the partner narrows to sit centred between the
+  // edge and the button. With nothing to dock beside, the lane comes back: a button floating over
+  // the list sat on live numbers (a band's surplus, the retention slider's end).
+  function dockFab (v, on) {
+    var to = null
+    if (on && !v.hero.hidden && v.hero.parentNode === v.scroll) to = 'hero'
+    else if (on && !v.endbar.hidden) to = 'endbar'
+    if (to) setData(v.shell, 'dock', to)
     else if (v.shell.dataset.dock) delete v.shell.dataset.dock
     var b = null
-    if (dock) {
-      var hr = v.hero.getBoundingClientRect()
+    if (to) {
+      var hr = (to === 'hero' ? v.hero : v.endbar).getBoundingClientRect()
       var sr = v.shell.getBoundingClientRect()
       if (hr.height > 0) b = Math.round(sr.bottom - hr.bottom + (hr.height - U.FAB_PX) / 2)
     }
@@ -3089,7 +3093,7 @@
     // The stack owes the FAB its own height at the end of the scroll, and only while it is there.
     if (on) setData(v.shell, 'fab', '1')
     else delete v.shell.dataset.fab
-    dockFab(v, on && !v.hero.hidden && v.hero.parentNode === v.scroll)
+    dockFab(v, on)
     if (!on) return
     var cd = num(s.cog.pulseCd)
     var max = g.pulseCooldown ? num(g.pulseCooldown(s)) : 0
