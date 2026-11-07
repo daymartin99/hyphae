@@ -298,7 +298,7 @@ Every constant that a balance pass is permitted to move. Everything else is stru
 | K22 | `SUB_K` | 9.00e5 g/s | III | +19 | A/S ≥ 20 |
 | K23 | `REP_K` | 0.0250 /s | III | −24 | — |
 | K24 | `GEN_TAX`, `GEN_EXP` | 0.085, 1.15 | III | +16 | §4.6 |
-| K25 | `BLOOM_X` | 9.00e34 g | III | +23 | — |
+| K25 | `BLOOM_X` | 1.00e33 g (was 9.00e34; 10 Phase 6) | III | +23 | — |
 | K26 | `OFFLINE_CAP` | 43,200 s | all | 0 | §10 |
 | K27 | `OFFLINE_INSIGHT_CAP_S` | 5,400 s | II/III | +8 | §10.4 |
 | K28 | `SPORE_DIVISOR` | 2.70e2 | II→III | 0 | S7 |
@@ -770,8 +770,10 @@ PROP_K     = 1.80   ⇒ landed fraction = 1/(1+1.80) = 0.357
 ```
 
 Transit is the only pure time cost in the game that cannot be bought down below a floor
-(`tSpe` reduces τ by at most 62%). Band 10→11 at `τ = 1,340 s` is the longest single wait in
-HYPHAE: **22 min 20 s**. §9 window W9 governs it.
+(`tSpe` reduces τ by at most 62%). Band 10→11 at `τ = 838 s` is the longest single wait in
+HYPHAE: **13 min 58 s**. §9 window W9 governs it. (Re-tuned at docs/design/10 Phase 6:
+`TAU_GROWTH` 1.35 → 1.25, from 1,340 s. Measured at a human pace, the thirteenth band and the
+carbon row were the void's two dead waits; together they made Act III ~3.8 h of a 9 h run.)
 
 ### 4.8 The strategic layer — channels, pacts, ACCORD
 

@@ -400,7 +400,9 @@
       LAG_K: 0.024,             // s per ly, pulse light-lag coefficient
       LAG_T: 0.00220,           // s per ly, transit lag coefficient
       TAU0: 90,                 // s, band 0 → 1 transit
-      TAU_GROWTH: 1.350,        // × per band; band 10→11 is 1,340 s, the longest wait in HYPHAE
+      // × per band; band 10→11 is 838 s, the longest wait in HYPHAE. Was 1.350 (1,340 s): docs/design/10
+      // Phase 6 measured the void's thirteenth band as one of its two dead waits at a human pace.
+      TAU_GROWTH: 1.250,
       PROP_K: 1.80,             // dimensionless: landed fraction = 1/(1+this) = 0.357
       MAXLAUNCH: 0.020,         // fraction of a band's fleet launchable per second
       // the core loop
@@ -489,7 +491,10 @@
       // endings (BIBLE §5.4)
       BLOOM_Y: 0.80,            // ϒ required by ENDING A
       BODY_Y: 0.97,             // ϒ required by ENDING B
-      BLOOM_X: 9.00e34,         // g carbon, ENDING A (K25)
+      // g carbon, ENDING A (K25). Was 9.00e34: measured at a human pace (10 Phase 6) the last 1.5 h of
+      // the void were carbon alone, every other condition long met. At 1e33 the five finish within
+      // twenty minutes of each other and Act III runs ~2.7 h rather than ~3.8 h. ENDING B is untouched.
+      BLOOM_X: 1.00e33,
       // ENDING B's carbon row was derived in `03` §20 as "~86% of all carbon",
       // but the thirteen shipped X0_b sum to 1.042e36, which makes 1.60e35 only
       // 15.4% of the stock — and the constraint is throughput, not stock. A

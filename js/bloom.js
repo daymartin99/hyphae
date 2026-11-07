@@ -1195,7 +1195,7 @@
   }
 
   // One launch record per band per tick is twenty records a second per leg, and a leg is up to
-  // 1,340 s long (`TAU_GROWTH^10`), so a fully-dispersing void carries tens of thousands of live
+  // 838 s long (`TAU_GROWTH^10`; 1,340 s before 10 Phase 6), so a fully-dispersing void carries tens of thousands of live
   // records. Measured, the void reached 30,979 of them: `a3.transit` serialised to 2.16 MB of a
   // 2.18 MB save — the whole rest of Act III is 20 KB — which is past what localStorage will take,
   // and iterating it twenty times a second is most of the act's frame cost.
