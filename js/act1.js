@@ -1881,7 +1881,7 @@
   HY.act1 = {
     floorState: floorState,
     // BIBLE §6 M6
-    onExtend: onExtend,
+    onExtend: HY.core.flowed('touch', onExtend),
     tipCost: tipCost,
     tipMineralCost: tipMineralCost,
     buyTip: buyTip,

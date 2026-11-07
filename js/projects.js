@@ -3021,7 +3021,7 @@
     CATALOG: CATALOG,
     manageProjects: manageProjects,
     reveal: reveal,
-    purchase: purchase,
+    purchase: HY.core.flowed('spent', purchase),
     affordRatio: affordRatio,
     visible: visible,
     isBought: isBought,

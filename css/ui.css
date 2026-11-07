@@ -1769,3 +1769,42 @@ canvas{ display:block; }
 }
 .shell[data-ui="d"][data-slide="1"] .plate-toggle{ top:calc(var(--sp-8) + env(safe-area-inset-top)); }
 .shell[data-ui="d"][data-slide="1"] .plate-toggle svg{ transform:none; }
+
+/* ── Phase 2 · NEXT, the accounts, the voice in full ── */
+/* NEXT is smaller and plainer than the voice so it never competes with it (10 D9). An empty
+   NEXT keeps its slot (rule 8) and simply says nothing. */
+.shell[data-ui="d"] .next{ font-size:.875rem; font-style:normal; font-family:var(--font-ui);
+  color:var(--ink-3); }
+.shell[data-ui="d"] .next:not([data-empty="1"])::before{ content:"next"; margin-inline-end:var(--sp-12);
+  font-family:var(--f-serif); font-style:italic; color:var(--next-ink); }
+/* A figure that opens an account says so the one way the grammar allows: a dotted underline. */
+.shell[data-ui="d"] .ledger-row:is([data-key="biomass"],[data-key="sugar"],[data-key="net"],[data-key="minerals"]){ cursor:pointer; }
+.shell[data-ui="d"] .ledger-row:is([data-key="biomass"],[data-key="sugar"],[data-key="net"],[data-key="minerals"]) .ledger-val{
+  text-decoration:underline dotted var(--ink-3); text-underline-offset:.28em; }
+.shell[data-ui="d"] .console{ cursor:pointer; }
+.acct-head{ margin-top:var(--sp-16); padding-bottom:var(--sp-4); border-bottom:1px solid var(--line-soft);
+  font-family:var(--f-serif, Georgia, serif); font-style:italic; color:var(--text-tertiary); }
+.acct-row{ display:flex; justify-content:space-between; gap:var(--sp-12); min-height:2rem;
+  align-items:center; border-bottom:1px dotted var(--line-soft); }
+.acct-lab{ color:var(--text-body); }
+.acct-v{ font-family:var(--font-mono); font-size:.875rem; color:var(--text-primary); }
+.acct-net{ border-bottom:0; border-top:1px solid var(--line); margin-top:var(--sp-8); }
+.acct-net .acct-lab{ color:var(--text-primary); }
+.logring--voice .logline{ font-family:var(--font-mono); font-size:var(--con-size); line-height:var(--con-row);
+  color:var(--text-console); margin:0 0 var(--sp-6); }
+
+/* ── Act I's three words: the same slot as Act II's tab bar, words instead of glyphs ── */
+.dnav{ display:none; }
+.shell[data-ui="d"] .dnav:not([hidden]){
+  flex:0 0 auto; z-index:55; display:flex; justify-content:space-around;
+  width:100%; max-width:var(--col-max); margin:0 auto;
+  height:calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom:env(safe-area-inset-bottom);
+  background:var(--bg); border-top:1px solid var(--line-soft);
+}
+.dnav-tab{ flex:1 1 0; min-height:var(--tabbar-h); background:none; border:0; color:var(--text-tertiary);
+  font-family:var(--f-serif); font-size:1.0625rem; font-style:italic; position:relative; }
+.dnav-tab[aria-selected="true"]{ color:var(--text-max); font-style:normal; }
+.dnav-tab[aria-selected="true"]::after{ content:""; position:absolute; left:30%; right:30%; bottom:10px;
+  height:1px; background:var(--text-max); }
+.shell[data-dnav="1"]{ --tail-safe:0px; }

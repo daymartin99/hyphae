@@ -84,6 +84,13 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
   DECIDE as the endbar hold.
 - Paper and ink material, light by default and soil in dark.
 
+**Phase 2 as built (Nov 2026):**
+- **Accounts.** These are core `flowAs`/`flowed`: every write to sugar, minerals or biomass is filed under the loop step or player verb that made it, so the account and the stock are the same write. Tapping a ledger figure opens its account, live: comes from, goes to, net, and one factual why line.
+- **NEXT.** It covers DECIDE, then the nearest affordable item, then the nearest shortfall with its real blocker, the tip included and priced in full. It gives an ETA at the stock's net rate. Touching it jumps to its tab.
+- **The voice in full.** Touching the voice opens its whole record in every act.
+- **Grow / learn / bargain.** These are Act I's tabs, in the same bottom slot as Act II's bar. A tab arrives with its first panel.
+- **Carried forward to the act shells:** rebuilding each card on the five-part grammar (locked + why), and Act I's paper and ink material. Both are a restyle of builders that Phase 3 will also touch, so they are done once, act by act.
+
 ### Phase 3 — Act II in D (L)
 - The mind reading: packets run along the edges and Σ is light on the body.
 - Stands open as sheets by touching the body or from the compact list. Pacts are partner nodes on the rim.

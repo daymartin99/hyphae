@@ -856,8 +856,43 @@
       v = o[k]
       if (typeof v !== 'number' || !isFinite(v)) v = 0
     }
+    var was = o[k]
     o[k] = v < 0 ? 0 : (v > max ? max : v)
+    if (FLOW_KEYS[k] && HY.state && HY.state.state && o === HY.state.state.res) {
+      var d = o[k] - (typeof was === 'number' ? was : 0)
+      if (d) {
+        var acc = flows[k] || (flows[k] = {})
+        acc[flowTag] = (acc[flowTag] || 0) + d
+      }
+    }
     return o[k]
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // FLOWS — where a stock's grams came from and went (docs/design/10 Phase 2, the ledger accounts)
+  //
+  // Every write to a player stock already comes through setStock, so the accounts are kept here
+  // and nowhere else: the change is filed under whichever step of the tick is running, named by
+  // flowAs() around that step. Nothing estimates a flow and nothing can drift from the stock it
+  // explains, because they are the same write. Cumulative grams per tag, never saved; ui.js turns
+  // them into rates by sampling. A write outside any named step is 'other', and that is honest too.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  var FLOW_KEYS = { sugar: 1, minerals: 1, biomass: 1 }
+  function num0 (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
+  var flows = {}
+  var flowTag = 'other'
+
+  function flowAs (tag, fn, a, b, c) {
+    var was = flowTag
+    flowTag = tag
+    try { return fn(a, b, c) } finally { flowTag = was }
+  }
+
+  // The same, as a function that can stand in for `fn` in an export table: a player's own verb is
+  // filed under the verb, wherever it is called from.
+  function flowed (tag, fn) {
+    return function (a, b, c) { return flowAs(tag, fn, a, b, c) }
   }
 
   function smoothstep (a, b, x) {
@@ -876,6 +911,22 @@
       if (got !== want) f.push(label + ': got "' + got + '" want "' + want + '"')
     }
     function ok (cond, label) { if (!cond) f.push(label) }
+
+    // FLOWS: a write to the live stocks inside flowAs is filed under its tag, the tag is restored
+    // after (even past a throw), and a write to any other object is not counted at all.
+    if (HY.state && HY.state.state && HY.state.state.res) {
+      var live = HY.state.state.res, keepSug = live.sugar
+      var before = (flows.sugar && flows.sugar.__test) || 0
+      flowAs('__test', function () { setStock(live, 'sugar', num0(live.sugar) + 5) })
+      ok(Math.abs(((flows.sugar && flows.sugar.__test) || 0) - before - 5) < 1e-9, 'flows: a tagged write was not filed')
+      try { flowAs('__throw', function () { throw new Error('x') }) } catch (e) { /* expected */ }
+      ok(flowTag === 'other', 'flows: a throw left its tag behind')
+      var other = { sugar: 1 }
+      flowAs('__test2', function () { setStock(other, 'sugar', 9) })
+      ok(!(flows.sugar && flows.sugar.__test2), 'flows: a write to a non-stock object was counted')
+      live.sugar = keepSug
+      if (flows.sugar) { delete flows.sugar.__test; delete flows.sugar.__test2 }
+    }
 
     // fmt across ~30 representative magnitudes, every suffix step, both signs, and the edges.
     var cases = [
@@ -1021,6 +1072,10 @@
     hash32: hash32,
     clamp: clamp,
     setStock: setStock,
+    flowAs: flowAs,
+    flowed: flowed,
+    // Cumulative grams per tag, per stock: { sugar: { eaten: 412.3, food: -380.1, ... } }.
+    flows: function () { return flows },
     smoothstep: smoothstep,
     faults: faults,          // §2.4's silent-clamp counter; rides along in the save
     __selftest: __selftest

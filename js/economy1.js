@@ -2606,17 +2606,18 @@
   HY.economy1 = {
     // BIBLE §6 M7's surface
     stepMarket: stepMarket,
-    buy: buy,
-    sell: sell,
+    // The player's own verbs are filed under the verb (core flowed): the ledger's accounts.
+    buy: HY.core.flowed('bought', buy),
+    sell: HY.core.flowed('sold', sell),
     fairValue: fairValue,
     priceHistory: priceHistory,
     stepTrees: stepTrees,
     carbonDeficit: carbonDeficit,
     offer: offer,
     accepts: accepts,
-    signContract: signContract,
-    renegotiate: renegotiate,
-    exitContract: exitContract,
+    signContract: HY.core.flowed('contracts', signContract),
+    renegotiate: HY.core.flowed('contracts', renegotiate),
+    exitContract: HY.core.flowed('exit fees', exitContract),
     deliverContracts: deliverContracts,
     stepMineralExchange: stepMineralExchange,
 
@@ -2662,7 +2663,7 @@
     matFall: matFall,
     balanceSheet: balanceSheet,
     mineralPrice: mineralPrice,
-    tradeMinerals: tradeMinerals,
+    tradeMinerals: HY.core.flowed('traded', tradeMinerals),
     spawnTree: spawnTree,
 
     __selftest: __selftest
