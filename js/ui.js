@@ -4931,12 +4931,20 @@
         // *band*, which is what `card.band` carries. Saying "unsurveyed" over a stand you are
         // standing in was simply wrong.
         setText(terr, c.terrain ? (c.terrain + ' · ' + c.species) : STR.fog)
-        setText(note, c.necrotized ? STR.dead : (c.advancing ? STR.colonising : ''))
+        // Unclaimed ground with a price names the price: the bare mass in the number slot read as
+        // something the stand already held.
+        var front = !c.claimed && !c.advancing && !!c.advance
+        setText(note, c.necrotized ? STR.dead
+          : (c.advancing ? STR.colonising : (front ? STR.advance : '')))
         // One figure per row, and it is the one the row is asking a question about: what the next
         // step costs while there is one, and the stand's standing when there is not.
         if (c.density) setMass(state, c.density.cost)
         else if (!c.claimed && c.advance) setMass(state, c.advance.cost)
         else setSlot(state, c.claimed ? STR.standing : STR.fog, '')
+        // Two empty bars on ground nobody has started read as work already under way. Colonising
+        // means something once an advance has begun; density, once the stand is held.
+        show(colLab.parentNode, !!c.claimed || !!c.advancing)
+        show(dLab.parentNode, !!c.claimed)
         col.set(c.col, '', STR.colonising + ' ' + pct(c.col))
         dens.set(c.d, '', STR.density + ' ' + pct(c.d))
         setMass(litterVal, c.L)
