@@ -25,3 +25,12 @@ For the human bot, NEXT read "autolysis is within reach" from minute 39 to minut
 3. **Minerals gate every patch.** The casual bot spends 15–40 minutes short of minerals on each one.
 
 These are the questions for the agent bounce-off test. The data shows where players stall. The agents have to say why they quit.
+
+## Fix 2: failure costs, the cost is known, and the lock is time (David)
+In the casual run, two terms default at minute 67 and regard drops from 48 to 4. Nine defaults followed and only the first was spoken; then the player sat at 24 tips with nothing saying why. The lock was always time-bound: a failed tree refuses for 2 seasons, and regard rebuilds with each term met. But it was silent, so it read as a soft lock. The watcher now keeps count:
+- On the first default: "you did not deliver. it will not say so to you. it will say so to them." (as before)
+- On the next: "you promised more than you are." This names the cause and not the fix.
+- While regard is gone: "they have stopped asking what you are. they know."
+- When a failed tree's refusal ends: "the one you failed will speak to you again. it has not forgotten." This is said only for a tree the player failed, never after a frost.
+
+Heard in the casual run at minutes 67, 69, 79, 91, 103, 125 and 137. The corpus grows to 166 lines.
