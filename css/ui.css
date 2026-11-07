@@ -1695,10 +1695,11 @@ canvas{ display:block; }
   --danger:var(--negative-text); --locked:var(--text-locked);
   /* 10 D3: no webfont. ui-serif is New York on Apple platforms, which is the look anyway. */
   --f-serif:ui-serif, "New York", Georgia, "Times New Roman", serif;
-  --d-next-h:3.5rem;
-  /* The voice is the driver (10 D9): three rows, never fewer, with the newest the brightest.
-     The body and the voice are the two things the screen is for; everything else yields first. */
-  --con-rows:3;
+  --d-next-h:2rem;
+  /* The voice is the driver (10 D9): six rows, the room the shipped shell gives it (145 px at the
+     default size). A/B round 1 measured the redesign at three and a half rows plus a 56 px NEXT,
+     and the voice was the one score the redesign lost (4.0 -> 2.6). Never squeezed again. */
+  --con-rows:6;
 }
 /* Act I reads the body as ink, Act II as a mind lit by signal, Act III through glass. */
 .shell[data-ui="d"][data-stage="2"]{ --body:var(--signal-fill); }
@@ -1780,8 +1781,12 @@ canvas{ display:block; }
 /* ── Phase 2 · NEXT, the accounts, the voice in full ── */
 /* NEXT is smaller and plainer than the voice so it never competes with it (10 D9). An empty
    NEXT keeps its slot (rule 8) and simply says nothing. */
-.shell[data-ui="d"] .next{ font-size:.875rem; font-style:normal; font-family:var(--font-ui);
-  color:var(--ink-3); }
+.shell[data-ui="d"] .next{ font-size:.8125rem; font-style:normal; font-family:var(--font-ui);
+  color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  transition:opacity var(--d-fade) linear; }
+/* The voice helps at times and is critical at times (David). When it turns to whoever is holding
+   the phone, the body goes still (canvas `still`), and the helpful line steps back with it. */
+.shell[data-ui="d"][data-still="1"] .next{ opacity:.22; }
 .shell[data-ui="d"] .next:not([data-empty="1"])::before{ content:"next"; margin-inline-end:var(--sp-12);
   font-family:var(--f-serif); font-style:italic; color:var(--next-ink); }
 /* A figure that opens an account says so the one way the grammar allows: a dotted underline. */
