@@ -281,6 +281,14 @@
   L(1, 'a1.boot', 'narrative', null, '@boot',
     'the forest floor is warm', { opening: 1 })
 
+  // A player who waits to be shown is shown nothing: untouched, Act I does not move at all. The
+  // dead-spot pass's casual run took eight minutes to its first tip. The watcher notices the
+  // stillness and says only whose it is.
+  L(1, 'a1.waiting', 'narrative', null, 'taps == 0 && t > 20',
+    'it is waiting for you.',
+    // preOpening: the opening five wait on taps, so a player who never taps would never hear it.
+    { preOpening: true, pred: function (s) { return num(s.stats.taps) === 0 && num(s.t) > 20 } })
+
   L(1, 'a1.first_tap', 'narrative', null, '@extend && taps == 1',
     'something under you is already dead',
     { opening: 2, guard: function (s) { return s.stats.taps >= 1 } })
@@ -1495,7 +1503,7 @@
     // merely deferred behind them — they are refused, because every predicate in this module is
     // level-triggered and will offer the same line again a second later, and a queue held open
     // for fourteen seconds would spend its four slots on news that is already stale.
-    if (s.log.openingLines < 5 && !entry.opening) return false
+    if (s.log.openingLines < 5 && !entry.opening && !entry.preOpening) return false
 
     var i
     for (i = 0; i < queue.length; i++) if (queue[i].entry.id === entry.id) return false
@@ -1587,7 +1595,7 @@
     var best = -1, bp = -1
     for (i = 0; i < queue.length; i++) {
       var e = queue[i].entry
-      if (opening && e.opening !== s.log.openingLines + 1) continue
+      if (opening && e.opening !== s.log.openingLines + 1 && !e.preOpening) continue
       if (over && e.priority <= 1) continue
       if (e.priority > bp) { bp = e.priority; best = i }
     }
@@ -3282,8 +3290,9 @@
     // corpus was transcribed, `a2.brim` says the saturation rule the Insight strip turns on,
     // `a3.unlearn` is the receipt for the D the Act III break hands back, and `a3.revive` is the
     // canopy's seed coming back from zero craft. `a1.default_again`, `a1.default_known` and
-    // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends (ab/deadspot-1). Each is counted, not excused.
-    ok(LINES.length === 166, 'corpus is ' + LINES.length + ' entries, expected 166')
+    // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends, and
+    // `a1.waiting` notices a player who has not touched anything (ab/deadspot-1). Each is counted, not excused.
+    ok(LINES.length === 167, 'corpus is ' + LINES.length + ' entries, expected 167')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3291,7 +3300,7 @@
     }
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
-    ok(counts.a1 === 51, 'act I lines: ' + counts.a1)
+    ok(counts.a1 === 52, 'act I lines: ' + counts.a1)
     ok(counts.a2 === 40, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 27, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)

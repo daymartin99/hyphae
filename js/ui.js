@@ -2197,7 +2197,7 @@
     if (s.act === 1 && pj.isBought('action_potential')) {
       var sr = accountRows('signal').net
       var sGap = num(T().A1.DECIDE_SIGNAL) - num(s.res.signal)
-      if (sGap > 0) return sr > 0 && C().fmtTime ? interp(STR.nextGather, { t: C().fmtTime(sGap / sr) }) : STR.nextGatherNo
+      if (sGap > 0) return sr > 0 && sGap / sr < 86400 && C().fmtTime ? interp(STR.nextGather, { t: C().fmtTime(sGap / sr) }) : STR.nextGatherNo
     }
     if (s.act === 2) {
       // What is being lost first, then what is being offered, then what is owed and unspent.
@@ -2288,7 +2288,9 @@
     var stockKey = CUR_STOCK[worst] || null
     var unit = worst === 'g' ? C().fmtMass(short) : C().fmt(short) + ' ' + (GLYPH[stockKey] || worst)
     var rate = stockKey ? accountRows(stockKey).net : 0
-    if (rate > 0 && C().fmtTime) return interp(STR.nextShortEta, { name: best.name, n: unit, t: C().fmtTime(short / rate) })
+    // An ETA is only worth saying while it means something. A trickle in the first minute gave
+    // "about 80029685746229280d", which is a number, not a time; past a day the shortfall stands alone.
+    if (rate > 0 && short / rate < 86400 && C().fmtTime) return interp(STR.nextShortEta, { name: best.name, n: unit, t: C().fmtTime(short / rate) })
     if (worst === 'min' && s.act === 1) {
       var e1 = HY.economy1, open = !!(e1 && e1.treesOpen && e1.treesOpen())
       if (open) nextGroup = 'bargain'

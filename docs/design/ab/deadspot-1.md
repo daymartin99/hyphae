@@ -34,3 +34,7 @@ In the casual run, two terms default at minute 67 and regard drops from 48 to 4.
 - When a failed tree's refusal ends: "the one you failed will speak to you again. it has not forgotten." This is said only for a tree the player failed, never after a frost.
 
 Heard in the casual run at minutes 67, 69, 79, 91, 103, 125 and 137. The corpus grows to 166 lines.
+
+## Fix 3: the opening
+- **The silent screen.** Left untouched, Act I does not move: the screen sits at 0.00 g and the voice says one line. Its opening five lines wait on taps, and nothing else could speak before them. So a player who waits to be shown heard nothing at all. New line at 20 s, only while nothing has been touched: "it is waiting for you." It is exempt from the opening gate (`preOpening`). The opening five still play in order afterwards.
+- **A broken NEXT time.** A trickle of income in the first minute made NEXT read "about 80029685746229280d". Times over a day are now dropped, and the shortfall stands alone.
