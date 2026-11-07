@@ -2579,7 +2579,11 @@
       fleet: flagOn(s, 'translocation'),
       lineages: strains.length > 0 || !!(s.a3 && s.a3.succ),
       wheel: flagOn(s, 'circadian_entrainment'),
-      endings: flagOn(s, 'circadian_entrainment') || !!end ||
+      // From the first frame of the void: the endings are what the act is FOR, and a board that
+      // appeared only once one was nearly in reach (or only with entrainment) left the player
+      // playing ninety minutes toward conditions nobody had shown them. Every card renders greyed,
+      // with its rows of what you have against what it wants.
+      endings: voidPhase || flagOn(s, 'circadian_entrainment') || !!end ||
         !!(fin && fin.conditions && unmetCount(fin.conditions('ENCYST', s)) === 0),
       pulse: voidPhase || flagOn(s, 'action_potential_ii'),
       dismantle: closed,
