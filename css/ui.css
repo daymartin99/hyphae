@@ -945,6 +945,12 @@ canvas{ display:block; }
 .row-line>.row-actions{ flex:1 1 100%; width:100%; }
 .summary{ margin-top:var(--sp-12); }
 .pool-list,.sub-list{ display:block; }
+/* The STANDS list's "show all n" / "show fewer": a quiet text control under the rows, full-width so
+   the thumb finds it, styled as a label rather than a verb. */
+.more-btn{ display:block; width:100%; min-height:var(--tap); margin-top:var(--sp-4);
+           font:var(--t-label); letter-spacing:.10em; text-transform:uppercase;
+           color:var(--text-secondary); text-align:center; }
+.more-btn[data-press="1"]{ color:var(--text-primary); }
 
 .act-btn{
   padding-inline:var(--sp-6); white-space:nowrap;
