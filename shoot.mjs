@@ -86,7 +86,7 @@ const runCtx = await browser.newContext({ viewport: PHONE, hasTouch: true, isMob
 const runPage = await runCtx.newPage()
 runPage.on('pageerror', (e) => errors.push(`play: ${e.message}`))
 runPage.on('console', (m) => { if (m.type() === 'error') errors.push(`play: console ${m.text()}`) })
-await runPage.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load' })
+await runPage.goto(`http://127.0.0.1:${port}/${process.env.HY_UI ? '?ui=' + process.env.HY_UI : ''}`, { waitUntil: 'load' })
 await runPage.waitForTimeout(1200)
 
 const saves = await runPage.evaluate(({ states, stepS, maxS }) => {
@@ -134,7 +134,7 @@ for (const theme of ['dark', 'light']) {
       const page = await ctx.newPage()
       page.on('pageerror', (e) => errors.push(`${shot.name}/${viewName}/${theme}: ${e.message}`))
       page.on('console', (m) => { if (m.type() === 'error') errors.push(`${shot.name}/${viewName}/${theme}: console ${m.text()}`) })
-      await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'load' })
+      await page.goto(`http://127.0.0.1:${port}/${process.env.HY_UI ? '?ui=' + process.env.HY_UI : ''}`, { waitUntil: 'load' })
       await page.waitForTimeout(1000)
       const loaded = await page.evaluate((b) => !!window.HY.state.importB64(b), shot.b64)
       if (!loaded) errors.push(`${shot.name}/${viewName}/${theme}: save did not import`)

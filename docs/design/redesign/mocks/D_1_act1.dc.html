@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Act I, organic</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#E4E0D1}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
+button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
+@keyframes d-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
+@keyframes d-bumpA{0%{transform:scale(1)}30%{transform:scale(1.03)}100%{transform:scale(1)}}
+@keyframes d-bumpB{0%{transform:scale(1)}30%{transform:scale(1.03)}100%{transform:scale(1)}}
+@keyframes d-ringA{0%{transform:scale(.25);opacity:.9}100%{transform:scale(4.2);opacity:0}}
+@keyframes d-ringB{0%{transform:scale(.25);opacity:.9}100%{transform:scale(4.2);opacity:0}}
+@keyframes d-grow{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+@keyframes d-wave{0%{stroke-dashoffset:24}16%{stroke-dashoffset:-100}100%{stroke-dashoffset:-100}}
+@keyframes d-tip{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.7);opacity:.5}}
+@keyframes d-ghost{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes d-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes d-sheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes d-drop{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes d-slideUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+.d-grow{stroke-dasharray:100;animation:d-grow 900ms cubic-bezier(.2,.7,.2,1) both}
+.d-wave{stroke-dasharray:24 300;animation:d-wave 6.4s ease-out infinite}
+.d-tip{transform-box:fill-box;transform-origin:center;animation:d-tip 2.6s ease-in-out infinite}
+.d-ghost{animation:d-ghost 1.8s ease-in-out infinite}
+.d-in{animation:d-in 320ms ease-out both}
+/* a verb is an inked word. its underline is drawn on press, left to right, like a pen stroke */
+.d-verb .d-ul{transform:scaleX(.16);transform-origin:left;transition:transform 260ms cubic-bezier(.2,.7,.2,1)}
+.d-verb:active .d-ul,.d-verb:hover .d-ul{transform:scaleX(1)}
+.d-verb:active{opacity:.85}
+.d-acct:active{opacity:.7}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+  <!-- material: paper grain, multiplied into the page -->
+  <svg width="390" height="844" aria-hidden="true" style="position:absolute;left:0;top:0;pointer-events:none;mix-blend-mode:multiply;opacity:.12">
+    <filter id="d1grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="4" stitchTiles="stitch"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter>
+    <rect width="390" height="844" filter="url(#d1grain)"></rect>
+  </svg>
+
+  <!-- ═══ LEDGER (0–76) ═══ -->
+  <div style="position:absolute;left:0;right:0;top:0;height:76px;border-bottom:1px solid var(--rule)">
+    <button class="d-acct" onClick="{{openBiomass}}" aria-label="{{biomassAria}}" style="position:absolute;left:12px;top:4px;height:68px;padding:0 4px;display:flex;flex-direction:column;justify-content:center">
+      <span style="display:flex;align-items:baseline;gap:5px">
+        <span style="font:300 44px/1 var(--f-serif);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em;color:var(--ink);text-decoration:underline dotted var(--rule-2);text-decoration-thickness:1px;text-underline-offset:6px">{{bigNum}}</span>
+        <span style="font:400 20px/1 var(--f-serif);color:var(--ink-2)">{{bigUnit}}</span>
+      </span>
+      <span style="font:400 11.5px/1 var(--f-mono);color:var(--ink-3);margin-top:7px">biomass <span style="color:var(--thread)">{{rate}}</span></span>
+    </button>
+    <button class="d-acct" onClick="{{openSugar}}" aria-label="{{restAria}}" style="position:absolute;left:190px;right:12px;top:4px;height:68px;padding:0 4px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+      <span style="font:italic 400 12.5px/16px var(--f-serif);color:var(--ink-3);align-self:flex-end">autumn, the first year · {{clock}}</span>
+      <sc-for list="{{ledgerRows}}" as="lr" hint-placeholder-count="3">
+        <span style="display:flex;align-items:baseline;width:100%;font:400 12px/16px var(--f-mono);color:var(--ink-2)">
+          <span>{{lr.k}}</span>
+          <span style="flex:1;margin:0 4px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+          <span style="{{lr.vStyle}}">{{lr.v}}</span>
+        </span>
+      </sc-for>
+    </button>
+  </div>
+
+  <!-- ═══ BODY WINDOW (76–288). Touch it: extend. ═══ -->
+  <div style="position:absolute;left:0;top:76px;width:390px;height:212px;overflow:hidden">
+    <button aria-label="{{bodyAria}}" onClick="{{extend}}" style="position:absolute;inset:0;width:390px;height:212px;cursor:pointer"></button>
+    <div style="position:absolute;inset:0;pointer-events:none;transform-origin:172px 106px;animation:d-breathe 6.4s ease-in-out infinite">
+      <div style="{{bumpStyle}}">
+        <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible">
+          <defs>
+            <filter id="d1ink" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"></feTurbulence><feDisplacementMap in="SourceGraphic" scale="2.4"></feDisplacementMap></filter>
+          </defs>
+          <!-- leaf litter, the page it is drawn on -->
+          <sc-for list="{{litter}}" as="l" hint-placeholder-count="16">
+            <path d="{{l.d}}" fill="none" stroke-linecap="round" style="stroke:var(--rule-2);stroke-width:1.1"></path>
+          </sc-for>
+          <g style="filter:url(#d1ink)">
+            <sc-for list="{{segs}}" as="g" hint-placeholder-count="41">
+              <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="{{g.cls}}" style="{{g.style}}"></path>
+            </sc-for>
+          </g>
+          <sc-for list="{{segs}}" as="g" hint-placeholder-count="41">
+            <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="d-wave" style="{{g.fxStyle}}"></path>
+          </sc-for>
+          <!-- amber: the next move, on the body. the next tip, or the arms a cord would bundle -->
+          <sc-for list="{{amberArms}}" as="am" hint-placeholder-count="7">
+            <path d="{{am.d}}" fill="none" stroke-linecap="round" stroke-dasharray="2 4" class="d-ghost" style="stroke:var(--next);stroke-width:5;opacity:.5"></path>
+          </sc-for>
+          <sc-if value="{{ghostOn}}" hint-placeholder-val="{{true}}">
+            <path d="{{ghostD}}" fill="none" stroke-linecap="round" stroke-dasharray="3 4" class="d-ghost" style="stroke:var(--next);stroke-width:1.5"></path>
+            <circle cx="{{ghostX}}" cy="{{ghostY}}" r="3.4" fill="none" class="d-tip" style="stroke:var(--next);stroke-width:1.4"></circle>
+          </sc-if>
+          <sc-for list="{{tips}}" as="t" hint-placeholder-count="19">
+            <circle cx="{{t.x}}" cy="{{t.y}}" r="2.2" class="d-tip" style="{{t.style}}"></circle>
+          </sc-for>
+          <circle cx="172" cy="106" r="5.2" style="fill:var(--ground);stroke:var(--body);stroke-width:1.6"></circle>
+          <circle cx="172" cy="106" r="2" style="fill:var(--body)"></circle>
+        </svg>
+      </div>
+    </div>
+    <div aria-hidden="true" style="{{ringStyle}}"></div>
+    <div style="position:absolute;left:16px;bottom:12px;font:italic 400 12.5px/1 var(--f-serif);color:var(--ink-3);pointer-events:none">fig. 1 · {{tipsWord}} tips, nine minutes in</div>
+    <button aria-label="open the slide" onClick="{{openSlide}}" style="position:absolute;right:4px;bottom:2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--ink-2)">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M11 2.5h4.5V7M7 15.5H2.5V11M15.5 2.5l-5 5M2.5 15.5l5-5"></path></svg>
+    </button>
+  </div>
+
+  <!-- ═══ VOICE (288–340). Notebook ink. Pull down, or touch, for the log. ═══ -->
+  <button onClick="{{toggleLog}}" aria-expanded="{{logExpanded}}" aria-label="{{voiceAria}}" style="position:absolute;left:0;right:0;top:288px;height:52px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);box-sizing:border-box;padding:5px 40px 0 16px;display:block;width:390px">
+    <span style="display:block;font:italic 400 14.5px/20px var(--f-serif);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{voice1}}</span>
+    <span class="{{voiceCls}}" style="display:block;font:italic 400 16.5px/22px var(--f-serif);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{voice2}}</span>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke-width="1.3" stroke-linecap="round" aria-hidden="true" style="{{logChev}}"><path d="M3 5l4 4 4-4" style="stroke:var(--ink-3)"></path></svg>
+  </button>
+
+  <!-- ═══ NEXT (340–404). A fact. The amber on the body is the same fact. ═══ -->
+  <button onClick="{{goNext}}" aria-label="{{nextAria}}" style="position:absolute;left:0;right:0;top:340px;height:64px;padding:0 16px;display:flex;align-items:center;gap:12px;width:390px;box-sizing:border-box">
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="flex:none"><circle cx="7" cy="7" r="3.4" fill="none" stroke-width="1.4" class="d-tip" style="stroke:var(--next)"></circle></svg>
+    <span style="flex:1">
+      <span style="display:block;font:400 19px/1.2 var(--f-serif);color:var(--ink)">{{nextLine}}</span>
+      <span style="display:block;font:400 11.5px/15px var(--f-mono);color:var(--ink-3);margin-top:3px">{{nextSub}}</span>
+    </span>
+  </button>
+
+  <!-- ═══ VERBS (404–776). The notebook's page for the chosen section. ═══ -->
+  <div style="position:absolute;left:0;right:0;top:404px;height:372px;border-top:1px solid var(--rule-2);overflow:hidden">
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+      <div style="{{r.wrap}}">
+        <span style="{{r.marginStyle}}">{{r.margin}}</span>
+        <div style="flex:1;min-width:0">
+          <sc-if value="{{r.isTap}}" hint-placeholder-val="{{true}}">
+            <button class="d-verb" onClick="{{r.onTap}}" aria-label="{{r.aria}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="position:relative;display:inline-block">
+                  <span style="{{r.wordStyle}}">{{r.word}}</span>
+                  <span class="d-ul" style="{{r.ulStyle}}"></span>
+                </span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="{{r.costStyle}}">{{r.cost}}</span>
+              </span>
+              <span style="display:block;font:italic 400 13.5px/18px var(--f-serif);color:var(--ink-3);margin-top:1px">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isLocked}}" hint-placeholder-val="{{false}}">
+            <button onClick="{{r.onTap}}" aria-label="{{r.aria}}" aria-expanded="{{r.expanded}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="display:inline-block;padding:1px 7px 2px;border:1px dashed var(--locked);font:400 19px/1.1 var(--f-serif);color:var(--ink-3)">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                <span style="font:400 12px/1 var(--f-mono);color:var(--ink-3)">{{r.cost}}</span>
+              </span>
+              <span style="display:block;font:400 11.5px/16px var(--f-mono);color:var(--ink-3);margin-top:3px">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isAcct}}" hint-placeholder-val="{{false}}">
+            <button class="d-acct" onClick="{{r.onTap}}" aria-label="{{r.aria}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="font:400 19px/1.1 var(--f-serif);color:var(--ink);text-decoration:underline dotted var(--ink-3);text-decoration-thickness:1px;text-underline-offset:5px">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="font:400 12.5px/1 var(--f-mono);color:var(--thread)">{{r.cost}}</span>
+              </span>
+              <span style="display:block;font:italic 400 13.5px/18px var(--f-serif);color:var(--ink-3);margin-top:1px">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isRead}}" hint-placeholder-val="{{false}}">
+            <div style="padding:9px 0 8px">
+              <span style="display:flex;align-items:baseline">
+                <span style="font:400 19px/1.1 var(--f-serif);color:var(--ink-2)">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                <span style="font:400 12px/1 var(--f-mono);color:var(--ink-2)">{{r.cost}}</span>
+              </span>
+              <span style="display:block;font:italic 400 13.5px/18px var(--f-serif);color:var(--ink-3);margin-top:1px">{{r.sub}}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{r.isHold}}" hint-placeholder-val="{{false}}">
+            <button onPointerDown="{{r.down}}" onPointerUp="{{r.up}}" onPointerLeave="{{r.up}}" aria-label="{{r.aria}}" style="display:block;position:relative;width:100%;min-height:50px;padding:7px 0 10px;touch-action:none">
+              <span style="display:flex;align-items:baseline">
+                <span style="font:400 19px/1.1 var(--f-serif);color:var(--danger)">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="font:italic 400 14px/1 var(--f-serif);color:var(--danger)">hold</span>
+              </span>
+              <span style="display:block;font:400 11.5px/16px var(--f-mono);color:var(--ink-3);margin-top:3px">{{r.sub}}</span>
+              <!-- the hold fill is the body's own hyphae, racing the length of the row -->
+              <svg width="310" height="14" viewBox="0 0 310 14" aria-hidden="true" style="position:absolute;left:0;bottom:-3px;overflow:visible">
+                <path d="M0 7 C40 6 70 8 110 7 S190 5 230 7 S290 8 310 7 M38 6.6 q6 -5 14 -6 M74 7.6 q5 4 13 5 M121 6.8 q8 -5 16 -5 M168 6.2 q4 5 12 6 M214 6.6 q8 -4 15 -6 M262 7.4 q6 4 14 4" pathLength="100" fill="none" stroke-linecap="round" style="{{r.fill}}"></path>
+              </svg>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.showWhy}}" hint-placeholder-val="{{false}}">
+            <div class="d-in" style="display:flex;gap:6px;padding:0 0 10px;font:italic 400 15px/1.35 var(--f-serif);color:var(--ink-2)">
+              <span style="color:var(--next-ink);font-style:normal">↳</span><span>{{r.why}}</span>
+            </div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ═══ NAV (776–844). The notebook's three sections, each with its live reading. ═══ -->
+  <div style="position:absolute;left:0;right:0;top:776px;height:68px;border-top:1px solid var(--rule-2);display:flex;padding:0 8px;box-sizing:border-box">
+    <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="3">
+      <button onClick="{{tb.go}}" aria-current="{{tb.current}}" aria-label="{{tb.aria}}" style="flex:1;height:68px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-left:8px">
+        <span style="{{tb.bar}}"></span>
+        <span style="{{tb.nameStyle}}">{{tb.name}}</span>
+        <span style="{{tb.readStyle}}">{{tb.reading}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <!-- ═══ THE LOG. Drawn down from the voice; the body stays in view. ═══ -->
+  <sc-if value="{{logOpen}}" hint-placeholder-val="{{false}}">
+    <div role="log" aria-label="the notebook" style="position:absolute;left:0;right:0;top:340px;bottom:0;z-index:8;background:var(--raised);border-top:1px solid var(--rule-2);animation:d-drop 260ms ease-out both;overflow:hidden">
+      <div style="padding:8px 0">
+        <sc-for list="{{log}}" as="lg" hint-placeholder-count="10">
+          <div style="display:flex;align-items:baseline;min-height:30px;border-bottom:1px solid var(--rule)">
+            <span style="width:56px;flex:none;text-align:right;padding-right:12px;font:400 11px/1 var(--f-mono);color:var(--ink-3)">{{lg.t}}</span>
+            <span style="{{lg.style}}">{{lg.text}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═══ AN ACCOUNT. Rises over NEXT and the verbs, never over the body. ═══ -->
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-label="{{acct.label}}" style="position:absolute;left:0;right:0;top:340px;bottom:0;z-index:9;background:var(--raised);border-top:2px solid var(--ink);animation:d-sheet 300ms cubic-bezier(.2,.8,.2,1) both">
+      <div style="display:flex;align-items:center;height:48px;padding:0 4px 0 16px;border-bottom:1px solid var(--rule)">
+        <sc-for list="{{acctTabs}}" as="at" hint-placeholder-count="4">
+          <button onClick="{{at.go}}" aria-pressed="{{at.pressed}}" style="{{at.style}}">{{at.k}}</button>
+        </sc-for>
+        <span style="flex:1"></span>
+        <button onClick="{{closeSheet}}" aria-label="close the account" style="min-width:56px;height:44px;font:italic 400 15px var(--f-serif);color:var(--ink-2);text-align:center">close</button>
+      </div>
+      <div style="padding:14px 16px 0">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <span style="font:italic 300 30px/1 var(--f-serif);color:var(--ink)">{{acct.label}}</span>
+          <span style="font:400 15px/1 var(--f-mono);color:var(--ink)">{{acct.stock}}</span>
+        </div>
+        <div style="margin-top:14px;border-top:1px solid var(--rule-2)">
+          <sc-for list="{{acct.lines}}" as="al" hint-placeholder-count="3">
+            <div style="padding:9px 0 8px;border-bottom:1px solid var(--rule)">
+              <div style="display:flex;align-items:baseline;font:400 13px/1.2 var(--f-mono)">
+                <span style="{{al.signStyle}}">{{al.sign}}</span>
+                <span style="color:var(--ink);margin-left:8px">{{al.what}}</span>
+                <span style="flex:1;margin:0 6px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+                <span style="{{al.valStyle}}">{{al.val}}</span>
+              </div>
+              <div style="font:italic 400 13px/17px var(--f-serif);color:var(--ink-3);margin:2px 0 0 18px">{{al.how}}</div>
+            </div>
+          </sc-for>
+          <div style="display:flex;align-items:baseline;justify-content:space-between;padding:12px 0 0">
+            <span style="font:400 12px/1 var(--f-mono);color:var(--ink-3)">net</span>
+            <span style="{{acct.netStyle}}">{{acct.net}}</span>
+          </div>
+        </div>
+        <div style="margin-top:18px;display:flex;gap:6px;font:italic 400 16px/1.4 var(--f-serif);color:var(--ink-2)"><span style="color:var(--next-ink);font-style:normal">↳</span><span>{{acct.why}}</span></div>
+        <sc-if value="{{acct.isOffer}}" hint-placeholder-val="{{false}}">
+          <div style="display:flex;gap:28px;margin-top:22px">
+            <button class="d-verb" onClick="{{sign}}" style="min-height:48px;position:relative">
+              <span style="font:500 22px/1 var(--f-serif);color:var(--ink)">sign</span>
+              <span class="d-ul" style="position:absolute;left:0;right:0;bottom:8px;height:2px;background:var(--ink)"></span>
+            </button>
+            <button class="d-verb" onClick="{{closeSheet}}" style="min-height:48px;position:relative">
+              <span style="font:400 22px/1 var(--f-serif);color:var(--ink-2)">decline</span>
+              <span class="d-ul" style="position:absolute;left:0;right:0;bottom:8px;height:2px;background:var(--ink-2)"></span>
+            </button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═══ THE SLIDE. The body stood upright. Touch a tip to read it. ═══ -->
+  <sc-if value="{{slide}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-label="the slide" style="position:absolute;inset:0;z-index:20;background:var(--ground);animation:d-slideUp 420ms cubic-bezier(.2,.8,.2,1) both">
+      <div style="position:absolute;left:0;top:316px;width:390px;height:212px;transform:rotate(90deg) scale(1.8);transform-origin:195px 106px">
+        <div style="position:absolute;inset:0;transform-origin:172px 106px;animation:d-breathe 6.4s ease-in-out infinite">
+          <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none">
+            <g style="filter:url(#d1ink)">
+              <sc-for list="{{segs}}" as="g" hint-placeholder-count="41">
+                <path d="{{g.d}}" fill="none" stroke-linecap="round" style="{{g.style}}"></path>
+              </sc-for>
+            </g>
+            <sc-for list="{{segs}}" as="g" hint-placeholder-count="41">
+              <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="d-wave" style="{{g.fxStyle}}"></path>
+            </sc-for>
+            <sc-for list="{{tips}}" as="t" hint-placeholder-count="19">
+              <circle cx="{{t.x}}" cy="{{t.y}}" r="2.2" class="d-tip" style="{{t.style}}"></circle>
+              <circle cx="{{t.x}}" cy="{{t.y}}" r="6" fill="none" style="{{t.pickStyle}}"></circle>
+              <circle cx="{{t.x}}" cy="{{t.y}}" r="12" fill="#000" fill-opacity=".01" onClick="{{t.pick}}" style="pointer-events:all;cursor:pointer"></circle>
+            </sc-for>
+            <circle cx="172" cy="106" r="5.2" style="fill:var(--ground);stroke:var(--body);stroke-width:1.6"></circle>
+            <circle cx="172" cy="106" r="13" fill="#000" fill-opacity=".01" onClick="{{pickKnot}}" style="pointer-events:all;cursor:pointer"></circle>
+          </svg>
+        </div>
+      </div>
+      <div style="position:absolute;left:16px;right:8px;top:0;height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule)">
+        <span style="font:italic 300 26px/1 var(--f-serif);color:var(--ink)">the slide</span>
+        <button onClick="{{closeSlide}}" aria-label="close the slide" style="min-width:64px;height:44px;font:italic 400 16px var(--f-serif);color:var(--ink-2);text-decoration:underline;text-underline-offset:4px;text-align:center">close</button>
+      </div>
+      <div style="position:absolute;left:16px;right:16px;bottom:18px;min-height:64px;border-top:1px solid var(--rule-2);padding-top:10px">
+        <div style="font:italic 400 20px/1.2 var(--f-serif);color:var(--ink)">{{pickHead}}</div>
+        <div style="font:400 12.5px/18px var(--f-mono);color:var(--ink-2);margin-top:4px">{{pickBody}}</div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.G = this.bodyGeom();
+    this.state = {
+      g: 41, sugar: 431, floor: 1380, tips: 19, n: 41, born: 41, taps: 0, clock: 552,
+      cords: false, sheath: false, signed: false,
+      tab: 'grow', why: '', sheet: '', logOpen: false, slide: false, pick: -2, pulse: 0, hold: 0, holdNear: false, fresh: false,
+      lines: [
+        ['0:00', 'the forest floor is warm'],
+        ['0:03', 'something under you is already dead'],
+        ['0:09', 'it comes apart in water'],
+        ['0:21', 'there are two thousand grams of it. you have used ten.'],
+        ['0:41', 'it grows while you are not looking at it'],
+        ['1:02', 'you have been making this the whole time'],
+        ['2:04', 'other things eat here. that is what a price is.'],
+        ['2:31', 'the price went up while you were buying. you did that.'],
+        ['6:44', 'there is a birch nine metres east. its roots are already on yours.'],
+        ['9:08', 'a pale end, softer than anything around it.']
+      ]
+    };
+    this.litter = this.makeLitter();
+    // the world keeps going: one tick a second
+    this._tick = setInterval(() => {
+      const s = this.state, r = this.rate();
+      this.setState({ g: s.g + r, sugar: Math.min(700, s.sugar + 0.37), floor: Math.max(0, s.floor - 14.9), clock: s.clock + 1, fresh: false });
+    }, 1000);
+  }
+
+  componentWillUnmount(){ clearInterval(this._tick); clearInterval(this._hi); }
+
+  // ── THE BODY: one seeded geometry, read three ways. This block is identical in D_0..D_3. ──
+  bodyGeom(){
+    let s = 61;
+    const R = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const K = { x: 172, y: 106 }, SQ = 0.6, segs = [], q = [], ARMS = 7;
+    for (let i = 0; i < ARMS; i++) q.push({ x: K.x, y: K.y, a: i * 6.2832 / ARMS + 0.35 + (R() - 0.5) * 0.5, d: 0, p: -1 });
+    while (q.length && segs.length < 96) {
+      const o = q.shift();
+      const L = (36 - o.d * 4) * (0.78 + R() * 0.44);
+      const a = o.a + (R() - 0.5) * 0.42;
+      const x2 = o.x + Math.cos(a) * L, y2 = o.y + Math.sin(a) * L * SQ;
+      const bend = (R() - 0.5) * L * 0.55;
+      const id = segs.length;
+      segs.push({ id: id, p: o.p, d: o.d, a: a, L: L, bend: bend, x1: o.x, y1: o.y, x2: x2, y2: y2,
+        cx: (o.x + x2) / 2 - Math.sin(a) * bend, cy: (o.y + y2) / 2 + Math.cos(a) * bend * SQ });
+      if (o.d < 6) {
+        q.push({ x: x2, y: y2, a: a + (R() - 0.5) * 0.3, d: o.d + 1, p: id });
+        if (R() < 0.62 - o.d * 0.06) q.push({ x: x2, y: y2, a: a + (R() < 0.5 ? -1 : 1) * (0.45 + R() * 0.55), d: o.d + 1, p: id });
+      }
+    }
+    const kids = segs.map(() => []);
+    segs.forEach(g => { if (g.p >= 0) kids[g.p].push(g.id); });
+    // the looking glass: mirror through the knot, put each branch on a band by how many forks
+    // it is from the knot (so growth settles the bands inside-out, as Act III does), and lay the
+    // branch's own length along that orbit. TILT is the plane seen edge-on.
+    const TILT = 0.42, BR = b => 16 + b * 10.4;
+    const P = (r, t) => ({ x: K.x + r * Math.cos(t), y: K.y + r * Math.sin(t) * TILT });
+    segs.forEach(g => {
+      const dx = -(g.x2 - K.x), dy = (g.y2 - K.y) / SQ;
+      const band = Math.min(12, g.d * 2 + (g.id % 2));
+      const r = BR(band), t1 = Math.atan2(dy, dx);
+      const span = Math.min(1.1, g.L / r) * (g.bend >= 0 ? 1 : -1), t0 = t1 - span;
+      const a0 = P(r, t0), a1 = P(r, t1), c = P(r / Math.cos(span / 2), t0 + span / 2);
+      Object.assign(g, { band: band, gr: r, gt: t1, gx1: a0.x, gy1: a0.y, gcx: c.x, gcy: c.y, gx2: a1.x, gy2: a1.y });
+    });
+    return { K: K, segs: segs, kids: kids, TILT: TILT, BR: BR };
+  }
+  // one path grammar for all three readings (M · Q), so the strokes can morph between them
+  bodyPath(g, reading){
+    const f = v => Math.round(v * 10) / 10;
+    if (reading === 'ink') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f(g.cx) + ' ' + f(g.cy) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    if (reading === 'mind') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f((g.x1 + g.x2) / 2) + ' ' + f((g.y1 + g.y2) / 2) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    return 'M' + f(g.gx1) + ' ' + f(g.gy1) + ' Q' + f(g.gcx) + ' ' + f(g.gcy) + ' ' + f(g.gx2) + ' ' + f(g.gy2);
+  }
+  isTip(id, n){ return id < n && this.G.kids[id].every(k => k >= n); }
+  // ── end of the shared block ──
+
+  rate(){ return (this.state.cords ? 9.76 : 8.27) + 1.40; }
+  tipCost(){ return Math.ceil(Math.pow(1.10, this.state.tips) + 59); }
+  makeLitter(){
+    let s = 7; const R = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    const out = [];
+    for (let i = 0; i < 16; i++) {
+      const x = 10 + R() * 370, y = 12 + R() * 188, a = R() * 3.14, l = 5 + R() * 9;
+      out.push({ d: 'M' + x.toFixed(0) + ' ' + y.toFixed(0) + ' q' + (Math.cos(a) * l * 0.5).toFixed(1) + ' ' + (-2 + R() * 4).toFixed(1) + ' ' + (Math.cos(a) * l).toFixed(1) + ' ' + (Math.sin(a) * l * 0.5).toFixed(1) });
+    }
+    return out;
+  }
+  stamp(){ const c = this.state.clock; return Math.floor(c / 60) + ':' + String(c % 60).padStart(2, '0'); }
+  say(text, extra){ this.setState(Object.assign({ lines: this.state.lines.concat([[this.stamp(), text]]), fresh: true }, extra || {})); }
+  words(n){ const w = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty-one', 'twenty-two', 'twenty-three', 'twenty-four']; return n < w.length ? w[n] : String(n); }
+  eta(short){
+    if (short <= 0) return 'within reach';
+    const sec = Math.ceil(short / this.rate());
+    if (sec < 60) return this.words(Math.min(sec, 24)) + (sec === 1 ? ' second' : ' seconds') + ' at this rate';
+    const m = Math.round(sec / 60);
+    return 'about ' + this.words(Math.min(m, 24)) + (m === 1 ? ' minute' : ' minutes') + ' at this rate';
+  }
+  fmtG(g){ return g >= 1000 ? [(g / 1000).toFixed(2), 'kg'] : [String(Math.floor(g)), 'g']; }
+  growTip(){
+    const s = this.state, c = this.tipCost();
+    if (s.g < c) { this.setState({ why: s.why === 'tip' ? '' : 'tip' }); return; }
+    const lines = ['the thread finds a crack and follows it.', 'one more mouth in the dark.', 'the tip tastes the soil and chooses a side.', 'another tip. the network gets hungrier and wider together.'];
+    // the body grows by the branches the new tip needs, in the seeded order
+    let n = s.n; const target = s.tips + 1;
+    while (n < 96 && this.G.segs.filter(g => this.isTip(g.id, n)).length < target) n++;
+    if (n === s.n) n = Math.min(96, n + 1);
+    this.say(lines[s.tips % lines.length], { g: s.g - c, tips: target, n: n, born: s.n, why: '', pulse: s.pulse + 1 });
+  }
+  holdDown(){
+    clearInterval(this._hi);
+    this._h0 = Date.now();
+    this._hi = setInterval(() => {
+      const p = Math.min(1, (Date.now() - this._h0) / 700);
+      this.setState({ hold: p });
+      if (p >= 1) {
+        clearInterval(this._hi); this._hi = null;
+        const s = this.state;
+        this.say('the old thread goes grey. you let it go.', { tips: s.tips - 3, n: Math.max(20, s.n - 4), born: 96, g: s.g + 42, hold: 0 });
+      }
+    }, 30);
+  }
+  holdUp(){
+    if (!this._hi) return;
+    clearInterval(this._hi); this._hi = null;
+    const short = Date.now() - this._h0 < 300;
+    this.setState({ hold: 0, why: short ? 'deadhead' : this.state.why });
+  }
+  renderVals(){
+    const s = this.state, G = this.G, n = s.n;
+    const f = v => Math.round(v * 10) / 10;
+    const tc = this.tipCost();
+    const big = this.fmtG(s.g);
+
+    // ── the body: ink on paper ──
+    const segs = G.segs.map(g => {
+      const vis = g.id < n, fresh = g.id >= n - 3;
+      const d = this.bodyPath(g, 'ink');
+      const w = 2.6 * Math.pow(0.74, g.d) + 0.35 + (s.cords && g.d < 2 ? 0.9 : 0);
+      return {
+        d: d, cls: vis && g.id >= s.born ? 'd-grow' : '',
+        style: (vis ? '' : 'display:none;') + 'stroke:' + (fresh ? 'var(--thread)' : 'var(--body)') + ';stroke-width:' + f(w),
+        fxStyle: (vis ? '' : 'display:none;') + 'stroke:var(--thread);stroke-width:' + f(w * 0.9) + ';opacity:.75;animation-delay:' + (g.d * 0.32).toFixed(2) + 's'
+      };
+    });
+    const tips = G.segs.filter(g => this.isTip(g.id, n)).map(g => ({
+      x: f(g.x2), y: f(g.y2),
+      style: 'fill:var(--thread);animation-delay:-' + ((g.id * 0.29) % 2.6).toFixed(2) + 's',
+      pickStyle: 'stroke:var(--next);stroke-width:1.2;' + (s.pick === g.id ? '' : 'display:none'),
+      pick: () => this.setState({ pick: g.id })
+    }));
+
+    // ── NEXT: the one fact that matters most, and where it shows on the body ──
+    let next;
+    if (s.g < tc) next = { kind: 'tip', tab: 'grow', line: 'a tip costs ' + tc + ' g. you have ' + Math.floor(s.g) + '.', sub: this.eta(tc - s.g) + ' · amber on the body is where it grows' };
+    else if (!s.cords) next = { kind: 'cords', tab: 'learn', line: 'rhizomorph cords cost 900 g. you have ' + Math.floor(s.g) + '.', sub: (s.g >= 900 ? 'within reach' : this.eta(900 - s.g)) + ' · amber marks the arms they bundle' };
+    else if (!s.sheath) next = { kind: 'sheath', tab: 'learn', line: 'the frost costs moisture. a sheath halves it: 1.40 kg.', sub: (s.g >= 1400 ? 'within reach' : this.eta(1400 - s.g)) + ' · the year turns in 3:20' };
+    else next = { kind: 'none', tab: 'grow', line: 'the floor empties in 1:33.', sub: 'nothing else presses. the next thing arrives at 2.40 kg.' };
+    const ng = G.segs[Math.min(n, 95)];
+    const amberArms = next.kind === 'cords' ? G.segs.filter(g => g.d === 0).map(g => ({ d: this.bodyPath(g, 'ink') })) : [];
+
+    // ── the verbs ──
+    const why = id => s.why === id;
+    const tog = id => () => this.setState({ why: s.why === id ? '' : id });
+    const wordOk = 'font:500 20px/1.1 var(--f-serif);color:var(--ink)';
+    const wordShort = 'font:400 20px/1.1 var(--f-serif);color:var(--ink-3)';
+    const costOk = 'font:400 13px/1 var(--f-mono);color:var(--ink)';
+    const costShort = 'font:400 12px/1 var(--f-mono);color:var(--next-ink)';
+    const ul = c => 'position:absolute;left:0;right:0;bottom:-3px;height:2px;background:' + c;
+    const tap = o => Object.assign({ isTap: true, isLocked: false, isAcct: false, isRead: false, isHold: false, expanded: 'false' }, o);
+    const all = [];
+    const rows = { push: (r) => all.push(Object.assign({ isRead: false }, r)) };
+    const tipOk = s.g >= tc;
+    rows.push(tap({ sec: 'grow', margin: 'grow', word: 'grow a tip', cost: tipOk ? tc + ' g' : Math.ceil(tc - s.g) + ' g short', sub: 'tip ' + (s.tips + 1) + ' · eats 0.87 g/s of leaf litter',
+      wordStyle: tipOk ? wordOk : wordShort, costStyle: tipOk ? costOk : costShort, ulStyle: ul(tipOk ? 'var(--ink)' : 'var(--ink-3)'),
+      aria: 'grow a tip, ' + tc + ' grams' + (tipOk ? '' : ', not yet. tap to read why.'), onTap: () => this.growTip(),
+      showWhy: why('tip') && !tipOk, why: Math.ceil(tc - s.g) + ' g short. a tip is made of what you have eaten.' }));
+    rows.push({ sec: 'grow', margin: '', isTap: false, isLocked: false, isAcct: false, isHold: true, word: 'deadhead three', sub: '−3 tips · −180 g · +42 labile',
+      aria: 'deadhead three tips. press and hold.', down: () => this.holdDown(), up: () => this.holdUp(),
+      fill: 'stroke:var(--danger);stroke-width:1.4;stroke-dasharray:100;stroke-dashoffset:' + (100 - s.hold * 100).toFixed(1) + ';opacity:' + (s.hold > 0 ? 1 : 0),
+      showWhy: why('deadhead'), why: 'held, not tapped. the oldest threads are given up; the rest are fed better.' });
+    rows.push({ sec: 'grow', margin: '', isTap: false, isLocked: false, isAcct: false, isRead: true, isHold: false, word: 'extend', cost: '1 g a touch', sub: 'touch the body. each touch takes 2 g from the floor.', showWhy: false, why: '' });
+    if (!s.cords) {
+      const ok = s.g >= 900;
+      rows.push(tap({ sec: 'learn', margin: 'learn', word: 'rhizomorph cords', cost: ok ? '900 g' : Math.ceil(900 - s.g) + ' g short', sub: 'bundled threads move 18% more litter, through every tip',
+        wordStyle: ok ? wordOk : wordShort, costStyle: ok ? costOk : costShort, ulStyle: ul(ok ? 'var(--ink)' : 'var(--ink-3)'),
+        aria: 'rhizomorph cords, 900 grams' + (ok ? '' : ', not yet'),
+        onTap: () => { if (s.g < 900) { this.setState({ why: s.why === 'cords' ? '' : 'cords' }); return; } this.say('bundled threads move further on the same water.', { g: s.g - 900, cords: true, why: '', pulse: s.pulse + 1 }); },
+        showWhy: why('cords') && !ok, why: Math.ceil(900 - s.g) + ' g short. ' + this.eta(900 - s.g) + '.' }));
+    } else {
+      rows.push({ sec: 'learn', margin: 'learn', isTap: false, isLocked: false, isAcct: true, isHold: false, word: 'rhizomorph cords', cost: '+18%', sub: 'learned at ' + this.stamp() + '. the arms are thicker on the page.', aria: 'rhizomorph cords, learned', onTap: () => this.setState({ sheet: 'biomass' }), showWhy: false, why: '' });
+    }
+    const shOk = s.g >= 1400;
+    if (s.sheath) rows.push({ sec: 'learn', margin: '', isTap: false, isLocked: false, isAcct: true, isHold: false, word: 'hydrophobic sheath', cost: '½ frost', sub: 'learned at ' + this.stamp() + '. the frost costs half the moisture.', aria: 'hydrophobic sheath, learned', onTap: () => this.setState({ sheet: 'biomass' }), showWhy: false, why: '' });
+    else rows.push(tap({ sec: 'learn', margin: '', word: 'hydrophobic sheath', cost: shOk ? '1.40 kg' : (1400 - s.g >= 1000 ? ((1400 - s.g) / 1000).toFixed(2) + ' kg' : Math.ceil(1400 - s.g) + ' g') + ' short', sub: 'a coat against the frost. halves what it costs in moisture',
+      wordStyle: shOk ? wordOk : wordShort, costStyle: shOk ? costOk : costShort, ulStyle: ul(shOk ? 'var(--ink)' : 'var(--ink-3)'),
+      aria: 'hydrophobic sheath, 1.40 kilograms' + (shOk ? '' : ', not yet'),
+      onTap: () => { if (!shOk) { tog('sheath')(); return; } this.say('a coat against the frost. the water stays where you put it.', { g: s.g - 1400, sheath: true, why: '', pulse: s.pulse + 1 }); },
+      showWhy: why('sheath') && !shOk, why: 'water held against the frost, in a coat you grow for exactly this. ' + this.eta(1400 - s.g) + '.' }));
+    rows.push({ sec: 'learn', margin: '', isTap: false, isLocked: true, isAcct: false, isHold: false, word: 'dormancy clause', cost: '1.80 kg', sub: 'needs a signed contract · 0 of 1',
+      aria: 'dormancy clause, locked. tap to read why.', expanded: why('dorm') ? 'true' : 'false', onTap: tog('dorm'),
+      showWhy: why('dorm'), why: s.signed ? 'the contract is signed. it opens at the next season.' : 'a contract that keeps paying while you are away. nobody has signed with you yet.' });
+    rows.push({ sec: 'bargain', margin: 'bargain', isTap: false, isLocked: false, isAcct: true, isHold: false, word: s.signed ? 'the birch, under contract' : 'the birch, 40 y', cost: s.signed ? '+0.41 ⛬/s' : 'offering',
+      sub: s.signed ? 'term 4 seasons · 3.2 g/s of sugar goes to it' : 'short of carbon. it pays in minerals, and pays most in winter',
+      aria: 'the birch. open its offer.', onTap: () => this.setState({ sheet: 'birch' }), showWhy: false, why: '' });
+    rows.push({ sec: 'bargain', margin: '', isTap: false, isLocked: true, isAcct: false, isHold: false, word: 'douglas fir', cost: 'needs 8 rep', sub: 'will not talk yet · 0 of 8 reputation',
+      aria: 'douglas fir, locked. tap to read why.', expanded: why('fir') ? 'true' : 'false', onTap: tog('fir'),
+      showWhy: why('fir'), why: 'trees talk. one kept term is heard further than you reach.' });
+    rows.push({ sec: 'bargain', margin: '', isTap: false, isLocked: false, isAcct: false, isRead: true, isHold: false, word: 'the market', cost: '2.1 g sugar a g', sub: 'leaf litter, bought with sugar. the price rises while you buy.', showWhy: false, why: '' });
+    const rowsOut = all.filter(r => r.sec === s.tab);
+    rowsOut.forEach((r, i) => {
+      r.wrap = 'display:flex;align-items:flex-start;padding:0 16px 0 0;' + (i > 0 ? 'border-top:1px solid var(--rule);' : '');
+      r.marginStyle = 'width:72px;flex:none;text-align:right;padding:15px 14px 0 0;box-sizing:border-box;font:italic 400 14px/1 var(--f-serif);color:var(--ink-3)';
+    });
+    const tabs = [['grow', s.tips + ' tips'], ['learn', (s.cords ? 1 : 0) + (s.sheath ? 1 : 0) + ' of 3 learned'], ['bargain', s.signed ? '1 signed' : '1 offer']].map(t => {
+      const on = s.tab === t[0], hot = !on && (t[0] === next.tab || (t[0] === 'bargain' && !s.signed));
+      return {
+        name: t[0], reading: t[1], current: on ? 'page' : 'false', aria: t[0] + ', ' + t[1],
+        go: () => this.setState({ tab: t[0], why: '', sheet: '', logOpen: false }),
+        bar: 'position:absolute;left:8px;right:8px;top:-1px;height:2px;background:var(--ink);transform-origin:left;transition:transform 300ms cubic-bezier(.2,.7,.2,1);transform:scaleX(' + (on ? 1 : 0) + ')',
+        nameStyle: 'font:italic ' + (on ? '500' : '400') + ' 17px/1 var(--f-serif);color:' + (on ? 'var(--ink)' : 'var(--ink-2)'),
+        readStyle: 'font:400 11px/1.4 var(--f-mono);margin-top:5px;color:' + (hot ? 'var(--next-ink)' : 'var(--ink-3)')
+      };
+    });
+
+    // ── the ledger ──
+    const fl = this.fmtG(s.floor);
+    const ledgerRows = [
+      { k: 'sugar', v: Math.floor(s.sugar) + ' / 700 g', vStyle: 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' },
+      { k: 'floor', v: fl[0] + ' ' + fl[1], vStyle: 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' },
+      { k: 'minerals', v: s.signed ? '0.41 ⛬/s' : 'none', vStyle: s.signed ? 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' : 'color:var(--ink-3);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' }
+    ];
+
+    // ── accounts ──
+    const sg = c => 'width:10px;color:' + (c === '+' ? 'var(--thread)' : c === '−' ? 'var(--danger)' : 'var(--ink-3)');
+    const vl = c => 'color:' + (c === '+' ? 'var(--thread)' : c === '−' ? 'var(--danger)' : 'var(--ink-3)');
+    const L = (sign, what, how, val) => ({ sign: sign, what: what, how: how, val: val, signStyle: sg(sign), valStyle: vl(sign) });
+    const netS = c => 'font:400 20px/1 var(--f-mono);color:' + c;
+    const A = {
+      biomass: { label: 'biomass', stock: big[0] + ' ' + big[1], lines: [
+        L('+', s.tips + ' tips on leaf litter', s.tips + ' × 0.435 g/s' + (s.cords ? ' × 1.18, cords' : ''), '+' + (s.cords ? '9.76' : '8.27') + ' g/s'),
+        L('+', 'extend, your last ten seconds', '14 touches × 1.00 g', '+1.40 g/s'),
+        L('·', 'nothing draws on biomass', 'it is spent, not eaten', '0.00 g/s')
+      ], net: '+' + this.rate().toFixed(2) + ' g/s', netStyle: netS('var(--thread)'), why: 'tips, adaptations and the next patch are paid from this. it is the only thing you can spend.' },
+      sugar: { label: 'sugar', stock: Math.floor(s.sugar) + ' / 700 g', lines: [
+        L('+', 'leaked by decomposition', s.tips + ' tips × 0.067 g/s', '+1.28 g/s'),
+        L('−', 'paid at the market', 'the last minute, averaged', '−0.91 g/s')
+      ], net: '+0.37 g/s', netStyle: netS('var(--thread)'), why: 'full in 12:07. past 700 g it does not keep.' },
+      floor: { label: 'the floor', stock: fl[0] + ' ' + fl[1], lines: [
+        L('+', 'litterfall', 'autumn, and falling', '+0.80 g/s'),
+        L('+', 'bought at market', 'the last minute, averaged', '+3.60 g/s'),
+        L('−', s.tips + ' tips eating', s.tips + ' × 0.87 g/s', '−16.5 g/s'),
+        L('−', 'extend', '14 touches × 2 g', '−2.80 g/s')
+      ], net: '−14.9 g/s', netStyle: netS('var(--danger)'), why: 'empty in 1:33 at this rate. the floor is bare. it will not stay bare.' },
+      minerals: { label: 'minerals', stock: s.signed ? '0.41 ⛬/s' : 'none', lines: [
+        L(s.signed ? '+' : '·', 'trees under contract', s.signed ? 'the birch, four seasons' : 'none signed', s.signed ? '+0.41 ⛬/s' : '0.00 ⛬/s'),
+        L('·', 'tips asking for minerals', 'from tip 24', '0.00 ⛬/s')
+      ], net: s.signed ? '+0.41 ⛬/s' : '0.00 ⛬/s', netStyle: netS(s.signed ? 'var(--thread)' : 'var(--ink-3)'), why: s.signed ? 'phosphorus. it left a rock forty years ago and a root this morning.' : 'nothing pays you this yet. the only source is a tree, and the birch is offering.' },
+      birch: { label: 'the birch', stock: '40 y', isOffer: !s.signed, lines: [
+        L('·', 'deficit', 'it is short of carbon; the canopy is closing', '0.78'),
+        L('−', 'you pay', 'sugar, down the root', '3.2 g/s'),
+        L('+', 'you get', 'minerals, most in winter', '0.41 ⛬/s'),
+        L('·', 'term', 'four seasons; the rate holds after spring', '4 seasons')
+      ], net: s.signed ? 'signed' : 'offering', netStyle: netS('var(--ink)'), why: 'there is a birch nine metres east. its roots are already on yours.' }
+    };
+    const cur = s.sheet ? A[s.sheet] : null;
+    const acct = cur ? Object.assign({ isOffer: false }, cur) : { label: '', stock: '', lines: [], net: '', netStyle: '', why: '', isOffer: false };
+    const acctTabs = s.sheet === 'birch' ? [] : ['biomass', 'sugar', 'floor', 'minerals'].map(k => ({ k: k, pressed: s.sheet === k ? 'true' : 'false', go: () => this.setState({ sheet: k }),
+      style: 'min-height:44px;margin-right:14px;font:' + (s.sheet === k ? 'italic 500' : 'italic 400') + ' 15px/1 var(--f-serif);color:' + (s.sheet === k ? 'var(--ink)' : 'var(--ink-3)') + ';' + (s.sheet === k ? 'text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:1.5px' : '') }));
+
+    const lines = s.lines;
+    const log = lines.slice().reverse().map((l, i) => ({ t: l[0], text: l[1], style: 'flex:1;padding:6px 16px 6px 0;font:italic 400 ' + (i === 0 ? 16 : 15) + 'px/1.3 var(--f-serif);color:' + (i === 0 ? 'var(--ink)' : i < 4 ? 'var(--ink-2)' : 'var(--ink-3)') }));
+
+    let pickHead = 'touch a tip, or the knot', pickBody = 'every part you can touch here also has a row below. the body is a second way in.';
+    if (s.pick === -1) { pickHead = 'the knot'; pickBody = 'where it started. 0:00, the forest floor is warm.'; }
+    else if (s.pick >= 0) { const g = G.segs[s.pick]; pickHead = 'tip ' + (g.id + 1); pickBody = (g.d + 1) + ' forks from the knot · eats 0.87 g/s of leaf litter'; }
+
+    const pa = s.pulse % 2 === 0;
+    return {
+      rootStyle: '--ground:#EAE6D9;--sunk:#E0DBCB;--raised:#F3F0E6;--ink:#0F1310;--ink-2:#3A382E;--ink-3:#635F52;--rule:#CFC9B6;--rule-2:#B7B09B;--body:#22261F;--body-old:#6E6858;--thread:#166B53;--thread-glow:#2A7F63;--next:#8A5E0E;--next-ink:#7A5109;--danger:#7E3320;--locked:#96917F;' +
+        "--f-serif:'Newsreader',ui-serif,Georgia,serif;--f-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--f-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
+        'width:390px;height:844px;overflow:hidden;position:relative;background:var(--ground);color:var(--ink);font-family:var(--f-ui)',
+      bigNum: big[0], bigUnit: big[1], rate: '+' + this.rate().toFixed(2) + ' g/s', clock: this.stamp(),
+      biomassAria: 'biomass ' + big[0] + ' ' + big[1] + ', rising ' + this.rate().toFixed(2) + ' grams a second. open its account.',
+      restAria: 'sugar, floor and minerals. open their accounts.',
+      ledgerRows: ledgerRows,
+      openBiomass: () => this.setState({ sheet: 'biomass', logOpen: false }),
+      openSugar: () => this.setState({ sheet: 'sugar', logOpen: false }),
+      litter: this.litter, segs: segs, tips: tips, amberArms: amberArms,
+      ghostOn: next.kind === 'tip' && n < 96, ghostD: this.bodyPath(ng, 'ink'), ghostX: f(ng.x2), ghostY: f(ng.y2),
+      tipsWord: this.words(s.tips),
+      bodyAria: 'the body, ' + s.tips + ' tips. touch to extend, a millimetre at a time.',
+      extend: () => { const first = s.taps === 0; if (first) this.say('each press is a millimetre. the forest is measured in them.', { g: s.g + 1, floor: s.floor - 2, taps: 1, pulse: s.pulse + 1 }); else this.setState({ g: s.g + 1, floor: s.floor - 2, taps: s.taps + 1, pulse: s.pulse + 1 }); },
+      bumpStyle: 'position:absolute;inset:0;transform-origin:172px 106px;animation:' + (s.pulse ? (pa ? 'd-bumpA' : 'd-bumpB') + ' 600ms ease-out' : 'none'),
+      ringStyle: 'position:absolute;left:152px;top:86px;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--thread);pointer-events:none;opacity:0;animation:' + (s.pulse ? (pa ? 'd-ringA' : 'd-ringB') + ' 1.3s ease-out' : 'none'),
+      voice1: lines[lines.length - 2][1], voice2: lines[lines.length - 1][1], voiceCls: s.fresh ? 'd-in' : '',
+      voiceAria: 'the notebook. latest: ' + lines[lines.length - 1][1] + '. touch to read the whole log.',
+      toggleLog: () => this.setState({ logOpen: !s.logOpen, sheet: '' }), logOpen: s.logOpen, logExpanded: s.logOpen ? 'true' : 'false',
+      logChev: 'position:absolute;right:16px;top:19px;transition:transform 200ms;transform:rotate(' + (s.logOpen ? 180 : 0) + 'deg)',
+      log: log,
+      nextLine: next.line, nextSub: next.sub, nextAria: 'next: ' + next.line,
+      goNext: () => this.setState({ tab: next.tab, why: next.kind === 'none' ? '' : next.kind, logOpen: false, sheet: '' }),
+      rows: rowsOut, tabs: tabs,
+      sheetOpen: !!s.sheet, acct: acct, acctTabs: acctTabs,
+      closeSheet: () => this.setState({ sheet: '' }),
+      sign: () => this.say('you wrap a root. the tree sends down the first sweetness.', { signed: true, sheet: '' }),
+      slide: s.slide, openSlide: () => this.setState({ slide: true, pick: -2 }), closeSlide: () => this.setState({ slide: false }),
+      pickKnot: () => this.setState({ pick: -1 }), pickHead: pickHead, pickBody: pickBody
+    };
+  }
+}
+</script>
+</body>
+</html>

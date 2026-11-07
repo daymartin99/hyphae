@@ -1,0 +1,795 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Through the glass</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#08080C}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
+button:focus-visible{outline:2px solid #E9B75C;outline-offset:2px}
+.t2-hold{touch-action:none;user-select:none;-webkit-user-select:none}
+.t2-hold:active .t2-word{opacity:.85}
+.t2-ctl:active{opacity:.6}
+/* ── Act II, saturating (D_2's packets and breath) ── */
+@keyframes t2-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.012)}}
+@keyframes t2-pressure{0%{transform:scale(1)}100%{transform:scale(1.07)}}
+@keyframes t2-pkt{from{stroke-dashoffset:5}to{stroke-dashoffset:-100}}
+@keyframes t2-pktIn{from{stroke-dashoffset:-100}to{stroke-dashoffset:5}}
+@keyframes t2-ghost{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes t2-standPulse{0%,100%{opacity:.55}50%{opacity:1}}
+/* ── the pane: flex, crack, through ── */
+@keyframes t2-flex{0%{transform:none}22%{transform:scale(1.045,.972) skew(2.6deg,-1deg)}48%{transform:scale(.968,1.036) skew(-3.2deg,1.4deg)}72%{transform:scale(1.03,.986) skew(1.6deg,-.6deg)}88%{transform:scale(.992,1.01) skew(-.6deg,.2deg)}100%{transform:none}}
+@keyframes t2-crackHit{0%{transform:none}8%{transform:translate(-13px,10px) rotate(-.8deg)}20%{transform:translate(11px,-9px) rotate(.7deg)}36%{transform:translate(-7px,5px) rotate(-.4deg)}56%{transform:translate(4px,-3px)}100%{transform:translate(1.5px,-1px) rotate(-.15deg)}}
+@keyframes t2-crackHit2{0%{transform:translate(1.5px,-1px) rotate(-.15deg)}14%{transform:translate(-6px,6px) rotate(-.4deg)}34%{transform:translate(5px,-4px) rotate(.3deg)}100%{transform:translate(2.5px,-1.5px) rotate(-.25deg)}}
+@keyframes t2-crack{0%{stroke-dashoffset:1;opacity:1}100%{stroke-dashoffset:0;opacity:1}}
+@keyframes t2-flip{0%{transform:scaleX(1) skewY(0)}45%{transform:scaleX(.05) skewY(9deg)}55%{transform:scaleX(-.05) skewY(-9deg)}100%{transform:scaleX(-1) skewY(0)}}
+@keyframes t2-frontOut{0%{opacity:1;filter:none}40%{opacity:1;filter:invert(1) hue-rotate(180deg)}49.9%{opacity:1;filter:invert(1) hue-rotate(180deg)}50%{opacity:0}100%{opacity:0}}
+@keyframes t2-backIn{0%,49.9%{opacity:0}50%,100%{opacity:1}}
+/* ── the fold to a point, and the planet. the body's window is 390×212 at y 76, knot at 172,106;
+      swollen, the knot sits at the screen's centre (195,422) ── */
+@keyframes t2-fold{0%{transform:translate(23px,240px) scale(2.1) rotate(0deg);opacity:1}34%{transform:translate(23px,240px) scale(2.3) rotate(40deg);opacity:1}100%{transform:translate(23px,240px) scale(.006) rotate(640deg);opacity:.85}}
+@keyframes t2-pointIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.8);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes t2-planetIn{0%{transform:scale(.25);opacity:0}60%{transform:scale(1.15);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes t2-ringIn{0%{transform:scale(.15);opacity:0}55%{opacity:1}80%{transform:scale(1.03)}100%{transform:scale(1);opacity:1}}
+@keyframes t2-orb{to{transform:rotate(360deg)}}
+@keyframes t2-draw{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+@keyframes t2-shim{0%{stroke-dashoffset:12}60%{stroke-dashoffset:-100}100%{stroke-dashoffset:-100}}
+@keyframes t2-twinkle{0%,100%{opacity:1}50%{opacity:.55}}
+/* ── Act III assembles in frost ── */
+@keyframes t2-frostIn{0%{opacity:0;filter:blur(8px);transform:scale(1.03)}60%{opacity:1}100%{opacity:1;filter:blur(0);transform:scale(1)}}
+@keyframes t2-fadeIn{0%{opacity:0}100%{opacity:1}}
+@keyframes t2-lineIn{0%{opacity:0;letter-spacing:.12em}100%{opacity:1;letter-spacing:.01em}}
+@keyframes t2-lineCalm{0%{opacity:0}100%{opacity:1}}
+@keyframes t2-hintIn{0%{opacity:0}100%{opacity:1}}
+</style>
+</helmet>
+<!--
+  T_2 · ACT II → III · ASCOSPORE DISCHARGE · "Let go of the ground." · through the looking glass
+  The opening frame is D_2's skeleton late in Act II; the last frame is D_3's skeleton on its first second.
+  The body is the shared geometry (bodyGeom, seed 61, 96 branches), read as the mind on the front of the
+  pane, mirrored on the back, then morphed into its glass reading (the same paths, laid along their bands)
+  as it folds into the point that becomes the planet.
+  Full sequence 14.6 s from commit. Calm (reduced-motion) sequence 8.2 s, per 09 §4.2 "Reduced motion"
+  (1.2 s cross-fade, the three lines 1.4 s apart, then the shell).
+  Beat table (also in SEQ in the logic class). t = ms after the hold completes.
+     0  P1  SATURATE  every edge lights at once; panels drop to .35   haptic: rising buzz ramp, 900 ms        audio: every voice of the network, one swelling chord
+  1200  P2  STILL     signal freezes on the edges. the pane holds     haptic: none                            audio: hard cut to silence, 700 ms
+  1900  P3  FLEX      the screen bows like a pane: scale and skew     haptic: two slow swells [60,200,80]     audio: low glass groan, warbling
+  3500  P4  CRACK     impact at the knot; first cracks + ring         haptic: heavy 70 ms                     audio: glass crack, bright transient over sub
+  4300  P5  SPREAD    cracks run to the edges                         haptic: ticks [12,40,12,40,12,40,12]    audio: fractures ticking outward
+  5100  P6  THROUGH   the pane turns over: mirror + invert            haptic: one long soft 160 ms            audio: the chord, reversed (reverse swell)
+  6300  P7  FOLD      the mirrored network folds into one point       haptic: falling rumble [30,20,20,30,10,40] audio: everything glides down into one sine
+  7600  P8  L1        "The last of the deadfall is gone."             audio: console tick, Act III timbre
+  9000  P9  L2        "There is nothing beneath you." the point rises audio: tick; a thin high tone follows the point
+ 10400  P10 L3        "You are very light." the point is the planet   audio: tick; one soft bell
+ 11400  P11 BANDS     13 rings ring out, 110 ms apart                 haptic: 13 light ticks                  audio: 13 glass tones, ascending
+ 13000  P12 ASSEMBLE  Act III UI frosts in; spores start falling      audio: faint frost crackle
+ 14600  P13 DONE      Act III, first frame. interactive.              audio: void ambient
+  Flash budget: the only large luminance change is the invert at P6 (one rise and fall inside 500 ms, while the pane is
+  turning edge-on, so its area shrinks as it brightens). Cracks and rings are thin lines. Under 1 flash per second throughout.
+-->
+<div style="{{rootStyle}}">
+
+ <!-- ═══ THE PANE · front is Act II, back is the other side ═══ -->
+ <div style="{{flipperStyle}}">
+
+  <!-- ─── FRONT: D_2, late. The forest is 97% consumed and the pool is at the brim. ─── -->
+  <div style="{{frontStyle}}">
+   <div style="{{shakerStyle}}">
+    <div style="position:absolute;inset:0;background:var(--ground)"></div>
+    <svg width="390" height="844" aria-hidden="true" style="position:absolute;left:0;top:0;pointer-events:none">
+      <defs>
+        <pattern id="t2scan" width="4" height="3" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#8CDCBB" fill-opacity=".045"></rect></pattern>
+        <pattern id="t2grid" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M13 10v6M10 13h6" stroke="#1B201A" stroke-width="1"></path></pattern>
+      </defs>
+      <rect y="76" width="390" height="212" fill="url(#t2grid)"></rect>
+      <rect width="390" height="844" fill="url(#t2scan)"></rect>
+    </svg>
+
+    <div style="{{dimStyle}}">
+      <!-- LEDGER (0–76) -->
+      <div style="position:absolute;left:0;right:0;top:0;height:76px;border-bottom:1px solid var(--rule-2)">
+        <div style="position:absolute;left:16px;top:4px;height:68px;display:flex;flex-direction:column;justify-content:center">
+          <span style="display:flex;align-items:baseline;gap:6px">
+            <span style="font:400 36px/1 var(--f-mono);letter-spacing:-.04em;color:var(--ink);text-shadow:0 0 10px #3A8E74;text-decoration:underline dotted var(--rule-2);text-decoration-thickness:1px;text-underline-offset:6px">4.71</span>
+            <span style="font:400 16px/1 var(--f-mono);color:var(--ink-2)">Mt</span>
+          </span>
+          <span style="font:400 11.5px/1 var(--f-mono);color:var(--ink-3);margin-top:8px">Biomass <span style="color:var(--thread)">+12.6 kt/s</span></span>
+        </div>
+        <div style="position:absolute;left:194px;right:16px;top:4px;height:68px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+          <span style="font:400 11px/16px var(--f-mono);color:var(--ink-3);align-self:flex-end;white-space:pre">4:11:52  pool ▓▓▓▓▓▓▓▓ 100%</span>
+          <sc-for list="{{ledger2}}" as="lr" hint-placeholder-count="3">
+            <span style="display:flex;align-items:baseline;width:100%;font:400 12px/16px var(--f-mono);color:var(--ink-2)">
+              <span>{{lr.k}}</span>
+              <span style="flex:1;margin:0 4px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+              <span style="color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px">{{lr.v}}</span>
+            </span>
+          </sc-for>
+        </div>
+      </div>
+      <!-- BODY WINDOW furniture (76–288) -->
+      <div style="position:absolute;left:16px;top:264px;font:500 11px/1 var(--f-mono);color:var(--thread);text-shadow:0 0 6px #3A8E74">Fig. 2 · 96 edges · 2 of 61 stands answering</div>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke-width="1.3" stroke-linecap="round" aria-hidden="true" style="position:absolute;right:17px;top:255px;stroke:var(--ink-2)"><path d="M11 2.5h4.5V7M7 15.5H2.5V11M15.5 2.5l-5 5M2.5 15.5l5-5"></path></svg>
+      <!-- VOICE (288–340) -->
+      <div style="position:absolute;left:0;right:0;top:288px;height:52px;border-top:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);box-sizing:border-box;padding:6px 40px 0 16px">
+        <span style="display:block;font:400 12px/20px var(--f-mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">You are running out of things to be made of.</span>
+        <span style="display:block;font:500 12.5px/20px var(--f-mono);color:var(--ink);text-shadow:0 0 7px #3A8E74;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">The canopy is open in every direction.</span>
+      </div>
+      <!-- NEXT (340–404) -->
+      <div style="position:absolute;left:0;right:0;top:340px;height:64px;padding:0 16px;display:flex;align-items:center;gap:12px;box-sizing:border-box">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="flex:none"><circle cx="7" cy="7" r="3.4" fill="none" stroke-width="1.4" style="stroke:var(--next)"></circle></svg>
+        <span style="flex:1">
+          <span style="display:block;font:500 15px/1.25 var(--f-mono);color:var(--ink)">Discharge has no price. The forest is 97% consumed.</span>
+          <span style="display:block;font:400 11.5px/15px var(--f-mono);color:var(--ink-3);margin-top:3px">Held for 1.4 s, not tapped · amber at the hub</span>
+        </span>
+      </div>
+      <!-- VERBS (404–776), the FLUSH page -->
+      <div style="position:absolute;left:0;right:0;top:404px;height:372px;border-top:1px solid var(--rule-2);overflow:hidden">
+        <sc-for list="{{rows2}}" as="r" hint-placeholder-count="2">
+          <div style="{{r.wrap}}">
+            <span style="width:72px;flex:none;text-align:right;padding:15px 14px 0 0;box-sizing:border-box;font:400 11px/1 var(--f-mono);color:var(--ink-3)">{{r.margin}}</span>
+            <div style="flex:1;min-width:0;padding:9px 0 8px">
+              <span style="display:flex;align-items:baseline">
+                <span style="font:400 14.5px/1.2 var(--f-mono);color:var(--ink-2)">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                <span style="font:400 12px/1 var(--f-mono);color:var(--ink-2);white-space:pre">{{r.cost}}</span>
+              </span>
+              <span style="display:block;font:400 11.5px/16px var(--f-mono);color:var(--ink-3);margin-top:3px">{{r.sub}}</span>
+            </div>
+          </div>
+        </sc-for>
+        <!-- ASCOSPORE DISCHARGE · irreversible, so HOLD. The fill is the body's edges racing along the row, signal at the tips. -->
+        <div style="display:flex;align-items:flex-start;padding:0 16px 0 0;border-top:1px solid var(--rule-2)">
+          <span style="width:72px;flex:none;text-align:right;padding:22px 14px 0 0;box-sizing:border-box;font:400 11px/1 var(--f-mono);color:var(--ink-3)">release</span>
+          <div style="flex:1;min-width:0">
+            <button class="t2-hold" onPointerDown="{{down}}" onPointerUp="{{up}}" onPointerLeave="{{up}}" onPointerCancel="{{up}}" aria-label="ascospore discharge. let go of the ground. it does not come back. press and hold." style="display:block;position:relative;width:100%;padding:14px 0 8px">
+              <span style="display:flex;align-items:baseline">
+                <span class="t2-word" style="font:500 19px/1.1 var(--f-mono);letter-spacing:-.02em;color:var(--ink);text-shadow:0 0 8px #15463A">[ Discharge ]</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="font:400 12.5px/1 var(--f-mono);color:var(--next)">hold</span>
+              </span>
+              <span style="display:block;font:400 12.5px/18px var(--f-mono);color:var(--ink-2);margin-top:5px">Ascospores. Let go of the ground.</span>
+              <svg width="302" height="56" viewBox="0 0 302 56" aria-hidden="true" style="display:block;margin-top:8px;overflow:visible">
+                <path d="M0 55.5 H302" style="stroke:var(--rule-2);stroke-width:1"></path>
+                <g fill="none" stroke-linecap="square" stroke-linejoin="miter" style="stroke:var(--thread);filter:drop-shadow(0 0 3px #3A8E74)">
+                  <sc-for list="{{holdStrands}}" as="st" hint-placeholder-count="12">
+                    <path d="{{st.d}}" stroke-width="{{st.w}}"></path>
+                  </sc-for>
+                </g>
+                <sc-for list="{{holdStrands}}" as="st" hint-placeholder-count="12">
+                  <rect x="{{st.rx}}" y="{{st.ry}}" width="{{st.r}}" height="{{st.r}}" style="fill:var(--thread-glow)"></rect>
+                </sc-for>
+              </svg>
+              <span style="display:block;font:400 11.5px/16px var(--f-mono);color:var(--ink-3);margin-top:6px">{{holdLabel}}</span>
+            </button>
+            <div role="status" style="{{hintStyle}}"><span style="color:var(--next-ink)">↳</span><span>{{hint}}</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- NAV (776–844) -->
+      <nav aria-label="act two" style="position:absolute;left:0;right:0;top:776px;height:68px;border-top:1px solid var(--rule-2);display:flex;padding:0 8px;box-sizing:border-box">
+        <sc-for list="{{tabs2}}" as="tb" hint-placeholder-count="4">
+          <span style="flex:1;height:68px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-left:8px">
+            <span style="{{tb.bar}}"></span>
+            <span style="{{tb.nameStyle}}">{{tb.name}}</span>
+            <span style="{{tb.readStyle}}">{{tb.reading}}</span>
+          </span>
+        </sc-for>
+      </nav>
+    </div>
+
+    <!-- the body window: the shared body as a graph, saturating. P1: every edge lights at once. -->
+    <div aria-hidden="true" style="position:absolute;left:0;top:76px;width:390px;height:212px;overflow:hidden;pointer-events:none">
+      <div style="{{frontThrob}}">
+        <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible">
+          <defs>
+            <filter id="t2glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.8" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+          </defs>
+          <g fill="none" stroke-linecap="round" style="{{edgeStyle}}">
+            <sc-for list="{{edges}}" as="e" hint-placeholder-count="96">
+              <path d="{{e.d}}" style="{{e.style}}"></path>
+            </sc-for>
+          </g>
+          <g fill="none" stroke-linecap="round" style="filter:url(#t2glow)">
+            <sc-for list="{{packets}}" as="p" hint-placeholder-count="96">
+              <path d="{{p.d}}" pathLength="100" style="{{p.style}}"></path>
+            </sc-for>
+          </g>
+          <sc-for list="{{nodes}}" as="nd" hint-placeholder-count="58">
+            <rect x="{{nd.x}}" y="{{nd.y}}" width="3.2" height="3.2" style="fill:var(--thread-glow)"></rect>
+          </sc-for>
+          <sc-for list="{{tips}}" as="t" hint-placeholder-count="35">
+            <circle cx="{{t.x}}" cy="{{t.y}}" r="2.2" style="fill:var(--ground);stroke:var(--thread-glow);stroke-width:1.1"></circle>
+          </sc-for>
+          <rect x="167" y="101" width="10" height="10" transform="rotate(45 172 106)" style="fill:var(--ground);stroke:var(--thread-glow);stroke-width:1.2"></rect>
+          <rect x="170.5" y="104.5" width="3" height="3" style="fill:var(--thread-glow)"></rect>
+          <!-- stands: hex clusters on the edges. nine of them as D_2 pins them; two still answering -->
+          <sc-for list="{{stands}}" as="h" hint-placeholder-count="9">
+            <g style="{{h.style}}">
+              <path d="{{h.hex}}" style="{{h.hexStyle}}"></path>
+              <path d="{{h.hex2}}" style="{{h.hex2Style}}"></path>
+            </g>
+          </sc-for>
+          <!-- amber: the next move is the hub -->
+          <circle cx="172" cy="106" r="11" fill="none" style="{{amberFront}}"></circle>
+        </svg>
+      </div>
+    </div>
+
+    <!-- THE CRACKS. P4 impact at the knot (172,182 on screen), P5 they run to the edges. shadow line under a frost line. -->
+    <svg width="390" height="844" aria-hidden="true" style="position:absolute;left:0;top:0;pointer-events:none">
+      <g fill="none" stroke="#050508" stroke-width="3.2" stroke-linejoin="bevel" opacity=".8" transform="translate(1.2 1.4)">
+        <sc-for list="{{cracks}}" as="c" hint-placeholder-count="31">
+          <path d="{{c.d}}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" style="{{c.style}}"></path>
+        </sc-for>
+      </g>
+      <g fill="none" stroke="#F0F0F5" stroke-width="1.1" stroke-linejoin="bevel">
+        <sc-for list="{{cracks}}" as="c" hint-placeholder-count="31">
+          <path d="{{c.d}}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" style="{{c.style}}"></path>
+        </sc-for>
+      </g>
+    </svg>
+   </div>
+  </div>
+
+  <!-- ─── BACK: the other side of the glass. The same body, mirrored (the flipper ends at scaleX(-1)), cold. ─── -->
+  <!-- P7 FOLD. haptic: falling rumble. audio: every voice glides down into one sine. -->
+  <div style="{{backStyle}}">
+    <div style="position:absolute;inset:0;background:#08080C"></div>
+    <svg width="390" height="844" aria-hidden="true" style="{{backCrackStyle}}">
+      <g fill="none" stroke="#A8A4C6" stroke-width="1">
+        <sc-for list="{{cracksStatic}}" as="cs" hint-placeholder-count="31">
+          <path d="{{cs.d}}"></path>
+        </sc-for>
+      </g>
+    </svg>
+    <div style="{{foldStyle}}">
+      <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible">
+        <g fill="none" stroke-linecap="round" style="stroke:#C9C6DE">
+          <sc-for list="{{backEdges}}" as="be" hint-placeholder-count="96">
+            <path d="{{be.d}}" style="{{be.style}}"></path>
+          </sc-for>
+        </g>
+        <circle cx="172" cy="106" r="5" style="fill:#08080C;stroke:#D2CFE4;stroke-width:1.4"></circle>
+      </svg>
+    </div>
+  </div>
+ </div>
+
+ <!-- the point the network folded into. P9: it rises to the knot's place in the window. -->
+ <div aria-hidden="true" style="{{pointStyle}}"></div>
+
+ <!-- ═══ ACT III · the body window, read as an astronomical plate (D_3) ═══ -->
+ <div aria-hidden="true" style="{{plateStyle}}">
+   <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible">
+     <defs>
+       <filter id="t2glow3" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.6" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+     </defs>
+     <path d="M8 14h10M13 9v10M372 14h10M377 9v10M8 198h10M13 193v10M372 198h10M377 193v10" style="{{marksStyle}}"></path>
+     <!-- P11 BANDS. each ring: haptic light tick; audio one glass tone, ascending -->
+     <sc-for list="{{rings}}" as="rg" hint-placeholder-count="13">
+       <ellipse cx="172" cy="106" rx="{{rg.rx}}" ry="{{rg.ry}}" fill="none" style="{{rg.style}}"></ellipse>
+     </sc-for>
+     <!-- the seven arms of the knot, now short arcs on the first two bands -->
+     <g fill="none" stroke-linecap="round" style="{{armsStyle}}">
+       <sc-for list="{{arms}}" as="am" hint-placeholder-count="7">
+         <path d="{{am.d}}" pathLength="100" style="{{am.style}}"></path>
+       </sc-for>
+     </g>
+     <g fill="none" stroke-linecap="round" style="{{armsFx}}">
+       <sc-for list="{{arms}}" as="am" hint-placeholder-count="7">
+         <path d="{{am.d}}" pathLength="100" style="{{am.fx}}"></path>
+       </sc-for>
+     </g>
+     <!-- amber: the band the next move is about -->
+     <ellipse cx="172" cy="106" rx="{{amber.rx}}" ry="{{amber.ry}}" fill="none" stroke-dasharray="3 5" style="{{amber.style}}"></ellipse>
+     <!-- the planet: the knot, seen from very far away. P10 audio: one soft bell. -->
+     <g style="{{planetStyle}}">
+       <circle cx="172" cy="106" r="9.5" style="fill:#121219;stroke:#A8A4C6;stroke-width:.8"></circle>
+       <path d="M172 96.5 A9.5 9.5 0 0 1 172 115.5 A6 9.5 0 0 0 172 96.5Z" style="fill:#A8A4C6;opacity:.55"></path>
+     </g>
+     <!-- the endings: four distant lights, at D_3's places. no names yet -->
+     <g style="{{farStyle}}">
+       <sc-for list="{{lights}}" as="lt" hint-placeholder-count="4">
+         <g>
+           <circle cx="{{lt.x}}" cy="{{lt.y}}" r="5" style="fill:#A8A4C6;opacity:.05"></circle>
+           <circle cx="{{lt.x}}" cy="{{lt.y}}" r="1.4" style="{{lt.style}}"></circle>
+         </g>
+       </sc-for>
+     </g>
+   </svg>
+   <!-- the fleet in flight: the seven tips, drawn on the true plane, then the plane is tipped edge-on -->
+   <div style="{{craftLayer}}">
+     <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible">
+       <sc-for list="{{orbits}}" as="ob" hint-placeholder-count="2">
+         <g style="{{ob.style}}">
+           <sc-for list="{{ob.craft}}" as="cr" hint-placeholder-count="4">
+             <circle cx="{{cr.x}}" cy="{{cr.y}}" r="2.6" style="fill:#D2CFE4"></circle>
+           </sc-for>
+         </g>
+       </sc-for>
+     </svg>
+   </div>
+ </div>
+
+ <!-- ═══ ACT III CHROME · D_3's skeleton, frost on void. P12: audio faint frost crackle. ═══ -->
+ <div style="{{chrome3Style}}">
+   <svg width="390" height="844" aria-hidden="true" style="{{a3Frost}}">
+     <filter id="t2frost"><feTurbulence type="fractalNoise" baseFrequency=".012 .03" numOctaves="3" seed="9"></feTurbulence><feColorMatrix type="matrix" values="0 0 0 0 .78  0 0 0 0 .78  0 0 0 0 .9  0 0 0 .45 -.12"></feColorMatrix></filter>
+     <rect width="390" height="844" filter="url(#t2frost)"></rect>
+   </svg>
+   <!-- LEDGER (0–76) -->
+   <div style="{{a3Ledger}}">
+     <div style="position:absolute;left:0;right:0;top:0;height:76px;border-bottom:1px solid var(--rule-2)">
+       <div style="position:absolute;left:16px;top:4px;height:68px;display:flex;flex-direction:column;justify-content:center">
+         <span style="display:flex;align-items:baseline;gap:5px">
+           <span style="font:300 44px/1 var(--f-serif);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.01em;color:var(--ink);text-shadow:1px 0 0 #3A3A4E,-1px 0 0 #15463A;text-decoration:underline dotted var(--rule-2);text-decoration-thickness:1px;text-underline-offset:6px">0</span>
+           <span style="font:400 18px/1 var(--f-serif);color:var(--ink-2)">Χ</span>
+         </span>
+         <span style="font:400 11.5px/1 var(--f-mono);color:var(--ink-3);margin-top:7px">carbon, none settled</span>
+       </div>
+       <div style="position:absolute;left:194px;right:16px;top:4px;height:68px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+         <span style="font:italic 400 12.5px/16px var(--f-serif);color:var(--ink-3);align-self:flex-end">4:12:30 · Υ 0.00</span>
+         <sc-for list="{{ledger3}}" as="lr" hint-placeholder-count="3">
+           <span style="display:flex;align-items:baseline;width:100%;font:400 12px/16px var(--f-mono);color:var(--ink-2)">
+             <span>{{lr.k}}</span>
+             <span style="flex:1;margin:0 4px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+             <span style="{{lr.vStyle}}">{{lr.v}}</span>
+           </span>
+         </sc-for>
+       </div>
+     </div>
+   </div>
+   <!-- BODY WINDOW furniture (76–288) -->
+   <div style="{{a3Window}}">
+     <div style="position:absolute;left:16px;top:264px;font:italic 400 12.5px/1 var(--f-serif);color:var(--ink-3)">plate iii · 0 of 13 bands reached · Υ 0.00</div>
+     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke-width="1.3" stroke-linecap="round" aria-hidden="true" style="position:absolute;right:17px;top:255px;stroke:var(--ink-2)"><path d="M11 2.5h4.5V7M7 15.5H2.5V11M15.5 2.5l-5 5M2.5 15.5l5-5"></path></svg>
+   </div>
+   <!-- VOICE (288–340): the rules of the slot. The three lines below settle into it. -->
+   <div style="{{a3Voice}}">
+     <div style="position:absolute;left:0;right:0;top:288px;height:52px;border-top:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);box-sizing:border-box"></div>
+   </div>
+   <!-- NEXT (340–404) -->
+   <div style="{{a3Next}}">
+     <div style="position:absolute;left:0;right:0;top:340px;height:64px;padding:0 16px;display:flex;align-items:center;gap:12px;box-sizing:border-box">
+       <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="flex:none"><circle cx="7" cy="7" r="3.4" fill="none" stroke-width="1.4" style="stroke:var(--next)"></circle></svg>
+       <span style="flex:1">
+         <span style="display:block;font:300 19px/1.2 var(--f-serif);color:var(--ink)">Spores fall at 4.9 M/s until they settle.</span>
+         <span style="display:block;font:400 11.5px/15px var(--f-mono);color:var(--ink-3);margin-top:3px">The canopy is band 0 · amber on the first ring</span>
+       </span>
+     </div>
+   </div>
+   <!-- VERBS (404–776), the VOID page -->
+   <div style="{{a3Verbs}}">
+     <div style="position:absolute;left:0;right:0;top:404px;height:372px;border-top:1px solid var(--rule-2);overflow:hidden">
+       <sc-for list="{{rows3}}" as="r" hint-placeholder-count="3">
+         <div style="{{r.wrap}}">
+           <span style="width:72px;flex:none;text-align:right;padding:15px 14px 0 0;box-sizing:border-box;font:italic 400 14px/1 var(--f-serif);color:var(--ink-3)">{{r.margin}}</span>
+           <div style="flex:1;min-width:0;padding:7px 0 8px">
+             <span style="display:flex;align-items:baseline;min-height:24px">
+               <span style="position:relative;display:inline-block"><span style="{{r.wordStyle}}">{{r.word}}</span><span style="{{r.ulStyle}}"></span></span>
+               <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+               <span style="{{r.costStyle}}">{{r.cost}}</span>
+             </span>
+             <span style="{{r.subStyle}}">{{r.sub}}</span>
+           </div>
+         </div>
+       </sc-for>
+     </div>
+   </div>
+   <!-- NAV (776–844) -->
+   <div style="{{a3Nav}}">
+     <nav aria-label="act three" style="position:absolute;left:0;right:0;top:776px;height:68px;border-top:1px solid var(--rule-2);display:flex;padding:0 8px;box-sizing:border-box">
+       <sc-for list="{{tabs3}}" as="tb" hint-placeholder-count="4">
+         <span style="flex:1;height:68px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-left:8px">
+           <span style="{{tb.bar}}"></span>
+           <span style="{{tb.nameStyle}}">{{tb.name}}</span>
+           <span style="{{tb.readStyle}}">{{tb.reading}}</span>
+         </span>
+       </sc-for>
+     </nav>
+   </div>
+ </div>
+
+ <!-- ═══ THE THREE LINES · sparse, centred transmissions. They settle into the voice slot Act III opens with. ═══ -->
+ <div role="log" aria-live="polite" style="position:absolute;inset:0;z-index:4;pointer-events:none">
+   <div style="{{l1Style}}">The last of the deadfall is gone.</div>
+   <div style="{{l2Style}}">There is nothing beneath you.</div>
+   <div style="{{l3Style}}">You are very light.</div>
+ </div>
+
+ <!-- tap to hurry: one beat per tap. available once the first beat (saturation) has landed -->
+ <sc-if value="{{canHurry}}" hint-placeholder-val="{{false}}">
+   <button onClick="{{hurry}}" aria-label="hurry the transition" style="position:absolute;inset:0;z-index:8">
+     <span style="position:absolute;left:16px;bottom:20px;font:italic 400 14px/1 'Newsreader',ui-serif,Georgia,serif;color:#8B87A8;animation:t2-hintIn 600ms 400ms both">tap to hurry</span>
+   </button>
+ </sc-if>
+
+ <!-- prototype controls: two words in the window's top-right corner -->
+ <div style="position:absolute;right:6px;top:78px;z-index:9;display:flex">
+   <button class="t2-ctl" onClick="{{toggleCalm}}" aria-pressed="{{calmPressed}}" aria-label="reduced motion" style="{{ctlStyle}}">{{calmLabel}}</button>
+   <button class="t2-ctl" onClick="{{replay}}" aria-label="replay the transition" style="{{ctlStyle}}">replay</button>
+ </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    let calm = false;
+    try { calm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+    this.SPORES0 = 2.0e9;
+    this.state = { phase: 0, hold: 0, near: false, calm: calm, spores: this.SPORES0 };
+    this.timers = [];
+    this.holdIv = null;
+    this.sporeIv = null;
+    this.nearT = null;
+    this.idx = -1;
+    this.HOLD_MS = 1400;
+    this.SEQ_FULL = [
+      { p: 1, t: 0 },      // SATURATE · haptic: rising buzz ramp · audio: the whole network, one chord
+      { p: 2, t: 1200 },   // STILL    · nothing. 700 ms
+      { p: 3, t: 1900 },   // FLEX     · haptic: [60,200,80] · audio: glass groan
+      { p: 4, t: 3500 },   // CRACK    · haptic: heavy 70 · audio: crack transient + sub
+      { p: 5, t: 4300 },   // SPREAD   · haptic: tick train · audio: fractures running out
+      { p: 6, t: 5100 },   // THROUGH  · haptic: soft 160 · audio: reversed chord
+      { p: 7, t: 6300 },   // FOLD     · haptic: falling rumble · audio: glide to one sine
+      { p: 8, t: 7600 },   // L1       · audio: console tick
+      { p: 9, t: 9000 },   // L2       · audio: tick, high tone with the rising point
+      { p: 10, t: 10400 }, // L3       · audio: tick, soft bell
+      { p: 11, t: 11400 }, // BANDS    · haptic: 13 ticks · audio: 13 glass tones ascending
+      { p: 12, t: 13000 }, // ASSEMBLE · audio: frost crackle
+      { p: 13, t: 14600 }  // DONE     · void ambient
+    ];
+    // 09 §4.2 reduced motion: 1,200 ms cross-fade, the three lines at 1,400 ms intervals, then the shell.
+    this.SEQ_CALM = [
+      { p: 1, t: 0 }, { p: 8, t: 1200 }, { p: 9, t: 2600 }, { p: 10, t: 4000 }, { p: 11, t: 5000 },
+      { p: 12, t: 6200 }, { p: 13, t: 8200 }
+    ];
+    this.G = this.bodyGeom();
+    // nine of the stands, pinned to the body's own edges exactly as D_2 pins them. two still answer.
+    this.STANDS = [[17, 0], [18, 1], [22, 0], [25, 0], [30, 0], [39, 0], [47, -1], [55, 1], [72, 0]];
+    this.buildHoldStrands();
+    this.buildCracks();
+  }
+  componentWillUnmount(){ this.clearTimers(); clearInterval(this.holdIv); clearInterval(this.sporeIv); clearTimeout(this.nearT); }
+  rnd(n){ const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
+  f(v){ return Math.round(v * 10) / 10; }
+
+  // ── THE BODY: one seeded geometry, read three ways. This block is identical in D_0..D_3. ──
+  bodyGeom(){
+    let s = 61;
+    const R = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const K = { x: 172, y: 106 }, SQ = 0.6, segs = [], q = [], ARMS = 7;
+    for (let i = 0; i < ARMS; i++) q.push({ x: K.x, y: K.y, a: i * 6.2832 / ARMS + 0.35 + (R() - 0.5) * 0.5, d: 0, p: -1 });
+    while (q.length && segs.length < 96) {
+      const o = q.shift();
+      const L = (36 - o.d * 4) * (0.78 + R() * 0.44);
+      const a = o.a + (R() - 0.5) * 0.42;
+      const x2 = o.x + Math.cos(a) * L, y2 = o.y + Math.sin(a) * L * SQ;
+      const bend = (R() - 0.5) * L * 0.55;
+      const id = segs.length;
+      segs.push({ id: id, p: o.p, d: o.d, a: a, L: L, bend: bend, x1: o.x, y1: o.y, x2: x2, y2: y2,
+        cx: (o.x + x2) / 2 - Math.sin(a) * bend, cy: (o.y + y2) / 2 + Math.cos(a) * bend * SQ });
+      if (o.d < 6) {
+        q.push({ x: x2, y: y2, a: a + (R() - 0.5) * 0.3, d: o.d + 1, p: id });
+        if (R() < 0.62 - o.d * 0.06) q.push({ x: x2, y: y2, a: a + (R() < 0.5 ? -1 : 1) * (0.45 + R() * 0.55), d: o.d + 1, p: id });
+      }
+    }
+    const kids = segs.map(() => []);
+    segs.forEach(g => { if (g.p >= 0) kids[g.p].push(g.id); });
+    // the looking glass: mirror through the knot, put each branch on a band by how many forks
+    // it is from the knot (so growth settles the bands inside-out, as Act III does), and lay the
+    // branch's own length along that orbit. TILT is the plane seen edge-on.
+    const TILT = 0.42, BR = b => 16 + b * 10.4;
+    const P = (r, t) => ({ x: K.x + r * Math.cos(t), y: K.y + r * Math.sin(t) * TILT });
+    segs.forEach(g => {
+      const dx = -(g.x2 - K.x), dy = (g.y2 - K.y) / SQ;
+      const band = Math.min(12, g.d * 2 + (g.id % 2));
+      const r = BR(band), t1 = Math.atan2(dy, dx);
+      const span = Math.min(1.1, g.L / r) * (g.bend >= 0 ? 1 : -1), t0 = t1 - span;
+      const a0 = P(r, t0), a1 = P(r, t1), c = P(r / Math.cos(span / 2), t0 + span / 2);
+      Object.assign(g, { band: band, gr: r, gt: t1, gx1: a0.x, gy1: a0.y, gcx: c.x, gcy: c.y, gx2: a1.x, gy2: a1.y });
+    });
+    return { K: K, segs: segs, kids: kids, TILT: TILT, BR: BR };
+  }
+  // one path grammar for all three readings (M · Q), so the strokes can morph between them
+  bodyPath(g, reading){
+    const f = v => Math.round(v * 10) / 10;
+    if (reading === 'ink') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f(g.cx) + ' ' + f(g.cy) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    if (reading === 'mind') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f((g.x1 + g.x2) / 2) + ' ' + f((g.y1 + g.y2) / 2) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    return 'M' + f(g.gx1) + ' ' + f(g.gy1) + ' Q' + f(g.gcx) + ' ' + f(g.gcy) + ' ' + f(g.gx2) + ' ' + f(g.gy2);
+  }
+  isTip(id, n){ return id < n && this.G.kids[id].every(k => k >= n); }
+  // ── end of the shared block ──
+
+  hex(cx, cy, r){ let d = ''; for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30); d += (k ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1); } return d + 'Z'; }
+
+  // ── the hold fill: straight edges, Act II's reading of the hyphae ──
+  buildHoldStrands(){
+    const W = 302, H = 52; const out = [];
+    const mains = [9, 21, 33, 45]; const ends = [1, 0.88, 0.8, 0.94];
+    mains.forEach((y0, i) => {
+      const pts = [[0, y0]]; let x = 0, y = y0, n = 0;
+      while (x < W) { n++; x = Math.min(W, x + 26 + this.rnd(i * 40 + n) * 22); y = Math.max(4, Math.min(H - 4, y + (this.rnd(i * 60 + n + 5) < 0.5 ? -1 : 1) * (this.rnd(i + n * 3) * 7))); pts.push([this.f(x), this.f(y)]); }
+      out.push({ pts: pts, s: 0, e: ends[i], w: 1.4 });
+      for (let b = 0; b < 2; b++) {
+        const at = 0.2 + b * 0.38;
+        const base = pts[Math.max(1, Math.floor(at * (pts.length - 1)))];
+        const dir = (i + b) % 2 ? -1 : 1;
+        const bp = [[base[0], base[1]], [this.f(base[0] + 20), this.f(Math.max(2, Math.min(H - 2, base[1] + dir * 6)))], [this.f(base[0] + 40), this.f(Math.max(2, Math.min(H - 2, base[1] + dir * 8)))]];
+        const s0 = at * ends[i];
+        out.push({ pts: bp, s: s0, e: Math.min(1, s0 + 0.2), w: 1 });
+      }
+    });
+    out.forEach(st => { const L = [0]; for (let i = 1; i < st.pts.length; i++) { const dx = st.pts[i][0] - st.pts[i - 1][0], dy = st.pts[i][1] - st.pts[i - 1][1]; L.push(L[i - 1] + Math.sqrt(dx * dx + dy * dy)); } st.L = L; st.total = L[L.length - 1]; });
+    this.strands = out;
+  }
+  partial(st, fr){
+    const p = st.pts, target = fr * st.total; let d = 'M' + p[0][0] + ' ' + p[0][1], tx = p[0][0], ty = p[0][1];
+    for (let i = 1; i < p.length; i++) {
+      if (st.L[i] <= target) { d += ' L' + p[i][0] + ' ' + p[i][1]; tx = p[i][0]; ty = p[i][1]; }
+      else { const t = (target - st.L[i - 1]) / (st.L[i] - st.L[i - 1]); tx = this.f(p[i - 1][0] + (p[i][0] - p[i - 1][0]) * t); ty = this.f(p[i - 1][1] + (p[i][1] - p[i - 1][1]) * t); d += ' L' + tx + ' ' + ty; break; }
+    }
+    return { d: d, tx: tx, ty: ty };
+  }
+
+  // ── the cracks: from the knot, where the body touches the glass (172,182 on screen) ──
+  buildCracks(){
+    const out = []; let k = 900; const ox = 172, oy = 182; const f = (v) => this.f(v);
+    for (let i = 0; i < 10; i++) {
+      let a = i * Math.PI * 2 / 10 + (this.rnd(k++) - 0.5) * 0.5, x = ox, y = oy;
+      let d = 'M' + ox + ' ' + oy; const pts = [];
+      for (let n = 0; n < 40; n++) {
+        const st = 26 + this.rnd(k++) * 28; a += (this.rnd(k++) - 0.5) * 0.6;
+        x += Math.cos(a) * st; y += Math.sin(a) * st; d += ' L' + f(x) + ' ' + f(y); pts.push([x, y, a]);
+        if (x < -20 || x > 410 || y < -20 || y > 864) break;
+      }
+      out.push({ d: d, wave: i % 2 ? 2 : 1, i: i });
+      [1, 3].forEach(bi => {
+        if (!pts[bi]) return;
+        let bx = pts[bi][0], by = pts[bi][1], ba = pts[bi][2] + (this.rnd(k++) < 0.5 ? -1 : 1) * (0.7 + this.rnd(k++) * 0.5);
+        let bd = 'M' + f(bx) + ' ' + f(by);
+        for (let q = 0; q < 3; q++) { const st = 16 + this.rnd(k++) * 18; bx += Math.cos(ba) * st; by += Math.sin(ba) * st; ba += (this.rnd(k++) - 0.5) * 0.6; bd += ' L' + f(bx) + ' ' + f(by); }
+        out.push({ d: bd, wave: 2, i: i + bi });
+      });
+    }
+    let rd = '';
+    for (let q = 0; q < 12; q++) { const aa = q * Math.PI * 2 / 12, rr = 20 + this.rnd(k++) * 10; rd += (q ? ' L' : 'M') + f(ox + Math.cos(aa) * rr) + ' ' + f(oy + Math.sin(aa) * rr * 0.9); }
+    out.push({ d: rd + ' Z', wave: 1, i: 0 });
+    this.crackList = out;
+    this.cracksStatic = out.map(c => ({ d: c.d }));
+  }
+
+  // ── sequencing: setTimeout chains, all on this.timers ──
+  clearTimers(){ this.timers.forEach(t => clearTimeout(t)); this.timers = []; }
+  seq(){ return this.state.calm ? this.SEQ_CALM : this.SEQ_FULL; }
+  enter(p){
+    this.setState({ phase: p });
+    if (p === 12 && !this.sporeIv) {
+      // Act III's first number is going down while "You are very light." is still on screen.
+      this.sporeIv = setInterval(() => this.setState({ spores: Math.max(0, this.state.spores - 4.9e6 * 0.2) }), 200);
+    }
+  }
+  play(i){
+    this.clearTimers();
+    const S = this.seq(); this.idx = i;
+    this.setState({ hold: 1, near: false });
+    this.enter(S[i].p);
+    for (let j = i + 1; j < S.length; j++) {
+      this.timers.push(setTimeout(() => { this.idx = j; this.enter(S[j].p); }, S[j].t - S[i].t));
+    }
+  }
+  hurry(){ const S = this.seq(); if (this.idx < 0 || this.idx >= S.length - 1) return; this.play(this.idx + 1); }
+  replay(){
+    this.clearTimers(); clearInterval(this.holdIv); clearInterval(this.sporeIv); clearTimeout(this.nearT);
+    this.holdIv = null; this.sporeIv = null; this.h0 = 0; this.idx = -1;
+    this.setState({ phase: 0, hold: 0, near: false, spores: this.SPORES0 });
+  }
+  down(e){
+    if (this.state.phase > 0) return;
+    try { if (e && e.currentTarget && e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    clearInterval(this.holdIv);
+    this.h0 = Date.now();
+    this.holdIv = setInterval(() => {
+      const p = Math.min(1, (Date.now() - this.h0) / this.HOLD_MS);
+      this.setState({ hold: p });
+      if (p >= 1) { clearInterval(this.holdIv); this.holdIv = null; this.h0 = 0; this.play(0); }
+    }, 30);
+  }
+  up(){
+    if (this.state.phase > 0 || !this.h0) return;
+    clearInterval(this.holdIv); this.holdIv = null; this.h0 = 0;
+    this.setState({ hold: 0, near: true });
+    clearTimeout(this.nearT); this.nearT = setTimeout(() => this.setState({ near: false }), 4200);
+  }
+
+  renderVals(){
+    const s = this.state, P = s.phase, calm = s.calm, full = !calm, G = this.G;
+    const f = v => this.f(v);
+    const T2 = "--ground:#0B0D0C;--sunk:#070906;--raised:#101310;--ink:#EFEBDD;--ink-2:#B0B6A6;--ink-3:#8C9484;--rule:#1B201A;--rule-2:#3A4236;--body:#3A8E74;--body-old:#2C3329;--thread:#62C39A;--thread-glow:#8CDCBB;--next:#E9B75C;--next-ink:#E9B75C;--danger:#E0917A;--locked:#4E5749;";
+    const T3 = "--ground:#08080C;--sunk:#050508;--raised:#121219;--ink:#D2CFE4;--ink-2:#A8A4C6;--ink-3:#8B87A8;--rule:#1F1F2C;--rule-2:#3A3A4E;--body:#C9C6DE;--body-old:#3A3A4E;--thread:#B6EDD6;--thread-glow:#B6EDD6;--next:#F5D28F;--next-ink:#F5D28F;--danger:#E0917A;--locked:#5A5878;";
+    const FONTS = "--f-serif:'Newsreader',ui-serif,Georgia,serif;--f-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--f-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;";
+    const MONO = 'var(--f-mono)', SER = 'var(--f-serif)';
+
+    // the pane
+    let flipper = 'position:absolute;inset:0;z-index:1;transform-origin:195px 422px;';
+    if (full && P >= 6) flipper += 'animation:t2-flip 1000ms cubic-bezier(.6,0,.3,1) forwards;';
+    const front = T2 + 'position:absolute;inset:0;color:var(--ink);font-family:var(--f-ui);' + (calm ? 'transition:opacity 1200ms ease-in-out;opacity:' + (P >= 1 ? 0 : 1) + ';' : (P >= 6 ? 'animation:t2-frontOut 1000ms linear forwards;' : '')) +
+      'pointer-events:' + (P === 0 ? 'auto' : 'none');
+    const back = 'position:absolute;inset:0;pointer-events:none;' + (full && P >= 6 ? 'animation:t2-backIn 1000ms linear forwards' : 'opacity:0');
+    const SHAKE = { 3: 't2-flex 1600ms cubic-bezier(.45,0,.55,1) both', 4: 't2-crackHit 520ms cubic-bezier(.3,.7,.4,1) both', 5: 't2-crackHit2 480ms cubic-bezier(.3,.7,.4,1) both' };
+    let shaker = 'position:absolute;inset:0;transform-origin:172px 182px;';
+    if (full && SHAKE[P]) shaker += 'animation:' + SHAKE[P] + ';';
+    else if (full && P >= 6) shaker += 'transform:translate(2.5px,-1.5px) rotate(-.25deg);';
+
+    const dim = 'position:absolute;inset:0;transition:opacity 900ms;opacity:' + (P >= 1 ? 0.35 : 1);
+    const hintStyle = 'display:flex;gap:6px;padding:2px 0 10px;font:400 12.5px/1.45 ' + MONO + ';color:var(--ink-2);transition:opacity 900ms;opacity:' + (P >= 1 ? 0 : 1);
+
+    // the network saturating, then lit all at once, then still
+    let throb = 'animation:t2-breathe 6.4s ease-in-out infinite';
+    if (P >= 1) throb = full ? 'animation:t2-pressure 1100ms cubic-bezier(.2,.8,.2,1) forwards' : 'animation:none';
+    const frontThrob = 'position:absolute;inset:0;transform-origin:172px 106px;' + throb;
+    const lit = P >= 1;
+    const edgeStyle = 'transition:filter 900ms ease-in;filter:' + (lit ? 'drop-shadow(0 0 4px #3A8E74)' : 'none');
+    const edges = G.segs.map(g => ({ d: this.bodyPath(g, 'mind'),
+      style: 'stroke:' + (lit ? '#8CDCBB' : 'var(--body)') + ';stroke-width:' + (lit ? (g.d === 0 ? 2.2 : 1.6) : (g.d === 0 ? 1.6 : 1.1)) + ';opacity:' + (!lit && g.d > 3 ? 0.7 : 1) + ';transition:stroke 900ms ease-in,stroke-width 900ms ease-in,opacity 900ms' }));
+    const packets = G.segs.map(g => ({ d: this.bodyPath(g, 'mind'),
+      style: 'stroke:var(--thread-glow);stroke-width:2.4;stroke-dasharray:5 300;' + (calm ? 'stroke-dasharray:none;opacity:' + (lit ? 0.5 : 0.25) :
+        'animation:' + (g.id % 3 === 2 ? 't2-pktIn' : 't2-pkt') + ' ' + (lit ? 0.9 : 1.3 + (g.id % 5) * 0.42).toFixed(2) + 's linear -' + ((g.id * 0.37) % 3).toFixed(2) + 's infinite' + (P >= 2 ? ';animation-play-state:paused' : '')) }));
+    const nodes = G.segs.filter(g => !this.isTip(g.id, 96)).map(g => ({ x: f(g.x2 - 1.6), y: f(g.y2 - 1.6) }));
+    const tips = G.segs.filter(g => this.isTip(g.id, 96)).map(g => ({ x: f(g.x2), y: f(g.y2) }));
+    const stands = this.STANDS.map(st => {
+      const g = G.segs[st[0]], live = st[1] === 1, dead = st[1] === -1;
+      const fill = live ? '#15463A' : dead ? '#331309' : '#101310', stroke = live ? 'var(--thread)' : dead ? 'var(--danger)' : '#3A4236';
+      return { hex: this.hex(g.x2, g.y2, 6.5), hex2: this.hex(g.x2 + 9.5, g.y2 - 5.5, 4),
+        hexStyle: 'fill:' + fill + ';stroke:' + stroke + ';stroke-width:1.1', hex2Style: 'fill:none;stroke:' + stroke + ';stroke-width:.8;opacity:.7',
+        style: live && full ? 'animation:t2-standPulse 2.4s ease-in-out infinite' : '' };
+    });
+    const amberFront = 'stroke:var(--next);stroke-width:1.4;stroke-dasharray:3 4;' + (P === 0 ? 'animation:t2-ghost 1.8s ease-in-out infinite' : 'opacity:0;transition:opacity 400ms');
+
+    const holdStrands = this.strands.map(st => {
+      const fr = Math.max(0, Math.min(1, (s.hold - st.s) / (st.e - st.s)));
+      const pp = this.partial(st, fr), r = fr > 0 && fr < 1 ? 3.2 : 0;
+      return { d: pp.d, w: st.w, rx: f(pp.tx - r / 2), ry: f(pp.ty - r / 2), r: r };
+    });
+    const holdLabel = P > 0 ? 'Released' : (s.hold > 0 ? 'Holding · ' + (s.hold * this.HOLD_MS / 1000).toFixed(1) + ' of 1.4 s' : 'Press and hold · 1.4 s');
+    const hint = s.near ? 'You let go before it took. 1.4 s of holding, and it is done.' : 'No price. The ground does not come back.';
+
+    const cracks = this.crackList.map(c => {
+      let st = 'opacity:0';
+      if (full && P >= 4 && c.wave === 1) st = 'animation:t2-crack 280ms cubic-bezier(.2,.9,.3,1) ' + (c.i * 18) + 'ms both';
+      if (full && P >= 5 && c.wave === 2) st = 'animation:t2-crack 420ms cubic-bezier(.2,.9,.3,1) ' + (c.i * 26) + 'ms both';
+      return { d: c.d, style: st };
+    });
+
+    // the back: the same paths, mirrored by the pane; on FOLD they morph from the mind reading into the glass reading
+    const folding = full && P >= 7;
+    const backEdges = G.segs.map(g => { const d = this.bodyPath(g, folding ? 'glass' : 'mind');
+      return { d: d, style: "d:path('" + d + "');stroke-width:" + (g.d === 0 ? 1.4 : 1) + ';opacity:' + (g.d > 3 ? 0.65 : 0.95) + ';transition:d 520ms cubic-bezier(.5,0,.2,1)' }; });
+    const foldStyle = 'position:absolute;left:0;top:76px;width:390px;height:212px;transform-origin:172px 106px;' +
+      (folding ? 'animation:t2-fold 1300ms cubic-bezier(.55,0,.85,.35) forwards' : 'transform:translate(23px,240px) scale(2.1)');
+    const backCrackStyle = 'position:absolute;left:0;top:0;transition:opacity 900ms;opacity:' + (P >= 7 ? 0 : 0.22);
+
+    // the point: from the screen's centre up to the knot's place in the window (172,182)
+    let point = 'position:absolute;left:192px;top:419px;width:6px;height:6px;border-radius:50%;background:#F0F0F5;box-shadow:0 0 10px 2px #3A8E74;z-index:2;';
+    if (calm || P < 7) point += 'opacity:0;';
+    else if (P === 7) point += 'animation:t2-pointIn 320ms ease-out 1180ms both;';
+    else if (P === 8) point += 'transform:translate(0px,0px);';
+    else if (P === 9) point += 'transform:translate(-23px,-240px);transition:transform 2600ms cubic-bezier(.45,0,.2,1);';
+    else point += 'transform:translate(-23px,-240px);opacity:0;transition:opacity 600ms;';
+
+    // ── Act III: the plate, as D_3 draws it ──
+    const settled = P >= 12;
+    const planetStyle = 'transform-box:view-box;transform-origin:172px 106px;' +
+      (calm ? 'transition:opacity 1200ms;opacity:' + (P >= 10 ? 1 : 0) : (P >= 10 ? 'animation:t2-planetIn 900ms cubic-bezier(.2,1.4,.4,1) both' : 'opacity:0'));
+    const rings = [];
+    for (let b = 0; b < 13; b++) {
+      const r = G.BR(b);
+      rings.push({ rx: f(r), ry: f(r * G.TILT),
+        style: 'stroke:#3A3A4E;stroke-width:' + (b === 0 ? 0.9 : 0.6) + ';stroke-dasharray:2 5;transform-box:view-box;transform-origin:172px 106px;' +
+          (P < 11 ? 'opacity:0' : (calm ? 'animation:t2-fadeIn 1000ms ease-out both' : 'animation:t2-ringIn 700ms cubic-bezier(.2,.9,.25,1) ' + (b * 110) + 'ms both')) });
+    }
+    const N3 = 7;   // Act III opens with the knot's seven arms; growth settles the bands inside-out from here
+    const arms = G.segs.slice(0, N3).map(g => ({ d: this.bodyPath(g, 'glass'),
+      style: 'stroke:#C9C6DE;stroke-width:1.4;opacity:.85;stroke-dasharray:100;' + (settled ? (calm ? '' : 'stroke-dashoffset:100;animation:t2-draw 900ms cubic-bezier(.3,0,.2,1) ' + (g.id * 90) + 'ms forwards') : 'stroke-dashoffset:100'),
+      fx: 'stroke:#B6EDD6;stroke-width:1.5;opacity:.75;stroke-dasharray:12 300;' + (calm ? 'opacity:0' : 'animation:t2-shim 9s ease-in-out -' + ((g.id * 0.61) % 9).toFixed(2) + 's infinite') }));
+    const armsStyle = settled ? '' : 'opacity:0';
+    const armsFx = 'filter:url(#t2glow3);transition:opacity 1200ms;opacity:' + (P >= 13 ? 1 : 0);
+    const orbits = [0, 1].map(b => ({
+      craft: G.segs.filter(g => g.band === b && this.isTip(g.id, N3)).map(g => ({ x: f(G.K.x + g.gr * Math.cos(g.gt)), y: f(G.K.y + g.gr * Math.sin(g.gt)) })),
+      style: 'transform-origin:172px 106px;' + (calm ? '' : 'animation:t2-orb ' + Math.round(24 * Math.pow(G.BR(b) / 16, 0.6)) + 's linear infinite')
+    })).filter(o => o.craft.length);
+    const craftLayer = 'position:absolute;inset:0;transform-origin:172px 106px;transform:scaleY(' + G.TILT + ');pointer-events:none;transition:opacity 1200ms;opacity:' + (settled ? 1 : 0);
+    const lights = [[26, 22], [364, 22], [26, 192], [364, 192]].map((p, i) => ({ x: p[0], y: p[1], style: 'fill:#D2CFE4;opacity:.5;animation:t2-twinkle 3.2s ease-in-out ' + (i * 0.8) + 's infinite' }));
+    const farStyle = 'transition:opacity 2000ms;opacity:' + (settled ? 1 : 0);
+    const amber = { rx: f(G.BR(0)), ry: f(G.BR(0) * G.TILT), style: 'stroke:#F5D28F;stroke-width:1.5;' + (P >= 13 ? 'animation:t2-ghost 1.8s ease-in-out infinite' : 'opacity:0') };
+    const plateStyle = T3 + 'position:absolute;left:0;top:76px;width:390px;height:212px;z-index:2;pointer-events:none';
+
+    const frost = (delay) => P < 12 ? 'opacity:0' : (calm ? 'animation:t2-fadeIn 2000ms ease-out both' : 'animation:t2-frostIn 900ms cubic-bezier(.2,.8,.2,1) ' + delay + 'ms both');
+
+    // the three lines: centred under the plate, then settled into the voice slot (L2 the older, L3 the latest)
+    const line = (from, top, size, color, lifted) => {
+      if (P < from) return 'opacity:0';
+      const up = calm || settled;
+      const anim = calm ? 'animation:t2-lineCalm 600ms ease-out both;' : 'animation:t2-lineIn 900ms cubic-bezier(.2,.8,.2,1) both;';
+      const L = up ? lifted : { top: top, size: size, color: color, op: 1 };
+      return anim + 'position:absolute;left:16px;right:16px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:' + "'Newsreader',ui-serif,Georgia,serif" + ';font-weight:400;' +
+        'top:' + L.top + 'px;font-size:' + L.size + 'px;line-height:1.45;color:' + L.color + ';opacity:' + L.op + ';text-shadow:1px 0 0 #3A3A4E;' +
+        'transition:top 1200ms cubic-bezier(.6,0,.2,1),font-size 1200ms cubic-bezier(.6,0,.2,1),color 1200ms,opacity 1200ms';
+    };
+
+    const ledger3 = [
+      { k: 'spores', v: (s.spores / 1e9).toFixed(3) + ' G', vStyle: 'color:#E0917A;text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' },
+      { k: 'craft', v: '0 n', vStyle: 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' },
+      { k: 'insight', v: '18.4 kΨ', vStyle: 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' }
+    ];
+    const row3 = (o, i) => Object.assign({
+      wrap: 'display:flex;align-items:flex-start;padding:0 16px 0 0;' + (i ? 'border-top:1px solid var(--rule);' : ''),
+      ulStyle: 'display:none', subStyle: 'display:block;font:400 11.5px/16px ' + MONO + ';color:var(--ink-3);margin-top:3px'
+    }, o);
+    const rows3 = [
+      { margin: 'bands', word: 'Reached', cost: '0 / 13', sub: 'A solid ring is yours; a dashed ring has not been looked at.', wordStyle: 'font:400 17px/1.2 ' + SER + ';color:var(--ink-2)', costStyle: 'font:400 12px/1 ' + MONO + ';color:var(--ink-2)' },
+      { margin: 'land', word: 'Settle', cost: 'band 0', sub: 'The canopy, 0.0016 ly. What lands takes hold.', wordStyle: 'font:500 18px/1.2 ' + SER + ';color:var(--ink)', costStyle: 'font:400 12.5px/1 ' + MONO + ';color:var(--ink)',
+        ulStyle: 'position:absolute;left:0;width:16%;bottom:-3px;height:1px;background:var(--ink)', subStyle: 'display:block;font:400 13.5px/18px ' + SER + ';color:var(--ink-3);margin-top:2px' },
+      { margin: 'look', word: 'Observe', cost: '4.0 kΣ', sub: 'Needs one band reached · 0 of 1', wordStyle: 'display:inline-block;padding:1px 7px 2px;border:1px dashed var(--locked);font:400 17px/1.2 ' + SER + ';color:var(--ink-3)', costStyle: 'font:400 11.5px/1 ' + MONO + ';color:var(--ink-3)' }
+    ].map(row3);
+    const tabs3 = [['void', '0 / 13'], ['genome', '4 D free'], ['fleet', '0 n'], ['lights', '4, far']].map(t => {
+      const on = t[0] === 'void';
+      return { name: t[0], reading: t[1],
+        bar: 'position:absolute;left:8px;right:8px;top:-1px;height:1px;background:var(--ink);transform:scaleX(' + (on ? 1 : 0) + ')',
+        nameStyle: 'font:italic ' + (on ? '400' : '300') + ' 17px/1 ' + SER + ';color:' + (on ? 'var(--ink)' : 'var(--ink-2)'),
+        readStyle: 'font:400 11px/1.4 ' + MONO + ';margin-top:5px;color:' + (t[0] === 'void' ? 'var(--next)' : 'var(--ink-3)') };
+    });
+    const rows2 = [
+      { margin: 'fruit', word: 'Primordia', cost: '64 ripe', sub: 'Every one of them is ripe at once.' },
+      { word: 'Spores', margin: '', cost: '2.00e9', sub: 'Banked spores do not decay.' }
+    ].map((r, i) => Object.assign(r, { wrap: 'display:flex;align-items:flex-start;padding:0 16px 0 0;' + (i ? 'border-top:1px solid var(--rule);' : '') }));
+    const tabs2 = [['forest', '2 / 61'], ['mind', '100%'], ['flush', 'ready'], ['pact', '5 / 5']].map(t => {
+      const on = t[0] === 'flush';
+      return { name: t[0], reading: t[1],
+        bar: 'position:absolute;left:8px;right:8px;top:-1px;height:2px;background:var(--thread-glow);box-shadow:0 0 8px #62C39A;transform:scaleX(' + (on ? 1 : 0) + ')',
+        nameStyle: 'font:' + (on ? '500' : '400') + ' 14px/1 ' + MONO + ';color:' + (on ? 'var(--ink)' : 'var(--ink-2)') + (on ? ';text-shadow:0 0 8px #3A8E74' : ''),
+        readStyle: 'font:400 11px/1.4 ' + MONO + ';margin-top:5px;color:' + (on ? 'var(--next)' : 'var(--ink-3)') };
+    });
+
+    return {
+      rootStyle: FONTS + 'width:390px;height:844px;overflow:hidden;position:relative;background:#08080C;font-family:var(--f-ui)',
+      flipperStyle: flipper, frontStyle: front, backStyle: back, shakerStyle: shaker,
+      dimStyle: dim, hintStyle: hintStyle,
+      frontThrob: frontThrob, edgeStyle: edgeStyle,
+      edges: edges, packets: packets, nodes: nodes, tips: tips, stands: stands, amberFront: amberFront,
+      ledger2: [{ k: 'signal', v: '412 kΣ full' }, { k: 'insight', v: '18.4 kΨ +41/s' }, { k: 'minerals', v: '2.10 M⛬' }],
+      rows2: rows2, tabs2: tabs2,
+      holdStrands: holdStrands, holdLabel: holdLabel, hint: hint,
+      down: (e) => this.down(e), up: () => this.up(),
+      cracks: cracks, cracksStatic: this.cracksStatic, backCrackStyle: backCrackStyle, backEdges: backEdges, foldStyle: foldStyle,
+      pointStyle: point, plateStyle: plateStyle, planetStyle: planetStyle, rings: rings, arms: arms, armsStyle: armsStyle, armsFx: armsFx,
+      amber: amber, orbits: orbits, craftLayer: craftLayer, lights: lights, farStyle: farStyle,
+      marksStyle: 'stroke:#3A3A4E;stroke-width:1;transition:opacity 1200ms;opacity:' + (settled ? 1 : 0),
+      chrome3Style: T3 + 'position:absolute;inset:0;z-index:3;color:var(--ink);font-family:var(--f-ui);pointer-events:' + (P >= 13 ? 'auto' : 'none'),
+      a3Frost: 'position:absolute;left:0;top:0;pointer-events:none;transition:opacity 1600ms;opacity:' + (settled ? 1 : 0),
+      a3Ledger: frost(0), a3Window: frost(120), a3Voice: frost(180), a3Next: frost(240), a3Verbs: frost(360), a3Nav: frost(480),
+      ledger3: ledger3, rows3: rows3, tabs3: tabs3,
+      l1Style: line(8, 456, 17, '#A8A4C6', { top: 266, size: 12, color: '#8B87A8', op: 0 }),
+      l2Style: line(9, 486, 17, '#D2CFE4', { top: 292, size: 12, color: '#8B87A8', op: 1 }),
+      l3Style: line(10, 516, 19, '#D2CFE4', { top: 310, size: 15, color: '#D2CFE4', op: 1 }),
+      canHurry: P >= 2 && P < 13 && !(calm && P < 8),
+      hurry: () => this.hurry(),
+      replay: () => this.replay(),
+      toggleCalm: () => { this.replay(); this.setState({ calm: !this.state.calm }); },
+      calmLabel: calm ? 'calm' : 'full motion',
+      calmPressed: calm ? 'true' : 'false',
+      ctlStyle: 'min-width:44px;height:44px;padding:0 8px;font:400 11.5px/1 var(--f-mono);text-decoration:underline;text-underline-offset:4px;text-align:center;color:' + (P >= 12 ? '#A8A4C6' : '#B0B6A6')
+    };
+  }
+}
+</script>
+</body>
+</html>

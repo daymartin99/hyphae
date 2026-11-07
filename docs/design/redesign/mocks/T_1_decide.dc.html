@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DECIDE transition</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#050604}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
+button:focus-visible{outline:2px solid #E9B75C;outline-offset:2px}
+.t1-hold{touch-action:none;user-select:none;-webkit-user-select:none}
+.t1-hold:active .t1-word{opacity:.85}
+.t1-ctl:active{opacity:.6}
+/* ── the body, breathing (the same 6.4 s as D_1/D_2) ── */
+@keyframes t1-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
+@keyframes t1-throb{0%{transform:scale(1)}100%{transform:scale(1.04)}}
+@keyframes t1-snapPop{0%{transform:scale(1.07)}100%{transform:scale(1)}}
+@keyframes t1-tip{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.7);opacity:.5}}
+@keyframes t1-ghost{0%,100%{opacity:.3}50%{opacity:1}}
+/* ── ink multiplying, strands, tearing. every body path has pathLength=100 ── */
+@keyframes t1-inkDraw{0%{stroke-dashoffset:100}100%{stroke-dashoffset:0}}
+@keyframes t1-strandIn{0%{stroke-dashoffset:1;opacity:0}20%{opacity:.85}100%{stroke-dashoffset:0;opacity:.85}}
+@keyframes t1-strandOut{0%{stroke-dashoffset:0;opacity:.85}100%{stroke-dashoffset:-1;opacity:.3}}
+/* ── the four words: a slam, not a fade ── */
+@keyframes t1-slam{0%{opacity:0;transform:scale(1.85)}55%{opacity:1;transform:scale(.965)}100%{opacity:1;transform:scale(1)}}
+@keyframes t1-wordCalm{0%{opacity:0}100%{opacity:1}}
+/* ── screen shake: transform only. distinct names so each beat restarts it ── */
+@keyframes t1-shakeHit{0%{transform:translate(0,0)}8%{transform:translate(-14px,9px) rotate(-.9deg)}18%{transform:translate(12px,-10px) rotate(.8deg)}30%{transform:translate(-10px,6px) rotate(-.5deg)}44%{transform:translate(8px,-5px) rotate(.4deg)}60%{transform:translate(-5px,3px)}78%{transform:translate(3px,-2px)}100%{transform:translate(0,0)}}
+@keyframes t1-shakeMid{0%{transform:translate(0,0)}15%{transform:translate(7px,-4px) rotate(.4deg)}35%{transform:translate(-6px,4px) rotate(-.4deg)}60%{transform:translate(4px,-2px)}100%{transform:translate(0,0)}}
+@keyframes t1-shk1{0%{transform:translate(0,0)}12%{transform:translate(0,14px)}30%{transform:translate(-6px,-6px)}52%{transform:translate(4px,3px)}100%{transform:translate(0,0)}}
+@keyframes t1-shk2{0%{transform:translate(0,0)}12%{transform:translate(0,14px)}30%{transform:translate(6px,-6px)}52%{transform:translate(-4px,3px)}100%{transform:translate(0,0)}}
+@keyframes t1-shk3{0%{transform:translate(0,0)}12%{transform:translate(0,15px)}30%{transform:translate(-7px,-6px)}52%{transform:translate(4px,3px)}100%{transform:translate(0,0)}}
+@keyframes t1-shk4{0%{transform:translate(0,0)}10%{transform:translate(0,18px)}26%{transform:translate(8px,-8px) rotate(.5deg)}46%{transform:translate(-6px,5px) rotate(-.3deg)}70%{transform:translate(3px,-2px)}100%{transform:translate(0,0)}}
+@keyframes t1-snapJolt{0%{transform:scale(1.02)}40%{transform:scale(.995)}100%{transform:scale(1)}}
+/* ── the mind turns on ── */
+@keyframes t1-pkt{0%{stroke-dashoffset:6}18%{stroke-dashoffset:-100}100%{stroke-dashoffset:-100}}
+@keyframes t1-node{0%{opacity:0}100%{opacity:1}}
+@keyframes t1-trace{0%{stroke-dashoffset:1;opacity:1}70%{stroke-dashoffset:0;opacity:1}100%{stroke-dashoffset:0;opacity:0}}
+@keyframes t1-knit{0%{opacity:0;clip-path:inset(0 100% 0 0)}45%{opacity:1}100%{opacity:1;clip-path:inset(0 0 0 0)}}
+@keyframes t1-fadeIn{0%{opacity:0}100%{opacity:1}}
+@keyframes t1-lineIn{0%{opacity:0;transform:translateY(5px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes t1-hintIn{0%{opacity:0}100%{opacity:1}}
+</style>
+</helmet>
+<!--
+  T_1 · ACT I → II · DECIDE · "Stop tasting. Start knowing."
+  The opening frame is D_1's skeleton late in Act I; the last frame is D_2's skeleton on its first second.
+  The body is the shared geometry (bodyGeom, seed 61, 96 branches, knot at 172,106 of the window),
+  read as ink until SNAP, then as the mind. The strokes morph between the two readings with CSS `d`
+  (one path grammar, M · Q); where `d` is not animatable the stroke simply snaps, which is the beat.
+  Full sequence 13.6 s from commit. Calm (reduced-motion) sequence 7.6 s, per 09 §4.1 "Reduced motion".
+  Beat table (also in SEQ in the logic class). t = ms after the hold completes.
+     0  P1  STILL     everything freezes. silence.            haptic: one selection tick, then nothing   audio: hard mute, 0 ms
+   900  P2  HIT       body bursts its window, page tears       haptic: heavy impact + rumble               audio: 38 Hz thump + paper rip
+  1700  P3  RIFT      tear widens, page threads to the knot    haptic: rumble [20,20,20,20,60]             audio: long tear, ink crackle
+  2600  P4  STOP      page halves sucked into the knot         haptic: rigid 55 ms                         audio: dry struck drum
+  3500  P5  TASTING                                            haptic: rigid 55 ms                         audio: drum, a tone lower
+  4400  P6  START                                              haptic: rigid 55 ms                         audio: drum, a tone lower
+  5300  P7  KNOWING                                            haptic: rigid 90 ms                         audio: drum, held
+  6300  P8  SILENCE   words cut. body frozen. black.           haptic: none                                audio: hard cut, 800 ms of nothing
+  7100  P9  SNAP      ink becomes straight edges               haptic: sharp 18 ms                         audio: one relay click
+  7900  P10 SIGNAL    first signal runs root to tip            haptic: light tick per wave [10,190,10]     audio: first pure tone, 220 to 440 Hz
+  9300  P11 CONTRACT  body returns to its window, traces run   haptic: soft transient                      audio: tone settles to the network hum
+  9900  P12 KNIT      Act II rows knit out of the traces       haptic: 5 light ticks, 120 ms apart         audio: stitching ticks
+ 11000  P13 R1        "the trees do not notice the change. that is the point."     audio: console key tick, soft
+ 12600  P14 R2        "Something in the network is repeating itself."              audio: console key tick, brighter timbre
+ 13600  P15 DONE      Act II, first frame. interactive.        audio: Act II ambient hum begins
+  Flash budget: luminance steps at 900 (page darkens behind the tear), 2600-5300 (one word per 900 ms), 7100. Never more than 1.2 per second.
+-->
+<div style="{{rootStyle}}">
+
+ <!-- ═══ THE STAGE · everything that shakes ═══ -->
+ <div style="{{stageStyle}}">
+
+  <!-- Act II material: the tick grid in the window and scan lines over everything (D_2) -->
+  <svg width="390" height="844" aria-hidden="true" style="{{scanStyle}}">
+    <defs>
+      <pattern id="t1scan" width="4" height="3" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#8CDCBB" fill-opacity=".045"></rect></pattern>
+      <pattern id="t1grid" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M13 10v6M10 13h6" stroke="#1B201A" stroke-width="1"></path></pattern>
+    </defs>
+    <rect y="76" width="390" height="212" fill="url(#t1grid)"></rect>
+    <rect width="390" height="844" fill="url(#t1scan)"></rect>
+  </svg>
+  <!-- the same tick grid flooding the whole screen while the mind turns on (P9-P10) -->
+  <svg width="390" height="844" aria-hidden="true" style="{{gridFullStyle}}">
+    <defs><pattern id="t1gridF" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M13 9v8M9 13h8" stroke="#15463A" stroke-width="1"></path></pattern></defs>
+    <rect width="390" height="844" fill="url(#t1gridF)"></rect>
+  </svg>
+
+  <!-- ═══ ACT II · D_2's skeleton. Knits out of the edges at P11-P12. ═══ -->
+  <div style="{{chrome2Style}}">
+    <!-- LEDGER (0–76) -->
+    <div style="{{k2Ledger}}">
+      <div style="position:absolute;left:0;right:0;top:0;height:76px;border-bottom:1px solid var(--rule-2)">
+        <div style="position:absolute;left:16px;top:4px;height:68px;display:flex;flex-direction:column;justify-content:center">
+          <span style="display:flex;align-items:baseline;gap:6px">
+            <span style="font:400 36px/1 var(--f-mono);letter-spacing:-.04em;color:var(--ink);text-shadow:0 0 10px #3A8E74;text-decoration:underline dotted var(--rule-2);text-decoration-thickness:1px;text-underline-offset:6px">61.4</span>
+            <span style="font:400 16px/1 var(--f-mono);color:var(--ink-2)">kg</span>
+          </span>
+          <span style="font:400 11.5px/1 var(--f-mono);color:var(--ink-3);margin-top:8px">Biomass <span style="color:var(--thread)">+212 g/s</span></span>
+        </div>
+        <div style="position:absolute;left:194px;right:16px;top:4px;height:68px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+          <span style="font:400 11px/16px var(--f-mono);color:var(--ink-3);align-self:flex-end;white-space:pre">1:52:54  pool ░░░░░░░░ 0%</span>
+          <sc-for list="{{ledger2}}" as="lr" hint-placeholder-count="3">
+            <span style="display:flex;align-items:baseline;width:100%;font:400 12px/16px var(--f-mono);color:var(--ink-2)">
+              <span>{{lr.k}}</span>
+              <span style="flex:1;margin:0 4px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+              <span style="{{lr.vStyle}}">{{lr.v}}</span>
+            </span>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    <!-- BODY WINDOW furniture (76–288). The body itself is drawn by the body layer. -->
+    <div style="{{k2Window}}">
+      <div style="position:absolute;left:16px;top:264px;font:500 11px/1 var(--f-mono);color:var(--thread);text-shadow:0 0 6px #3A8E74">Fig. 2 · 96 edges · 1 stand · the pool is empty</div>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke-width="1.3" stroke-linecap="round" aria-hidden="true" style="position:absolute;right:17px;top:255px;stroke:var(--ink-2)"><path d="M11 2.5h4.5V7M7 15.5H2.5V11M15.5 2.5l-5 5M2.5 15.5l5-5"></path></svg>
+    </div>
+    <!-- VOICE (288–340). The last line in the old hand, then the first capitalised one. -->
+    <div style="{{k2Voice}}">
+      <div role="log" aria-live="polite" style="position:absolute;left:0;right:0;top:288px;height:52px;border-top:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);box-sizing:border-box;padding:6px 40px 0 16px">
+        <div style="{{r1Style}}">the trees do not notice the change. that is the point.</div>
+        <div style="{{r2Style}}">Something in the network is repeating itself.</div>
+      </div>
+    </div>
+    <!-- NEXT (340–404) -->
+    <div style="{{k2Next}}">
+      <div style="position:absolute;left:0;right:0;top:340px;height:64px;padding:0 16px;display:flex;align-items:center;gap:12px;box-sizing:border-box">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="flex:none"><circle cx="7" cy="7" r="3.4" fill="none" stroke-width="1.4" style="stroke:var(--next)"></circle></svg>
+        <span style="flex:1">
+          <span style="display:block;font:500 15px/1.25 var(--f-mono);color:var(--ink)">Signal is 0.00 kΣ. The pool is full at 2.00 kΣ.</span>
+          <span style="display:block;font:400 11.5px/15px var(--f-mono);color:var(--ink-3);margin-top:3px">Insight only comes while the pool is full · amber at the hub</span>
+        </span>
+      </div>
+    </div>
+    <!-- VERBS (404–776), the MIND page -->
+    <div style="{{k2Verbs}}">
+      <div style="position:absolute;left:0;right:0;top:404px;height:372px;border-top:1px solid var(--rule-2);overflow:hidden">
+        <sc-for list="{{rows2}}" as="r" hint-placeholder-count="3">
+          <div style="{{r.wrap}}">
+            <span style="width:72px;flex:none;text-align:right;padding:15px 14px 0 0;box-sizing:border-box;font:400 11px/1 var(--f-mono);color:var(--ink-3)">{{r.margin}}</span>
+            <div style="flex:1;min-width:0;padding:7px 0 8px">
+              <span style="display:flex;align-items:baseline;min-height:22px">
+                <span style="{{r.wordStyle}}">{{r.word}}</span>
+                <span style="{{r.leader}}"></span>
+                <span style="{{r.costStyle}}">{{r.cost}}</span>
+              </span>
+              <span style="display:block;font:400 11.5px/16px var(--f-mono);color:var(--ink-3);margin-top:3px">{{r.sub}}</span>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    <!-- NAV (776–844) -->
+    <div style="{{k2Nav}}">
+      <nav aria-label="act two" style="position:absolute;left:0;right:0;top:776px;height:68px;border-top:1px solid var(--rule-2);display:flex;padding:0 8px;box-sizing:border-box">
+        <sc-for list="{{tabs2}}" as="tb" hint-placeholder-count="4">
+          <span style="flex:1;height:68px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-left:8px">
+            <span style="{{tb.bar}}"></span>
+            <span style="{{tb.nameStyle}}">{{tb.name}}</span>
+            <span style="{{tb.readStyle}}">{{tb.reading}}</span>
+          </span>
+        </sc-for>
+      </nav>
+    </div>
+  </div>
+
+  <!-- ═══ ACT I · D_1's skeleton, late in the act. Two halves of one sheet: whole until P2, torn after. ═══ -->
+  <sc-for list="{{halves}}" as="h" hint-placeholder-count="2">
+   <div style="{{h.style}}" aria-hidden="{{h.aria}}">
+    <!-- paper grain -->
+    <svg width="390" height="844" aria-hidden="true" style="position:absolute;left:0;top:0;pointer-events:none;mix-blend-mode:multiply;opacity:.12">
+      <filter id="t1grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="4" stitchTiles="stitch"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter>
+      <rect width="390" height="844" filter="url(#t1grain)"></rect>
+    </svg>
+    <!-- LEDGER (0–76) -->
+    <div style="position:absolute;left:0;right:0;top:0;height:76px;border-bottom:1px solid var(--rule)">
+      <div style="position:absolute;left:16px;top:4px;height:68px;display:flex;flex-direction:column;justify-content:center">
+        <span style="display:flex;align-items:baseline;gap:5px">
+          <span style="font:300 44px/1 var(--f-serif);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.02em;color:var(--ink);text-decoration:underline dotted var(--rule-2);text-decoration-thickness:1px;text-underline-offset:6px">61.4</span>
+          <span style="font:400 20px/1 var(--f-serif);color:var(--ink-2)">kg</span>
+        </span>
+        <span style="font:400 11.5px/1 var(--f-mono);color:var(--ink-3);margin-top:7px">biomass <span style="color:var(--thread)">+212 g/s</span></span>
+      </div>
+      <div style="position:absolute;left:194px;right:16px;top:4px;height:68px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+        <span style="font:italic 400 12.5px/16px var(--f-serif);color:var(--ink-3);align-self:flex-end">winter, the fourth year · 1:52:40</span>
+        <sc-for list="{{ledger1}}" as="lr" hint-placeholder-count="3">
+          <span style="display:flex;align-items:baseline;width:100%;font:400 12px/16px var(--f-mono);color:var(--ink-2)">
+            <span>{{lr.k}}</span>
+            <span style="flex:1;margin:0 4px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+            <span style="color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px">{{lr.v}}</span>
+          </span>
+        </sc-for>
+      </div>
+    </div>
+    <!-- BODY WINDOW (76–288): the leaf litter it is drawn on. The body is drawn by the body layer. -->
+    <div style="position:absolute;left:0;top:76px;width:390px;height:212px">
+      <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0">
+        <sc-for list="{{litter}}" as="l" hint-placeholder-count="16">
+          <path d="{{l.d}}" fill="none" stroke-linecap="round" style="stroke:var(--rule-2);stroke-width:1.1"></path>
+        </sc-for>
+      </svg>
+      <div style="position:absolute;left:16px;bottom:12px;font:italic 400 12.5px/1 var(--f-serif);color:var(--ink-3)">{{figCaption}}</div>
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke-width="1.3" stroke-linecap="round" aria-hidden="true" style="position:absolute;right:17px;bottom:15px;stroke:var(--ink-2)"><path d="M11 2.5h4.5V7M7 15.5H2.5V11M15.5 2.5l-5 5M2.5 15.5l5-5"></path></svg>
+    </div>
+    <!-- VOICE (288–340): notebook ink -->
+    <div style="position:absolute;left:0;right:0;top:288px;height:52px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);box-sizing:border-box;padding:5px 40px 0 16px">
+      <span style="display:block;font:italic 400 14.5px/20px var(--f-serif);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">something moved from one end of you to the other, and it was not food.</span>
+      <span style="display:block;font:italic 400 16.5px/22px var(--f-serif);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">it is still doing it. there is nothing to do with it.</span>
+    </div>
+    <!-- NEXT (340–404) -->
+    <div style="position:absolute;left:0;right:0;top:340px;height:64px;padding:0 16px;display:flex;align-items:center;gap:12px;box-sizing:border-box">
+      <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="flex:none"><circle cx="7" cy="7" r="3.4" fill="none" stroke-width="1.4" style="stroke:var(--next)"></circle></svg>
+      <span style="flex:1">
+        <span style="display:block;font:400 19px/1.2 var(--f-serif);color:var(--ink)">decide has no price. it does not come back.</span>
+        <span style="display:block;font:400 11.5px/15px var(--f-mono);color:var(--ink-3);margin-top:3px">held for 1.4 s, not tapped · amber on the knot</span>
+      </span>
+    </div>
+    <!-- VERBS (404–776): the grow page -->
+    <div style="position:absolute;left:0;right:0;top:404px;height:372px;border-top:1px solid var(--rule-2);overflow:hidden">
+      <div style="display:flex;align-items:flex-start;padding:0 16px 0 0">
+        <span style="width:72px;flex:none;text-align:right;padding:15px 14px 0 0;box-sizing:border-box;font:italic 400 14px/1 var(--f-serif);color:var(--ink-3)">grow</span>
+        <div style="flex:1;min-width:0;padding:7px 0 6px">
+          <span style="display:flex;align-items:baseline">
+            <span style="position:relative;display:inline-block"><span style="font:500 20px/1.1 var(--f-serif);color:var(--ink)">grow a tip</span><span style="position:absolute;left:0;width:16%;bottom:-3px;height:2px;background:var(--ink)"></span></span>
+            <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+            <span style="font:400 13px/1 var(--f-mono);color:var(--ink)">{{tipCost}}</span>
+          </span>
+          <span style="display:block;font:italic 400 13.5px/18px var(--f-serif);color:var(--ink-3);margin-top:1px">{{tipSub}}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-start;padding:0 16px 0 0;border-top:1px solid var(--rule)">
+        <span style="width:72px;flex:none"></span>
+        <div style="flex:1;min-width:0;padding:9px 0 8px">
+          <span style="display:flex;align-items:baseline">
+            <span style="font:400 19px/1.1 var(--f-serif);color:var(--ink-2)">extend</span>
+            <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+            <span style="font:400 12px/1 var(--f-mono);color:var(--ink-2)">1 g a touch</span>
+          </span>
+          <span style="display:block;font:italic 400 13.5px/18px var(--f-serif);color:var(--ink-3);margin-top:1px">touch the body. each touch takes 2 g from the floor.</span>
+        </div>
+      </div>
+      <!-- DECIDE · irreversible, so HOLD. The fill is the body's hyphae racing along the row. -->
+      <div style="display:flex;align-items:flex-start;padding:0 16px 0 0;border-top:1px solid var(--rule-2)">
+        <span style="width:72px;flex:none;text-align:right;padding:22px 14px 0 0;box-sizing:border-box;font:italic 400 14px/1 var(--f-serif);color:var(--ink-3)">decide</span>
+        <div style="flex:1;min-width:0">
+          <button class="t1-hold" onPointerDown="{{h.down}}" onPointerUp="{{h.up}}" onPointerLeave="{{h.up}}" onPointerCancel="{{h.up}}" aria-label="decide. stop tasting, start knowing. it does not come back. press and hold." style="display:block;position:relative;width:100%;padding:12px 0 8px">
+            <span style="display:flex;align-items:baseline">
+              <span class="t1-word" style="font:500 32px/1 var(--f-serif);letter-spacing:-.01em;color:var(--ink)">decide</span>
+              <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-6px)"></span>
+              <span style="font:italic 400 16px/1 var(--f-serif);color:var(--next-ink)">hold</span>
+            </span>
+            <span style="display:block;font:italic 400 16px/22px var(--f-serif);color:var(--ink-2);margin-top:4px">stop tasting. start knowing.</span>
+            <svg width="302" height="56" viewBox="0 0 302 56" aria-hidden="true" style="display:block;margin-top:8px;overflow:visible">
+              <path d="M0 55.5 H302" style="stroke:var(--rule-2);stroke-width:1"></path>
+              <g fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--thread)">
+                <sc-for list="{{holdStrands}}" as="st" hint-placeholder-count="16">
+                  <path d="{{st.d}}" stroke-width="{{st.w}}"></path>
+                </sc-for>
+              </g>
+              <sc-for list="{{holdStrands}}" as="st" hint-placeholder-count="16">
+                <circle cx="{{st.tx}}" cy="{{st.ty}}" r="{{st.r}}" style="fill:var(--thread)"></circle>
+              </sc-for>
+            </svg>
+            <span style="display:block;font:400 11.5px/16px var(--f-mono);color:var(--ink-3);margin-top:6px">{{holdLabel}}</span>
+          </button>
+          <div role="status" style="display:flex;gap:6px;padding:2px 0 10px;font:italic 400 15px/1.35 var(--f-serif);color:var(--ink-2)"><span style="color:var(--next-ink);font-style:normal">↳</span><span>{{hint}}</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- NAV (776–844) -->
+    <div style="position:absolute;left:0;right:0;top:776px;height:68px;border-top:1px solid var(--rule-2);display:flex;padding:0 8px;box-sizing:border-box">
+      <sc-for list="{{tabs1}}" as="tb" hint-placeholder-count="3">
+        <span style="flex:1;height:68px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-left:8px">
+          <span style="{{tb.bar}}"></span>
+          <span style="{{tb.nameStyle}}">{{tb.name}}</span>
+          <span style="{{tb.readStyle}}">{{tb.reading}}</span>
+        </span>
+      </sc-for>
+    </div>
+   </div>
+  </sc-for>
+
+  <!-- ═══ THE BODY · the shared geometry, read as ink (Act I) and then as the mind (Act II) ═══ -->
+  <!-- P2 audio: 38 Hz thump under a paper rip. P2 haptic: heavy impact then rumble (vibrate [40,30,120,40,80]). -->
+  <div aria-hidden="true" style="{{bodyClip}}">
+   <div style="{{bodyMove}}">
+    <div style="{{bodyThrob}}">
+     <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible">
+      <defs>
+        <filter id="t1ink" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"></feTurbulence><feDisplacementMap in="SourceGraphic" scale="2.4"></feDisplacementMap></filter>
+        <filter id="t1glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.8" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+      </defs>
+      <!-- the strokes multiply: the same body overprinted, each pass knocked a few degrees off the knot -->
+      <sc-for list="{{echoes}}" as="ec" hint-placeholder-count="3">
+        <g fill="none" stroke-linecap="round" style="{{ec.style}}">
+          <sc-for list="{{ec.paths}}" as="ep" hint-placeholder-count="96">
+            <path d="{{ep.d}}" pathLength="100" style="{{ep.style}}"></path>
+          </sc-for>
+        </g>
+      </sc-for>
+      <!-- the body: 96 branches. ink until SNAP, then edges -->
+      <g fill="none" stroke-linecap="round" style="{{segGroup}}">
+        <sc-for list="{{segs}}" as="g" hint-placeholder-count="96">
+          <path d="{{g.d}}" pathLength="100" class="{{g.cls}}" style="{{g.style}}"></path>
+        </sc-for>
+      </g>
+      <!-- P10 SIGNAL: the first signal, root to tip, every 2.1 s. audio: first pure tone. haptic: light tick per wave. -->
+      <g fill="none" stroke-linecap="round" style="{{pktGroup}}">
+        <sc-for list="{{packets}}" as="p" hint-placeholder-count="96">
+          <path d="{{p.d}}" pathLength="100" style="{{p.style}}"></path>
+        </sc-for>
+      </g>
+      <!-- Act I tips, then Act II nodes and tips -->
+      <g style="{{inkTipGroup}}">
+        <sc-for list="{{tips}}" as="t" hint-placeholder-count="38">
+          <circle cx="{{t.x}}" cy="{{t.y}}" r="2.2" style="{{t.style}}"></circle>
+        </sc-for>
+      </g>
+      <g style="{{nodeGroup}}">
+        <sc-for list="{{nodes}}" as="nd" hint-placeholder-count="58">
+          <rect x="{{nd.x}}" y="{{nd.y}}" width="3.2" height="3.2" style="fill:#8CDCBB"></rect>
+        </sc-for>
+        <sc-for list="{{tips2}}" as="t" hint-placeholder-count="38">
+          <circle cx="{{t.x}}" cy="{{t.y}}" r="2.2" style="fill:#0B0D0C;stroke:#8CDCBB;stroke-width:1.1"></circle>
+        </sc-for>
+      </g>
+      <!-- the one stand Act II opens with: the birch, a hex on its edge -->
+      <g style="{{standStyle}}">
+        <path d="{{standHex}}" style="fill:#15463A;stroke:#62C39A;stroke-width:1.1"></path>
+        <path d="{{standHex2}}" style="fill:none;stroke:#62C39A;stroke-width:.8;opacity:.7"></path>
+      </g>
+      <!-- amber: the next move is the knot (Act I), then the hub (Act II) -->
+      <circle cx="172" cy="106" r="11" fill="none" stroke-dasharray="3 4" style="{{amberStyle}}"></circle>
+      <!-- the knot, then the hub -->
+      <g style="{{knotStyle}}">
+        <circle cx="172" cy="106" r="5.2" style="{{knotRing}}"></circle>
+        <circle cx="172" cy="106" r="2" style="{{knotDot}}"></circle>
+      </g>
+      <g style="{{hubStyle}}">
+        <rect x="167" y="101" width="10" height="10" transform="rotate(45 172 106)" style="fill:#0B0D0C;stroke:#8CDCBB;stroke-width:1.2"></rect>
+        <rect x="170.5" y="104.5" width="3" height="3" style="fill:#8CDCBB"></rect>
+      </g>
+     </svg>
+    </div>
+   </div>
+  </div>
+
+  <!-- P3: threads of the torn page, pulled to the knot. P4: reeled in. -->
+  <svg width="390" height="844" aria-hidden="true" style="position:absolute;left:0;top:0;z-index:4;pointer-events:none">
+    <g fill="none" stroke="#EAE6D9" stroke-width="1.2" stroke-linecap="round">
+      <sc-for list="{{threads}}" as="th" hint-placeholder-count="14">
+        <path d="{{th.d}}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" style="{{th.style}}"></path>
+      </sc-for>
+    </g>
+  </svg>
+
+  <!-- P11: traces run out of the body window and the Act II rows knit along them -->
+  <svg width="390" height="844" aria-hidden="true" style="position:absolute;left:0;top:0;z-index:4;pointer-events:none">
+    <g fill="none" stroke="#62C39A" stroke-width="1.2">
+      <sc-for list="{{traces}}" as="tr" hint-placeholder-count="4">
+        <path d="{{tr.d}}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" style="{{tr.style}}"></path>
+      </sc-for>
+    </g>
+  </svg>
+
+  <!-- ═══ THE FOUR WORDS · set left on the gutter, one per 900 ms, slammed ═══ -->
+  <!-- each word: haptic rigid impact 55 ms (KNOWING 90 ms); audio a dry struck drum, each a tone lower -->
+  <div aria-live="assertive" style="position:absolute;left:14px;right:0;top:196px;z-index:5;pointer-events:none;font-family:'Newsreader',ui-serif,Georgia,serif;font-weight:600;color:#EFEBDD;line-height:.84">
+    <sc-for list="{{words}}" as="w" hint-placeholder-count="4">
+      <div style="{{w.style}}">{{w.text}}</div>
+    </sc-for>
+  </div>
+ </div>
+
+ <!-- tap to hurry: one beat per tap, never past the end. Available once the first beat (P2) has landed. -->
+ <sc-if value="{{canHurry}}" hint-placeholder-val="{{false}}">
+   <button onClick="{{hurry}}" aria-label="hurry the transition" style="position:absolute;inset:0;z-index:8">
+     <span style="position:absolute;left:16px;bottom:20px;font:italic 400 14px/1 'Newsreader',ui-serif,Georgia,serif;color:#8C9484;animation:t1-hintIn 600ms 400ms both">tap to hurry</span>
+   </button>
+ </sc-if>
+
+ <!-- prototype controls: two words in the window's top-right corner, always on top -->
+ <div style="position:absolute;right:6px;top:78px;z-index:9;display:flex">
+   <button class="t1-ctl" onClick="{{toggleCalm}}" aria-pressed="{{calmPressed}}" aria-label="reduced motion" style="{{ctlStyle}}">{{calmLabel}}</button>
+   <button class="t1-ctl" onClick="{{replay}}" aria-label="replay the transition" style="{{ctlStyle}}">replay</button>
+ </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    let calm = false;
+    try { calm = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); } catch (e) {}
+    this.state = { phase: 0, hold: 0, near: false, calm: calm };
+    this.timers = [];
+    this.holdIv = null;
+    this.nearT = null;
+    this.idx = -1;
+    this.HOLD_MS = 1400;
+    // ── the beat sheets. p = phase, t = ms after commit ──
+    this.SEQ_FULL = [
+      { p: 1, t: 0 },      // STILL    · haptic: selection tick then nothing · audio: hard mute
+      { p: 2, t: 900 },    // HIT      · haptic: heavy + rumble [40,30,120,40,80] · audio: 38 Hz thump, paper rip
+      { p: 3, t: 1700 },   // RIFT     · haptic: [20,20,20,20,60] · audio: long tear
+      { p: 4, t: 2600 },   // STOP     · haptic: rigid 55 · audio: struck drum
+      { p: 5, t: 3500 },   // TASTING  · haptic: rigid 55 · audio: drum, lower
+      { p: 6, t: 4400 },   // START    · haptic: rigid 55 · audio: drum, lower
+      { p: 7, t: 5300 },   // KNOWING  · haptic: rigid 90 · audio: drum, held
+      { p: 8, t: 6300 },   // SILENCE  · nothing at all, 800 ms
+      { p: 9, t: 7100 },   // SNAP     · haptic: sharp 18 · audio: relay click
+      { p: 10, t: 7900 },  // SIGNAL   · haptic: tick per wave · audio: first tone 220 to 440 Hz
+      { p: 11, t: 9300 },  // CONTRACT · haptic: soft transient · audio: hum
+      { p: 12, t: 9900 },  // KNIT     · haptic: 5 light ticks · audio: stitching ticks
+      { p: 13, t: 11000 }, // R1 line  · audio: console tick
+      { p: 14, t: 12600 }, // R2 line  · audio: console tick, brighter
+      { p: 15, t: 13600 }  // DONE     · Act II ambient
+    ];
+    // 09 §4.1 reduced motion: four words assembled on black, 900 ms apart, no wave, no shake, same two lines at the same clock.
+    this.SEQ_CALM = [
+      { p: 1, t: 0 }, { p: 2, t: 400 }, { p: 4, t: 900 }, { p: 5, t: 1800 }, { p: 6, t: 2700 }, { p: 7, t: 3600 },
+      { p: 8, t: 4000 }, { p: 9, t: 4300 }, { p: 10, t: 4500 }, { p: 12, t: 4700 }, { p: 13, t: 5600 },
+      { p: 14, t: 7000 }, { p: 15, t: 7600 }
+    ];
+    this.G = this.bodyGeom();
+    this.N0 = 80;   // late in Act I the body has 80 of its 96 branches; the burst draws the rest
+    this.buildBody();
+    this.buildHoldStrands();
+    this.buildSeam();
+    this.litter = this.makeLitter();
+  }
+  componentWillUnmount(){ this.clearTimers(); clearInterval(this.holdIv); clearTimeout(this.nearT); }
+  rnd(n){ const x = Math.sin(n * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); }
+  f(v){ return Math.round(v * 10) / 10; }
+
+  // ── THE BODY: one seeded geometry, read three ways. This block is identical in D_0..D_3. ──
+  bodyGeom(){
+    let s = 61;
+    const R = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const K = { x: 172, y: 106 }, SQ = 0.6, segs = [], q = [], ARMS = 7;
+    for (let i = 0; i < ARMS; i++) q.push({ x: K.x, y: K.y, a: i * 6.2832 / ARMS + 0.35 + (R() - 0.5) * 0.5, d: 0, p: -1 });
+    while (q.length && segs.length < 96) {
+      const o = q.shift();
+      const L = (36 - o.d * 4) * (0.78 + R() * 0.44);
+      const a = o.a + (R() - 0.5) * 0.42;
+      const x2 = o.x + Math.cos(a) * L, y2 = o.y + Math.sin(a) * L * SQ;
+      const bend = (R() - 0.5) * L * 0.55;
+      const id = segs.length;
+      segs.push({ id: id, p: o.p, d: o.d, a: a, L: L, bend: bend, x1: o.x, y1: o.y, x2: x2, y2: y2,
+        cx: (o.x + x2) / 2 - Math.sin(a) * bend, cy: (o.y + y2) / 2 + Math.cos(a) * bend * SQ });
+      if (o.d < 6) {
+        q.push({ x: x2, y: y2, a: a + (R() - 0.5) * 0.3, d: o.d + 1, p: id });
+        if (R() < 0.62 - o.d * 0.06) q.push({ x: x2, y: y2, a: a + (R() < 0.5 ? -1 : 1) * (0.45 + R() * 0.55), d: o.d + 1, p: id });
+      }
+    }
+    const kids = segs.map(() => []);
+    segs.forEach(g => { if (g.p >= 0) kids[g.p].push(g.id); });
+    // the looking glass: mirror through the knot, put each branch on a band by how many forks
+    // it is from the knot (so growth settles the bands inside-out, as Act III does), and lay the
+    // branch's own length along that orbit. TILT is the plane seen edge-on.
+    const TILT = 0.42, BR = b => 16 + b * 10.4;
+    const P = (r, t) => ({ x: K.x + r * Math.cos(t), y: K.y + r * Math.sin(t) * TILT });
+    segs.forEach(g => {
+      const dx = -(g.x2 - K.x), dy = (g.y2 - K.y) / SQ;
+      const band = Math.min(12, g.d * 2 + (g.id % 2));
+      const r = BR(band), t1 = Math.atan2(dy, dx);
+      const span = Math.min(1.1, g.L / r) * (g.bend >= 0 ? 1 : -1), t0 = t1 - span;
+      const a0 = P(r, t0), a1 = P(r, t1), c = P(r / Math.cos(span / 2), t0 + span / 2);
+      Object.assign(g, { band: band, gr: r, gt: t1, gx1: a0.x, gy1: a0.y, gcx: c.x, gcy: c.y, gx2: a1.x, gy2: a1.y });
+    });
+    return { K: K, segs: segs, kids: kids, TILT: TILT, BR: BR };
+  }
+  // one path grammar for all three readings (M · Q), so the strokes can morph between them
+  bodyPath(g, reading){
+    const f = v => Math.round(v * 10) / 10;
+    if (reading === 'ink') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f(g.cx) + ' ' + f(g.cy) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    if (reading === 'mind') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f((g.x1 + g.x2) / 2) + ' ' + f((g.y1 + g.y2) / 2) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    return 'M' + f(g.gx1) + ' ' + f(g.gy1) + ' Q' + f(g.gcx) + ' ' + f(g.gcy) + ' ' + f(g.gx2) + ' ' + f(g.gy2);
+  }
+  isTip(id, n){ return id < n && this.G.kids[id].every(k => k >= n); }
+  // ── end of the shared block ──
+
+  hex(cx, cy, r){ let d = ''; for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30); d += (k ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1); } return d + 'Z'; }
+  makeLitter(){
+    let s = 7; const R = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    const out = [];
+    for (let i = 0; i < 16; i++) {
+      const x = 10 + R() * 370, y = 12 + R() * 188, a = R() * 3.14, l = 5 + R() * 9;
+      out.push({ d: 'M' + x.toFixed(0) + ' ' + y.toFixed(0) + ' q' + (Math.cos(a) * l * 0.5).toFixed(1) + ' ' + (-2 + R() * 4).toFixed(1) + ' ' + (Math.cos(a) * l).toFixed(1) + ' ' + (Math.sin(a) * l * 0.5).toFixed(1) });
+    }
+    return out;
+  }
+
+  // ── the body's two readings, precomputed from the shared geometry ──
+  buildBody(){
+    const G = this.G;
+    this.ink = G.segs.map(g => this.bodyPath(g, 'ink'));
+    this.mind = G.segs.map(g => this.bodyPath(g, 'mind'));
+    // three overprints of the same body for the burst, each drawn on in seed order
+    this.ECHO = [{ rot: -7, sc: 1.08, w: 1.3 }, { rot: 6, sc: 0.93, w: 1.1 }, { rot: 13, sc: 1.16, w: 0.9 }];
+    this.echoDraw = this.ECHO.map((e, k) => G.segs.map(g => ({ d: this.ink[g.id],
+      style: 'stroke-dasharray:100;stroke-dashoffset:100;animation:t1-inkDraw ' + Math.round(300 + this.rnd(g.id + k * 97) * 260) + 'ms cubic-bezier(.3,0,.2,1) ' + Math.round(k * 240 + g.d * 150 + this.rnd(g.id * 3 + k) * 200) + 'ms forwards' })));
+    this.echoHidden = G.segs.map(g => ({ d: this.ink[g.id], style: 'opacity:0' }));
+    this.tipsAt = n => G.segs.filter(g => this.isTip(g.id, n));
+    this.st = G.segs[18];   // the birch, on the same edge D_2 pins Hollow Creek to
+  }
+
+  // ── the hold fill: hyphae racing along the row ──
+  buildHoldStrands(){
+    const W = 302, H = 52; const out = [];
+    const mains = [10, 22, 34, 46]; const ends = [1, 0.84, 0.93, 0.78];
+    mains.forEach((y0, i) => {
+      const pts = [[0, y0]]; let x = 0, y = y0, n = 0;
+      while (x < W) { n++; x = Math.min(W, x + 12 + this.rnd(i * 50 + n) * 12); y = Math.max(3, Math.min(H - 3, y + (this.rnd(i * 70 + n + 3) - 0.5) * 6)); pts.push([this.f(x), this.f(y)]); }
+      out.push({ pts: pts, s: 0, e: ends[i], w: 1.4 });
+      for (let b = 0; b < 3; b++) {
+        const at = 0.12 + b * 0.28 + this.rnd(i * 9 + b) * 0.1;
+        const base = pts[Math.floor(at * (pts.length - 1))];
+        const dir = this.rnd(i * 13 + b) < 0.5 ? -1 : 1;
+        const bp = [[base[0], base[1]]]; let bx = base[0], by = base[1];
+        for (let q = 0; q < 3; q++) { bx += 8 + this.rnd(i + b * 7 + q) * 7; by = Math.max(2, Math.min(H - 2, by + dir * (2 + this.rnd(i * 3 + b + q * 11) * 4))); bp.push([this.f(bx), this.f(by)]); }
+        const s0 = at * ends[i];
+        out.push({ pts: bp, s: s0, e: Math.min(1, s0 + 0.22), w: 0.9 });
+      }
+    });
+    out.forEach(st => { const L = [0]; for (let i = 1; i < st.pts.length; i++) { const dx = st.pts[i][0] - st.pts[i - 1][0], dy = st.pts[i][1] - st.pts[i - 1][1]; L.push(L[i - 1] + Math.sqrt(dx * dx + dy * dy)); } st.L = L; st.total = L[L.length - 1]; });
+    this.strands = out;
+  }
+  partial(st, fr){
+    const p = st.pts, target = fr * st.total; let d = 'M' + p[0][0] + ' ' + p[0][1], tx = p[0][0], ty = p[0][1];
+    for (let i = 1; i < p.length; i++) {
+      if (st.L[i] <= target) { d += ' L' + p[i][0] + ' ' + p[i][1]; tx = p[i][0]; ty = p[i][1]; }
+      else { const t = (target - st.L[i - 1]) / (st.L[i] - st.L[i - 1]); tx = this.f(p[i - 1][0] + (p[i][0] - p[i - 1][0]) * t); ty = this.f(p[i - 1][1] + (p[i][1] - p[i - 1][1]) * t); d += ' L' + tx + ' ' + ty; break; }
+    }
+    return { d: d, tx: tx, ty: ty };
+  }
+
+  // ── the tear: one jagged seam down the page, and the threads it leaves. they all run to the swollen knot (195,422) ──
+  buildSeam(){
+    const pts = [];
+    for (let i = 0; i <= 18; i++) { const y = i === 18 ? 844 : Math.round(i * 46.9); pts.push([Math.round(195 + (this.rnd(i + 300) - 0.5) * 48), y]); }
+    const seam = pts.map(p => p[0] + 'px ' + p[1] + 'px').join(',');
+    this.clipL = 'polygon(0px 0px,' + seam + ',0px 844px)';
+    this.clipR = 'polygon(' + seam + ',390px 844px,390px 0px)';
+    this.threadList = pts.slice(1, 15).map((p, i) => {
+      const side = i % 2 ? 1 : -1; const sx = p[0] + side * 118, sy = p[1] + 20;
+      const cx = (sx + 195) / 2 + side * 40, cy = (sy + 422) / 2 - 30;
+      return { d: 'M' + sx + ' ' + sy + ' Q' + this.f(cx) + ' ' + this.f(cy) + ' 195 422', i: i };
+    });
+  }
+
+  // ── sequencing: setTimeout chains, all kept on this.timers ──
+  clearTimers(){ this.timers.forEach(t => clearTimeout(t)); this.timers = []; }
+  seq(){ return this.state.calm ? this.SEQ_CALM : this.SEQ_FULL; }
+  play(i){
+    this.clearTimers();
+    const S = this.seq(); this.idx = i;
+    this.setState({ phase: S[i].p, hold: 1, near: false });
+    for (let j = i + 1; j < S.length; j++) {
+      this.timers.push(setTimeout(() => { this.idx = j; this.setState({ phase: S[j].p }); }, S[j].t - S[i].t));
+    }
+  }
+  hurry(){ const S = this.seq(); if (this.idx < 0 || this.idx >= S.length - 1) return; this.play(this.idx + 1); }
+  replay(){ this.clearTimers(); clearInterval(this.holdIv); clearTimeout(this.nearT); this.holdIv = null; this.h0 = 0; this.idx = -1; this.setState({ phase: 0, hold: 0, near: false }); }
+  down(e){
+    if (this.state.phase > 0) return;
+    try { if (e && e.currentTarget && e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId); } catch (err) {}
+    clearInterval(this.holdIv);
+    this.h0 = Date.now();
+    this.holdIv = setInterval(() => {
+      const p = Math.min(1, (Date.now() - this.h0) / this.HOLD_MS);
+      this.setState({ hold: p });
+      if (p >= 1) { clearInterval(this.holdIv); this.holdIv = null; this.h0 = 0; this.play(0); }
+    }, 30);
+  }
+  up(){
+    if (this.state.phase > 0 || !this.h0) return;
+    clearInterval(this.holdIv); this.holdIv = null; this.h0 = 0;
+    this.setState({ hold: 0, near: true });
+    clearTimeout(this.nearT); this.nearT = setTimeout(() => this.setState({ near: false }), 4200);
+  }
+
+  renderVals(){
+    const s = this.state, P = s.phase, calm = s.calm, full = !calm, G = this.G;
+    const f = v => this.f(v);
+    // the window is 390×212 at y 76, knot at 172,106. swollen, the knot sits at the screen's centre (195,422).
+    const WIN = 'translate(0px,0px) scale(1)', FULL = 'translate(23px,240px) scale(2.4)';
+    const swell = full && P >= 2 && P < 11;
+    const mindOn = P >= 9;
+    const T1 = "--ground:#EAE6D9;--sunk:#E0DBCB;--raised:#F3F0E6;--ink:#0F1310;--ink-2:#3A382E;--ink-3:#635F52;--rule:#CFC9B6;--rule-2:#B7B09B;--body:#22261F;--body-old:#6E6858;--thread:#166B53;--thread-glow:#2A7F63;--next:#8A5E0E;--next-ink:#7A5109;--danger:#7E3320;--locked:#96917F;";
+    const T2 = "--ground:#0B0D0C;--sunk:#070906;--raised:#101310;--ink:#EFEBDD;--ink-2:#B0B6A6;--ink-3:#8C9484;--rule:#1B201A;--rule-2:#3A4236;--body:#3A8E74;--body-old:#2C3329;--thread:#62C39A;--thread-glow:#8CDCBB;--next:#E9B75C;--next-ink:#E9B75C;--danger:#E0917A;--locked:#4E5749;";
+    const FONTS = "--f-serif:'Newsreader',ui-serif,Georgia,serif;--f-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--f-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;";
+
+    // the stage: background and the shake
+    const SHAKE = { 2: 't1-shakeHit 760ms', 3: 't1-shakeMid 520ms', 4: 't1-shk1 420ms', 5: 't1-shk2 420ms', 6: 't1-shk3 420ms', 7: 't1-shk4 480ms', 9: 't1-snapJolt 260ms' };
+    const bg = P < 2 ? '#EAE6D9' : (P >= 11 ? '#0B0D0C' : '#050604');
+    const stageStyle = 'position:absolute;inset:0;background:' + bg + ';transition:background-color ' + (calm ? 400 : 700) + 'ms;' +
+      (full && SHAKE[P] ? 'animation:' + SHAKE[P] + ' cubic-bezier(.3,.7,.4,1) both;' : '');
+
+    // the page halves (Act I, D_1 tokens)
+    const halfStyle = (side) => {
+      const base = T1 + 'position:absolute;inset:0;z-index:2;background:var(--ground);color:var(--ink);font-family:var(--f-ui);transform-origin:195px 422px;pointer-events:' + (P === 0 ? 'auto' : 'none') + ';';
+      if (P < 2) return base + (side > 0 ? 'visibility:hidden;' : '');
+      if (calm) return base + (side > 0 ? 'visibility:hidden;' : '') + 'opacity:0;transition:opacity 400ms;';
+      const clip = 'clip-path:' + (side < 0 ? this.clipL : this.clipR) + ';';
+      const m = side;
+      if (P === 2) return base + clip + 'transform:translate(' + (12 * m) + 'px,2px) rotate(' + (0.5 * m) + 'deg);transition:transform 260ms cubic-bezier(.2,1.6,.4,1);';
+      if (P === 3) return base + clip + 'transform:translate(' + (120 * m) + 'px,' + (m < 0 ? 26 : -14) + 'px) rotate(' + (7 * m) + 'deg);transition:transform 800ms cubic-bezier(.2,.9,.2,1);';
+      return base + clip + 'transform:translate(' + (120 * m) + 'px,0px) scale(.02) rotate(' + (70 * m) + 'deg);opacity:0;transition:transform 900ms cubic-bezier(.7,0,.9,.5),opacity 900ms ease-in;';
+    };
+    const down = (e) => this.down(e), up = () => this.up();
+    const halves = [
+      { style: halfStyle(-1), aria: P >= 2 ? 'true' : 'false', down: down, up: up },
+      { style: halfStyle(1), aria: 'true', down: down, up: up }
+    ];
+
+    // the hold fill
+    const holdStrands = this.strands.map(st => {
+      const fr = Math.max(0, Math.min(1, (s.hold - st.s) / (st.e - st.s)));
+      const pp = this.partial(st, fr);
+      return { d: pp.d, w: st.w, tx: pp.tx, ty: pp.ty, r: fr > 0 && fr < 1 ? 2.2 : 0 };
+    });
+    const holdLabel = P > 0 ? 'decided' : (s.hold > 0 ? 'holding · ' + (s.hold * this.HOLD_MS / 1000).toFixed(1) + ' of 1.4 s' : 'press and hold · 1.4 s');
+    const hint = s.near ? 'you let go before it took. it takes 1.4 s of holding, and then it is done.' : 'no price. the tasting stops, and does not come back.';
+
+    // ── the body ──
+    const n = (full && P >= 2) || mindOn ? 96 : this.N0;
+    const inkCol = P < 2 ? '#22261F' : (full && P < 4 ? '#2A7F63' : '#62C39A');
+    const segs = G.segs.map(g => {
+      const vis = g.id < n, born = g.id >= this.N0 && full && P >= 2 && P < 9;
+      const d = mindOn ? this.mind[g.id] : this.ink[g.id];
+      const w = mindOn ? (g.d === 0 ? 1.6 : 1.1) : 2.6 * Math.pow(0.74, g.d) + 0.35;
+      const col = mindOn ? '#3A8E74' : (P < 2 && g.id >= this.N0 - 3 ? '#166B53' : inkCol);
+      return {
+        d: d, cls: '',
+        style: (vis ? '' : 'display:none;') + "d:path('" + d + "');stroke:" + col + ';stroke-width:' + f(w) + ';opacity:' + (mindOn && g.d > 3 ? 0.7 : 1) + ';' +
+          'transition:d ' + (calm ? 600 : 220) + 'ms cubic-bezier(.5,0,.2,1.4),stroke 600ms,stroke-width 260ms,opacity 400ms;' +
+          (born ? 'stroke-dasharray:100;stroke-dashoffset:100;animation:t1-inkDraw 520ms cubic-bezier(.3,0,.2,1) ' + Math.round((g.d - 3) * 160 + this.rnd(g.id) * 240) + 'ms forwards' : '')
+      };
+    });
+    const segGroup = mindOn ? '' : 'filter:url(#t1ink)';
+    const echoOn = full && P >= 2 && P < 9;
+    const echoes = this.ECHO.map((e, k) => ({
+      paths: echoOn ? this.echoDraw[k] : this.echoHidden,
+      style: 'stroke:' + inkCol + ';stroke-width:' + e.w + ';transform-origin:172px 106px;transform:' + (echoOn ? 'rotate(' + e.rot + 'deg) scale(' + e.sc + ')' : 'none') + ';opacity:' + (echoOn ? (P === 8 ? 0.35 : 0.8) : 0) + ';transition:transform 220ms cubic-bezier(.5,0,.2,1.4),opacity 220ms'
+    }));
+    const tips = this.tipsAt(n).map(g => ({ x: f(g.x2), y: f(g.y2), style: 'fill:' + (P < 2 ? '#166B53' : '#8CDCBB') + ';transform-box:fill-box;transform-origin:center;animation:t1-tip 2.6s ease-in-out -' + ((g.id * 0.29) % 2.6).toFixed(2) + 's infinite' }));
+    const inkTipGroup = 'transition:opacity 300ms;opacity:' + (P >= 8 ? 0 : 1);
+    const nodes = G.segs.filter(g => !this.isTip(g.id, 96)).map(g => ({ x: f(g.x2 - 1.6), y: f(g.y2 - 1.6) }));
+    const tips2 = this.tipsAt(96).map(g => ({ x: f(g.x2), y: f(g.y2) }));
+    const nodeGroup = !mindOn ? 'opacity:0' : 'animation:t1-node ' + (calm ? 600 : 200) + 'ms ease-out both';
+    const packets = G.segs.map(g => ({ d: this.mind[g.id],
+      style: 'stroke:#8CDCBB;stroke-width:2.4;stroke-dasharray:6 200;stroke-dashoffset:6;' + (calm ? 'stroke-dasharray:none;opacity:.25' : 'animation:t1-pkt 2.1s linear ' + (g.d * 0.3).toFixed(2) + 's infinite') }));
+    const pktGroup = 'filter:url(#t1glow);transition:opacity 400ms;opacity:' + (P >= 10 ? 1 : 0);
+
+    const bodyClip = 'position:absolute;inset:0;z-index:3;pointer-events:none;clip-path:' + (swell ? 'inset(0px 0px 0px 0px)' : 'inset(76px 0px 556px 0px)') +
+      ';transition:clip-path ' + (P >= 11 ? '800ms cubic-bezier(.6,0,.2,1)' : '900ms cubic-bezier(.2,.9,.2,1)');
+    const bodyMove = 'position:absolute;left:0;top:76px;width:390px;height:212px;transform-origin:172px 106px;transform:' + (swell ? FULL : WIN) +
+      ';transition:transform ' + (P >= 11 ? '900ms cubic-bezier(.6,0,.2,1)' : '1100ms cubic-bezier(.16,1.25,.3,1)');
+    let throb = 't1-breathe 6.4s ease-in-out infinite';
+    if (full && P >= 2 && P <= 7) throb = 't1-throb 460ms ease-in-out infinite alternate';
+    if (P === 8) throb = 'none';
+    if (full && P === 9) throb = 't1-snapPop 260ms cubic-bezier(.2,1.4,.4,1) both';
+    const bodyThrob = 'position:absolute;inset:0;transform-origin:172px 106px;animation:' + throb;
+    const knotStyle = 'transition:opacity 200ms;opacity:' + (mindOn ? 0 : 1);
+    const knotRing = 'fill:' + (P < 2 ? '#EAE6D9' : '#050604') + ';stroke:' + (P < 2 ? '#22261F' : inkCol) + ';stroke-width:1.6';
+    const knotDot = 'fill:' + (P < 2 ? '#22261F' : inkCol);
+    const hubStyle = 'transition:opacity 200ms;opacity:' + (mindOn ? 1 : 0);
+    const amberStyle = 'stroke-width:1.4;stroke:' + (P < 2 ? '#8A5E0E' : '#E9B75C') + ';' + (P === 0 || P >= 12 ? 'animation:t1-ghost 1.8s ease-in-out infinite' : 'opacity:0');
+    const standStyle = 'transition:opacity 600ms;opacity:' + (P >= 11 ? 1 : 0);
+
+    // threads from the torn page to the knot
+    const threads = this.threadList.map(t => ({ d: t.d,
+      style: !full || P < 3 || P > 4 ? 'opacity:0' : (P === 3 ? 'animation:t1-strandIn 420ms ease-out ' + (t.i * 22) + 'ms both' : 'animation:t1-strandOut 900ms cubic-bezier(.7,0,.9,.5) both') }));
+
+    // the four words, Newsreader caps sized to the measure: STOP 124, TASTING 74, START 100, KNOWING 70
+    const W = [['STOP', 124, 4], ['TASTING', 74, 5], ['START', 100, 6], ['KNOWING', 70, 7]];
+    const words = W.map(w => {
+      const on = P >= w[2] && P <= 7;
+      const base = 'font-size:' + w[1] + 'px;letter-spacing:-.025em;margin-bottom:12px;white-space:nowrap;transform-origin:0% 60%;text-shadow:0 0 2px #050604,0 0 22px #050604;';
+      if (!on) return { text: w[0], style: base + 'opacity:0' };
+      return { text: w[0], style: base + (calm ? 'animation:t1-wordCalm 220ms ease-out both' : 'animation:t1-slam 190ms cubic-bezier(.2,0,.3,1) both') };
+    });
+
+    // Act II knits, left to right, as if stitched along the traces
+    const knit = (delay, from) => {
+      if (P < from) return 'opacity:0';
+      return calm ? 'animation:t1-fadeIn 900ms ease-out both' : 'animation:t1-knit 620ms cubic-bezier(.2,.8,.2,1) ' + delay + 'ms both';
+    };
+    const traceYs = [314, 372, 440, 810];
+    const traces = traceYs.map((y, i) => ({ d: 'M' + (24 + i * 14) + ' 288 V' + y + ' H372',
+      style: !full || P < 11 ? 'opacity:0' : 'animation:t1-trace 1100ms cubic-bezier(.3,0,.2,1) ' + (i * 90) + 'ms both' }));
+    const r1Style = P < 13 ? 'opacity:0' : 'font:italic 400 14px/20px var(--f-serif);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:t1-lineIn 600ms ease-out both';
+    const r2Style = P < 14 ? 'opacity:0' : 'font:500 12.5px/20px var(--f-mono);color:var(--ink);text-shadow:0 0 7px #3A8E74;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;animation:t1-lineIn 600ms ease-out both';
+
+    // Act II: the MIND page, and the nav, as D_2 draws them
+    const MONO = 'var(--f-mono)';
+    const leader = 'flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)';
+    const rows2 = [
+      { margin: 'pool', word: 'Empty', cost: '░░░░░░░░░░░░░░ 0%', sub: 'Below the brim it is just signal.', wordStyle: 'font:400 14.5px/1.2 ' + MONO + ';color:var(--ink-2)', costStyle: 'font:400 12px/1 ' + MONO + ';color:var(--ink-2);white-space:pre' },
+      { margin: 'think', word: '[ Pulse ]', cost: '1.20 kΣ short', sub: 'Spends over half the pool · or touch the body', wordStyle: 'font:500 15px/1.2 ' + MONO + ';color:var(--ink-3)', costStyle: 'font:400 12.5px/1 ' + MONO + ';color:var(--next-ink)' },
+      { margin: 'learn', word: 'Septal Gating', cost: '110 Ψ', sub: 'Needs insight · 0 of 110 Ψ', wordStyle: 'display:inline-block;padding:1px 7px 2px;border:1px dashed var(--locked);font:400 14.5px/1.2 ' + MONO + ';color:var(--ink-3)', costStyle: 'font:400 11.5px/1 ' + MONO + ';color:var(--ink-3)' }
+    ].map((r, i) => Object.assign(r, { leader: leader, wrap: 'display:flex;align-items:flex-start;padding:0 16px 0 0;' + (i ? 'border-top:1px solid var(--rule);' : '') }));
+    const tabs2 = [['forest', '1 / 61'], ['mind', '0%'], ['flush', 'none ripe'], ['pact', 'none']].map(t => {
+      const on = t[0] === 'mind';
+      return { name: t[0], reading: t[1],
+        bar: 'position:absolute;left:8px;right:8px;top:-1px;height:2px;background:var(--thread-glow);box-shadow:0 0 8px #62C39A;transform:scaleX(' + (on ? 1 : 0) + ')',
+        nameStyle: 'font:' + (on ? '500' : '400') + ' 14px/1 ' + MONO + ';color:' + (on ? 'var(--ink)' : 'var(--ink-2)') + (on ? ';text-shadow:0 0 8px #3A8E74' : ''),
+        readStyle: 'font:400 11px/1.4 ' + MONO + ';margin-top:5px;color:var(--ink-3)' };
+    });
+    const tipN = this.tipsAt(this.N0).length;
+    const tabs1 = [['grow', tipN + ' tips'], ['learn', '11 learned'], ['bargain', '4 signed']].map(t => {
+      const on = t[0] === 'grow';
+      return { name: t[0], reading: t[1],
+        bar: 'position:absolute;left:8px;right:8px;top:-1px;height:2px;background:var(--ink);transform:scaleX(' + (on ? 1 : 0) + ')',
+        nameStyle: 'font:italic ' + (on ? '500' : '400') + ' 17px/1 var(--f-serif);color:' + (on ? 'var(--ink)' : 'var(--ink-2)'),
+        readStyle: 'font:400 11px/1.4 var(--f-mono);margin-top:5px;color:var(--ink-3)' };
+    });
+
+    return {
+      rootStyle: FONTS + 'width:390px;height:844px;overflow:hidden;position:relative;background:#050604;font-family:var(--f-ui)',
+      stageStyle: stageStyle,
+      scanStyle: 'position:absolute;left:0;top:0;z-index:1;pointer-events:none;transition:opacity 600ms;opacity:' + (P >= 11 ? 1 : 0),
+      gridFullStyle: 'position:absolute;left:0;top:0;z-index:1;pointer-events:none;transition:opacity 500ms;opacity:' + (full && P >= 9 && P < 11 ? 0.6 : 0),
+      chrome2Style: T2 + 'position:absolute;inset:0;z-index:2;color:var(--ink);font-family:var(--f-ui);pointer-events:' + (P >= 15 ? 'auto' : 'none'),
+      k2Window: P < (calm ? 12 : 11) ? 'opacity:0' : (calm ? 'animation:t1-fadeIn 900ms ease-out both' : 'animation:t1-knit 700ms cubic-bezier(.2,.8,.2,1) both'),
+      k2Ledger: knit(0, 12), k2Voice: knit(120, 12), k2Next: knit(240, 12), k2Verbs: knit(360, 12), k2Nav: knit(480, 12),
+      ledger1: [{ k: 'sugar', v: '1.03 kg, full' }, { k: 'floor', v: '4.20 kg' }, { k: 'minerals', v: '84.0 ⛬' }],
+      ledger2: [
+        { k: 'signal', v: '0.00 kΣ', vStyle: 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' },
+        { k: 'insight', v: '0.00 Ψ stopped', vStyle: 'color:var(--next);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' },
+        { k: 'minerals', v: '84.0 ⛬', vStyle: 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' }
+      ],
+      tipCost: Math.ceil(Math.pow(1.10, tipN) + 59) + ' g', tipSub: 'tip ' + (tipN + 1) + ' · eats 0.87 g/s of leaf litter',
+      litter: this.litter, figCaption: 'fig. 1 · ' + tipN + ' tips, the fourth winter',
+      rows2: rows2, tabs2: tabs2, tabs1: tabs1,
+      halves: halves,
+      holdStrands: holdStrands, holdLabel: holdLabel, hint: hint,
+      bodyClip: bodyClip, bodyMove: bodyMove, bodyThrob: bodyThrob,
+      echoes: echoes, segs: segs, segGroup: segGroup, packets: packets, pktGroup: pktGroup,
+      tips: tips, inkTipGroup: inkTipGroup, nodes: nodes, tips2: tips2, nodeGroup: nodeGroup,
+      standHex: this.hex(this.st.x2, this.st.y2, 6.5), standHex2: this.hex(this.st.x2 + 9.5, this.st.y2 - 5.5, 4), standStyle: standStyle,
+      amberStyle: amberStyle, knotStyle: knotStyle, knotRing: knotRing, knotDot: knotDot, hubStyle: hubStyle,
+      threads: threads, traces: traces, words: words,
+      r1Style: r1Style, r2Style: r2Style,
+      canHurry: P >= 2 && P < 15,
+      hurry: () => this.hurry(),
+      replay: () => this.replay(),
+      toggleCalm: () => { this.replay(); this.setState({ calm: !this.state.calm }); },
+      calmLabel: calm ? 'calm' : 'full motion',
+      calmPressed: calm ? 'true' : 'false',
+      ctlStyle: 'min-width:44px;height:44px;padding:0 8px;font:400 11.5px/1 var(--f-mono);text-decoration:underline;text-underline-offset:4px;text-align:center;color:' + (P < 2 ? '#3A382E' : '#B0B6A6')
+    };
+  }
+}
+</script>
+</body>
+</html>

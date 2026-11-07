@@ -26,13 +26,15 @@ into a single self-contained HTML file.
   budget: the map, the void and the phase wheel repaint only when they change)
 
 ```
-node build.mjs        # → dist/ (index.html + PWA sidecars)
+node build.mjs        # → dist/ (index.html + PWA sidecars, index.test.html)
 node boot-check.mjs   # boots dist headless, runs every module's self-test
+                      #   (on index.test.html: the shipped file carries none)
+                      #   and checks the redesign skeleton behind ?ui=d
 node redraw-check.mjs # repaints per second of the per-frame canvases
 ```
 
 `gh-pages` is the deploy branch: the six built files GitHub Pages serves,
-nothing else. `main` is the source.
+nothing else — `index.test.html` and `index.dev.html` stay out of it. `main` is the source.
 
 Built with [Claude Code](https://claude.com/claude-code). The history is the
 dev diary — read the commit messages.
