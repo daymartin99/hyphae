@@ -1854,7 +1854,9 @@ canvas{ display:block; }
   70%{ transform:scale(1.03, .96) skewX(-2.2deg); } 100%{ transform:scale(.99, 1.01); }
 }
 @keyframes d-flip{ 0%{ transform:perspective(900px) rotateY(0); } 100%{ transform:perspective(900px) rotateY(88deg) scale(.96); } }
-.curtain-word[data-loud="1"]{ font-weight:700; line-height:.95; letter-spacing:-.01em; color:#F4F1E8;
+/* The voice's own type (A/B round 1: the heavy grotesque "looks like a Nike ad" against the game's
+   monospace). The words are the voice at its loudest, so they are set in the voice. */
+.curtain-word[data-loud="1"]{ font-family:var(--font-mono); font-weight:600; line-height:1; letter-spacing:0; color:#F4F1E8;
   animation:d-slam 180ms cubic-bezier(.2,.9,.25,1) both; }
 @keyframes d-slam{ from{ opacity:0; transform:scale(1.35); } to{ opacity:1; transform:scale(1); } }
 .seq-crack{ position:absolute; inset:0; width:100%; height:100%; z-index:70; pointer-events:none; }
@@ -1868,3 +1870,6 @@ canvas{ display:block; }
   transition:transform 900ms cubic-bezier(.2,.9,.2,1); }
 .shell[data-ui="d"][data-fullplate="1"][data-swell="1"] .plate > canvas{ transform:scale(2.2); }
 :root .shell[data-ui="d"][data-stage][data-seqink="1"] .plate{ background-image:none; }
+/* The words sit over everything while they are on screen, the voice's own box included: it is six
+   rows tall in the redesign and would otherwise cut the first word. */
+.curtain:has(.curtain-word[data-loud="1"]){ z-index:65; }
