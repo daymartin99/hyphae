@@ -590,24 +590,39 @@
   // NAMES — `02` §6.9. Stable forever, seeded by region id, unmoved by fire.
   // ───────────────────────────────────────────────────────────────────────────
 
-  function regionName (i) {
-    var s = S()
-    if (!s) return ''
-    var g = ensureGen(s)
-    if (!names) names = new Array(g.n)
-    i = Math.floor(i)
-    if (!(i >= 0 && i < g.n)) return ''
-    if (names[i]) return names[i]
-    var h = C().rng(C().hash32(s.seed, 'name', i))
+  // One draw of a name for region i; `k` re-rolls it. Correlated with the dominant tree 70% of the
+  // time and deliberately wrong the rest, because that is how place names work: the beeches were cut
+  // two hundred years ago and the name stayed.
+  function drawName (s, g, i, k) {
+    var h = C().rng(k ? C().hash32(s.seed, 'name', i, k) : C().hash32(s.seed, 'name', i))
     var q = QUALIFIER[h.int(QUALIFIER.length)]
     var featIdx
-    // Correlated with the dominant tree 70% of the time and deliberately wrong the rest, because
-    // that is how place names work: the beeches were cut two hundred years ago and the name stayed.
     if (h.next() < NAME_TRUE_SP) featIdx = SPECIES_FEATURE[g.sp0[i] % NSPECIES]
     else featIdx = h.int(FEATURE.length)
     var f = FEATURE[featIdx]
     var form = FORM[h.int(FORM.length)]
-    names[i] = (h.next() < NAME_DROP_Q ? '' : q + ' ') + f + ' ' + form
+    return (h.next() < NAME_DROP_Q ? '' : q + ' ') + f + ' ' + form
+  }
+
+  // The whole map is named at once, in id order, so a name is a place: two stands both called
+  // "Green Oak Fold" on one board read as one place listed twice. The first region keeps a drawn
+  // name; a later one that collides re-rolls until it does not. Still seeded and stable forever.
+  function regionName (i) {
+    var s = S()
+    if (!s) return ''
+    var g = ensureGen(s)
+    i = Math.floor(i)
+    if (!(i >= 0 && i < g.n)) return ''
+    if (!names) {
+      names = new Array(g.n)
+      var used = {}, j, k, nm
+      for (j = 0; j < g.n; j++) {
+        nm = drawName(s, g, j, 0)
+        for (k = 1; used[nm] && k < 64; k++) nm = drawName(s, g, j, k)
+        used[nm] = 1
+        names[j] = nm
+      }
+    }
     return names[i]
   }
 
@@ -1590,7 +1605,7 @@
       ok(regionName(17) === n17, 'a fire renamed the stand')
       var uniq = {}
       for (i = 0; i < n; i++) uniq[regionName(i)] = 1
-      within(Object.keys(uniq).length, 45, 61, 'region names collide too often')
+      ok(Object.keys(uniq).length === n, 'two regions share a name: ' + Object.keys(uniq).length + ' of ' + n)
 
       // ── connectivity, `02` §4.2 ──────────────────────────────────────────
       var r = s.a2.regions

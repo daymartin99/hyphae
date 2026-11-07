@@ -142,7 +142,10 @@
     labile: 'labile',
     sugar: 'sugar',
     minerals: 'minerals',
-    netSugar: 'net sugar',
+    // What sugar does once the food you eat is paid for at the market — not the stock's own rate,
+    // which the SUGAR row already shows. Both read "sugar ±n/s" under one word, and a hand player
+    // saw −0.91 on one and +11.1 on the other with nothing to say which was which.
+    netSugar: 'after food',
     rot: 'rot',
     settings: 'settings',
 
@@ -314,6 +317,7 @@
     renew: 'renew',
     stake: 'stake',
     noPacts: 'nobody has offered you anything yet.',
+    noPactsYet: 'nothing signed. something below is waiting for an answer.',
     noOffers: 'no offers on the table.',
     termLeft: '{v} left',
     channelsOf: '{n} / {k}',
@@ -381,6 +385,7 @@
     allocation: 'allocation',
     replicate: 'replicate',
     disperse: 'disperse',
+    disperseLocked: 'nowhere to disperse to yet. thrust, past the canopy, opens it.',
     bank: 'bank',
     allocNote: 'every gram of surplus goes to one of three places, and the split is the act.',
     craftMass: 'craft mass',
@@ -1219,6 +1224,10 @@
 
   // The card IS the button (06 §5.4). A separate BUY inside a card doubles the tap targets, halves
   // the hit area and adds a second thing to look at.
+  // projects.js tags every fork that charges nothing `(a decision)`; that note is the one honest
+  // marker of "this is not a purchase".
+  function isDecision (entry) { return !!entry && entry.note === 'a decision' }
+
   function card (spec) {
     spec = spec || {}
     var n = btn('card')
@@ -1231,6 +1240,15 @@
     top.appendChild(cost)
     n.appendChild(top)
     n.appendChild(el('p', 'card-desc', spec.desc || ''))
+    // A decision (DECIDE, ENCYST, AUTOLYSIS, CEDE) is not a purchase: it ends an act, the run, or a
+    // part of you. One stray tap took ENCYST on a hand-played run — the card had surfaced right
+    // under the Differentiation buttons — so a decision is the destructive commit, held, like every
+    // other irreversible verb in the game.
+    if (spec.onHold) {
+      n.classList.add('hold', 'card--decide')
+      n.insertBefore(el('span', 'hold-fill'), n.firstChild)
+      n.appendChild(el('span', 'card-hold', STR.endTake))
+    }
     var dot = null
     var denyT = null
     var api = {
@@ -1263,7 +1281,8 @@
       isNew: function () { return !!dot && dot.dataset.seen !== '1' }
     }
     // A purchase is irreversible, so this one fires on release rather than on down.
-    if (spec.onPick) bindPress(n, spec.onPick, { onUp: true })
+    if (spec.onHold) bindHold(n, spec.onHold)
+    else if (spec.onPick) bindPress(n, spec.onPick, { onUp: true })
     return api
   }
 
@@ -1430,6 +1449,13 @@
     }
     wrap.setNote = function (s) { setText(note, s || '') }
     wrap.value = function () { return Number(input.value) }
+    // A dial the simulation is ignoring must not move under the finger: it is disabled and dimmed,
+    // and its note says why.
+    wrap.setLocked = function (on) {
+      if (input.disabled === !!on) return
+      input.disabled = !!on
+      setData(wrap, 'locked', on ? '1' : '0')
+    }
     paint()
     return wrap
   }
@@ -4559,7 +4585,8 @@
             cost: entry.priceTag,
             desc: entry.description,
             pinned: entry.pinned,
-            onPick: function () { pick(entry) }
+            onPick: isDecision(entry) ? null : function () { pick(entry) },
+            onHold: isDecision(entry) ? function () { pick(entry) } : null
           })
           v.cards[entry.id] = c
           c.markNew()
@@ -5484,8 +5511,11 @@
         return pactRow()
       }, s)
       pv.setCount(list.length)
+      // "nobody has offered you anything" sat directly over an OFFERS panel with an offer in it.
+      // An empty book with something on the table says so instead.
+      var waiting = pb.offers ? pb.offers().length : 0
       if (list.length) pv.unempty()
-      else pv.empty(STR.noPacts)
+      else pv.empty(waiting ? STR.noPactsYet : STR.noPacts)
     }
     p.view = pv
     return pv
@@ -6126,7 +6156,12 @@
         bars[k].setReadout(pctNum(a[k]), '%', labels[k] + ' ' + pct(a[k]))
       }
       bars[0].setNote(C().fmt((h - sub) * a[0]) + ' ' + GLYPH.carbon + '/s ' + STR.replicate)
-      bars[1].setNote(C().fmt((h - sub) * a[1]) + ' ' + GLYPH.carbon + '/s ' + STR.disperse)
+      // bloom.alloc zeroes DISPERSE in the canopy and before Thrust and banks its share; the dial
+      // used to move anyway and snap back to 0%. Now it is locked and says what opens it.
+      var disLocked = !!(s.phase === 'canopy' || !flagOn(s, 'thrust'))
+      bars[1].setLocked(disLocked)
+      bars[1].setNote(disLocked ? STR.disperseLocked
+        : C().fmt((h - sub) * a[1]) + ' ' + GLYPH.carbon + '/s ' + STR.disperse)
       bars[2].setNote(C().fmt((h - sub) * a[2]) + ' ' + GLYPH.carbon + '/s ' + STR.bank)
       pv.setCount(pctNum(a[0]) + ' / ' + pctNum(a[1]) + ' / ' + pctNum(a[2]), '%')
     }
@@ -6611,6 +6646,7 @@
     if (!seqDom) return
     var d = seqDom
     seqDom = null
+    if (view.shell.dataset.cut) delete view.shell.dataset.cut
     var ms = fadeMs > 0 ? fadeMs : 0
     var i
     for (i = 0; i < d.faded.length; i++) {
@@ -6650,6 +6686,11 @@
     // standing on the curtain stay; the console (z-60) keeps the voice, by design.
     if (p.what === 'cut') {
       seqCurtain().style.background = p.to === 'white' ? '#FFFFFF' : '#000000'
+      // The curtain lives in the column, and the column's stacking context sits under the console
+      // and the tab bar, so a cut to black left a lit band through the middle of it and the tab
+      // bar's paper at the foot. A cut is the whole screen: the shell is marked, the stylesheet
+      // paints both in the cut's colour, and seqDown takes the mark away.
+      setData(view.shell, 'cut', p.to === 'white' ? 'white' : 'black')
       if (cv && cv.motion) cv.motion(p.what, p)
       return
     }
