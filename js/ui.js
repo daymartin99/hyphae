@@ -248,6 +248,8 @@
     // NEXT (10 D5): what is nearest, and what it costs. Never what to do.
     nextDecide: 'decide is held below. it does not undo.',
     nextAfford: '{name} is within reach.',
+    nextGather: 'something is gathering. {t}.',
+    nextGatherNo: 'something is gathering.',
     nextShort: '{name}: {n} short.',
     nextShortEta: '{name}: {n} short, about {t} at this rate.',
     // A/B round 1: both interfaces showed the blocker and hid the route. Minerals come from the trees.
@@ -1792,6 +1794,7 @@
       if (isD()) {
         var hv = heroVerb(liveState())
         if (hv === 'extend' || hv === 'settle') { onHero(e); return }
+        presenceBeat()
       }
       var b = net.getBoundingClientRect()
       var hx = e.clientX - b.left, hy = e.clientY - b.top
@@ -2177,6 +2180,9 @@
   // already affordable, then the nearest shortfall (with how long it is at the stock's own net
   // rate, when that rate is climbing), then the next tip, which is always there to be had.
   var nextGroup = null
+  // Act I's road to DECIDE: the places, then the threads meeting, then the first signal (projects.js
+  // I-T transition). NEXT names these ahead of anything nearer whenever one is on screen.
+  var ROAD1 = /^(patch_|anastomosis$|action_potential$)/
   // projects.js currency keys → the stock (and the glyph) they are held in.
   var CUR_STOCK = { g: 'biomass', sug: 'sugar', min: 'minerals', sig: 'signal', psi: 'insight', spore: 'spores',
     carbon: 'carbon', accord: 'accord', alpha: 'alleles', canon: 'canon' }
@@ -2186,6 +2192,13 @@
     nextGroup = null
     if (!s || !pj) return ''
     if (s.act === 1 && pj.refusal && pj.refusal('decide') === null) return STR.nextDecide
+    // The wait for DECIDE. Signal has no use yet, and the line must not say what it is for: only that
+    // it is going somewhere, and how long. The road stays hidden; the player still walks it.
+    if (s.act === 1 && pj.isBought('action_potential')) {
+      var sr = accountRows('signal').net
+      var sGap = num(T().A1.DECIDE_SIGNAL) - num(s.res.signal)
+      if (sGap > 0) return sr > 0 && C().fmtTime ? interp(STR.nextGather, { t: C().fmtTime(sGap / sr) }) : STR.nextGatherNo
+    }
     if (s.act === 2) {
       // What is being lost first, then what is being offered, then what is owed and unspent.
       var fl = HY.flush
@@ -2230,13 +2243,20 @@
       var p = list[i]
       if (!p.buyable || p.id === 'decide' || pj.isBought(p.id)) continue
       cands.push({ name: p.title.toLowerCase(), price: pj.priceOf(p.id) || {}, ok: pj.refusal(p.id) === null,
-        group: s.act === 1 ? 'learn' : 'mind' })
+        group: s.act === 1 ? 'learn' : 'mind', road: s.act === 1 && ROAD1.test(p.id) })
     }
     if (s.act === 1 && A1() && A1().tipCost) {
       var tp = { g: num(A1().tipCost()) }
       if (A1().tipMineralCost) tp.min = num(A1().tipMineralCost())
       cands.push({ name: STR.nextTipName, price: tp, ok: true, group: 'grow' })
     }
+    // On the road, the road wins. In the dead-spot pass a tip was always nearer than Action
+    // Potential, so the step that ends the act was on screen for 18 minutes and never named. A
+    // temptation may still hold the line until the road appears: free Autolysis does, and the voice
+    // has already said it is not free (David: "don't trust what you are told"). Before this rule it
+    // held the only signpost for 75 minutes; now it holds it for about eight.
+    var onRoad = cands.filter(function (c) { return c.road })
+    if (onRoad.length) cands = onRoad
     var best = null, bestR = Infinity
     for (i = 0; i < cands.length; i++) {
       var c = cands[i], r = 0, k
@@ -2330,7 +2350,8 @@
     if (!(isD() && s && s.act >= 3 && FIN() && FIN().endings)) { cv.setLights([], 0); return }
     var list = FIN().endings(s), out = []
     for (var i = 0; i < list.length; i++) {
-      out.push({ p: endingProgress(list[i]), open: !!list[i].available && !list[i].taken, taken: !!list[i].taken })
+      out.push({ p: endingProgress(list[i]), open: !!list[i].available && !list[i].taken, taken: !!list[i].taken,
+        name: String(list[i].title || '').toLowerCase() })
     }
     cv.setLights(out, num(s.res.craft))
   }
@@ -2830,9 +2851,24 @@
     return null
   }
 
+  // The presence's heartbeat, felt as well as seen: lub-dub under the thumb while the colony is still
+  // too small to see (David's brief). feel.js owns the buzz and its budget, Android's vibration and
+  // iOS's switch path alike, so this only asks for the two beats.
+  function presenceBeat () {
+    if (!isD() || !CANVAS() || !CANVAS().kickPresence) return
+    CANVAS().kickPresence()
+    var s = liveState(), f = FEEL()
+    if (!s || s.act !== 1 || !(CANVAS().grown < 260) || !f || !f.hapticAt) return
+    if (s.set && s.set.haptics === false) return
+    f.hapticAt(0, 10)
+    f.hapticAt(150, 7)
+  }
+
   function onHero (e, heldS) {
     var s = liveState()
     if (!s) return
+    // In the redesign every press reaches the thing under the floor (canvas kickPresence).
+    presenceBeat()
     if (LOG() && LOG().notifyInput) LOG().notifyInput()
     var verb = heroVerb(s)
     if (verb === 'extend' && A1() && A1().onExtend) {
@@ -4139,6 +4175,7 @@
     if (s.act >= 2 && cv.growNetwork && s.a1 && num(s.a1.hyphaeFinal) > 0) {
       cv.growNetwork(num(s.a1.hyphaeFinal))
     }
+    if (cv.setPresence) cv.setPresence(isD())
     if (cv.setReading) {
       var lit = 0
       if (isD() && s.act === 2 && HY.cognition && HY.cognition.signalCap) {

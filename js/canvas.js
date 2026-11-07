@@ -191,6 +191,59 @@
     return reading
   }
 
+  // THE PRESENCE (David's brief for Act I's first minutes: "there is something alive. you don't
+  // know what it is, but there is something alive"). Before the colony is big enough to see, the
+  // dark under the floor has a heartbeat: a soft glow at the inoculation, too diffuse to be a shape,
+  // that beats lub-dub every few seconds. A touch or a line of the voice makes it beat once, harder.
+  // It fades as the network grows into the window, until it simply is the organism. Redesign only;
+  // under reduced motion it is a still, faint glow. One luminance swell per beat, well under rule 6.
+  var PRESENCE = {
+    PERIOD: 5.6,             // s between heartbeats
+    LUB: 0.00, DUB: 0.26,    // s offsets of the two beats in a heartbeat
+    BEAT: 0.42,              // s, one beat's swell and fall
+    A_REST: 0.05, A_BEAT: 0.22, A_KICK: 0.30,  // alpha at rest, at a beat, at a touched beat
+    R: 0.58,                 // × plate height, the glow's radius: it rises well into the dark
+    FADE_N: 260,             // nodes at which the presence has become the organism
+    STATIC_A: 0.07
+  }
+  var presenceOn = false      // the redesign asks for it (setPresence)
+  var kickAt = -1e9           // ms of the last touched beat
+
+  function setPresence (on) { presenceOn = !!on }
+  function kickPresence (tMs) { kickAt = typeof tMs === 'number' ? tMs : nowMs() }
+
+  function beatShape (t) {
+    // A single beat: a fast rise and a slower fall, 0 to 1 and back over BEAT seconds.
+    if (t < 0 || t > PRESENCE.BEAT) return 0
+    var u = t / PRESENCE.BEAT
+    return u < 0.25 ? u / 0.25 : 1 - (u - 0.25) / 0.75
+  }
+
+  function drawPresence (ctx, tMs, s) {
+    if (!presenceOn || !s || s.act !== 1 || !net) return
+    var fade = 1 - Math.min(1, net.n / PRESENCE.FADE_N)
+    if (!(fade > 0)) return
+    var x = net.n > 0 ? net.x[0] : surf.W / 2, y = net.n > 0 ? net.y[0] : surf.H
+    var a
+    if (reduced) {
+      a = PRESENCE.STATIC_A
+    } else {
+      var tS = tMs / 1000, ph = tS % PRESENCE.PERIOD
+      var beat = Math.max(beatShape(ph - PRESENCE.LUB), 0.7 * beatShape(ph - PRESENCE.DUB))
+      var kick = beatShape((tMs - kickAt) / 1000)
+      a = PRESENCE.A_REST + (PRESENCE.A_BEAT - PRESENCE.A_REST) * beat + PRESENCE.A_KICK * kick
+    }
+    a *= fade
+    var r = PRESENCE.R * surf.H
+    var col = pal.text
+    var g = ctx.createRadialGradient(x, y, 0, x, y, r)
+    g.addColorStop(0, rgba(col, a))
+    g.addColorStop(0.45, rgba(col, a * 0.35))
+    g.addColorStop(1, rgba(col, 0))
+    ctx.fillStyle = g
+    ctx.fillRect(x - r, y - r, r * 2, r * 2)
+  }
+
   var voiceWave = null        // { at } while a wave is travelling
   var stillUntil = 0          // ms clock: the body holds still until then
   var depth = null, depthN = 0, depthMax = 1
@@ -1479,6 +1532,7 @@
       return 'still'
     }
     if (tMs < stillUntil) return 'held'
+    kickAt = tMs
     voiceWave = { at: tMs }
     return 'wave'
   }
@@ -1619,6 +1673,7 @@
     // trade: litter falling in five frames is not falling.
     var hz = sg ? FLUX.SURGE_HZ : (shedGhost ? SHED.HZ : (tradeFx ? LITTER.FX_HZ : T().fluxHz))
     if (voiceWave && !reduced) hz = Math.max(hz, VOICE.HZ)
+    if (presenceOn && !reduced && s && s.act === 1 && net && net.n < PRESENCE.FADE_N) hz = Math.max(hz, 15)
 
     if (reduced || hz <= 0) {
       // Once per state change, never on a clock. A static frame is always present — this branch
@@ -1640,6 +1695,8 @@
 
     // The floor first, so the mat and its tips sit over the debris they are eating; the trade's
     // moving flecks last in this group, because the event sits over the state it changes.
+    // Under everything, so the floor and the first threads sit in the glow rather than under it.
+    drawPresence(ctx, tMs, s)
     drawFloorLitter(ctx, s)
     drawTradeFx(ctx, tMs)
     // Before the tips, so what has been let go is behind what is still there.
@@ -2167,6 +2224,15 @@
         ctx.strokeStyle = rgba(pal.attention, 0.9)
         ctx.lineWidth = 1
         ctx.beginPath(); ctx.arc(x, y, r + 3, 0, TAU); ctx.stroke()
+      }
+      // Named, faintly (A/B round 3: unnamed, the lights read as discs that might be pickups). The
+      // name says what a light is; its brightness says how near it is; a touch opens it.
+      if (L.name) {
+        ctx.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = rgba(L.open ? pal.attention : pal.tertiary, L.open ? 0.9 : 0.55 + 0.35 * p)
+        ctx.fillText(L.name, Math.min(surf.W - 4 - ctx.measureText(L.name).width / 2, Math.max(4 + ctx.measureText(L.name).width / 2, x)), y + r + 7)
       }
     }
   }
@@ -3385,6 +3451,12 @@
       f.push('surface: a draw call with no data threw: ' + (err && err.message ? err.message : err))
     }
 
+    // The presence (David's brief): a beat swells and falls inside its window and is nothing outside
+    // it, so the heart is a heartbeat and never a flicker.
+    ok(beatShape(-0.01) === 0 && beatShape(PRESENCE.BEAT + 0.01) === 0, 'presence: a beat leaks outside its window')
+    ok(Math.abs(beatShape(PRESENCE.BEAT * 0.25) - 1) < 1e-9, 'presence: a beat does not peak at its quarter')
+    ok(PRESENCE.PERIOD >= 1 / 3 * 2, 'presence: heartbeats faster than rule 6 allows')
+
     // 10 D9: a line answers with a wave; a line that turns to the player stills the body instead,
     // and a wave that arrives inside the stillness waits rather than breaking it.
     var keepStill = stillUntil, keepWave = voiceWave
@@ -3431,6 +3503,9 @@
     // The voice, answered (10 D9): a line lands and the body answers it. Returns 'wave', 'still'
     // (a line that turned to the player), or 'held' (a wave that waited out a stillness).
     voice: voiceLine,
+    // Act I's presence before the organism can be seen (David's brief): on/off, and a touched beat.
+    setPresence: setPresence,
+    kickPresence: kickPresence,
     // The redesign's reading of the body (10 D2): 'ink' | 'mind' | 'glass', and how lit (0…1).
     setReading: setReading,
     // The looking glass's lights and fleet (10 Phase 4): endings as [{ p, open, taken }], and craft.

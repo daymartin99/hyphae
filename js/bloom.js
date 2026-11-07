@@ -215,6 +215,12 @@
   var OFFLINE_PRED_CAP = 0.25      // §22: predation capped at 25% of the fleet for the whole absence
   var OFF_X_KEEP = 0.5             // a band is never harvested below half its carbon at departure, away
   var OFF_N_KEEP = 0.6             // the fleet never falls below 60% of its size at departure, away
+  // THE HOLD, LOOSENED (10 Phase 6, gamified): the game's own dormancy shapes what being away is worth.
+  // Vernalisation (Act I) has wintered before: away, it grazes deeper. Every DOR locus teaches the
+  // fleet to grow a little in the dark: replication runs away at OFF_DOR_GROW of its rate per locus,
+  // to OFF_DOR_MAX. It never disperses or launches away; where it goes stays the player's call.
+  var OFF_X_KEEP_VERN = 0.35
+  var OFF_DOR_GROW = 0.08, OFF_DOR_MAX = 0.60
 
   // ───────────────────────────────────────────────────────────────────────────
   // MODULE-LOCAL STATE
@@ -244,7 +250,7 @@
   var offNb = null                 // per band, fleet at departure
   var offC = 0                     // carbon banked at departure: never less on return
   // What the hold did this absence, for the voice to account for on return (log.js NEEDS: held_*).
-  var hold = { unpaid: 0, refed: 0, floored: 0 }
+  var hold = { unpaid: 0, refed: 0, floored: 0, grew: 0, deep: 0 }
   var warnings = []                // { band, at } — H5's 40 s notice; never crosses a reload
   var humpFor = 0                  // s a band has spent with surplus falling while n rose
   var lastHumpN = 0, lastHumpSurplus = 0
@@ -794,7 +800,11 @@
       // what makes a depleted band go quiet instead of going negative.
       drawn = Math.min(h * dt, heldX(s, b))
       if (o.offline && offX && offX[b] !== undefined) {
-        var room = Math.max(0, heldX(s, b) - offX[b] * OFF_X_KEEP)
+        var vern = !!(s.proj && s.proj.flags && s.proj.flags.vernalisation)
+        var keep = vern ? OFF_X_KEEP_VERN : OFF_X_KEEP
+        var room = Math.max(0, heldX(s, b) - offX[b] * keep)
+        // Grazing past the plain floor is Vernalisation's doing, and the voice says so on return.
+        if (vern && drawn > Math.max(0, heldX(s, b) - offX[b] * OFF_X_KEEP)) hold.deep = 1
         if (drawn > room) { drawn = room; hold.floored = Math.max(hold.floored, 1) }
       }
       if (!(drawn > 0)) continue
@@ -1144,6 +1154,32 @@
     if (total > 0 && !o.offline) {
       stepReplication(dt, s, sur, total, al[0])
       stepDispersal(dt, s, sur, total, al[1])
+    } else if (total > 0 && o.offline) {
+      var g = Math.min(OFF_DOR_MAX, OFF_DOR_GROW * num(locus(s, DOR)))
+      // Growth in the dark is paid only from what the absence has earned: replication sees the carbon
+      // above the bank the player left with, and that bank is put back untouched. Measured without
+      // this, five DOR loci grew the fleet 9,900x overnight by spending the whole bank.
+      var spare = num(s.res.carbon) - offC
+      // And only ever a little: across one absence the fleet may grow by g of what it was at departure.
+      // Uncapped, the five-loci night above still came back 1,000x larger. The point is a gift, not a lever.
+      if (g > 0 && spare > 0 && hold.grew < offN * g) {
+        var arr = inCanopy(s) ? s.a3.biomes.n : s.a3.bands.n, was = [], i
+        for (i = 0; i < arr.length; i++) was.push(num(arr[i]))
+        var before = num(totalCraft(s))
+        C().setStock(s.res, 'carbon', spare)
+        stepReplication(dt * g, s, sur, total, al[0])
+        var grown = num(totalCraft(s)) - before, left = offN * g - hold.grew
+        if (grown > left && grown > 0) {
+          // Past the allowance: keep that share of each band's growth, and refund the carbon spent
+          // on the rest, so the cap costs the player nothing they earned.
+          var keepF = Math.max(0, left) / grown, spent = spare - num(s.res.carbon)
+          for (i = 0; i < arr.length; i++) arr[i] = was[i] + (num(arr[i]) - was[i]) * keepF
+          if (spent > 0) C().setStock(s.res, 'carbon', num(s.res.carbon) + spent * (1 - keepF))
+          grown = num(totalCraft(s)) - before
+        }
+        C().setStock(s.res, 'carbon', num(s.res.carbon) + offC)
+        if (grown > 0) hold.grew += grown
+      }
     }
     stepTransit(dt, s, o)
   }
@@ -1688,7 +1724,7 @@
         for (var ob = 0; ob < count(s); ob++) offX.push(heldX(s, ob))
         offN = num(totalCraft(s))
         offC = num(s.res.carbon)
-        hold = { unpaid: 0, refed: 0, floored: 0 }
+        hold = { unpaid: 0, refed: 0, floored: 0, grew: 0, deep: 0 }
         var arr0 = inCanopy(s) ? s.a3.biomes.n : s.a3.bands.n
         offNb = []
         for (var nb = 0; nb < arr0.length; nb++) offNb.push(num(arr0[nb]))
@@ -2115,7 +2151,7 @@
 
   HY.bloom = {
     // The hold's account of the last absence (10 Phase 6), for the return report.
-    holdReport: function () { return { unpaid: hold.unpaid, refed: hold.refed, floored: hold.floored } },
+    holdReport: function () { return { unpaid: hold.unpaid, refed: hold.refed, floored: hold.floored, grew: hold.grew, deep: hold.deep } },
     // Phase A
     settle: settle,
     reach: reach,

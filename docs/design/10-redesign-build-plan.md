@@ -215,8 +215,14 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
   | 2 × 1 h a day | day 3 | 5.3 h |
   | 3 h once a week | week 3 | 6.3 h |
 
-- **To gamify next (proposed).** Make the hold something the player shapes: Vernalisation and the DOR loci, the game's own dormancy, loosen it.
-- **Still to do.** A hand playthrough of `?ui=d`, start to finish.
+- **Gamified: the player's own dormancy loosens the hold.**
+  - **DOR loci.** Each locus lets the fleet grow in the dark at 8 % of its replication rate, up to 60 %. It is paid only from carbon the absence earned; the departure bank is never touched. Across one absence it may grow by at most that share of the departure fleet, and carbon spent past the cap is refunded. Without the bank rule, five loci grew the fleet 9,900× in a night by spending the whole bank. Without the cap, it still grew 1,000×.
+  - **Vernalisation.** The fleet grazes bands to 35 % instead of 50 %.
+  - **Measured** on a 10 h void night: no loci gives 34× craft and 1.96e4× carbon; five loci give 41× and 2.16e4×; five loci plus Vernalisation give 38× and 2.79e4×.
+  - **Voice.** "It grew a little in the dark. You taught it that." and "It grazed deeper than it would have. It has wintered before." These rank above the news (86 and 85), because they are the player's choice answering back. "Nothing grew…" is not said on a night something did grow.
+- **Still to do.**
+  - A hand playthrough of `?ui=d`, start to finish.
+  - **A bounce-off test (David).** Disengaged stand-in players with varied patience: when does each quit, and why? Act I is the suspect: David couldn't see how to reach Act II, and most of his testers quit there on the old build.
 
 ### Phase 7 — Cutover (S)
 - Flip the flag on by default, delete the old panel scroll, bump sw, update 06 and 09, then deploy
