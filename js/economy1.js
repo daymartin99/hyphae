@@ -988,10 +988,16 @@
     return t
   }
 
+  // The understory opens in winter — to a player holding sugar, as before, or to one who has grown
+  // far enough to need what trees sell (MIN_WARN_TIPS, the tip the mineral cost begins at). Holding
+  // alone was a gate the act teaches you to fail: the floor wants every gram of sugar spent, and a
+  // run that spent it never met a tree, while every mineral-priced card said "short" with nowhere to
+  // turn. Measured: a spend-everything run went 150 minutes without one.
   function treesOpen () {
     var s = S(), A = T().A1
     if (s.a1.trees.length > 0) return true
-    return s.res.sugar >= A.TREES_SUGAR_G && num(s.a1.season) === A.SEASON_WINTER
+    if (num(s.a1.season) !== A.SEASON_WINTER) return false
+    return s.res.sugar >= A.TREES_SUGAR_G || num(s.a1.tips) >= A.MIN_WARN_TIPS
   }
 
   function killTree (tree, reason) {
@@ -2643,6 +2649,7 @@
     netSugar: netSugar,
     // The scheduler's own reserve, so act1's readout and the delivery it describes are one number.
     reserveSugar: reserveSugar,
+    treesOpen: treesOpen,
     bookState: bookState,
     setSuspended: setSuspended,
     setStandingOrder: setStandingOrder,

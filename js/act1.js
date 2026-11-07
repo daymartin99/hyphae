@@ -972,9 +972,11 @@
   // BIBLE §5.2, latched. Every predicate below is written against a monotone witness, because a
   // panel that is earned is never taken back and `biomass >= 60` stops being true the moment the
   // player spends it.
+  // One rule, economy1's: the panel opens exactly when the first tree can arrive.
   function revealTrees (s) {
-    return s.a1.trees.length > 0 ||
-      (num(s.res.sugar) >= A().TREES_SUGAR_G && s.a1.season === WINTER)
+    if (HY.economy1 && HY.economy1.treesOpen) return !!HY.economy1.treesOpen()
+    return s.a1.trees.length > 0 || (s.a1.season === WINTER &&
+      (num(s.res.sugar) >= A().TREES_SUGAR_G || num(s.a1.tips) >= A().MIN_WARN_TIPS))
   }
 
   function reveals () {
@@ -1717,6 +1719,16 @@
       ok(reveals().tips, 'tips did not reveal at 60 g')
       s.res.biomass = 0
       ok(reveals().tips, 'the tip panel un-revealed when the biomass was spent')
+      // A player who spends every gram of sugar still meets the understory, in the first winter
+      // after they have grown far enough to need what it sells.
+      s.res.sugar = 0
+      s.a1.season = WINTER
+      ok(!reveals().trees, 'the understory opened to a seedling with no sugar')
+      s.a1.tips = A().MIN_WARN_TIPS
+      ok(reveals().trees, 'the understory stayed shut to a spender who needs minerals')
+      s.a1.season = AUTUMN
+      ok(!reveals().trees, 'the understory opened outside winter')
+      s.a1.tips = 0
       s.res.sugar = 300
       s.a1.season = WINTER
       ok(reveals().trees, 'the understory did not open at 250 g of sugar in winter')
