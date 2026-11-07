@@ -338,7 +338,7 @@
     { pred: function (s) { return s.res.sugar > F.sugarCap(s) } })
 
   L(1, 'a1.mineral_warn', 'world', 'warn', 'tips >= 20',
-    'the tips are thinning. they are made of things you cannot make.',
+    'the tips are thinning. something rooted nearby has what they are made of.',
     { pred: function (s) { return s.a1.tips >= T().A1.MIN_WARN_TIPS } })
 
   L(1, 'a1.first_mineral', 'world', 'pos', 'mineral >= 1',
@@ -487,6 +487,16 @@
     'Nothing overflowed. It went somewhere.',
     { pred: function (s) { return s.res.insight >= 1 } })
 
+  // The rule the whole Insight economy turns on, said once, on the first tick the pool falls back
+  // below the brim after Insight exists — the moment the strip's Insight rate turns to `filling`.
+  L(2, 'a2.brim', 'narrative', null, 'everSaturated && !saturated && flags.turgor',
+    'Below the brim it is just signal. Insight only comes while the pool is full.',
+    { pred: function (s) {
+      var g = HY.cognition
+      return s.stats.everSaturated === true && F.flag(s, 'turgor') &&
+        !!g && !!g.saturated && !g.saturated(s)
+    } })
+
   L(2, 'a2.first_D', 'world', 'pos', 'D >= 1',
     'The network has enough of itself to specialise.',
     { pred: function (s) { return s.res.D >= 1 } })
@@ -615,6 +625,19 @@
   L(3, 'a3.settle', 'world', null, '@settleTap && settles == 1',
     'Forty-two in a hundred take hold. The rest are on rock or in water.')
 
+  // cognition.freeReallocate() hands every D back on the II→III boundary, silently, and the
+  // Differentiation panel moves to GENOME. The line is the receipt; the tab's dot is the pointer.
+  // It waits for two points or more, because one point does not take the plural.
+  L(3, 'a3.unlearn', 'narrative', null, "unallocated == D >= 2 && phase == 'canopy'",
+    'The climb unlearns every specialisation. There are {k} points, unspent.',
+    { pred: function (s) {
+      var g = HY.cognition
+      // Nothing allocated yet: the state the respec leaves, not D the canopy earned since.
+      return s.phase === 'canopy' && !!g && !!g.unallocated && g.unallocated(s) >= 2 &&
+        g.unallocated(s) >= num(s.res.D)
+    },
+    tokens: function (s) { return { k: HY.cognition.unallocated(s) } } })
+
   L(3, 'a3.germ', 'narrative', 'pos', 'flags.germ_tube',
     'You are growing faster than you are dying now. That is the whole of it.',
     { pred: function (s) { return F.flag(s, 'germ_tube') } })
@@ -658,6 +681,9 @@
 
   L(3, 'a3.first_starve', 'world', 'warn', '@starve && starves == 1',
     'Band {band} is out of carbon. It replicates for another ninety seconds anyway.')
+
+  L(3, 'a3.revive', 'world', 'pos', '@revive',
+    'Something in the Stand was never all the way dead. It starts again from there.')
 
   L(3, 'a3.senescence', 'narrative', null, 'cumSenesced > 0.10 * cumReplicated',
     'Craft do not last. You are running a population, not a machine.',
@@ -1312,6 +1338,7 @@
     if (recentlySaid(s, text)) return false
 
     if (entry.once) markFired(s, entry.id)
+    storyAt = s.t
     if (entry.channel === 'observation') {
       s.log.lastObsAt = s.t
       obsSeen[entry.id] = 1
@@ -1531,7 +1558,8 @@
       if (e.once && firedHas(s, e.id)) { pool.splice(i, 1); continue }
       var hit = false
       try { hit = !!e.pred(s) } catch (err) { hit = false }
-      if (hit) enqueue(s, e, null, null)
+      // A polled line carries no tokens unless it says how to read them off the state it fired on.
+      if (hit) enqueue(s, e, e.tokens ? e.tokens(s) : null, null)
     }
 
     // Delayed lines (the fire trio's +600 s beat) are not persisted: they are news with a fuse,
@@ -2411,8 +2439,15 @@
     the_offer: 'The others go quiet for a moment. Something has been offered, and it is waiting on you.'
   }
 
-  var PU = { GAP: 1.4, CD: 5, AFTER_S: 1.3, NUDGE_SAT_S: 45, NUDGE_CD: { undeployed: 150, overflow: 210 } }
-  var pressBag = {}, pressAt = {}, afterQueue = [], nudgeAt = {}, satSince = -1, lastSeason = -1, seasonDue = -1
+  // CD_GROW / CD_MAX_MUL: a verb's flavour thins as it repeats — 5 s apart at first, then each
+  // CD_GROW lines adds another 5 s, up to two minutes. STORY_HOLD: no flavour for twenty seconds
+  // after a corpus line, so the act's own sentences are not pushed off a five-row console by
+  // "you push. something in the leaf mould pushes back" (a hand player watched the Act I climax
+  // line scroll away under litter receipts within seconds).
+  var PU = { GAP: 1.4, CD: 5, CD_GROW: 4, CD_MAX_MUL: 24, STORY_HOLD: 20, AFTER_S: 1.3,
+    NUDGE_SAT_S: 45, NUDGE_CD: { undeployed: 150, overflow: 210 } }
+  var pressBag = {}, pressAt = {}, pressN = {}, afterQueue = [], nudgeAt = {}, satSince = -1, lastSeason = -1, seasonDue = -1
+  var storyAt = -Infinity
 
   function num (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
 
@@ -2455,7 +2490,9 @@
     var set = PRESS[verb], list = set && (set[s.act] || set[0])
     if (!list || !list.length) return false
     if (!force) {
-      if (pressAt[verb] !== undefined && s.t - pressAt[verb] < PU.CD) return false
+      var cd = PU.CD * Math.min(PU.CD_MAX_MUL, 1 + num(pressN[verb]) / PU.CD_GROW)
+      if (pressAt[verb] !== undefined && s.t - pressAt[verb] < cd) return false
+      if (s.t - storyAt < PU.STORY_HOLD) return false
       if (s.t - num(s.log.lastLineAt) < PU.GAP) return false
       if (pressAt._any !== undefined && s.t - pressAt._any < PU.GAP) return false
     }
@@ -2463,6 +2500,7 @@
     if (!text) return false
     pressAt[verb] = s.t
     pressAt._any = s.t
+    pressN[verb] = num(pressN[verb]) + 1
     return sayBeat(s, 'press.' + verb, text, verb === 'refused' ? 'amb' : null)
   }
 
@@ -2984,7 +3022,7 @@
   function init (s) {
     s = s || S()
     queue.length = 0
-    pressBag = {}; pressAt = {}; afterQueue.length = 0; nudgeAt = {}; satSince = -1; lastSeason = -1; seasonDue = -1
+    pressBag = {}; pressAt = {}; pressN = {}; storyAt = -Infinity; afterQueue.length = 0; nudgeAt = {}; satSince = -1; lastSeason = -1; seasonDue = -1
     pendingReturn.length = 0
     delayed.length = 0
     recent.length = 0
@@ -3130,9 +3168,11 @@
     }
 
     // ── The corpus itself ────────────────────────────────────────────────────
-    // 159, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
-    // corpus was transcribed. It is one Act I world line and it is counted, not excused.
-    ok(LINES.length === 159, 'corpus is ' + LINES.length + ' entries, expected 159')
+    // 162, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
+    // corpus was transcribed, `a2.brim` says the saturation rule the Insight strip turns on,
+    // `a3.unlearn` is the receipt for the D the Act III break hands back, and `a3.revive` is the
+    // canopy's seed coming back from zero craft. Each is one line and each is counted, not excused.
+    ok(LINES.length === 162, 'corpus is ' + LINES.length + ' entries, expected 162')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3141,8 +3181,8 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 48, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 38, 'act II lines: ' + counts.a2)
-    ok(counts.a3 === 25, 'act III lines: ' + counts.a3)
+    ok(counts.a2 === 39, 'act II lines: ' + counts.a2)
+    ok(counts.a3 === 27, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
     ok(counts.obs === 25, 'observations: ' + counts.obs)

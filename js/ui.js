@@ -112,6 +112,7 @@
     STANDS_FRONTIER: 4,       // of those rows, how many always go to ground you could take next
     FLUSH_BET_MAX: 0.25,      // fraction of held biomass the stake slider spans
     FLUSH_BET_DEFAULT: 0.40,  // of that span, so the slider opens on 10% of the book
+    BANK_FRACS: [0.10, 0.25], // Seed Bank's two sizes, as fractions of the labile the exit spares
 
     // Act III panels
     BANDS_SHOWN: 13,          // 03 §6.1 has thirteen and every one of them is a decision
@@ -142,7 +143,10 @@
     labile: 'labile',
     sugar: 'sugar',
     minerals: 'minerals',
-    netSugar: 'net sugar',
+    // What sugar does once the food you eat is paid for at the market — not the stock's own rate,
+    // which the SUGAR row already shows. Both read "sugar ±n/s" under one word, and a hand player
+    // saw −0.91 on one and +11.1 on the other with nothing to say which was which.
+    netSugar: 'after food',
     rot: 'rot',
     settings: 'settings',
 
@@ -222,6 +226,9 @@
     toEmpty: 'to empty',
     owed: 'owed',
     nothing: '—',
+    decide: 'decide',
+    minNone: 'nothing pays you this yet',
+    minIdle: 'no tree is paying',
     seasons: '{n} seasons',
 
     theme: 'theme', haptics: 'haptics', motion: 'motion', slow: 'slow',
@@ -275,6 +282,7 @@
 
     capacity: 'capacity',
     saturated: 'saturated',
+    filling: 'filling',
     saturation: 'saturation',
     gain: 'gain',
     slots: 'slots',
@@ -287,6 +295,8 @@
     allocate: 'spend',
     pulse: 'pulse',
     ready: 'ready',
+    pulseSpends: 'spends {v} of the pool',
+    pulseNote: 'a pulse spends over half the pool. insight stops until it is full again.',
     cooling: '{v}',
 
     wind: 'wind',
@@ -294,6 +304,7 @@
     mast: 'mast year',
     maturity: 'maturity',
     release: 'release',
+    ripeNow: 'ripe — release now',
     hold: 'hold',
     resume: 'resume',
     riskNow: 'risk',
@@ -303,6 +314,11 @@
     noPrimordia: 'nothing is fruiting. knot one, and the weather decides the rest.',
     fruit: 'fruit',
     slotsFull: 'every slot is knotted',
+    seedBank: 'seed bank',
+    spare: 'spare',
+    nothingSpare: 'nothing spare',
+    bankNote: 'labile carbon banked as spores, {g} each. banked spores do not decay, and ' +
+      'the grams the discharge asks for are never touched.',
 
     channels: 'channels',
     accord: 'accord',
@@ -314,6 +330,7 @@
     renew: 'renew',
     stake: 'stake',
     noPacts: 'nobody has offered you anything yet.',
+    noPactsYet: 'nothing signed. something below is waiting for an answer.',
     noOffers: 'no offers on the table.',
     termLeft: '{v} left',
     channelsOf: '{n} / {k}',
@@ -381,6 +398,7 @@
     allocation: 'allocation',
     replicate: 'replicate',
     disperse: 'disperse',
+    disperseLocked: 'nowhere to disperse to yet. thrust, past the canopy, opens it.',
     bank: 'bank',
     allocNote: 'every gram of surplus goes to one of three places, and the split is the act.',
     craftMass: 'craft mass',
@@ -1219,6 +1237,10 @@
 
   // The card IS the button (06 §5.4). A separate BUY inside a card doubles the tap targets, halves
   // the hit area and adds a second thing to look at.
+  // projects.js tags every fork that charges nothing `(a decision)`; that note is the one honest
+  // marker of "this is not a purchase".
+  function isDecision (entry) { return !!entry && entry.note === 'a decision' }
+
   function card (spec) {
     spec = spec || {}
     var n = btn('card')
@@ -1231,6 +1253,15 @@
     top.appendChild(cost)
     n.appendChild(top)
     n.appendChild(el('p', 'card-desc', spec.desc || ''))
+    // A decision (DECIDE, ENCYST, AUTOLYSIS, CEDE) is not a purchase: it ends an act, the run, or a
+    // part of you. One stray tap took ENCYST on a hand-played run — the card had surfaced right
+    // under the Differentiation buttons — so a decision is the destructive commit, held, like every
+    // other irreversible verb in the game.
+    if (spec.onHold) {
+      n.classList.add('hold', 'card--decide')
+      n.insertBefore(el('span', 'hold-fill'), n.firstChild)
+      n.appendChild(el('span', 'card-hold', STR.endTake))
+    }
     var dot = null
     var denyT = null
     var api = {
@@ -1263,7 +1294,8 @@
       isNew: function () { return !!dot && dot.dataset.seen !== '1' }
     }
     // A purchase is irreversible, so this one fires on release rather than on down.
-    if (spec.onPick) bindPress(n, spec.onPick, { onUp: true })
+    if (spec.onHold) bindHold(n, spec.onHold)
+    else if (spec.onPick) bindPress(n, spec.onPick, { onUp: true })
     return api
   }
 
@@ -1430,6 +1462,13 @@
     }
     wrap.setNote = function (s) { setText(note, s || '') }
     wrap.value = function () { return Number(input.value) }
+    // A dial the simulation is ignoring must not move under the finger: it is disabled and dimmed,
+    // and its note says why.
+    wrap.setLocked = function (on) {
+      if (input.disabled === !!on) return
+      input.disabled = !!on
+      setData(wrap, 'locked', on ? '1' : '0')
+    }
     paint()
     return wrap
   }
@@ -1774,6 +1813,11 @@
     v.endbarKey = ''
     bindHold(endbar, function () {
       var fin = FIN()
+      if (v.endbarKey === DECIDE_KEY) {
+        var pj = PJ()
+        if (pj && pj.refusal && !pj.refusal('decide')) commit(function () { return pj.purchase('decide') })
+        return
+      }
       if (v.endbarKey && fin && fin.takeEnding) fin.takeEnding(v.endbarKey)
     })
     v.endbar = endbar
@@ -2342,7 +2386,10 @@
   function autoPlate () {
     var s = liveState(), st = view.stack
     var w = win()
-    if (!s || s.act < 2 || (w && w.innerWidth >= 900)) return
+    // Act I folds too, once its handle exists (stage(): the understory's reveal). Its stack is the
+    // longest in the game — about fifteen windowfuls on a phone — and it was read through a band
+    // the map never gave back.
+    if (!s || (s.act < 2 && !view.plateShown) || (w && w.innerWidth >= 900)) return
     var top = st.scrollTop
     if (view.autoMin) {
       if (top <= 0) { view.autoMin = false; setPlate(false) }
@@ -2412,7 +2459,16 @@
     // A panel arrives at the bottom of the existing stack, never in the middle, so nothing the
     // player was looking at moves. EXTEND, once it has joined the stack, stays after all of them:
     // it is the last row of the scroll and not the last panel to have arrived.
-    view.stack.appendChild(p.view.el)
+    // The one exception: TIPS, the act's first purchase and its every-minute verb, goes above the
+    // floor. Appended, it arrived ~1,350 px down an 844 px phone under three floor cards with
+    // nothing pointing at it. It arrives ~35 s in, when the eye is on EXTEND and the count, so the
+    // floor moving down once costs less than the first decision being invisible.
+    var floor = view.panels.floor
+    if (id === 'tips' && floor && floor.shown && floor.view.el.parentNode === view.stack) {
+      view.stack.insertBefore(p.view.el, floor.view.el)
+    } else {
+      view.stack.appendChild(p.view.el)
+    }
     // ADAPTATIONS is a global panel that started life on the MIND tab. In Act III that slot's
     // subject is the genome, so the tree stays below whatever the act itself puts there rather
     // than above it by seniority.
@@ -2569,7 +2625,11 @@
       fleet: flagOn(s, 'translocation'),
       lineages: strains.length > 0 || !!(s.a3 && s.a3.succ),
       wheel: flagOn(s, 'circadian_entrainment'),
-      endings: flagOn(s, 'circadian_entrainment') || !!end ||
+      // From the first frame of the void: the endings are what the act is FOR, and a board that
+      // appeared only once one was nearly in reach (or only with entrainment) left the player
+      // playing ninety minutes toward conditions nobody had shown them. Every card renders greyed,
+      // with its rows of what you have against what it wants.
+      endings: voidPhase || flagOn(s, 'circadian_entrainment') || !!end ||
         !!(fin && fin.conditions && unmetCount(fin.conditions('ENCYST', s)) === 0),
       pulse: voidPhase || flagOn(s, 'action_potential_ii'),
       dismantle: closed,
@@ -2851,7 +2911,7 @@
       setText(r2.lab, STR.insight)
       setFine(r2.val, '')
       setSlot(r2.val, C().fmt(num(s.res.insight)), GLYPH.insight)
-      setRate(r2.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
+      paintInsightRate(r2.rate, s, g)
     } else {
       show(r2.el, false)
     }
@@ -2867,6 +2927,20 @@
     show(v.gear, true)
     setData(v.ledger, 'gear', '1')
     return shown
+  }
+
+  // Insight accrues only while the Signal pool is saturated (cognition.stepInsight), but
+  // insightRate() is the rate it WOULD run at, full or not — so the strip printed `+0.15 Ψ/s` over
+  // a pool that was earning nothing, and the one rule the economy turns on read as false. Below the
+  // brim the slot says the pool is filling, in the muted zero tone; at the brim it is the real rate.
+  function paintInsightRate (n, s, g) {
+    if (!(g && g.saturated && g.saturated(s))) {
+      setFine(n, '')
+      setSlot(n, STR.filling, '')
+      setData(n, 'sign', 'zero')
+      return
+    }
+    setRate(n, g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
   }
 
   // Act III's strip, 03 §23.1. Carbon leads because it is the only thing the void produces and the
@@ -2918,7 +2992,7 @@
     setText(r3.lab, STR.insight)
     setFine(r3.val, '')
     setSlot(r3.val, C().fmt(num(s.res.insight)), GLYPH.insight)
-    setRate(r3.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
+    paintInsightRate(r3.rate, s, g)
 
     show(v.gear, true)
     setData(v.ledger, 'gear', '1')
@@ -2974,6 +3048,12 @@
       setText(r2.lab, STR.minerals)
       setStockFine(r2.val, num(s.res.minerals), GLYPH.minerals)
       setRate(r2.rate, rateOf(v, 'minerals'), GLYPH.minerals)
+      // A dash said nothing about why. Minerals come from trees, on terms; say which half is missing.
+      if (!(Math.abs(rateOf(v, 'minerals')) > U.RATE_ZERO)) {
+        var paying = (s.a1.contracts || []).some(function (c) { return c.state === 'active' })
+        if (!s.a1.trees.length) setSlot(r2.rate, STR.minNone, '')
+        else if (!paying) setSlot(r2.rate, STR.minIdle, '')
+      }
     } else {
       show(r2.el, false)
     }
@@ -3065,10 +3145,19 @@
   // The pinned take control. ENCYST is skipped for the same reason endingAvailable skips it: it is
   // permanently "available" from void + 20:00 and it is a concession, not an ending. Once any
   // ending has been taken the dismantle owns the screen and the bar goes with everything else.
+  var DECIDE_KEY = 'decide'
+
   function paintEndbar (v, s) {
     var fin = FIN()
     var pick = null
-    if (s && s.act >= 3 && fin && fin.endings && !(fin.ending && fin.ending(s) &&
+    // Act I's ending is a decision too, and it was a card at the foot of a fifteen-screen list with
+    // nothing on screen saying the moment had come. When DECIDE is on the board it takes the bar
+    // the endings use: above EXTEND, under the thumb, held.
+    if (s && s.act === 1 && v.rev && v.rev.decide) {
+      var pj = PJ()
+      if (pj && pj.refusal && !pj.refusal('decide')) pick = { key: DECIDE_KEY, title: STR.decide }
+    }
+    if (!pick && s && s.act >= 3 && fin && fin.endings && !(fin.ending && fin.ending(s) &&
         fin.ending(s).key)) {
       var list = fin.endings(s)
       for (var i = 0; i < list.length; i++) {
@@ -3126,8 +3215,11 @@
       setAttr(v.fab, 'aria-label', STR.pulse + ', ' + C().fmtTime(cd))
     } else {
       v.fab.removeAttribute('data-cool')
+      // A pulse always costs more than the saturation margin (0.55·Sc), so the label says what
+      // it spends: the pool drops below the brim and Insight stops until it refills.
       setAttr(v.fab, 'aria-label', STR.pulse + ', ' +
-        (poor ? C().fmt(cost) + ' ' + GLYPH.signal : STR.ready))
+        (poor ? C().fmt(cost) + ' ' + GLYPH.signal
+          : STR.ready + ', ' + interp(STR.pulseSpends, { v: C().fmt(cost) + ' ' + GLYPH.signal })))
     }
     setData(v.fab, 'poor', poor ? '1' : '0')
   }
@@ -3184,6 +3276,7 @@
     var list = g.modes(s)
     if (list.length < 2) { firePulse(null); return }
     var sh = sheet({ id: 'pulse', title: STR.pulse })
+    note(sh.body, STR.pulseNote)
     list.forEach(function (m) {
       var r = el('div', 'sheet-row')
       r.appendChild(el('span', 'field-lab', m.toLowerCase()))
@@ -3205,6 +3298,16 @@
     setAttr(r.el, 'aria-label', label + ', ' + value + (tail ? ', ' + tail : ''))
   }
 
+  // SURPLUS is harvest less subsistence, summed over the field — the FLEET panel's figure and every
+  // band row's. The canopy and void headers, the spoken strip and the status line printed
+  // bloom.Lambda() under the same word, which is the Signal source term: a different quantity in a
+  // different currency, labelled as carbon per second, beside the one it was mistaken for.
+  function netSurplus (list) {
+    var acc = 0, i
+    for (i = 0; list && i < list.length; i++) acc += num(list[i].harvest) - num(list[i].subsist)
+    return acc
+  }
+
   function paintAria (v, s) {
     var g = HY.cognition
     if (s.act >= 3) {
@@ -3215,7 +3318,7 @@
         C().fmt(g && g.Sc ? num(g.Sc(s)) : 0),
         g && g.saturated && g.saturated(s) ? STR.saturated : '')
       ariaRow(v, 2, STR.craft, C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0),
-        STR.surplus + ' ' + signed(bl && bl.Lambda ? num(bl.Lambda(s)) : 0))
+        STR.surplus + ' ' + signed(netSurplus(bl && bl.list ? bl.list(s) : [])))
       ariaRow(v, 3, STR.insight, C().fmt(num(s.res.insight)))
       return
     }
@@ -3279,7 +3382,7 @@
       setText(v.statusVh,
         STR.carbon + ' ' + C().fmt(num(s.res.carbon)) + '. ' +
         STR.craft + ' ' + C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0) + '. ' +
-        STR.surplus + ' ' + signed(bl && bl.Lambda ? num(bl.Lambda(s)) : 0) + ' per second.')
+        STR.surplus + ' ' + signed(netSurplus(bl && bl.list ? bl.list(s) : [])) + ' per second.')
       return
     }
     if (s.act >= 2) {
@@ -3344,7 +3447,19 @@
     var g = HY.cognition
     var on = s.act >= 2 && !!g && !!g.unallocated && num(g.unallocated(s)) > 0 &&
       !!v.panels.diff && v.panels.diff.shown && v.tab !== 'mind'
-    v.tabs.forEach(function (t) { if (t.key === 'mind') setData(t.el, 'need', on ? '1' : '0') })
+    // FLUSH carries one while a primordium is ripe: it is losing spores every second nobody is
+    // looking at it. The estimate integrates the forecast, so it is read once a second, not at 10 Hz.
+    var fl = HY.flush
+    if (s.act !== 2 || !fl || !fl.list || !v.panels.flush || !v.panels.flush.shown) v.ripe = false
+    else if (!(Math.abs(num(s.t) - num(v.ripeAt)) < 1)) {
+      v.ripeAt = num(s.t)
+      v.ripe = fl.list().some(function (c) { return c.ripe })
+    }
+    var ripe = !!v.ripe && v.tab !== 'flush'
+    v.tabs.forEach(function (t) {
+      if (t.key === 'mind') setData(t.el, 'need', on ? '1' : '0')
+      else if (t.key === 'flush') setData(t.el, 'need', ripe ? '1' : '0')
+    })
   }
 
   // The 10 Hz slot: rates, panel bodies, cooldown rings and every ARIA label (BIBLE §4.2).
@@ -3542,7 +3657,9 @@
     var mk = marketRow(type, r)
     r.expander().appendChild(acts)
 
+    var openRow = function () { r.setExpanded(true) }
     return {
+      open: openRow,
       el: r.el,
       sync: function (s, order, rev) {
         var held = num(s.a1.sub[type])
@@ -3617,6 +3734,13 @@
           pools.appendChild(r.el)
         }
         r.sync(s, n, rev)
+        // The first time the market is open, the first layer's card opens with it: the buy buttons
+        // live inside the cards, and the floor goes bare minutes in with nothing saying where they
+        // are. The litter market panel this replaced did the same for its first row.
+        if (n === 1 && rev && rev.market && !p.__marketShown) {
+          p.__marketShown = true
+          if (r.open) r.open()
+        }
       })
       Object.keys(rows).forEach(function (k) { show(rows[k].el, !!seen[k]) })
       pv.setCount(n)
@@ -4559,14 +4683,17 @@
             cost: entry.priceTag,
             desc: entry.description,
             pinned: entry.pinned,
-            onPick: function () { pick(entry) }
+            onPick: isDecision(entry) ? null : function () { pick(entry) },
+            onHold: isDecision(entry) ? function () { pick(entry) } : null
           })
           v.cards[entry.id] = c
           c.markNew()
           if (!reducedMotion()) c.el.classList.add('reveal')
           // Cards keep their arrival order. The reveal queue re-sorts by affordability every tick;
-          // re-ordering the DOM with it would make the panel twitch under the thumb.
-          pv.body.appendChild(c.el)
+          // re-ordering the DOM with it would make the panel twitch under the thumb. A pinned card
+          // (an act's fork, DECIDE among them) arrives at the top instead of the bottom.
+          if (entry.pinned) pv.body.insertBefore(c.el, pv.body.firstChild)
+          else pv.body.appendChild(c.el)
         }
         c.setCost(entry.priceTag)
         var far = !!(pj.beyond && pj.beyond(entry.id, s))
@@ -4881,12 +5008,20 @@
         // *band*, which is what `card.band` carries. Saying "unsurveyed" over a stand you are
         // standing in was simply wrong.
         setText(terr, c.terrain ? (c.terrain + ' · ' + c.species) : STR.fog)
-        setText(note, c.necrotized ? STR.dead : (c.advancing ? STR.colonising : ''))
+        // Unclaimed ground with a price names the price: the bare mass in the number slot read as
+        // something the stand already held.
+        var front = !c.claimed && !c.advancing && !!c.advance
+        setText(note, c.necrotized ? STR.dead
+          : (c.advancing ? STR.colonising : (front ? STR.advance : '')))
         // One figure per row, and it is the one the row is asking a question about: what the next
         // step costs while there is one, and the stand's standing when there is not.
         if (c.density) setMass(state, c.density.cost)
         else if (!c.claimed && c.advance) setMass(state, c.advance.cost)
         else setSlot(state, c.claimed ? STR.standing : STR.fog, '')
+        // Two empty bars on ground nobody has started read as work already under way. Colonising
+        // means something once an advance has begun; density, once the stand is held.
+        show(colLab.parentNode, !!c.claimed || !!c.advancing)
+        show(dLab.parentNode, !!c.claimed)
         col.set(c.col, '', STR.colonising + ' ' + pct(c.col))
         dens.set(c.d, '', STR.density + ' ' + pct(c.d))
         setMass(litterVal, c.L)
@@ -5191,6 +5326,20 @@
     acts.appendChild(holdBtn)
     ex.appendChild(acts)
 
+    // A ripe primordium loses spores for every second it waits, and its RELEASE lived only in the
+    // expander, so the moment the card exists to call was the moment it hid the verb. When the
+    // estimate says ripe, the verb comes out onto the collapsed row with a line saying why. It is a
+    // sibling of the row's main button, never inside it: a row does not nest one control in another.
+    var ripeActs = el('div', 'row-actions row-ripe')
+    span(ripeActs, 'row-sub', STR.ripeNow)
+    var ripeBtn = actionButton(STR.release, function (b) {
+      var fl = HY.flush
+      if (!fl || !commit(function () { return fl.release(api.id) })) refuse(b)
+    })
+    ripeActs.appendChild(ripeBtn)
+    r.el.insertBefore(ripeActs, ex)
+    show(ripeActs, false)
+
     var api = {
       el: r.el,
       id: -1,
@@ -5206,11 +5355,22 @@
         setText(bestTxt, interp(STR.bestIn, { v: secs(c.bestIn) }) + ' · ' +
           C().fmt(c.best) + ' ' + GLYPH.spores)
         setText(holdBtn, c.held ? STR.resume : STR.hold)
+        // Expanded, the RELEASE in the expander is already on screen; one verb, one place.
+        show(ripeActs, !!c.ripe && !r.isExpanded())
+        setData(r.el, 'live', c.ripe ? 'warn' : '0')
         r.label(c.name + ', ' + STR.maturity + ' ' + pct(c.m) + ', ' +
           C().fmt(c.now) + ' spores if released now')
       }
     }
     return api
+  }
+
+  // Labile carbon the exit does not need: what ASCOSPORE asks in grams stays where it is.
+  function bankSpare (s) {
+    var pj = PJ()
+    var price = pj && pj.priceOf ? pj.priceOf('ascospore_discharge') : null
+    var keep = price && price.g ? num(price.g) : 0
+    return Math.max(0, num(s.res.biomass) - keep)
   }
 
   function buildFlush (v, p) {
@@ -5268,6 +5428,43 @@
     actLine.appendChild(acts)
     pv.body.appendChild(head.el)
 
+    // Seed Bank's verb. The card promises "labile carbon to spores" and flush.convert() has done
+    // it since the module landed, but only the stand-in could reach it: a player who bought the
+    // project got the decay switched off and no way to spend the other half of the sentence. The
+    // two sizes are fractions of what the exit leaves SPARE, because ASCOSPORE is priced in grams
+    // and spores both, and a conversion that ate the gram leg would pay for one half of the exit
+    // with the other — the same floor loop.js's topUpSpores() keeps.
+    var bank = row({})
+    var bankL0 = bank.line()
+    span(bankL0, 'row-name', STR.seedBank)
+    span(bankL0, 'row-sub', STR.spare)
+    var spareN = slot('row-num')
+    bankL0.appendChild(spareN)
+    var bankL1 = bank.line()
+    var bankTxt = span(bankL1, 'row-sub', '')
+    var bankBurst = el('div', 'burst')
+    bankL1.appendChild(bankBurst)
+    var bankBtns = U.BANK_FRACS.map(function (f) {
+      var b = btn('')
+      span(b, 'num', pct(f))
+      bindPress(b, function () {
+        var s = liveState()
+        var fl = HY.flush
+        var g = s ? bankSpare(s) * f : 0
+        if (!fl || !fl.convert || !(g > 0) || !commit(function () { return fl.convert(g) })) {
+          refuse(b)
+          return
+        }
+        flashSlot(sporesN, 'gain')
+      }, { onUp: true })
+      bankBurst.appendChild(b)
+      return b
+    })
+    bank.el.appendChild(el('p', 'row-note',
+      interp(STR.bankNote, { g: C().fmtMass(T().A2.SPORE_DIVISOR) })))
+    show(bank.el, false)
+    pv.body.appendChild(bank.el)
+
     var bag = {}
     p.__sync = function (s) {
       var fl = HY.flush
@@ -5276,6 +5473,22 @@
       var free = fl.used() < fl.slots()
       setSlot(slotsN, interp(STR.slotsUsed, { n: fl.used(), k: fl.slots() }), '')
       setSlot(sporesN, C().fmt(num(s.res.spores)), GLYPH.spores)
+      var banking = flagOn(s, 'seed_bank') && !!fl.convert
+      show(bank.el, banking)
+      if (banking) {
+        var spare = bankSpare(s)
+        setMass(spareN, spare)
+        // A spore is a whole number of SPORE_DIVISOR grams, so a size that floors to nothing is
+        // refused rather than offered: the button must not look like it does something it cannot.
+        var div = T().A2.SPORE_DIVISOR
+        for (var bi = 0; bi < bankBtns.length; bi++) {
+          var got = Math.floor(spare * U.BANK_FRACS[bi] / div)
+          setData(bankBtns[bi], 's', got > 0 ? 'afford' : 'want')
+          setAttr(bankBtns[bi], 'aria-label', STR.seedBank + ' ' + pct(U.BANK_FRACS[bi]) + ', ' +
+            C().fmt(got) + ' ' + STR.spores)
+        }
+        setText(bankTxt, spare >= div ? '' : STR.nothingSpare)
+      }
       var vol = num(s.res.biomass) * (bet.value() / U.SLIDER_STEPS) * U.FLUSH_BET_MAX
       bet.setMassReadout(vol, STR.stake + ' ' + C().fmtMass(vol))
       show(fruitBtn, free)
@@ -5484,8 +5697,11 @@
         return pactRow()
       }, s)
       pv.setCount(list.length)
+      // "nobody has offered you anything" sat directly over an OFFERS panel with an offer in it.
+      // An empty book with something on the table says so instead.
+      var waiting = pb.offers ? pb.offers().length : 0
       if (list.length) pv.unempty()
-      else pv.empty(STR.noPacts)
+      else pv.empty(waiting ? STR.noPactsYet : STR.noPacts)
     }
     p.view = pv
     return pv
@@ -5674,10 +5890,11 @@
       if (!bl || !bl.list) return
       setSlot(craftN, C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
       setSlot(sporeN, C().fmt(num(s.res.spores)), GLYPH.spores)
-      var lam = num(bl.Lambda(s))
-      setSlot(lamN, signed(lam), GLYPH.carbon + '/s')
-      setData(lamN, 'tone', lam >= 0 ? 'pos' : 'neg')
-      reconcile(pv.body, bag, bl.list(s), function (c) { return c.id }, biomeRow, s)
+      var list = bl.list(s)
+      var sur = netSurplus(list)
+      setSlot(lamN, signed(sur), GLYPH.carbon + '/s')
+      setData(lamN, 'tone', sur >= 0 ? 'pos' : 'neg')
+      reconcile(pv.body, bag, list, function (c) { return c.id }, biomeRow, s)
       pv.setCount(C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
     }
     p.view = pv
@@ -5779,9 +5996,9 @@
       for (i = 0; i < list.length; i++) if (list[i].n > 0) occ += 1
       setSlot(occN, occ + ' / ' + list.length, '')
       setSlot(craftN, C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
-      var lam = num(bl.Lambda(s))
-      setSlot(lamN, signed(lam), GLYPH.carbon + '/s')
-      setData(lamN, 'tone', lam >= 0 ? 'pos' : 'neg')
+      var sur = netSurplus(list)
+      setSlot(lamN, signed(sur), GLYPH.carbon + '/s')
+      setData(lamN, 'tone', sur >= 0 ? 'pos' : 'neg')
       // A stellar warning is the one thing in the act that is about to happen rather than
       // happening, so it gets the header's only sentence.
       var w = bl.stellarWarnings ? bl.stellarWarnings() : []
@@ -6126,7 +6343,12 @@
         bars[k].setReadout(pctNum(a[k]), '%', labels[k] + ' ' + pct(a[k]))
       }
       bars[0].setNote(C().fmt((h - sub) * a[0]) + ' ' + GLYPH.carbon + '/s ' + STR.replicate)
-      bars[1].setNote(C().fmt((h - sub) * a[1]) + ' ' + GLYPH.carbon + '/s ' + STR.disperse)
+      // bloom.alloc zeroes DISPERSE in the canopy and before Thrust and banks its share; the dial
+      // used to move anyway and snap back to 0%. Now it is locked and says what opens it.
+      var disLocked = !!(s.phase === 'canopy' || !flagOn(s, 'thrust'))
+      bars[1].setLocked(disLocked)
+      bars[1].setNote(disLocked ? STR.disperseLocked
+        : C().fmt((h - sub) * a[1]) + ' ' + GLYPH.carbon + '/s ' + STR.disperse)
       bars[2].setNote(C().fmt((h - sub) * a[2]) + ' ' + GLYPH.carbon + '/s ' + STR.bank)
       pv.setCount(pctNum(a[0]) + ' / ' + pctNum(a[1]) + ' / ' + pctNum(a[2]), '%')
     }
@@ -6350,8 +6572,10 @@
   }
 
   function definePanels (v) {
-    def(v, 'floor', function (s, rev) { return rev.substrate }, buildFloor, null, actI)
+    // TIPS first: it is the act's first purchase and its every-minute verb, and below three floor
+    // cards it arrived at ~1,350 px down a 844 px phone, under the fold with nothing pointing at it.
     def(v, 'tips', function (s, rev) { return rev.tips }, buildTips, null, actI)
+    def(v, 'floor', function (s, rev) { return rev.substrate }, buildFloor, null, actI)
     def(v, 'seasons', function (s, rev) { return rev.seasons }, buildSeasons, null, actI)
     def(v, 'understory', function (s, rev) { return rev.trees }, buildUnderstory, null, actI)
     def(v, 'patches', needPatches, buildPatches, null, actI)
@@ -6611,6 +6835,7 @@
     if (!seqDom) return
     var d = seqDom
     seqDom = null
+    if (view.shell.dataset.cut) delete view.shell.dataset.cut
     var ms = fadeMs > 0 ? fadeMs : 0
     var i
     for (i = 0; i < d.faded.length; i++) {
@@ -6650,6 +6875,11 @@
     // standing on the curtain stay; the console (z-60) keeps the voice, by design.
     if (p.what === 'cut') {
       seqCurtain().style.background = p.to === 'white' ? '#FFFFFF' : '#000000'
+      // The curtain lives in the column, and the column's stacking context sits under the console
+      // and the tab bar, so a cut to black left a lit band through the middle of it and the tab
+      // bar's paper at the foot. A cut is the whole screen: the shell is marked, the stylesheet
+      // paints both in the cut's colour, and seqDown takes the mark away.
+      setData(view.shell, 'cut', p.to === 'white' ? 'white' : 'black')
       if (cv && cv.motion) cv.motion(p.what, p)
       return
     }

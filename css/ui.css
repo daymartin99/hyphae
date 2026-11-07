@@ -943,8 +943,12 @@ canvas{ display:block; }
 .row-actions{ display:flex; gap:var(--sp-8); flex-wrap:wrap; margin-top:var(--sp-12); }
 /* A row of act buttons shares the line evenly, so CONDUCTION fits beside VESICLES at 390px. */
 .row-line>.row-actions{ flex:1 1 100%; width:100%; }
+/* A ripe primordium's RELEASE, out of the expander: the note on the left, the verb on the right. */
+.row-ripe{ align-items:center; justify-content:space-between; }
+.row-ripe > .row-sub{ color:var(--attention); }
 .summary{ margin-top:var(--sp-12); }
 .pool-list,.sub-list{ display:block; }
+.field[data-locked="1"] .slider,.field[data-locked="1"] .field-val{ opacity:.4; }
 /* The STANDS list's "show all n" / "show fewer": a quiet text control under the rows, full-width so
    the thumb finds it, styled as a label rather than a verb. */
 .more-btn{ display:block; width:100%; min-height:var(--tap); margin-top:var(--sp-4);
@@ -1334,6 +1338,10 @@ canvas{ display:block; }
                text-align:center; font:var(--t-meta); color:var(--canvas-bg);
                opacity:0; transition:opacity var(--d-act) linear; }
 .curtain-hint[data-on="1"]{ opacity:.3; }
+/* A cut covers the whole screen, not just the column the curtain lives in (ui.js seqStep 'cut'). */
+.shell[data-cut="black"] .console,.shell[data-cut="black"] .tabbar{ background:#000; border-color:#000; }
+.shell[data-cut="white"] .console,.shell[data-cut="white"] .tabbar{ background:#fff; border-color:#fff; }
+.shell[data-cut] .console > *,.shell[data-cut] .tabbar > *{ visibility:hidden; }
 
 /* ══ ACT II / III ADDITIONS ════════════════════════════════════════════════
    Nothing here is a second component vocabulary. Every block below is either a canvas box that
@@ -1408,6 +1416,10 @@ canvas{ display:block; }
 /* The hold wipe on an ending is cold light, not rust: this is the one destructive commit in the
    build that is not a loss, and a red wipe would say the opposite of what the act means. */
 .card--end .hold-fill{ background:var(--signal-wash); }
+.card--decide .hold-fill{ background:var(--signal-wash); }
+.card--decide > :not(.hold-fill){ position:relative; }
+.card-hold{ display:block; margin-top:var(--sp-6); font:var(--t-label); letter-spacing:.10em;
+            text-transform:uppercase; color:var(--text-secondary); }
 .card--end > .card-top, .card--end > .card-conds{ position:relative; }
 
 /* (f) The taken/held row state. Act III has three rows that are facts rather than offers — a band
