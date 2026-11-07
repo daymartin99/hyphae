@@ -1,0 +1,30 @@
+{
+ "m1_act1_early": {
+  "X": "d",
+  "Y": "old"
+ },
+ "m2_act1_hour": {
+  "X": "old",
+  "Y": "d"
+ },
+ "m3_act2_mid": {
+  "X": "d",
+  "Y": "old"
+ },
+ "m4_act3_canopy": {
+  "X": "old",
+  "Y": "d"
+ },
+ "m5_act3_void": {
+  "X": "d",
+  "Y": "old"
+ },
+ "t1_decide": {
+  "X": "old",
+  "Y": "d"
+ },
+ "t2_glass": {
+  "X": "old",
+  "Y": "d"
+ }
+}

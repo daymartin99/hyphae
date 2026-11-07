@@ -298,6 +298,17 @@
   var craftN = 0
   var glassGeom = null       // { cx, cy, fit, e: [] } from the last void draw, for the flux layer
 
+  // Which ending's light is under a touch, by index, or -1. A generous 22 px: they are small, far
+  // things, and a light the finger cannot find reads as decoration.
+  function lightAt (x, y) {
+    if (reading !== 'glass' || !lights.length || !surf.W) return -1
+    for (var i = 0; i < GLASS.LIGHTS.length && i < lights.length; i++) {
+      var dx = x - GLASS.LIGHTS[i][0] * surf.W, dy = y - GLASS.LIGHTS[i][1] * surf.H
+      if (dx * dx + dy * dy <= 22 * 22) return i
+    }
+    return -1
+  }
+
   function setLights (list, craft) {
     lights = Array.isArray(list) ? list : []
     craftN = +craft > 0 ? +craft : 0
@@ -3424,6 +3435,7 @@
     setReading: setReading,
     // The looking glass's lights and fleet (10 Phase 4): endings as [{ p, open, taken }], and craft.
     setLights: setLights,
+    lightAt: lightAt,
     get reading () { return reading },
     get still () { return nowMs() < stillUntil },
     trade: tradeRelease,

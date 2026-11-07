@@ -250,13 +250,16 @@
     nextAfford: '{name} is within reach.',
     nextShort: '{name}: {n} short.',
     nextShortEta: '{name}: {n} short, about {t} at this rate.',
+    // A/B round 1: both interfaces showed the blocker and hid the route. Minerals come from the trees.
+    nextShortMin: '{name}: {n} short. minerals come from the trees.',
+    nextShortMinNone: '{name}: {n} short. nothing pays minerals yet.',
     nextTipName: 'a tip',
     dGrow: 'grow', dLearn: 'learn', dBargain: 'bargain',
     // Act II's NEXT and the tab readings (10 Phase 3). Facts, plain register.
     nextRipe: '{name} is ripe. it is losing spores while it waits.',
     nextOffer: 'an offer is waiting in the pact book.',
     nextOffers: '{n} offers are waiting in the pact book.',
-    nextDFree: '{n} {u} unspent.',
+    nextDFree: '{n} {u} of differentiation unspent.',
     nextEnding: '{name} is open. it does not undo.',
     nextCond: '{name}: {cond} {have} of {want}.',
     readRipe: '{n} ripe', readOffers: '{n} offers', readFull: 'full', readPct: '{n}%', readD: '{n} {u}', readBands: '{n}/{m}',
@@ -1792,6 +1795,12 @@
       }
       var b = net.getBoundingClientRect()
       var hx = e.clientX - b.left, hy = e.clientY - b.top
+      // A/B round 1: the ending lights read as pickups. They are the endings, so a touch opens them.
+      if (isD() && CANVAS() && CANVAS().lightAt && CANVAS().lightAt(hx, hy) >= 0) {
+        if (view.shell.dataset.slide === '1') slide(false)
+        openEndings()
+        return
+      }
       // Measured in the slide, then the slide closes, so the card it opens is on screen.
       if (isD() && view.shell.dataset.slide === '1') slide(false)
       focusRegionAt(hx, hy)
@@ -2260,6 +2269,11 @@
     var unit = worst === 'g' ? C().fmtMass(short) : C().fmt(short) + ' ' + (GLYPH[stockKey] || worst)
     var rate = stockKey ? accountRows(stockKey).net : 0
     if (rate > 0 && C().fmtTime) return interp(STR.nextShortEta, { name: best.name, n: unit, t: C().fmtTime(short / rate) })
+    if (worst === 'min' && s.act === 1) {
+      var e1 = HY.economy1, open = !!(e1 && e1.treesOpen && e1.treesOpen())
+      if (open) nextGroup = 'bargain'
+      return interp(open ? STR.nextShortMin : STR.nextShortMinNone, { name: best.name, n: unit })
+    }
     return interp(STR.nextShort, { name: best.name, n: unit })
   }
 
@@ -2294,6 +2308,20 @@
     var t = 0
     for (var i = 0; i < rows.length; i++) t += condProgress(rows[i])
     return t / rows.length
+  }
+
+  // The endings, opened from a light: the void tab, with its ENDINGS panel scrolled into view.
+  function openEndings () {
+    if (!view) return
+    setTab('forest')
+    // The tab's panels are shown on the next display slot, so the scroll waits for them to be laid out.
+    setTimeout(function () {
+      var p = view && view.panels.endings
+      if (p && p.shown && p.view && p.view.el && view.stack) {
+        var d = p.view.el.getBoundingClientRect().top - view.stack.getBoundingClientRect().top
+        view.stack.scrollTop = Math.max(0, view.stack.scrollTop + d - 8)
+      }
+    }, U.DISPLAY_MS * 2 + 40)
   }
 
   function paintLights (v, s) {

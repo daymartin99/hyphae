@@ -1695,10 +1695,11 @@ canvas{ display:block; }
   --danger:var(--negative-text); --locked:var(--text-locked);
   /* 10 D3: no webfont. ui-serif is New York on Apple platforms, which is the look anyway. */
   --f-serif:ui-serif, "New York", Georgia, "Times New Roman", serif;
-  --d-next-h:3.5rem;
-  /* The voice is the driver (10 D9): three rows, never fewer, with the newest the brightest.
-     The body and the voice are the two things the screen is for; everything else yields first. */
-  --con-rows:3;
+  --d-next-h:2rem;
+  /* The voice is the driver (10 D9): six rows, the room the shipped shell gives it (145 px at the
+     default size). A/B round 1 measured the redesign at three and a half rows plus a 56 px NEXT,
+     and the voice was the one score the redesign lost (4.0 -> 2.6). Never squeezed again. */
+  --con-rows:6;
 }
 /* Act I reads the body as ink, Act II as a mind lit by signal, Act III through glass. */
 .shell[data-ui="d"][data-stage="2"]{ --body:var(--signal-fill); }
@@ -1780,8 +1781,12 @@ canvas{ display:block; }
 /* ── Phase 2 · NEXT, the accounts, the voice in full ── */
 /* NEXT is smaller and plainer than the voice so it never competes with it (10 D9). An empty
    NEXT keeps its slot (rule 8) and simply says nothing. */
-.shell[data-ui="d"] .next{ font-size:.875rem; font-style:normal; font-family:var(--font-ui);
-  color:var(--ink-3); }
+.shell[data-ui="d"] .next{ font-size:.8125rem; font-style:normal; font-family:var(--font-ui);
+  color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  transition:opacity var(--d-fade) linear; }
+/* The voice helps at times and is critical at times (David). When it turns to whoever is holding
+   the phone, the body goes still (canvas `still`), and the helpful line steps back with it. */
+.shell[data-ui="d"][data-still="1"] .next{ opacity:.22; }
 .shell[data-ui="d"] .next:not([data-empty="1"])::before{ content:"next"; margin-inline-end:var(--sp-12);
   font-family:var(--f-serif); font-style:italic; color:var(--next-ink); }
 /* A figure that opens an account says so the one way the grammar allows: a dotted underline. */
@@ -1849,7 +1854,9 @@ canvas{ display:block; }
   70%{ transform:scale(1.03, .96) skewX(-2.2deg); } 100%{ transform:scale(.99, 1.01); }
 }
 @keyframes d-flip{ 0%{ transform:perspective(900px) rotateY(0); } 100%{ transform:perspective(900px) rotateY(88deg) scale(.96); } }
-.curtain-word[data-loud="1"]{ font-weight:700; line-height:.95; letter-spacing:-.01em; color:#F4F1E8;
+/* The voice's own type (A/B round 1: the heavy grotesque "looks like a Nike ad" against the game's
+   monospace). The words are the voice at its loudest, so they are set in the voice. */
+.curtain-word[data-loud="1"]{ font-family:var(--font-mono); font-weight:600; line-height:1; letter-spacing:0; color:#F4F1E8;
   animation:d-slam 180ms cubic-bezier(.2,.9,.25,1) both; }
 @keyframes d-slam{ from{ opacity:0; transform:scale(1.35); } to{ opacity:1; transform:scale(1); } }
 .seq-crack{ position:absolute; inset:0; width:100%; height:100%; z-index:70; pointer-events:none; }
@@ -1863,3 +1870,6 @@ canvas{ display:block; }
   transition:transform 900ms cubic-bezier(.2,.9,.2,1); }
 .shell[data-ui="d"][data-fullplate="1"][data-swell="1"] .plate > canvas{ transform:scale(2.2); }
 :root .shell[data-ui="d"][data-stage][data-seqink="1"] .plate{ background-image:none; }
+/* The words sit over everything while they are on screen, the voice's own box included: it is six
+   rows tall in the redesign and would otherwise cut the first word. */
+.curtain:has(.curtain-word[data-loud="1"]){ z-index:65; }
