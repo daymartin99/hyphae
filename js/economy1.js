@@ -1475,7 +1475,19 @@
     if (!isFinite(mp)) return 0
     var owed = A.RESERVE_S - runwaySeconds()
     if (!(owed > 0)) return 0
-    return owed * throughput() * nextK() * mp
+    return capReserve(owed * throughput() * nextK() * mp)
+  }
+
+  // G1d: never more than half of what the player can hold. Late in the act sixty seconds of
+  // feedstock can cost more sugar than the cap allows, and a reserve the book can never reach froze
+  // every contract while the sugar it was "saving" rotted at the cap. Measured on a hand-played
+  // run: 36,160 reserved against a 14,300 cap, an 85 sug/s contract delivering nothing, and the
+  // ledger reading +0.01 ⛬/s with no reason given. Half the cap still protects the next minute of
+  // food on a thin floor; the other half is always the contracts'.
+  function capReserve (r) {
+    var cap = HY.act1 && HY.act1.sugarCap ? num(HY.act1.sugarCap()) : Infinity
+    var lim = cap * T().A1.RESERVE_CAP_FRAC
+    return isFinite(lim) && lim >= 0 && r > lim ? lim : r
   }
 
   function deliverContracts (dt, o) {
@@ -2085,8 +2097,9 @@
     C().setStock(g.a1.sub, 'leaf', 5 * leafSec)                // five seconds of food
     ok(reserveSugar() > 0, 'the feedstock reserve is not being held on a thin floor')
     near(runwaySeconds(), 5, 0.05, 'runwaySeconds misread a five-second floor')
-    // 55 of the 60 seconds are unfunded, and the reserve is exactly those 55 priced.
-    near(reserveSugar(), (A.RESERVE_S - 5) * throughput() * nextK() * minPrice(), 1e-6,
+    // 55 of the 60 seconds are unfunded, and the reserve is exactly those 55 priced — up to G1d's
+    // ceiling of half the sugar cap, which a fresh cap already sits under.
+    near(reserveSugar(), capReserve((A.RESERVE_S - 5) * throughput() * nextK() * minPrice()), 1e-6,
       'the reserve is not the unfunded part of the window')
     C().setStock(g.a1.sub, 'leaf', 3 * A.RESERVE_S * leafSec)  // three minutes of food
     ok(runwaySeconds() > A.RESERVE_S, 'a three-minute floor did not read as three minutes')
@@ -2098,6 +2111,17 @@
     near(runwaySeconds(), 10, 0.05, 'a hard pool is not worth more runway per gram')
     C().setStock(g.a1.sub, 'stump', 0)
     ok(reserveSugar() === 0, 'G1c: the reserve did not collapse on a bare floor')
+
+    // G1d: however thin the floor and however fast the network, the reserve never asks for more
+    // than half the sugar the player can hold — otherwise it starves every contract outright.
+    C().setStock(g.a1.sub, 'leaf', 1e-3 * leafSec)
+    g.a1.tips = 400
+    if (HY.act1 && HY.act1.sugarCap) {
+      ok(reserveSugar() <= HY.act1.sugarCap() * A.RESERVE_CAP_FRAC + 1e-9,
+        'G1d: the reserve held back more than half the sugar cap')
+    }
+    g.a1.tips = 40
+    C().setStock(g.a1.sub, 'leaf', 0)
 
     // ── The word "net" in netSugar. One gram of leaf returns ETA_S·etaS sugar and costs a market
     // price to replace, and the difference is the only sugar that can be sold forward. A book sized

@@ -895,7 +895,9 @@
   }
   var DORMANT = { 1: ' {pct}% dormant.', 2: ' {pct}% dormant.', 3: ' {pct}% dormant.' }
 
-  var TAIL = { 2: '[ tap the map ]', 3: '[ tap the void ]' }
+  // Act III's '[ tap the void ]' is gone until the void's rings answer a tap; a hint that asks for
+  // something nothing listens to is worse than no hint.
+  var TAIL = { 2: '[ tap the map ]' }
 
   // Priority order is 09 §6.6's: dry > rival > starvation > expired terms > completions > market.
   // Act I has no stands and no rivals, so its ladder is the same ladder against its own nouns.

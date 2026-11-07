@@ -1697,6 +1697,22 @@
     }
   }
 
+  // The region under a point on the plate, in the canvas's own CSS pixels; −1 for none. The hexes
+  // are too small to be buttons (see the map's header), so a tap is a pointer: ui.js takes the
+  // answer to the region's card. Nearest centre within one hex radius, which is the hex itself plus
+  // a sliver of its corners — generous on purpose, a finger is not a cursor.
+  function regionAt (x, y, regions) {
+    if (!mapGeom || !regions || !regions.q) return -1
+    var best = -1, bd = mapGeom.R * mapGeom.R, j, c, dx, dy, d
+    for (j = 0; j < regions.q.length; j++) {
+      c = hexCentre(j, regions)
+      if (!c) continue
+      dx = c.x - x; dy = c.y - y; d = dx * dx + dy * dy
+      if (d <= bd) { bd = d; best = j }
+    }
+    return best
+  }
+
   // The later acts' plates are full restrokes — the network underlay, then the hexes or the arcs —
   // and ui.js asks for one every display frame. A plate that has not changed is not redrawn: `key`
   // is everything the pass reads apart from what the simulation moves (geometry, backing store, ink,
@@ -3139,6 +3155,7 @@
     drawNet: drawNet,
     ageWash: ageWash,
     drawMap: drawMap,
+    regionAt: regionAt,
     drawVoid: drawVoid,
     drawWheel: drawWheel,
     drawForecast: drawForecast,

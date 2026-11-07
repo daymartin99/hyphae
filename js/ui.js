@@ -109,6 +109,7 @@
 
     // Act II panels
     STANDS_SHOWN: 10,         // rows of the ranked STANDS list; the header carries the true count
+    STANDS_FRONTIER: 4,       // of those rows, how many always go to ground you could take next
     FLUSH_BET_MAX: 0.25,      // fraction of held biomass the stake slider spans
     FLUSH_BET_DEFAULT: 0.40,  // of that span, so the slider opens on 10% of the book
 
@@ -260,6 +261,8 @@
     advance: 'advance',
     denser: 'denser',
     survey: 'survey',
+    showAll: 'show all {n}',
+    showFewer: 'show fewer',
     seed: 'seed',
     kill: 'kill stand',
     colonising: 'colonising',
@@ -279,6 +282,7 @@
     ripeness: 'ripeness',
     insight: 'insight',
     vesicles: 'vesicles',
+    lagAxis: 'distance',
     unspent: 'unspent',
     allocate: 'spend',
     pulse: 'pulse',
@@ -1700,6 +1704,22 @@
     v.net = net
     v.flux = flux
     scroll.appendChild(plate)
+    // Act II: a tap on a hex is a pointer to that region's card (the hexes are too small to be the
+    // control themselves — canvas.js regionAt). Without this the console's "[ tap the map ]" asked
+    // for something nothing listened to, and the frontier past the STANDS cap was unreachable.
+    var tapAt = null
+    on(plate, 'pointerdown', function (e) {
+      tapAt = (e.button || (pt.contains && pt.contains(e.target))) ? null : { x: e.clientX, y: e.clientY }
+    })
+    on(plate, 'pointercancel', function () { tapAt = null })
+    on(plate, 'pointerup', function (e) {
+      var d = tapAt
+      tapAt = null
+      if (!d || scrolling()) return
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > U.PRESS_SLOP_PX) return
+      var b = net.getBoundingClientRect()
+      focusRegionAt(e.clientX - b.left, e.clientY - b.top)
+    })
 
     // ── the ledger: four rows, allocated at boot, shown as they are earned ──
     var ledger = el('div', 'ledger')
@@ -2543,6 +2563,7 @@
       canopy: !voidPhase,
       voidPhase: voidPhase,
       genome: flagOn(s, 'genome'),
+      diff: num(s.res.D) > 0,
       // The triangle is Translocation and nothing else: without it every gram banks itself and
       // there is no allocation to show (03 §8).
       fleet: flagOn(s, 'translocation'),
@@ -4834,20 +4855,27 @@
       var w = HY.world
       if (!w || !commit(function () { return w.buyDensity(api.id) })) refuse(b)
     }, named)
+    var survBtn = actionButton(STR.survey, function (b) {
+      var w = HY.world
+      if (!w || !w.survey || !commit(function () { return w.survey(api.id) })) refuse(b)
+    }, named)
     var killBtn = actionButton(STR.kill, function (b) {
       var f = HY.forest
       if (!f || !commit(function () { return f.killStand(api.id) })) refuse(b)
     }, named)
+    acts.appendChild(survBtn)
     acts.appendChild(advBtn)
     acts.appendChild(densBtn)
     acts.appendChild(killBtn)
     void litterLab
 
+    r.el.__open = function () { r.setExpanded(true) }
     var api = {
       el: r.el,
       id: -1,
       sync: function (s, c) {
         api.id = c.id
+        setData(r.el, 'region', String(c.id))
         setText(name, c.name || STR.unknown)
         // Terrain and species are known the moment a hex is discovered; SURVEY buys the litter
         // *band*, which is what `card.band` carries. Saying "unsurveyed" over a stand you are
@@ -4863,6 +4891,14 @@
         dens.set(c.d, '', STR.density + ' ' + pct(c.d))
         setMass(litterVal, c.L)
         setPct(humusVal, c.h)
+        // Substrate Assay sells SURVEY; this is where it is spent. Only on ground not yet tasted.
+        var canSurvey = !c.claimed && c.discovered && !c.surveyed && flagOn(s, 'substrate_assay')
+        show(survBtn, canSurvey)
+        if (canSurvey) {
+          var sc = T().A2.SURVEY_COST
+          setData(survBtn, 's', num(s.res.signal) >= sc ? 'afford' : 'want')
+          setAttr(survBtn, 'aria-label', STR.survey + ' ' + c.name + ', ' + C().fmt(sc) + ' ' + GLYPH.signal)
+        }
         show(advBtn, !c.claimed && !!c.advance)
         show(densBtn, !!c.density)
         show(killBtn, !!c.claimed && !c.necrotized && !!(view && view.rev && view.rev.necro))
@@ -4881,20 +4917,79 @@
     return api
   }
 
+  // The map tap's other half: find the region, open its card on the FOREST tab, and seat it.
+  function focusRegionAt (x, y) {
+    var s = liveState()
+    if (!view || !s || s.act !== 2 || !s.a2) return false
+    var cv = HY.canvas
+    var i = cv && cv.regionAt ? cv.regionAt(x, y, s.a2.regions) : -1
+    if (!(i >= 0) || !(s.a2.regions.flags[i] & 0x01)) return false
+    view.standPin = i
+    if (view.tab !== 'forest') setTab('forest')
+    render(s)
+    // render() paces its panel syncs; the pinned row has to exist now, not on the next tick.
+    var ps = view.panels && view.panels.stands
+    if (ps && ps.view && ps.sync) ps.sync(s, view.rev || {})
+    var r = view.stack && view.stack.querySelector('.stand-list .row[data-region="' + i + '"]')
+    if (!r) return false
+    if (r.__open) r.__open()
+    seatRow(r)
+    haptic(U.HAP_PRESS, 'ui.tap')
+    return true
+  }
+
+  // Which stands get a row. `world.list` is ranked advancing → held → frontier, and a capped list
+  // of that ranking was a soft-lock: hold ten stands and the frontier never appeared again, so the
+  // only ground left to take could not be reached from the list. The frontier now always gets its
+  // rows, held stands fill what is left, and "show all" lifts the cap. A stand the map was tapped
+  // on is always in.
+  function pickStands (all, open, pin) {
+    if (open || all.length <= U.STANDS_SHOWN) return all.slice()
+    var adv = [], front = [], held = [], rest = [], i, c
+    for (i = 0; i < all.length; i++) {
+      c = all[i]
+      if (c.advancing) adv.push(c)
+      else if (c.claimed) held.push(c)
+      else if (c.advance && !c.advance.blocked) front.push(c)
+      else rest.push(c)
+    }
+    var out = adv.concat(front.slice(0, U.STANDS_FRONTIER))
+    var pool = held.concat(front.slice(U.STANDS_FRONTIER), rest)
+    for (i = 0; i < pool.length && out.length < U.STANDS_SHOWN; i++) out.push(pool[i])
+    if (pin >= 0 && !out.some(function (x) { return x.id === pin })) {
+      for (i = 0; i < all.length; i++) if (all[i].id === pin) { out.push(all[i]); break }
+    }
+    return out
+  }
+
   function buildStands (v, p) {
     var pv = panel('stands', { title: STR.p_stands })
     var bag = {}
+    var open = false
+    var rows = el('div', 'stand-list')
+    pv.body.appendChild(rows)
+    var more = btn('more-btn', '')
+    show(more, false)
+    pv.body.appendChild(more)
+    bindPress(more, function () { open = !open; if (p.__s) p.__sync(p.__s) }, { onUp: true })
     p.__sync = function (s) {
+      p.__s = s
       var w = HY.world
       if (!w || !w.list) return
       var all = w.list(s)
-      // `world.list` is already ranked the way a thumb wants it — advancing, then held, then the
-      // frontier by how much a claim would help. Sixty-one six-line rows is a spreadsheet; the top
-      // of that ranking is the decision, and the count in the header keeps the rest honest.
-      var list = all.length > U.STANDS_SHOWN ? all.slice(0, U.STANDS_SHOWN) : all
-      reconcile(pv.body, bag, list, function (c) { return c.id }, function () {
+      var pin = v.standPin === undefined ? -1 : v.standPin
+      var list = pickStands(all, open, pin)
+      reconcile(rows, bag, list, function (c) { return c.id }, function () {
         return standRow()
       }, s)
+      // reconcile keeps rows where they were born; the list is a ranking, so put them in its order.
+      for (var i = 0; i < list.length; i++) {
+        var r = bag[String(list[i].id)]
+        if (r && rows.children[i] !== r.el) rows.insertBefore(r.el, rows.children[i] || null)
+      }
+      var hidden = all.length - list.length
+      show(more, open || hidden > 0)
+      if (open || hidden > 0) setText(more, open ? STR.showFewer : interp(STR.showAll, { n: all.length }))
       pv.setCount(all.length)
       if (list.length) pv.unempty()
       else pv.empty(STR.fog)
@@ -4957,6 +5052,9 @@
     var free = statLine(r, STR.p_diff)
     var condN = statLine(r, STR.conduction)
     var vesN = statLine(r, STR.vesicles)
+    // Act III's own axis (BIBLE §3): it shortens the lag that distance puts on every band. The act
+    // opens on a respec and hands the points back; without this row they had nowhere to go.
+    var lagN = statLine(r, STR.lagAxis)
     var acts = el('div', 'row-actions')
     var condBtn = actionButton(STR.conduction, function (b) {
       var g = HY.cognition
@@ -4971,8 +5069,13 @@
       var g = HY.cognition
       if (!g || !g.respec()) refuse(b)
     })
+    var lagBtn = actionButton(STR.lagAxis, function (b) {
+      var g = HY.cognition
+      if (!g || !g.allocate('lag', 1)) refuse(b)
+    })
     acts.appendChild(condBtn)
     acts.appendChild(vesBtn)
+    acts.appendChild(lagBtn)
     r.line().appendChild(acts)
     // What the next point would do, while there is one to spend. Capacity is the wall Act II is
     // built around, and the one allocation that moves it was a guess.
@@ -5016,9 +5119,14 @@
       // Differentiation two ways and only the unspent third of it said what it was counting.
       setSlot(condN, String(num(s.cog.dCond)), GLYPH.diff)
       setSlot(vesN, String(num(s.cog.dVes)), GLYPH.diff)
+      var a3 = s.act >= 3
+      show(lagN.parentNode || lagN, a3)
+      show(lagBtn, a3)
+      if (a3) setSlot(lagN, String(num(s.cog.dLag)), GLYPH.diff)
       pv.setCount(un > 0 ? String(un) : '', GLYPH.diff)
       setData(condBtn, 's', un > 0 ? 'afford' : 'want')
       setData(vesBtn, 's', un > 0 ? 'afford' : 'want')
+      setData(lagBtn, 's', un > 0 ? 'afford' : 'want')
     }
     p.view = pv
     return pv
@@ -6257,7 +6365,10 @@
     def(v, 'stands', function (s, rev) { return s.act >= 2 && rev.stands }, buildStands,
       'forest', actII)
     def(v, 'mind', function (s, rev) { return s.act >= 2 && rev.signal }, buildMind, 'mind', actII)
-    def(v, 'diff', function (s, rev) { return s.act >= 2 && rev.diff }, buildDiff, 'mind', actII)
+    // Act III opens on a respec (BIBLE §3) and hands every point back, so the panel follows the
+    // mind's slot into the third act rather than vanishing with Act II.
+    def(v, 'diff', function (s, rev) { return s.act >= 2 && rev.diff }, buildDiff, 'mind',
+      function (s, rev) { return s.act === 2 || actIII('mind')(s, rev) })
     def(v, 'adaptations', function (s, rev) { return rev.projects }, buildAdaptations, 'mind',
       function (s, rev) { return s.act < 3 || !dismantled(rev, 'mind') })
     // FLUSH before WEATHER: both arrive on the same frame, and the one carrying the verb goes
