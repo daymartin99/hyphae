@@ -1820,7 +1820,7 @@ canvas{ display:block; }
 
 /* ── Act II's material: the mind (10 Phase 3). A faint instrument grid behind the body, CSS only and
    static, so it costs the compositor nothing per frame; the glow is the canvas's own (setReading). */
-.shell[data-ui="d"][data-stage="2"] .plate{
+:root:not([data-act="3"]) .shell[data-ui="d"][data-stage="2"] .plate{
   background-image:
     repeating-linear-gradient(0deg, transparent 0 23px, var(--line-soft) 23px 24px),
     repeating-linear-gradient(90deg, transparent 0 23px, var(--line-soft) 23px 24px);

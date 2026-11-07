@@ -257,7 +257,9 @@
     nextOffer: 'an offer is waiting in the pact book.',
     nextOffers: '{n} offers are waiting in the pact book.',
     nextDFree: '{n} {u} unspent.',
-    readRipe: '{n} ripe', readOffers: '{n} offers', readFull: 'full', readPct: '{n}%', readD: '{n} {u}',
+    nextEnding: '{name} is open. it does not undo.',
+    nextCond: '{name}: {cond} {have} of {want}.',
+    readRipe: '{n} ripe', readOffers: '{n} offers', readFull: 'full', readPct: '{n}%', readD: '{n} {u}', readBands: '{n}/{m}',
     save: 'save', reset: 'reset',
     auto: 'auto', dark: 'dark', light: 'light', on: 'on', off: 'off',
     high: 'high', med: 'med', low: 'low',
@@ -2188,6 +2190,29 @@
       var dFree = cg && cg.unallocated ? num(cg.unallocated(s)) : 0
       if (dFree >= 1) { nextGroup = 'mind'; return interp(STR.nextDFree, { n: Math.floor(dFree), u: GLYPH.diff }) }
     }
+    if (s.act >= 3 && FIN() && FIN().endings) {
+      // An open ending first, because it is the one thing that cannot be taken back; then D owed to
+      // the genome; then the nearest ending's furthest condition, which is what stands between.
+      var ends = FIN().endings(s), j, near = null, nearP = -1
+      for (j = 0; j < ends.length; j++) {
+        if (ends[j].key === 'ENCYST' || ends[j].taken) continue
+        if (ends[j].available) { nextGroup = 'forest'; return interp(STR.nextEnding, { name: ends[j].title.toLowerCase() }) }
+        var ep = endingProgress(ends[j])
+        if (ep > nearP) { nearP = ep; near = ends[j] }
+      }
+      var cg3 = HY.cognition
+      var dFree3 = cg3 && cg3.unallocated ? num(cg3.unallocated(s)) : 0
+      if (dFree3 >= 1) { nextGroup = 'mind'; return interp(STR.nextDFree, { n: Math.floor(dFree3), u: GLYPH.diff }) }
+      if (near && near.unmet && near.unmet.length) {
+        var worstC = null, worstP = 2
+        near.unmet.forEach(function (c) { var q = condProgress(c); if (q < worstP) { worstP = q; worstC = c } })
+        if (worstC) {
+          nextGroup = 'forest'
+          return interp(STR.nextCond, { name: near.title.toLowerCase(), cond: String(worstC.label).toLowerCase(),
+            have: C().fmt(num(worstC.have)), want: C().fmt(num(worstC.want)) })
+        }
+      }
+    }
     // Candidates: every buyable thing on screen, and the next tip, priced in full ({ g, min }) so
     // its real blocker is named, which is often minerals rather than the grams beside it.
     var cands = []
@@ -2249,6 +2274,37 @@
     sh.body.appendChild(host)
     sh.open()
     return sh
+  }
+
+  // ── THE ENDINGS, AS LIGHTS (10 Phase 4). How far each ending is, 0 to 1: the mean of its
+  // conditions, each as held over wanted. Carbon and the other stocks that run across thirty decades
+  // are read in decades, or every light would sit dark until the last minute of the act.
+  function condProgress (c) {
+    if (!c) return 0
+    if (c.ok) return 1
+    var have = num(c.have), want = num(c.want)
+    if (!(want > 0)) return 0
+    if (want > 1e6) return fill(Math.log(1 + Math.max(0, have)) / Math.log(1 + want))
+    return fill(have / want)
+  }
+
+  function endingProgress (e) {
+    var rows = e && e.conditions ? e.conditions : []
+    if (!rows.length) return 0
+    var t = 0
+    for (var i = 0; i < rows.length; i++) t += condProgress(rows[i])
+    return t / rows.length
+  }
+
+  function paintLights (v, s) {
+    var cv = CANVAS()
+    if (!cv || !cv.setLights) return
+    if (!(isD() && s && s.act >= 3 && FIN() && FIN().endings)) { cv.setLights([], 0); return }
+    var list = FIN().endings(s), out = []
+    for (var i = 0; i < list.length; i++) {
+      out.push({ p: endingProgress(list[i]), open: !!list[i].available && !list[i].taken, taken: !!list[i].taken })
+    }
+    cv.setLights(out, num(s.res.craft))
   }
 
   function paintNext (v, s) {
@@ -2321,6 +2377,19 @@
   function paintTabReads (v, s) {
     var d = isD() && s && s.act === 2
     var read = {}
+    if (isD() && s && s.act >= 3) {
+      // Act III: how much sky is held, and what the genome is owed.
+      var cg3 = HY.cognition
+      var df = cg3 && cg3.unallocated ? Math.floor(num(cg3.unallocated(s))) : 0
+      if (df >= 1) read.mind = interp(STR.readD, { n: df, u: GLYPH.diff })
+      // Occupied, as the void panel counts them (craft present), not merely explored.
+      var b3 = s.a3 && s.a3.bands && s.a3.bands.n ? s.a3.bands.n : null
+      if (b3 && s.phase !== 'canopy') {
+        var held = 0
+        for (var bi = 0; bi < b3.length; bi++) if (num(b3[bi]) > 0) held++
+        read.forest = interp(STR.readBands, { n: held, m: b3.length })
+      }
+    }
     if (d) {
       var fl = HY.flush, pb = HY.pactbook, cg = HY.cognition
       var nRipe = fl && fl.list ? fl.list().filter(function (c) { return c.ripe }).length : 0
@@ -3986,6 +4055,7 @@
     }
     paintDNav(v, s)
     paintTabReads(v, s)
+    if (t - (v.lastLights || 0) >= 1000) { v.lastLights = t; paintLights(v, s) }
     stage(v, s, rev)
     tabs(v, s, rev)
     needDot(v, s)
@@ -4047,7 +4117,7 @@
         var sc = num(HY.cognition.signalCap(s))
         lit = sc > 0 ? num(s.res.signal) / sc : 0
       }
-      cv.setReading(isD() && s.act === 2 ? 'mind' : 'ink', lit)
+      cv.setReading(isD() && s.act === 2 ? 'mind' : isD() && s.act >= 3 ? 'glass' : 'ink', lit)
     }
     if (s.act >= 3) {
       if (cv.drawVoid) cv.drawVoid(a3Field(s))
@@ -7831,6 +7901,15 @@
     ok(acctWhy(ar) === interp(STR.acctWhyDown, { a: FLOW_LAB['standing order'], b: FLOW_LAB.eaten }),
       'accounts: the why did not name the standing order against the floor')
     acct.rate = keepRate
+    // The endings' lights (10 Phase 4): a met condition is full, a stock over six decades is read
+    // in decades, and an ending is the mean of its conditions.
+    ok(condProgress({ ok: true, have: 0, want: 5 }) === 1, 'lights: a met condition is not full')
+    ok(Math.abs(condProgress({ ok: false, have: 0.31, want: 0.8 }) - 0.3875) < 1e-9, 'lights: a plain ratio is wrong')
+    var cp = condProgress({ ok: false, have: 9e17, want: 9e34 })
+    ok(cp > 0.45 && cp < 0.6, 'lights: carbon is not read in decades (' + cp + ')')
+    ok(Math.abs(endingProgress({ conditions: [{ ok: true }, { ok: false, have: 0, want: 2 }] }) - 0.5) < 1e-9,
+      'lights: an ending is not the mean of its conditions')
+
     // NEXT states and never advises: no line of it may read as an instruction.
     ;['nextDecide', 'nextAfford', 'nextShort', 'nextShortEta'].forEach(function (k) {
       ok(!/\b(you should|try|tap|buy|consider)\b/i.test(STR[k]), 'NEXT advises: ' + k)
