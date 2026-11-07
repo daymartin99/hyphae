@@ -276,6 +276,7 @@
 
     capacity: 'capacity',
     saturated: 'saturated',
+    filling: 'filling',
     saturation: 'saturation',
     gain: 'gain',
     slots: 'slots',
@@ -288,6 +289,8 @@
     allocate: 'spend',
     pulse: 'pulse',
     ready: 'ready',
+    pulseSpends: 'spends {v} of the pool',
+    pulseNote: 'a pulse spends over half the pool. insight stops until it is full again.',
     cooling: '{v}',
 
     wind: 'wind',
@@ -2857,7 +2860,7 @@
       setText(r2.lab, STR.insight)
       setFine(r2.val, '')
       setSlot(r2.val, C().fmt(num(s.res.insight)), GLYPH.insight)
-      setRate(r2.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
+      paintInsightRate(r2.rate, s, g)
     } else {
       show(r2.el, false)
     }
@@ -2873,6 +2876,20 @@
     show(v.gear, true)
     setData(v.ledger, 'gear', '1')
     return shown
+  }
+
+  // Insight accrues only while the Signal pool is saturated (cognition.stepInsight), but
+  // insightRate() is the rate it WOULD run at, full or not — so the strip printed `+0.15 Ψ/s` over
+  // a pool that was earning nothing, and the one rule the economy turns on read as false. Below the
+  // brim the slot says the pool is filling, in the muted zero tone; at the brim it is the real rate.
+  function paintInsightRate (n, s, g) {
+    if (!(g && g.saturated && g.saturated(s))) {
+      setFine(n, '')
+      setSlot(n, STR.filling, '')
+      setData(n, 'sign', 'zero')
+      return
+    }
+    setRate(n, g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
   }
 
   // Act III's strip, 03 §23.1. Carbon leads because it is the only thing the void produces and the
@@ -2924,7 +2941,7 @@
     setText(r3.lab, STR.insight)
     setFine(r3.val, '')
     setSlot(r3.val, C().fmt(num(s.res.insight)), GLYPH.insight)
-    setRate(r3.rate, g && g.insightRate ? num(g.insightRate(s)) : 0, GLYPH.insight)
+    paintInsightRate(r3.rate, s, g)
 
     show(v.gear, true)
     setData(v.ledger, 'gear', '1')
@@ -3132,8 +3149,11 @@
       setAttr(v.fab, 'aria-label', STR.pulse + ', ' + C().fmtTime(cd))
     } else {
       v.fab.removeAttribute('data-cool')
+      // A pulse always costs more than the saturation margin (0.55·Sc), so the label says what
+      // it spends: the pool drops below the brim and Insight stops until it refills.
       setAttr(v.fab, 'aria-label', STR.pulse + ', ' +
-        (poor ? C().fmt(cost) + ' ' + GLYPH.signal : STR.ready))
+        (poor ? C().fmt(cost) + ' ' + GLYPH.signal
+          : STR.ready + ', ' + interp(STR.pulseSpends, { v: C().fmt(cost) + ' ' + GLYPH.signal })))
     }
     setData(v.fab, 'poor', poor ? '1' : '0')
   }
@@ -3190,6 +3210,7 @@
     var list = g.modes(s)
     if (list.length < 2) { firePulse(null); return }
     var sh = sheet({ id: 'pulse', title: STR.pulse })
+    note(sh.body, STR.pulseNote)
     list.forEach(function (m) {
       var r = el('div', 'sheet-row')
       r.appendChild(el('span', 'field-lab', m.toLowerCase()))

@@ -487,6 +487,16 @@
     'Nothing overflowed. It went somewhere.',
     { pred: function (s) { return s.res.insight >= 1 } })
 
+  // The rule the whole Insight economy turns on, said once, on the first tick the pool falls back
+  // below the brim after Insight exists — the moment the strip's Insight rate turns to `filling`.
+  L(2, 'a2.brim', 'narrative', null, 'everSaturated && !saturated && flags.turgor',
+    'Below the brim it is just signal. Insight only comes while the pool is full.',
+    { pred: function (s) {
+      var g = HY.cognition
+      return s.stats.everSaturated === true && F.flag(s, 'turgor') &&
+        !!g && !!g.saturated && !g.saturated(s)
+    } })
+
   L(2, 'a2.first_D', 'world', 'pos', 'D >= 1',
     'The network has enough of itself to specialise.',
     { pred: function (s) { return s.res.D >= 1 } })
@@ -3130,9 +3140,10 @@
     }
 
     // ── The corpus itself ────────────────────────────────────────────────────
-    // 159, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
-    // corpus was transcribed. It is one Act I world line and it is counted, not excused.
-    ok(LINES.length === 159, 'corpus is ' + LINES.length + ' entries, expected 159')
+    // 160, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
+    // corpus was transcribed, and `a2.brim` says the saturation rule the Insight strip turns on.
+    // Each is one line and each is counted, not excused.
+    ok(LINES.length === 160, 'corpus is ' + LINES.length + ' entries, expected 160')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3141,7 +3152,7 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 48, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 38, 'act II lines: ' + counts.a2)
+    ok(counts.a2 === 39, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 25, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
