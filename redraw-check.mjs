@@ -39,7 +39,7 @@ const server = createServer((q, r) => {
     r.end()
   }
 }).listen(0)
-const URL = `http://127.0.0.1:${server.address().port}/`
+const URL = `http://127.0.0.1:${server.address().port}/${process.env.HY_UI ? '?ui=' + process.env.HY_UI : ''}`
 
 const browser = await chromium.launch({
   executablePath: process.env.HY_CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
