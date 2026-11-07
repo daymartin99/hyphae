@@ -223,7 +223,8 @@
   // not a discovery.
   var OFFLINE_KINDS = ['substrate_dry', 'term_short', 'term_done', 'term_default',
     'season_autumn', 'claim_done', 'market_move', 'stands_dry', 'rival_take', 'pact_expired',
-    'bond_deepened', 'bands_starving', 'strain_born', 'strain_band', 'band_open', 'phase_drift']
+    'bond_deepened', 'bands_starving', 'strain_born', 'strain_band', 'band_open', 'phase_drift',
+    'held_floor', 'held_fleet', 'held_fed']
 
   function offlineNeeds (s, b, dryAtS) {
     var needs = []
@@ -291,6 +292,12 @@
       }
     }
     if (b.act === 3 && s.act === 3) {
+      // The hold, accounted for in the voice (10 Phase 6): dormancy is what being away means, and
+      // the watcher says what it did and did not do while nobody was there.
+      var hr = HY.bloom && HY.bloom.holdReport ? HY.bloom.holdReport() : null
+      if (hr && hr.floored) needs.push({ kind: 'held_floor', tokens: null })
+      if (hr && hr.refed > 0) needs.push({ kind: 'held_fleet', tokens: null })
+      if (hr && hr.unpaid > 0) needs.push({ kind: 'held_fed', tokens: null })
       var starving = HY.bloom && HY.bloom.starvingBands ? HY.bloom.starvingBands(s) : 0
       if (starving >= 1) needs.push({ kind: 'bands_starving', tokens: { k: starving }, tone: 'warn' })
       if (HY.divergence && HY.divergence.strains) {

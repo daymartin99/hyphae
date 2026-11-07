@@ -191,7 +191,32 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
   | slower | 2.8 h | 9.0 h |
 
   The five Bloom conditions now finish within about twenty minutes of one another.
-- **Still to measure.** A sessions-and-sleep profile, to give runs in days with offline credit (2 h at 100 %, to 6 h at 75 %, to 12 h at 50 %, capped). Then a hand playthrough of `?ui=d`, start to finish, because the hand pass finds what no bot does.
+- **Sessions and sleep: the game broke.** The human bot plays a session and is away for the rest of the day, with the shipped offline credit (2 h at 100 %, to 6 h at 75 %, to 12 h at 50 %, capped). Acts I and II were fine, but no daily pattern finished at all. Unattended, Act III compounded, overshot and starved:
+  - one void night took carbon from 1.7e27 to 9.4e34, everything handed over, and killed the whole fleet;
+  - a canopy night billed the fleet's upkeep against the bank and emptied it;
+  - there was no way back from either.
+- **The rule, from David:** time away must have value, and must never be game-breaking. Leaving it a week must not hand over everything.
+- **THE HOLD.** Dormancy is what being away means, and it is canon:
+  - While away, Act III does not replicate or launch. That is the player's split, and no decision runs offline (08 §10). Craft already in flight still land.
+  - No band is harvested below half its carbon at departure.
+  - The fleet never falls below 60 % of its size at departure, refilled in the proportions it was left in.
+  - The bank never ends below what it was at departure; an unpaid upkeep bill goes unpaid.
+  - The void also gains the canopy's regrowth floor, so a live collapse is a setback, never a dead board.
+- **The voice accounts for it on return.** Each line appears only when that part of the hold happened:
+  - "It ate half of each band and stopped. It would not finish them alone."
+  - "Nothing grew while you were gone. Nothing was let go."
+  - "The upkeep went unpaid. It waited rather than eat what you had."
+- **After** (THE BLOOM, human bot, offline credited):
+
+  | Pattern | Finishes | Play |
+  |---|---|---|
+  | 1 h each evening | day 6 | 5.3 h |
+  | 2 × 30 min a day | day 6 | 5.2 h |
+  | 2 × 1 h a day | day 3 | 5.3 h |
+  | 3 h once a week | week 3 | 6.3 h |
+
+- **To gamify next (proposed).** Make the hold something the player shapes: Vernalisation and the DOR loci, the game's own dormancy, loosen it.
+- **Still to do.** A hand playthrough of `?ui=d`, start to finish.
 
 ### Phase 7 — Cutover (S)
 - Flip the flag on by default, delete the old panel scroll, bump sw, update 06 and 09, then deploy

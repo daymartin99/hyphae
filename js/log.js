@@ -945,6 +945,10 @@
       text: 'Every pact is older and holds tighter. None of them asked.' },
 
     { kind: 'bands_starving', act: 3, rank: 90, text: '{k} bands are starving.' },
+    // The hold (10 Phase 6). Dormancy is what being away means; the watcher accounts for it.
+    { kind: 'held_floor', act: 3, rank: 52, text: 'It ate half of each band and stopped. It would not finish them alone.' },
+    { kind: 'held_fleet', act: 3, rank: 50, text: 'Nothing grew while you were gone. Nothing was let go.' },
+    { kind: 'held_fed', act: 3, rank: 48, text: 'The upkeep went unpaid. It waited rather than eat what you had.' },
     { kind: 'strain_band', act: 3, rank: 80,
       text: '{strain} has taken band {b}. It is larger than you are there.' },
     { kind: 'strain_born', act: 3, rank: 55,
