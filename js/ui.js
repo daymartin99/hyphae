@@ -3232,6 +3232,16 @@
     setAttr(r.el, 'aria-label', label + ', ' + value + (tail ? ', ' + tail : ''))
   }
 
+  // SURPLUS is harvest less subsistence, summed over the field — the FLEET panel's figure and every
+  // band row's. The canopy and void headers, the spoken strip and the status line printed
+  // bloom.Lambda() under the same word, which is the Signal source term: a different quantity in a
+  // different currency, labelled as carbon per second, beside the one it was mistaken for.
+  function netSurplus (list) {
+    var acc = 0, i
+    for (i = 0; list && i < list.length; i++) acc += num(list[i].harvest) - num(list[i].subsist)
+    return acc
+  }
+
   function paintAria (v, s) {
     var g = HY.cognition
     if (s.act >= 3) {
@@ -3242,7 +3252,7 @@
         C().fmt(g && g.Sc ? num(g.Sc(s)) : 0),
         g && g.saturated && g.saturated(s) ? STR.saturated : '')
       ariaRow(v, 2, STR.craft, C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0),
-        STR.surplus + ' ' + signed(bl && bl.Lambda ? num(bl.Lambda(s)) : 0))
+        STR.surplus + ' ' + signed(netSurplus(bl && bl.list ? bl.list(s) : [])))
       ariaRow(v, 3, STR.insight, C().fmt(num(s.res.insight)))
       return
     }
@@ -3306,7 +3316,7 @@
       setText(v.statusVh,
         STR.carbon + ' ' + C().fmt(num(s.res.carbon)) + '. ' +
         STR.craft + ' ' + C().fmt(bl && bl.totalCraft ? num(bl.totalCraft(s)) : 0) + '. ' +
-        STR.surplus + ' ' + signed(bl && bl.Lambda ? num(bl.Lambda(s)) : 0) + ' per second.')
+        STR.surplus + ' ' + signed(netSurplus(bl && bl.list ? bl.list(s) : [])) + ' per second.')
       return
     }
     if (s.act >= 2) {
@@ -5762,10 +5772,11 @@
       if (!bl || !bl.list) return
       setSlot(craftN, C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
       setSlot(sporeN, C().fmt(num(s.res.spores)), GLYPH.spores)
-      var lam = num(bl.Lambda(s))
-      setSlot(lamN, signed(lam), GLYPH.carbon + '/s')
-      setData(lamN, 'tone', lam >= 0 ? 'pos' : 'neg')
-      reconcile(pv.body, bag, bl.list(s), function (c) { return c.id }, biomeRow, s)
+      var list = bl.list(s)
+      var sur = netSurplus(list)
+      setSlot(lamN, signed(sur), GLYPH.carbon + '/s')
+      setData(lamN, 'tone', sur >= 0 ? 'pos' : 'neg')
+      reconcile(pv.body, bag, list, function (c) { return c.id }, biomeRow, s)
       pv.setCount(C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
     }
     p.view = pv
@@ -5867,9 +5878,9 @@
       for (i = 0; i < list.length; i++) if (list[i].n > 0) occ += 1
       setSlot(occN, occ + ' / ' + list.length, '')
       setSlot(craftN, C().fmt(num(bl.totalCraft(s))), GLYPH.craft)
-      var lam = num(bl.Lambda(s))
-      setSlot(lamN, signed(lam), GLYPH.carbon + '/s')
-      setData(lamN, 'tone', lam >= 0 ? 'pos' : 'neg')
+      var sur = netSurplus(list)
+      setSlot(lamN, signed(sur), GLYPH.carbon + '/s')
+      setData(lamN, 'tone', sur >= 0 ? 'pos' : 'neg')
       // A stellar warning is the one thing in the act that is about to happen rather than
       // happening, so it gets the header's only sentence.
       var w = bl.stellarWarnings ? bl.stellarWarnings() : []
