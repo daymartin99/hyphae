@@ -659,6 +659,9 @@
   L(3, 'a3.first_starve', 'world', 'warn', '@starve && starves == 1',
     'Band {band} is out of carbon. It replicates for another ninety seconds anyway.')
 
+  L(3, 'a3.revive', 'world', 'pos', '@revive',
+    'Something in the Stand was never all the way dead. It starts again from there.')
+
   L(3, 'a3.senescence', 'narrative', null, 'cumSenesced > 0.10 * cumReplicated',
     'Craft do not last. You are running a population, not a machine.',
     { pred: function () {
@@ -3130,9 +3133,10 @@
     }
 
     // ── The corpus itself ────────────────────────────────────────────────────
-    // 159, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
-    // corpus was transcribed. It is one Act I world line and it is counted, not excused.
-    ok(LINES.length === 159, 'corpus is ' + LINES.length + ' entries, expected 159')
+    // 160, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
+    // corpus was transcribed, and `a3.revive` is the canopy's seed coming back from zero craft. Each
+    // is one world line and each is counted, not excused.
+    ok(LINES.length === 160, 'corpus is ' + LINES.length + ' entries, expected 160')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3142,7 +3146,7 @@
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 48, 'act I lines: ' + counts.a1)
     ok(counts.a2 === 38, 'act II lines: ' + counts.a2)
-    ok(counts.a3 === 25, 'act III lines: ' + counts.a3)
+    ok(counts.a3 === 26, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
     ok(counts.obs === 25, 'observations: ' + counts.obs)

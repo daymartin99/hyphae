@@ -372,6 +372,8 @@
       // canopy, phase A
       SPORE_DECAY_3: 0.99700,   // per second, Phase A only (half-life 231 s)
       SETTLE_Q: 2.4e7,          // ◦ per SETTLE
+      REVIVE_FRAC: 0.02,        // × The Stand's n*: the seed a starved canopy regrows toward
+      REVIVE_S: 600,            // s to regrow that seed from nothing
       REACH_BASE: 2.6e3,        // Σ, first REACH
       // 03 §3.2 priced the ladder at 2.35× per step (761,000 Σ across Phase A); 03 §12.1 made the
       // Signal that pays for it grow as Λ ∝ n^0.18, explicitly "very flat … you get vastly richer

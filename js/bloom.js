@@ -769,7 +769,7 @@
     var o = opts || { stochastic: true, offline: false }
     enter(s, o)
 
-    if (inCanopy(s)) autoSettle(s, dt)
+    if (inCanopy(s)) { autoSettle(s, dt); revive(s, dt) }
 
     var n = count(s), b, h, drawn
     for (b = 0; b < n; b++) {
@@ -816,6 +816,40 @@
     if (!(q > 0)) return
     C().setStock(s.res, 'spores', num(s.res.spores) - q)
     s.a3.biomes.n[0] = num(s.a3.biomes.n[0]) + q * SETTLE_P_EST
+  }
+
+  // The canopy's floor. Starvation is self-limiting and senescence never stops, so a fleet that
+  // overshoots can thin all the way to zero, and with no craft there is no harvest, no surplus, no
+  // replication and — the bank having gone into the first SETTLEs — no spores. Measured on a
+  // hand-played run: zero craft at 9.97% of the planet consumed, Genome's gate at 10%, 90 P Χ
+  // banked, and nothing on the board that could ever move again but ENCYST. So the canopy keeps a
+  // seed: while the whole fleet is under REVIVE_FRAC of the best reached biome's carrying capacity,
+  // that biome regrows toward the floor over REVIVE_S seconds. Too small to be a strategy; enough
+  // that the triangle has something to replicate from. Where every reached biome is eaten down to
+  // nothing, the way back is REACH, which now always lands at least the same seed (see reach()).
+  function seedFloor (s, b) { return nStar(b, s) * A().REVIVE_FRAC }
+
+  // The reached biome that could carry the most craft, or −1 when none of them can carry any.
+  function bestHeld (s) {
+    var b, best = -1, cap = 0, k
+    for (b = 0; b < s.a3.biomes.reached.length; b++) {
+      if (!s.a3.biomes.reached[b] || !(heldX(s, b) > 0)) continue
+      k = seedFloor(s, b)
+      if (k > cap) { cap = k; best = b }
+    }
+    return best
+  }
+
+  function revive (s, dt) {
+    var best = bestHeld(s)
+    if (best < 0) return
+    var cap = seedFloor(s, best)
+    var have = num(totalCraft(s))
+    if (have >= cap) return
+    var add = Math.min(cap - have, cap * dt / A().REVIVE_S)
+    if (!(add > 0)) return
+    if (!(have > 0)) fire('a3.revive')
+    s.a3.biomes.n[best] = num(s.a3.biomes.n[best]) + add
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1483,6 +1517,8 @@
     var cost = reachCost(s)
     if (!(num(s.res.signal) >= cost)) return false
     C().setStock(s.res, 'signal', num(s.res.signal) - cost)
+    // Read before the door opens: is there anywhere already held that can still carry craft?
+    var stranded = bestHeld(s) < 0
     s.a3.biomes.reached[b] = 1
 
     // A biome with nothing in it can never be grown into, because replication and exploration are
@@ -1497,6 +1533,14 @@
         s.a3.biomes.n[i] = num(s.a3.biomes.n[i]) * (1 - REACH_SEED)
       }
       s.a3.biomes.n[b] = num(s.a3.biomes.n[b]) + seed
+    }
+    // A REACH out of a canopy where nothing held can carry craft any more carried a quarter of
+    // nothing, which made the door useless exactly when it was the only one left. There — no craft
+    // left and nowhere held that could feed one — the Σ paid buys the canopy's seed. Every other
+    // REACH is the conserved move it was.
+    if (stranded && fleet < 1) {
+      var floor = seedFloor(s, b)
+      if (num(s.a3.biomes.n[b]) < floor) s.a3.biomes.n[b] = floor
     }
     stat(s, 'claimedCount', 1)
     return true
@@ -1881,6 +1925,26 @@
     q.proj.flags.antifreeze_glycoprotein = 1
     ok(biomeHarvMod(q, 2) === 1 && biomeHarvMod(q, 7) === 1,
       'ANTIFREEZE GLYCOPROTEIN did not lift both cold penalties')
+
+    // ── a starved canopy is never a dead board ────────────────────────────────
+    // Zero craft with carbon still in the Stand regrows toward the seed floor; zero craft with every
+    // held biome eaten out comes back through REACH, whose Σ then buys the seed.
+    var z = sandbox('canopy')
+    for (i = 0; i < z.a3.biomes.n.length; i++) z.a3.biomes.n[i] = 0
+    z.res.spores = 0
+    var zFloor = seedFloor(z, 0)
+    ok(zFloor > 0, 'a fresh Stand has no seed floor')
+    for (i = 0; i < 60; i++) stepHarvest(10, { stochastic: false, offline: false }, z)
+    ok(num(z.a3.biomes.n[0]) > 0, 'a starved canopy with carbon in the Stand did not regrow')
+    ok(num(totalCraft(z)) <= zFloor * (1 + 1e-9), 'the revive overshot its seed floor')
+    var y = sandbox('canopy')
+    for (i = 0; i < y.a3.biomes.n.length; i++) y.a3.biomes.n[i] = 0
+    y.a3.biomes.X[0] = 0
+    y.proj.flags.appressorium = 1
+    y.res.signal = reachCost(y)
+    ok(reach(1, y), 'REACH refused out of a stranded canopy')
+    ok(num(y.a3.biomes.n[1]) >= seedFloor(y, 1) * (1 - 1e-9) && seedFloor(y, 1) > 0,
+      'REACH out of a stranded canopy landed no seed')
 
     // ── a canopy run actually runs ───────────────────────────────────────────
     // Not "the functions exist": a minute of the real tick, and carbon has to arrive without the
