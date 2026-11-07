@@ -1715,13 +1715,18 @@
     var names = ['core', 'state', 'log', 'projects', 'act1', 'economy1', 'ui', 'canvas', 'feel',
       'cognition', 'world', 'forest', 'flush', 'pactbook', 'loop', 'bloom', 'divergence', 'finale']
     var out = []
+    var ran = 0
     for (var i = 0; i < names.length; i++) {
       var m = HY[names[i]]
       if (!m || !m.__selftest) continue
       var r
       try { r = m.__selftest() } catch (e) { out.push(names[i] + ': THREW ' + e.message); continue }
+      // null is a module whose tests the shipped build stripped (build.mjs stripTests).
+      if (r === null) continue
+      ran++
       for (var j = 0; j < r.length; j++) out.push(names[i] + ': ' + r[j])
     }
+    if (!ran) out.push('no self-tests in this build — run them against dist/index.test.html')
     return out
   }
 

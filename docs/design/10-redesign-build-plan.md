@@ -25,6 +25,7 @@ leave the organism, you just learn to read it differently.
 | D5 | **NEXT states facts, never advice.** "a tip costs 66 g. you have 41." Amended in 09 §1.0. | The voice must not start telling the player what to do. Facts are the "explain a bit more" David asked for. |
 | D6 | **The new UI ships behind a flag** (`?ui=d`, plus a settings toggle) until each act reaches parity, then replaces the old one. | The game stays playable and shippable at every step. No big-bang merge. |
 | D7 | **Saves don't change.** The redesign is presentation only. Any new state (e.g. which lens is open) is view state and isn't saved. | No migration risk, and old saves just work. |
+| D9 | **The voice is the driver, the heart of the game** (David, Nov 2026). It is never squeezed below three lines; the newest line is the brightest thing on the screen after the body; a story line holds its place until it has been read (log.js STORY_HOLD) and is never pushed off by a flood. When a line lands, the body answers it with a pulse, so the voice and the organism read as one creature talking. NEXT is set smaller and plainer so it never competes with the voice. When space is short, the verbs give way first, then NEXT, and the voice never does. Its fourth-wall breaks are protected, because David finds them the most immersive thing in the game. These are the lines where the voice turns and speaks to the player rather than the organism. The redesign gives them the most room: the interface quietens around them, the body stills, and nothing else animates while one is on screen. The transitions use the same device. | The game is told, not operated. The body is what you see; the voice is why you keep going. |
 | D8 | **Transitions get a calm mode**, picked automatically from `prefers-reduced-motion` and switchable in settings. They stay under 3 flashes a second (pillar 6). | Loud, but nobody gets hurt. |
 
 ## The skeleton (every act, fixed positions at 390 × 844; scales by rem)
@@ -32,7 +33,7 @@ leave the organism, you just learn to read it differently.
 ```
 ledger        0–76     four figures max, tap a figure → its account (sources − sinks, one-line why)
 body window   76–288   the organism; tap = primary verb; expand → the slide (full screen, touch parts)
-voice         288–340  1–2 line ticker; pull down → the full log
+voice         288–352  THE DRIVER (D9): 3 lines min, newest brightest; pull down → the full log
 NEXT          340–404  one factual line; its amber also marks the body
 verbs         404–776  grouped by verb, per-act tabs; sheets open over 340–844, body stays visible
 nav / action  776–844  tabs (with readings, e.g. "1 ripe"), primary verb, endbar holds
@@ -66,7 +67,7 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
 - **Harness:** shoot.mjs learns `?ui=d`; the self-tests assert the slot geometry.
 
 ### Phase 1 — The body (M–L)
-- `js/body.js` covers the geometry from state (D2), the three readings as one renderer with a reading
+- `js/body.js` covers the geometry from state (D2), a pulse whenever the voice speaks (D9), the three readings as one renderer with a reading
   parameter (0 = ink, 1 = mind, 2 = glass) so a morph is just interpolation, plus breathe, pulse and grow
   (new branches draw in when a tip is bought), hit-testing, and the slide view.
 - **Perf budget:** 30 fps cap, paused when hidden, frozen under reduced motion (breathing only), and a

@@ -37,6 +37,9 @@
     PLATE_FRAC: [0.38, 0.22, 0.18],   // fraction of shell height at stage 0 / 1 / 2
     PLATE_MIN_PX: 40,
     PLATE_AUTO_PX: 40,        // px of panel scroll before the map folds itself away
+    // The redesign's body window (docs/design/10): 212 of 844 at the mock size, in every act. A
+    // fixed slot, never staged and never folded, because the body is the one thing always in view.
+    D_BODY_FRAC: 212 / 844,
     CONSOLE_ROWS: 7,
     LEDGER_MAX_ROWS: 4,
 
@@ -233,6 +236,7 @@
 
     theme: 'theme', haptics: 'haptics', motion: 'motion', slow: 'slow',
     verbose: 'spoken status', tier: 'detail', textSize: 'text size',
+    uiPick: 'interface', uiOld: 'current', uiNew: 'new, in progress',
     save: 'save', reset: 'reset',
     auto: 'auto', dark: 'dark', light: 'light', on: 'on', off: 'off',
     high: 'high', med: 'med', low: 'low',
@@ -1778,6 +1782,13 @@
     v.gear = gear
     scroll.appendChild(ledger)
 
+    // ── NEXT: the redesign's one factual line (docs/design/10 D5). Allocated at boot in every
+    // interface so the slot never arrives mid-act; only the redesign shows it, and Phase 2 fills it.
+    // Not a live region of its own: D02 allows exactly one, and NEXT speaks through announce().
+    v.next = el('div', 'next')
+    v.next.hidden = true
+    scroll.appendChild(v.next)
+
     v.stack = el('div', 'panels')
     scroll.appendChild(v.stack)
 
@@ -1942,6 +1953,9 @@
     if (!view) return 'bottom'
     if (pos === undefined) return view.shell.dataset.console || 'bottom'
     pos = pos === 'top' ? 'top' : 'bottom'
+    // The redesign's voice has one place, under the body, in every act: the A/B is moot there and
+    // its stored answer is kept, untouched, for the interface that still asks the question.
+    if (isD() && pos !== 'top') return 'top'
     setData(view.shell, 'console', pos)
     // The ledger is the anchor at the top and the announcer is the anchor at the foot. At stage 2
     // the ledger carries `order:-1`, so inserting before it still lands the console under the
@@ -1964,6 +1978,108 @@
     // there moves the hero to the foot of the screen where the thumb already rests — a tap's own
     // reward printing under the hand that made it is the fault this settles.
     return recall('hyphae.console') === 'bottom' ? 'bottom' : 'top'
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE REDESIGN · one body, three readings (docs/design/10), behind a switch until it has parity
+  //
+  // `?ui=d` or the interface setting turns it on; `?ui=old` forces it off for one load. It is
+  // presentation only (10 D7): nothing it does is saved in the game, and turning it off puts the
+  // shell back exactly as the stored console and plate choices had it.
+  //
+  // The skeleton is the same in every act, top to bottom: ledger, body window, voice, NEXT, verbs,
+  // nav. Most of it is the existing shell re-ordered by the stylesheet off `data-ui="d"`; what is
+  // here is only what a stylesheet cannot do — move the console node and size the body window.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  function isD () {
+    return !!(view && view.shell.dataset.ui === 'd')
+  }
+
+  function wantedUi () {
+    var w = win()
+    var q = w && w.location && typeof w.location.search === 'string' ? w.location.search : ''
+    var m = /[?&]ui=(d|old)/.exec(q)
+    if (m) return m[1] === 'd' ? 'd' : 'old'
+    return recall('hyphae.ui') === 'd' ? 'd' : 'old'
+  }
+
+  function uiMode (mode) {
+    if (!view) return 'old'
+    if (mode === undefined) return isD() ? 'd' : 'old'
+    var d = doc()
+    mode = mode === 'd' ? 'd' : 'old'
+    if (mode === 'd') {
+      setData(view.shell, 'ui', 'd')
+      if (d) d.documentElement.dataset.ui = 'd'
+      // The voice sits directly under the body, and NEXT directly under the voice.
+      setData(view.shell, 'console', 'top')
+      view.scroll.insertBefore(view.console, view.ledger)
+      view.scroll.insertBefore(view.next, view.stack)
+      // The body window is never folded (U.D_BODY_FRAC); a parked fold is the old shell's.
+      view.autoMin = false
+      if (view.shell.dataset.plate === 'min') delete view.shell.dataset.plate
+      show(view.next, true)
+    } else {
+      delete view.shell.dataset.ui
+      if (d) delete d.documentElement.dataset.ui
+      show(view.next, false)
+      consolePos(wantedConsolePos())
+      if (view.plateShown && recall('hyphae.plate') === 'min') setPlate(true)
+    }
+    store('hyphae.ui', mode)
+    layout()
+    return mode
+  }
+
+  // ── THE GRAMMAR · one set of five in every act (10 §skeleton). Phase 2 onwards builds from
+  // these and nothing else; each is a real <button> or a span, never a styled div.
+  //   read     flat text
+  //   account  a dotted underline, opens where a figure comes from
+  //   verb     a word whose underline draws on press
+  //   locked   a dashed outline; a press shows its one-line why beneath it
+  //   hold     a fill grown along the button; commits at DESTRUCT_MS (bindHold)
+  function gRead (text, cls) {
+    return el('span', 'g-read' + (cls ? ' ' + cls : ''), text)
+  }
+
+  function gAccount (label, onOpen) {
+    var b = btn('g-account')
+    setText(b, label)
+    bindPress(b, onOpen, { onUp: true })
+    return b
+  }
+
+  function gVerb (label, onPick, opts) {
+    var b = btn('g-verb')
+    b.appendChild(el('span', 'g-verb-lab', label))
+    bindPress(b, onPick, { onUp: true, feel: opts && opts.feel })
+    return b
+  }
+
+  function gLocked (label, why) {
+    var wrap = el('div', 'g-locked-wrap')
+    var b = btn('g-locked')
+    setText(b, label)
+    setAttr(b, 'aria-expanded', 'false')
+    var line = el('div', 'g-why', '\u21b3 ' + why)
+    line.hidden = true
+    bindPress(b, function () {
+      var open = line.hidden
+      line.hidden = !open
+      setAttr(b, 'aria-expanded', open ? 'true' : 'false')
+    }, { onUp: true })
+    wrap.appendChild(b)
+    wrap.appendChild(line)
+    return { el: wrap, button: b, why: line, setWhy: function (t) { setText(line, '\u21b3 ' + t) } }
+  }
+
+  function gHold (label, onCommit) {
+    var b = btn('g-hold hold')
+    b.appendChild(el('span', 'hold-fill'))
+    b.appendChild(el('span', 'hold-lab', label))
+    bindHold(b, onCommit)
+    return b
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -2166,7 +2282,8 @@
     if (!view) return
     var w = win()
     var h = view.shell.clientHeight || (w ? w.innerHeight : 780)
-    var px = Math.max(U.PLATE_MIN_PX, Math.round(h * U.PLATE_FRAC[view.stage]))
+    var frac = isD() ? U.D_BODY_FRAC : U.PLATE_FRAC[view.stage]
+    var px = Math.max(U.PLATE_MIN_PX, Math.round(h * frac))
     if (px !== view.plateH) {
       view.plateH = px
       // Written directly, in one frame. Height is a layout property and is never transitioned;
@@ -2188,6 +2305,7 @@
     var s = liveState()
     setTheme(recall('hyphae.theme') || (s ? s.set.theme : 'auto'))
     consolePos(wantedConsolePos())
+    uiMode(wantedUi())
     extendMode(wantedExtendMode())
     applyMotionAttr()
     if (recall('hyphae.verbose') === '1') verbose = true
@@ -2389,7 +2507,7 @@
     // Act I folds too, once its handle exists (stage(): the understory's reveal). Its stack is the
     // longest in the game — about fifteen windowfuls on a phone — and it was read through a band
     // the map never gave back.
-    if (!s || (s.act < 2 && !view.plateShown) || (w && w.innerWidth >= 900)) return
+    if (!s || isD() || (s.act < 2 && !view.plateShown) || (w && w.innerWidth >= 900)) return
     var top = st.scrollTop
     if (view.autoMin) {
       if (top <= 0) { view.autoMin = false; setPlate(false) }
@@ -6710,6 +6828,11 @@
           persist()
         }))
 
+        settingRow(body, STR.uiPick, seg([
+          { value: 'old', label: STR.uiOld },
+          { value: 'd', label: STR.uiNew }
+        ], uiMode(), function (val) { uiMode(val) }))
+
         settingRow(body, STR.verbose, seg([
           { value: 'off', label: STR.off },
           { value: 'on', label: STR.on }
@@ -7294,6 +7417,32 @@
     ok(!onTab(view, { tab: null }, a2), 'an Act I panel survived DECIDE on screen')
     ok(onTab(view, { tab: null }, { act: 1 }), 'an Act I panel is hidden during Act I')
 
+    // The redesign's grammar (docs/design/10): every one a real control or plain text, and a
+    // locked item says why only when asked.
+    ok(gRead('x').tagName === 'SPAN' && gRead('x').className === 'g-read', 'read is not flat text')
+    ok(gVerb('grow', function () {}).tagName === 'BUTTON', 'a verb is not a button')
+    ok(gAccount('Σ', function () {}).tagName === 'BUTTON', 'an account is not a button')
+    var lk = gLocked('extend', 'needs winter')
+    ok(lk.button.tagName === 'BUTTON' && lk.why.hidden, 'a locked why shows before it is asked')
+    ok(lk.why.textContent.indexOf('needs winter') > 0, 'a locked item lost its why')
+    lk.setWhy('3 tips more')
+    ok(lk.why.textContent.indexOf('3 tips more') > 0, 'setWhy did not rewrite the why')
+    var hd = gHold('decide', function () {})
+    ok(hd.querySelector('.hold-fill') && /\bhold\b/.test(hd.className), 'a hold has no fill')
+    // The switch moves the voice under the body and shows NEXT; switching back restores the A/B.
+    var keepUi = recall('hyphae.ui')
+    uiMode('d')
+    ok(view.console.parentNode === view.scroll && !view.next.hidden, 'D: the voice or NEXT is not placed')
+    var kids = Array.prototype.slice.call(view.scroll.children)
+    ok(kids.indexOf(view.plate) < kids.indexOf(view.console) &&
+      kids.indexOf(view.console) < kids.indexOf(view.next) &&
+      kids.indexOf(view.next) < kids.indexOf(view.stack), 'D: the skeleton is out of order')
+    uiMode('old')
+    ok(view.next.hidden && view.shell.dataset.ui === undefined, 'D: switching off left it on')
+    store('hyphae.ui', keepUi === 'd' ? 'd' : 'old')
+    if (d.documentElement.dataset.ui && !(keepView && keepView.shell.dataset.ui === 'd')) delete d.documentElement.dataset.ui
+    if (keepView && keepView.shell.dataset.ui === 'd') d.documentElement.dataset.ui = 'd'
+
     view = keepView
     toastEl = keepToast
     return f
@@ -7323,6 +7472,8 @@
     // The verb A/B, on the same terms. No argument reads it; 'turgor' holds to build pressure and
     // releases, 'tap' is the button the game shipped with. `?verb=tap` picks it on the way in.
     extendMode: extendMode,
+    // The redesign switch (docs/design/10 D6). No argument reads it; 'd' or 'old' sets it.
+    uiMode: uiMode,
 
     // The rest of this module's own surface: the 10 Hz display slot loop.js schedules, the act
     // cinematic, the rotation hook, and the sheet the gear opens.

@@ -58,8 +58,14 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8')
 // meaning anything. Measured and re-baselined at the first playtest round: the gzip figure is
 // the budget (what a phone actually downloads — parse cost tracks it too), set from the measured
 // size plus one act's worth of headroom, and raw is kept only as a drift alarm.
+//
+// Re-baselined again at the redesign's Phase 0 (docs/design/10): taking the self-tests out of the
+// shipped file (stripTests, below) moved it from 980 KB raw / 319 KB gzip to ~758 / ~241. The gzip
+// budget is left where it was ON PURPOSE — its ~79 KB of headroom is what the body renderer, the
+// new act shells and the transitions get to spend, and that is written down here so nobody spends
+// it on anything else. The raw alarm comes down to 860, a hundred over today, to catch drift.
 const BUDGET_GZ_KB = 320
-const BUDGET_KB = 960
+const BUDGET_KB = 860
 
 // ─────────────────────────────────────────────────────────────────────────────
 // JS LEXER
@@ -801,11 +807,28 @@ function minifyShell(html) {
     .split('\n').map((l) => l.trim()).filter(Boolean).join('\n')
 }
 
-function assemble(minify) {
+// THE SELF-TESTS DO NOT SHIP. Every module carries a `function __selftest () {` at module depth
+// (two-space indent), closed by the first `  }` back at that depth. They were ~7,700 source lines,
+// a fifth of the bundle, sent to every phone and run by none. The shipped build swaps each body for
+// `return null`, which debug.selftest reports as "not in this build"; dist/index.test.html is the
+// same minified program with the tests left in, and boot-check runs them there.
+const TEST_OPEN = '\n  function __selftest () {\n'
+const TEST_CLOSE = '\n  }\n'
+function stripTests(src, where) {
+  const at = src.indexOf(TEST_OPEN)
+  if (at < 0) return src
+  if (src.indexOf(TEST_OPEN, at + 1) >= 0) throw new Error(where + ': two __selftest blocks')
+  const end = src.indexOf(TEST_CLOSE, at + TEST_OPEN.length)
+  if (end < 0) throw new Error(where + ': __selftest has no close at module depth')
+  return src.slice(0, at) + '\n  function __selftest () { return null }\n' + src.slice(end + TEST_CLOSE.length)
+}
+
+function assemble(minify, tests) {
+  const src = (f) => (tests ? read(f) : stripTests(read(f), f))
   const css = ORDER.css.map((f) => (minify ? minifyCSS(read(f)) : `/* ${f} */\n${read(f)}`)).join(minify ? '' : '\n\n')
   // The file marker survives minification: it costs nothing next to a megabyte
   // and it is the only landmark left in a stack trace from the shipped build.
-  const js = ORDER.js.map((f) => (minify ? `//${f}\n${minifyJS(read(f), f)}` : `/* ${f} */\n${read(f)}`)).join('\n;\n')
+  const js = ORDER.js.map((f) => (minify ? `//${f}\n${minifyJS(src(f), f)}` : `/* ${f} */\n${src(f)}`)).join('\n;\n')
   const shell = minify ? minifyShell(shellSrc) : shellSrc
   if (minify) {
     // Hand the whole script to the engine's parser before anyone ships it. This
@@ -824,13 +847,15 @@ function assemble(minify) {
 
 mkdirSync(join(ROOT, 'dist'), { recursive: true })
 
-const out = assemble(MINIFY)
+const out = assemble(MINIFY, false)
 writeFileSync(join(ROOT, 'dist/index.html'), out)
+// The tested build: the shipped program byte for byte except that the self-tests are present.
+writeFileSync(join(ROOT, 'dist/index.test.html'), assemble(MINIFY, true))
 
 // Always leave a readable build next to the shipped one. Harnesses that want
 // real line numbers, and anyone bisecting a suspicion about the minifier, load
 // this one instead; it is the same program with the comments still in it.
-const dev = MINIFY ? assemble(false) : out
+const dev = assemble(false, true)
 writeFileSync(join(ROOT, 'dist/index.dev.html'), dev)
 
 // The PWA sidecars the page points at over http(s). The service worker gets

@@ -1671,3 +1671,74 @@ canvas{ display:block; }
   .shell[data-dock="hero"] .hero,
   .shell[data-dock="endbar"] .endbar{ margin-inline:calc(64px + var(--sp-16)); }
 }
+
+/* ══ THE REDESIGN · one body, three readings (docs/design/10) ════════════════
+   Behind data-ui="d" until each act has parity (10 D6). Phase 0 is the skeleton and the grammar;
+   the old panels still mount inside the verbs slot, so everything keeps working.
+
+   Its tokens are BOUND to the semantic layer, never to primitives, so both themes and Act III's
+   cold shift come for free: an act changes what the body and the thread are, nothing else. */
+.shell[data-ui="d"]{
+  --ground:var(--bg); --sunk:var(--bg-sunk); --raised:var(--surface-1);
+  --ink:var(--text-max); --ink-2:var(--text-body); --ink-3:var(--text-tertiary);
+  --rule:var(--line-soft); --rule-2:var(--line);
+  --body:var(--text-primary); --body-old:var(--text-disabled);
+  --thread:var(--signal); --thread-glow:var(--signal-text);
+  --next:var(--attention); --next-ink:var(--attention-text);
+  --danger:var(--negative-text); --locked:var(--text-locked);
+  /* 10 D3: no webfont. ui-serif is New York on Apple platforms, which is the look anyway. */
+  --f-serif:ui-serif, "New York", Georgia, "Times New Roman", serif;
+  --d-next-h:3.5rem;
+  /* The voice is the driver (10 D9): three rows, never fewer, with the newest the brightest.
+     The body and the voice are the two things the screen is for; everything else yields first. */
+  --con-rows:3;
+}
+/* Act I reads the body as ink, Act II as a mind lit by signal, Act III through glass. */
+.shell[data-ui="d"][data-stage="2"]{ --body:var(--signal-fill); }
+:root[data-act="3"] .shell[data-ui="d"]{ --body:var(--text-body); --thread:var(--text-max); }
+
+/* The skeleton, top to bottom in every act: ledger, body window, voice, NEXT, verbs, nav. The
+   ledger leads from the first frame (the old shell only promotes it at stage 2), the body window
+   is one fixed slot that never folds, and nothing reflows when the game changes underneath it. */
+.shell[data-ui="d"] .ledger{ order:-1; border-bottom:1px solid var(--rule); }
+.shell[data-ui="d"] .ledger::after{ content:none; }
+.shell[data-ui="d"] .plate,
+.shell[data-ui="d"]:has(.ledger-row[data-lead="solo"]) .plate{ height:var(--plate-full); }
+.shell[data-ui="d"] .plate > canvas{ height:100%; top:auto; bottom:0; transform:none; }
+.shell[data-ui="d"] .plate-toggle{ display:none; }
+/* A ticker keeps its newest line: the text sits on the slot's floor and older rows leave by the
+   top edge, never a half-line of the newest one cut at the bottom. */
+.shell[data-ui="d"] .console{ border-top:0; border-bottom:1px solid var(--rule);
+  display:flex; flex-direction:column; justify-content:flex-end; }
+.shell[data-ui="d"] .console-inner{ width:100%; }
+.next{ display:none; }
+.shell[data-ui="d"] .next{
+  display:flex; align-items:center; flex:0 0 auto;
+  min-height:var(--d-next-h); padding:0 var(--gutter);
+  border-bottom:1px solid var(--rule);
+  font-family:var(--f-serif); font-style:italic; color:var(--next-ink);
+}
+
+/* ── the grammar: five kinds of thing, told apart by shape as well as colour (06 §0.1 rule 7) ── */
+.g-read{ color:var(--ink-2); }
+.g-account{
+  min-height:var(--tap); padding:0; background:none; border:0; color:inherit; font:inherit;
+  text-decoration:underline dotted var(--ink-3); text-underline-offset:.3em;
+}
+.g-verb{
+  position:relative; min-height:var(--tap); padding:0 2px; background:none; border:0;
+  color:var(--ink); font:inherit; font-family:var(--f-serif); font-size:1.125rem;
+}
+/* The underline draws on press: a scale, so it stays on the compositor (rule 5). */
+.g-verb::after{
+  content:""; position:absolute; inset-inline:2px; bottom:8px; height:1px;
+  background:var(--ink); transform:scaleX(.35); transform-origin:left;
+  transition:transform var(--d-press) var(--ease-out);
+}
+.g-verb[data-press="1"]::after{ transform:scaleX(1); }
+.g-locked{
+  min-height:var(--tap); padding:0 var(--sp-8); background:none; color:var(--locked);
+  border:1px dashed var(--locked); border-radius:2px; font:inherit;
+}
+.g-why{ padding-top:var(--sp-4); color:var(--ink-3); font-family:var(--f-serif); font-style:italic; }
+.g-hold{ min-height:var(--tap); }

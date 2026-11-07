@@ -56,9 +56,47 @@ const booted = await page.evaluate(() => ({
   bodyText: (document.body.innerText || '').slice(0, 500),
 }))
 
-const selftest = await page.evaluate(() => {
+// The shipped page carries no self-tests (build.mjs stripTests), so they run on the test build:
+// the same minified program with the tests left in, booted in a context of its own. Its own,
+// and with workers blocked: the shipped page's service worker answers every navigation in its
+// scope from the cached document, so a page beside it asking for index.test.html gets index.html.
+const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' })
+const tpage = await tctx.newPage()
+tpage.on('pageerror', (e) => errors.push('test build pageerror: ' + e.message))
+tpage.on('console', (m) => { if (m.type() === 'error') errors.push('test build console: ' + m.text()) })
+await tpage.goto(`http://127.0.0.1:${port}/index.test.html`, { waitUntil: 'load' })
+await tpage.waitForTimeout(2000)
+const selftest = await tpage.evaluate(() => {
   try { return window.HY.debug.selftest() } catch (e) { return ['selftest THREW: ' + e.message] }
 })
+await tctx.close()
+
+// The redesign's skeleton (docs/design/10), booted behind its switch: every slot present, in order
+// top to bottom, none overlapping, the body window at its fixed share, and the primary verb inside
+// the bottom 200 px (06 §0.1 rule 2, 10 D4). Its own context, so the switch is not remembered.
+const dctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, serviceWorkers: 'block' })
+const dpage = await dctx.newPage()
+dpage.on('pageerror', (e) => errors.push('ui=d pageerror: ' + e.message))
+await dpage.goto(`http://127.0.0.1:${port}/?ui=d`, { waitUntil: 'load' })
+await dpage.waitForTimeout(1500)
+const skeleton = await dpage.evaluate(() => {
+  const f = []
+  const q = (c) => document.querySelector('.shell ' + c)
+  const slots = ['.ledger', '.plate', '.console', '.next', '.panels', '.hero']
+  const r = slots.map((c) => { const n = q(c); return n ? n.getBoundingClientRect() : null })
+  slots.forEach((c, i) => { if (!r[i] || r[i].height <= 0) f.push(c + ' is missing or empty') })
+  if (f.length) return f
+  for (let i = 1; i < r.length; i++) {
+    if (r[i].top < r[i - 1].bottom - 0.5) f.push(slots[i] + ' overlaps or precedes ' + slots[i - 1])
+  }
+  const h = document.querySelector('.shell').clientHeight
+  const want = Math.round(h * 212 / 844)
+  if (Math.abs(r[1].height - want) > 2) f.push('body window is ' + r[1].height + ' px, want ' + want)
+  if (h - r[5].bottom > 200) f.push('the primary verb is ' + Math.round(h - r[5].bottom) + ' px off the foot')
+  if (document.documentElement.dataset.ui !== 'd') f.push('?ui=d did not switch the interface on')
+  return f
+})
+await dctx.close()
 
 // D05: cold boot, tap as a player would, find when the first automation is affordable.
 const d05 = await page.evaluate(() => {
@@ -83,6 +121,8 @@ console.log('=== BOOT ===')
 console.log(JSON.stringify(booted, null, 1))
 console.log('\n=== D05 first automation ===')
 console.log(JSON.stringify(d05))
+console.log('\n=== D SKELETON ===', skeleton.length ? skeleton.length + ' faults' : 'holds')
+skeleton.forEach((x) => console.log('  - ' + x))
 console.log('\n=== SELFTEST ===', selftest.length, 'failures')
 selftest.slice(0, 30).forEach((s) => console.log('  - ' + s))
 console.log('\n=== RUNTIME ERRORS ===', errors.length)
