@@ -47,3 +47,14 @@ On task b, both judges named the real blocker (minerals) but guessed at the rout
    - "D" is never explained.
 
 **Caveat.** These are AI judges, so they are good at legibility and visual tells, but they are not players. The real test is people playing both; the interface setting switches between them.
+
+## Acted on (same day)
+1. **The voice has six rows, and NEXT is one quiet line.** NEXT fades whenever the voice turns to the player. Measured, the redesign had given the voice 69 px against the shipped 145. Now it has 126.
+2. **DECIDE's words are set in the voice's monospace,** and sit above its box.
+3. **NEXT names the route:** "minerals come from the trees." Touching it opens bargain.
+4. **The ending lights open the endings.**
+5. **NEXT spells D as differentiation.**
+
+Also added, from David's note on what the voice does best ("knowing but not telling"): Act I's Windfall says *"It will say yes, and it will remember."* For the first time, the forest now does remember. On the first pact in Act II, and only if a Windfall was ever taken, the voice says: *"The forest gave once when you had nothing. It has not forgotten."*
+
+Still open: the split ledger number, Act I's empty top third in the first minutes, and the clipped void legend. Round 2 should re-score the voice.

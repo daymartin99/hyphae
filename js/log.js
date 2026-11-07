@@ -483,6 +483,17 @@
     'It becomes something else.',
     { pred: function (s) { return s.stats.everSaturated === true } })
 
+  // The Windfall's debt (David, Nov 2026). Act I's failsafe says "It will say yes, and it will
+  // remember", and for a whole version nothing remembered: the game counted every windfall and never
+  // read the count. This is the forest remembering, said once, hours later, on the first pact the
+  // forest signs with you, and only if you ever asked. It knows and does not tell.
+  L(2, 'a2.windfall_remembered', 'narrative', null, 'windfalls >= 1 && pacts >= 1',
+    'The forest gave once when you had nothing. It has not forgotten.',
+    { pred: function (s) {
+      var b = s.a2 && s.a2.pact
+      return num(s.stats.windfalls) >= 1 && !!(b && b.pacts && b.pacts.length >= 1)
+    } })
+
   L(2, 'a2.first_insight', 'narrative', 'pos', 'insight >= 1',
     'Nothing overflowed. It went somewhere.',
     { pred: function (s) { return s.res.insight >= 1 } })
@@ -3247,7 +3258,7 @@
     // corpus was transcribed, `a2.brim` says the saturation rule the Insight strip turns on,
     // `a3.unlearn` is the receipt for the D the Act III break hands back, and `a3.revive` is the
     // canopy's seed coming back from zero craft. Each is one line and each is counted, not excused.
-    ok(LINES.length === 162, 'corpus is ' + LINES.length + ' entries, expected 162')
+    ok(LINES.length === 163, 'corpus is ' + LINES.length + ' entries, expected 163')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3256,7 +3267,7 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 48, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 39, 'act II lines: ' + counts.a2)
+    ok(counts.a2 === 40, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 27, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
