@@ -56,21 +56,24 @@
 
     // 1 · Clock. Season phase and the boundary events that hang off it. The loop moves the clock
     //     only where no act module is there to move it, so it is advanced exactly once per tick.
-    if (seasonOwnsClock) a1.stepSeason(dt, o)
+    // Every Act I step is run under its name for the ledger's accounts (core flowAs, 10 Phase 2):
+    // a stock it moves is filed under it, and the accounts are the same writes as the stocks.
+    var F = HY.core.flowAs
+    if (seasonOwnsClock) F('season', a1.stepSeason, dt, o)
     else s.t += dt
 
     // 2 · Environment. Offline this relaxes toward the seasonal mean because
     //     the modules read opts.stochastic rather than drawing.
-    if (act === 1 && a1) a1.stepEnvironment(dt)
+    if (act === 1 && a1) F('weather', a1.stepEnvironment, dt)
     if (act === 2 && HY.flush) HY.flush.stepWeather(dt, o)
 
     // 3 · Supply — BEFORE production, always (§4.1). Production reads stocks
     //     that supply has just written.
-    if (act === 1 && ec) { ec.stepMarket(dt, o); ec.stepTrees(dt) }
+    if (act === 1 && ec) { F('standing order', ec.stepMarket, dt, o); F('trees', ec.stepTrees, dt) }
     if (act === 2 && HY.forest) HY.forest.stepSupply(dt, o)
 
     // 4 · Production.
-    if (act === 1 && a1) a1.stepDecomposition(dt)
+    if (act === 1 && a1) F('eaten', a1.stepDecomposition, dt)
     if (act === 2 && HY.forest) HY.forest.stepDecomp(dt, o)
     if (act === 3 && HY.bloom) HY.bloom.stepHarvest(dt, o)
 
@@ -82,21 +85,21 @@
     if (act === 3 && HY.bloom) HY.bloom.stepAllocation(dt, o)
 
     // 7 · Caps and spoilage. The signal clamp is deliberately not here.
-    if (act === 1 && a1) a1.stepSpoilage(dt)
+    if (act === 1 && a1) F('spoiled', a1.stepSpoilage, dt)
     if (act >= 2 && HY.flush) HY.flush.stepSpoilage(dt, o)
 
     // 8 · The strategic layer.
-    if (act === 1 && ec) ec.deliverContracts(dt, o)
+    if (act === 1 && ec) F('contracts', ec.deliverContracts, dt, o)
     if (act >= 2 && ec) ec.stepMineralExchange(dt, o)
     if (act === 2 && HY.pactbook) HY.pactbook.step(dt, o)
     if (act === 3 && HY.divergence) HY.divergence.stepEngagements(dt, o)
 
     // 9 · Cognition. The clamp sits here, after every producer and consumer of
     //     Signal has run, so saturation is measured on the net.
-    if (HY.cognition) HY.cognition.step(dt, o)
+    if (HY.cognition) F('growth', HY.cognition.step, dt, o)
 
     // 10 · Territory.
-    if (act === 1 && a1) { a1.stepClaim(); a1.stepNeighbours(s, false) }
+    if (act === 1 && a1) { F('claims', a1.stepClaim); F('neighbours', a1.stepNeighbours, s, false) }
     if (act === 2 && HY.world) HY.world.step(dt, o)
     if (act === 3 && HY.bloom) HY.bloom.stepExploration(dt, o)
 
@@ -116,7 +119,7 @@
 
     // 15 · Unlocks. Last of the gameplay steps: a project must never be revealed
     //      against a half-updated world.
-    if (HY.projects) HY.projects.manageProjects(s)
+    if (HY.projects) F('spent', HY.projects.manageProjects, s)
 
     // 16 · Log, at 1 Hz.
     tickNo++

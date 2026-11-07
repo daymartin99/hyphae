@@ -237,6 +237,21 @@
     theme: 'theme', haptics: 'haptics', motion: 'motion', slow: 'slow',
     verbose: 'spoken status', tier: 'detail', textSize: 'text size',
     uiPick: 'interface', uiOld: 'current', uiNew: 'new, in progress',
+
+    // THE ACCOUNTS (10 Phase 2): a ledger figure, opened. Facts only, in the plain register.
+    acctFrom: 'comes from', acctTo: 'goes to', acctNet: 'net',
+    acctNone: 'nothing has moved it in the last minute.',
+    acctWhyDown: '{a} takes more than {b} brings.',
+    acctWhyUp: '{b} carries it.',
+    acctWhyOnly: 'only {a} moves it.',
+    acctPerS: '{n}/s',
+    // NEXT (10 D5): what is nearest, and what it costs. Never what to do.
+    nextDecide: 'decide is held below. it does not undo.',
+    nextAfford: '{name} is within reach.',
+    nextShort: '{name}: {n} short.',
+    nextShortEta: '{name}: {n} short, about {t} at this rate.',
+    nextTipName: 'a tip',
+    dGrow: 'grow', dLearn: 'learn', dBargain: 'bargain',
     save: 'save', reset: 'reset',
     auto: 'auto', dark: 'dark', light: 'light', on: 'on', off: 'off',
     high: 'high', med: 'med', low: 'low',
@@ -1781,6 +1796,11 @@
     v.ledgerRows = []
     var keys = ['biomass', 'sugar', 'minerals', 'net']
     for (var i = 0; i < U.LEDGER_MAX_ROWS; i++) v.ledgerRows.push(ledgerRow(ledger, keys[i]))
+    // 10 Phase 2: in the redesign a figure is an account. The row asks its key at the tap, because
+    // rows are re-keyed as the acts change what the strip is showing.
+    v.ledgerRows.forEach(function (r) {
+      bindPress(r.el, function () { if (isD()) openAccount(r.el.dataset.key) }, { onUp: true, quiet: true })
+    })
     v.ledgerRows[0].el.dataset.lead = 'solo'
 
     var gear = btn('gear')
@@ -1795,7 +1815,9 @@
     // ── NEXT: the redesign's one factual line (docs/design/10 D5). Allocated at boot in every
     // interface so the slot never arrives mid-act; only the redesign shows it, and Phase 2 fills it.
     // Not a live region of its own: D02 allows exactly one, and NEXT speaks through announce().
+    // A touch takes you to the verb it names, which is the one thing NEXT may do besides state.
     v.next = el('div', 'next')
+    bindPress(v.next, function () { if (isD() && nextGroup) setDTab(nextGroup) }, { onUp: true, quiet: true })
     v.next.hidden = true
     scroll.appendChild(v.next)
 
@@ -1907,6 +1929,7 @@
       })
     })
     shell.appendChild(bar)
+    shell.appendChild(buildDNav(v))
 
     // ── the console: the only *visible* live region, and log.js owns every word of it ──
     var con = el('footer', 'console')
@@ -1923,6 +1946,8 @@
     // once the log tab has been earned.
     bindPress(con, function () {
       var s = liveState()
+      // In the redesign the whole record is one touch away in every act (10 D9).
+      if (isD()) { openVoice(); return }
       if (!s || s.act < 2 || !view || view.tab === 'log') return
       var lt = null
       view.tabs.forEach(function (x) { if (x.key === 'log') lt = x })
@@ -2001,6 +2026,256 @@
   // nav. Most of it is the existing shell re-ordered by the stylesheet off `data-ui="d"`; what is
   // here is only what a stylesheet cannot do — move the console node and size the body window.
   // ───────────────────────────────────────────────────────────────────────────
+
+  // ── THE ACCOUNTS · a ledger figure opened to where it comes from and where it goes ──
+  // core files every write to a stock under the step that made it (core flowAs); this samples
+  // those running totals once a display slot, per second of GAME time, so a slowed or sped clock
+  // reads the same, and an offline catch-up (one enormous step) is dropped rather than averaged in.
+  var FLOW_LAB = {
+    eaten: 'eaten from the floor', 'standing order': 'the standing order', trees: 'the trees',
+    contracts: 'contracts', spoiled: 'spoiled past the cap', touch: 'extend', bought: 'litter bought',
+    sold: 'litter sold', spent: 'growth bought', 'exit fees': 'exit fees', traded: 'minerals traded',
+    season: 'the season', weather: 'the weather', claims: 'claims', neighbours: 'neighbours',
+    growth: 'growth', minerals: 'the mineral exchange', other: 'other'
+  }
+  var ACCT_KEY = { biomass: 'biomass', sugar: 'sugar', net: 'sugar', minerals: 'minerals' }
+  var ACCT_ALPHA = 0.25          // EWMA weight per sample: about a minute of memory at 1 Hz
+  var ACCT_MAX_DT = 30           // s of game time: a gap longer than this is a catch-up, not a rate
+  var acct = { last: null, t: -1, rate: {}, open: null }
+
+  function sampleFlows (s) {
+    var f = C().flows ? C().flows() : null
+    if (!f || !s) return
+    var t = num(s.t)
+    if (acct.last && t > acct.t && t - acct.t <= ACCT_MAX_DT) {
+      var dt = t - acct.t
+      for (var k in f) {
+        var r = acct.rate[k] || (acct.rate[k] = {})
+        var was = acct.last[k] || {}
+        for (var tag in f[k]) {
+          var x = (f[k][tag] - (was[tag] || 0)) / dt
+          r[tag] = r[tag] === undefined ? x : r[tag] + ACCT_ALPHA * (x - r[tag])
+        }
+        for (var old in r) if (!(old in f[k])) r[old] *= 1 - ACCT_ALPHA
+      }
+    }
+    if (t !== acct.t) {
+      var snap = {}
+      for (var k2 in f) { snap[k2] = {}; for (var g in f[k2]) snap[k2][g] = f[k2][g] }
+      acct.last = snap
+      acct.t = t
+    }
+  }
+
+  // The rows of one account, largest first, with anything under a thousandth of the largest left
+  // out: a flow nobody could see on the stock is not one worth a line.
+  function accountRows (key) {
+    var r = acct.rate[key] || {}, ins = [], outs = [], top = 0, net = 0, tag
+    for (tag in r) top = Math.max(top, Math.abs(r[tag]))
+    for (tag in r) {
+      var x = r[tag]
+      net += x
+      if (!(Math.abs(x) > top * 1e-3) || !(Math.abs(x) > 1e-9)) continue
+      ;(x > 0 ? ins : outs).push({ tag: tag, lab: FLOW_LAB[tag] || tag, v: x })
+    }
+    ins.sort(function (a, b) { return b.v - a.v })
+    outs.sort(function (a, b) { return a.v - b.v })
+    return { ins: ins, outs: outs, net: net }
+  }
+
+  function acctAmount (key, v) {
+    var a = Math.abs(v)
+    var str = key === 'minerals' ? C().fmt(a) + ' ' + GLYPH.minerals
+      : key === 'sugar' ? C().fmt(a) + ' ' + GLYPH.sugar : C().fmtMass(a)
+    return (v < 0 ? '\u2212' : '+') + interp(STR.acctPerS, { n: str })
+  }
+
+  function acctWhy (rows) {
+    var a = rows.outs[0], b = rows.ins[0]
+    if (a && b) return rows.net < 0 ? interp(STR.acctWhyDown, { a: a.lab, b: b.lab }) : interp(STR.acctWhyUp, { b: b.lab })
+    if (a || b) return interp(STR.acctWhyOnly, { a: (a || b).lab })
+    return STR.acctNone
+  }
+
+  function fillAccount (body, key) {
+    clear(body)
+    var rows = accountRows(key)
+    function section (title, list) {
+      if (!list.length) return
+      body.appendChild(el('div', 'acct-head', title))
+      list.forEach(function (x) {
+        var r = el('div', 'acct-row')
+        r.appendChild(el('span', 'acct-lab', x.lab))
+        r.appendChild(el('span', 'acct-v num', acctAmount(key, x.v)))
+        body.appendChild(r)
+      })
+    }
+    section(STR.acctFrom, rows.ins)
+    section(STR.acctTo, rows.outs)
+    var n = el('div', 'acct-row acct-net')
+    n.appendChild(el('span', 'acct-lab', STR.acctNet))
+    n.appendChild(el('span', 'acct-v num', acctAmount(key, rows.net)))
+    body.appendChild(n)
+    body.appendChild(el('p', 'g-why', acctWhy(rows)))
+  }
+
+  function openAccount (rowKey) {
+    var key = ACCT_KEY[rowKey]
+    if (!key) return false
+    var sh = sheet({ id: 'acct', title: key })
+    fillAccount(sh.body, key)
+    acct.open = { key: key, sh: sh }
+    sh.open()
+    return true
+  }
+
+  function syncAccount () {
+    var o = acct.open
+    if (!o) return
+    if (o.sh.el.dataset.open !== '1') { acct.open = null; return }
+    fillAccount(o.sh.body, o.key)
+  }
+
+  // ── NEXT · the nearest thing, and what stands between (10 D5). It states; it never advises.
+  // DECIDE first, because it is the one thing on screen that cannot be undone. Then whatever is
+  // already affordable, then the nearest shortfall (with how long it is at the stock's own net
+  // rate, when that rate is climbing), then the next tip, which is always there to be had.
+  var nextGroup = null
+
+  function nextLine (s) {
+    var pj = PJ(), i
+    nextGroup = null
+    if (!s || s.act !== 1 || !pj) return ''
+    if (pj.refusal && pj.refusal('decide') === null) return STR.nextDecide
+    // Candidates: every buyable thing on screen, and the next tip, priced in full ({ g, min }) so
+    // its real blocker is named, which is often minerals rather than the grams beside it.
+    var cands = []
+    var list = pj.visible ? pj.visible() : []
+    for (i = 0; i < list.length; i++) {
+      var p = list[i]
+      if (!p.buyable || p.id === 'decide' || pj.isBought(p.id)) continue
+      cands.push({ name: p.title.toLowerCase(), price: pj.priceOf(p.id) || {}, ok: pj.refusal(p.id) === null, group: 'learn' })
+    }
+    if (A1() && A1().tipCost) {
+      var tp = { g: num(A1().tipCost()) }
+      if (A1().tipMineralCost) tp.min = num(A1().tipMineralCost())
+      cands.push({ name: STR.nextTipName, price: tp, ok: true, group: 'grow' })
+    }
+    var best = null, bestR = Infinity
+    for (i = 0; i < cands.length; i++) {
+      var c = cands[i], r = 0, k
+      for (k in c.price) {
+        var need = num(c.price[k])
+        if (!(need > 0)) continue
+        var held = pj.holding(k)
+        // Nothing held is not infinitely far: two prices in a stock at zero still differ, and the
+        // smaller one is nearer. A vanishing floor keeps that order without inventing a rate.
+        r = Math.max(r, need / Math.max(held, 1e-9))
+      }
+      c.r = r
+      if (r <= 1 && !c.ok) continue
+      if (r < bestR || (r === bestR && !best)) { best = c; bestR = r }
+    }
+    if (!best) return ''
+    nextGroup = best.group
+    if (bestR <= 1) return interp(STR.nextAfford, { name: best.name })
+    var worst = null, gap = 0, kk
+    for (kk in best.price) {
+      var nd = num(best.price[kk]), hd = pj.holding(kk)
+      if (nd > hd) {
+        var g2 = hd > 0 ? nd / hd : Infinity
+        if (!worst || g2 > gap) { worst = kk; gap = g2 }
+      }
+    }
+    if (!worst) return ''
+    var short = num(best.price[worst]) - pj.holding(worst)
+    var unit = worst === 'g' ? C().fmtMass(short)
+      : C().fmt(short) + ' ' + (worst === 'sug' ? GLYPH.sugar : worst === 'min' ? GLYPH.minerals : worst)
+    var stockKey = worst === 'g' ? 'biomass' : worst === 'sug' ? 'sugar' : worst === 'min' ? 'minerals' : null
+    var rate = stockKey ? accountRows(stockKey).net : 0
+    if (rate > 0 && C().fmtTime) return interp(STR.nextShortEta, { name: best.name, n: unit, t: C().fmtTime(short / rate) })
+    return interp(STR.nextShort, { name: best.name, n: unit })
+  }
+
+  // ── THE VOICE, IN FULL · a touch on the ticker opens everything it has said (10 D9). The voice
+  // is the driver, so its whole record is one touch away in every act, not a tab Act I never has.
+  function openVoice () {
+    var lg = LOG()
+    var ring = lg && lg.ringBuffer ? lg.ringBuffer() : []
+    var sh = sheet({ id: 'voice', title: STR.p_log })
+    var host = el('div', 'logring logring--voice')
+    for (var i = ring.length - 1; i >= 0; i--) host.appendChild(el('p', 'logline', ring[i].text))
+    sh.body.appendChild(host)
+    sh.open()
+    return sh
+  }
+
+  function paintNext (v, s) {
+    if (!v.next) return
+    var line = nextLine(s)
+    setText(v.next, line)
+    setData(v.next, 'empty', line ? '0' : '1')
+  }
+
+  // ── ACT I'S THREE WORDS · the long scroll, cut into verbs (10 Phase 2). Act I has no tab bar in the
+  // old shell; in the redesign it has the same bottom slot Act II's bar occupies, holding words
+  // rather than glyphs. A word arrives with the first panel it would hold, so the nav grows one
+  // verb at a time, and while only one has arrived there is no nav at all.
+  var D_GROUP = { tips: 'grow', floor: 'grow', seasons: 'grow', patches: 'grow', signal: 'grow',
+    adaptations: 'learn', understory: 'bargain' }
+  var D_GROUPS = ['grow', 'learn', 'bargain']
+
+  function buildDNav (v) {
+    var bar = el('nav', 'dnav')
+    bar.setAttribute('role', 'tablist')
+    bar.hidden = true
+    v.dnav = bar
+    v.dtab = 'grow'
+    v.dtabs = {}
+    D_GROUPS.forEach(function (g) {
+      var b = btn('dnav-tab')
+      b.setAttribute('role', 'tab')
+      b.appendChild(el('span', 'dnav-lab', STR['d' + g.charAt(0).toUpperCase() + g.slice(1)]))
+      b.hidden = true
+      bindPress(b, function () { setDTab(g) }, { onUp: true })
+      bar.appendChild(b)
+      v.dtabs[g] = b
+    })
+    return bar
+  }
+
+  function setDTab (g) {
+    if (!view || !view.dtabs || !view.dtabs[g]) return null
+    view.dtab = g
+    D_GROUPS.forEach(function (k) {
+      var on = k === g
+      setAttr(view.dtabs[k], 'aria-selected', on ? 'true' : 'false')
+      view.dtabs[k].tabIndex = on ? 0 : -1
+    })
+    if (view.stack) view.stack.scrollTop = 0
+    return g
+  }
+
+  // Which words have something to hold; the nav shows only when at least two do.
+  function paintDNav (v, s) {
+    if (!v.dnav) return
+    var live = isD() && s && s.act === 1
+    var have = {}, n = 0
+    if (live) {
+      v.order.forEach(function (id) {
+        var g = D_GROUP[id]
+        if (g && v.panels[id].shown && !have[g]) { have[g] = true; n++ }
+      })
+    }
+    var on = live && n >= 2
+    show(v.dnav, on)
+    D_GROUPS.forEach(function (g) { show(v.dtabs[g], on && !!have[g]) })
+    if (on && !have[v.dtab]) setDTab('grow')
+    else if (on) setDTab(v.dtab)
+    setData(v.shell, 'dnav', on ? '1' : '0')
+  }
+
+  function dnavOn (v) { return !!(v.dnav && !v.dnav.hidden) }
 
   function isD () {
     return !!(view && view.shell.dataset.ui === 'd')
@@ -3627,6 +3902,12 @@
     var rev = revealFlags(s)
     v.rev = rev
     updateRates(v, s)
+    if (isD()) {
+      sampleFlows(s)
+      paintNext(v, s)
+      syncAccount()
+    }
+    paintDNav(v, s)
     stage(v, s, rev)
     tabs(v, s, rev)
     needDot(v, s)
@@ -3749,7 +4030,7 @@
   // earned is still in the stack.
   function onTab (v, p, s) {
     if (p.live && !p.live(s, v.rev || COLD)) return false
-    if (s.act < 2) return true
+    if (s.act < 2) return !(isD() && dnavOn(v) && D_GROUP[p.id]) || D_GROUP[p.id] === v.dtab
     return p.tab === v.tab
   }
 
@@ -7453,6 +7734,21 @@
     ok(!onTab(view, { tab: 'mind' }, a2), 'an unselected tab is painting')
     ok(!onTab(view, { tab: null }, a2), 'an Act I panel survived DECIDE on screen')
     ok(onTab(view, { tab: null }, { act: 1 }), 'an Act I panel is hidden during Act I')
+
+    // The accounts (10 Phase 2): rows sort largest first, sum to the net, and the why names the
+    // biggest sink against the biggest source.
+    var keepRate = acct.rate
+    acct.rate = { sugar: { eaten: 26.9, 'standing order': -29.2, other: 1e-7 } }
+    var ar = accountRows('sugar')
+    ok(ar.ins.length === 1 && ar.outs.length === 1, 'accounts: a vanishing flow got a line')
+    ok(Math.abs(ar.net - (26.9 - 29.2 + 1e-7)) < 1e-9, 'accounts: the rows do not sum to the net')
+    ok(acctWhy(ar) === interp(STR.acctWhyDown, { a: FLOW_LAB['standing order'], b: FLOW_LAB.eaten }),
+      'accounts: the why did not name the standing order against the floor')
+    acct.rate = keepRate
+    // NEXT states and never advises: no line of it may read as an instruction.
+    ;['nextDecide', 'nextAfford', 'nextShort', 'nextShortEta'].forEach(function (k) {
+      ok(!/\b(you should|try|tap|buy|consider)\b/i.test(STR[k]), 'NEXT advises: ' + k)
+    })
 
     // The redesign's grammar (docs/design/10): every one a real control or plain text, and a
     // locked item says why only when asked.
