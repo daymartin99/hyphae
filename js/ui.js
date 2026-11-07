@@ -251,7 +251,7 @@
     nextShort: '{name}: {n} short.',
     nextShortEta: '{name}: {n} short, about {t} at this rate.',
     // A/B round 1: both interfaces showed the blocker and hid the route. Minerals come from the trees.
-    nextShortMin: '{name}: {n} short. minerals come from the trees.',
+    nextShortMin: '{name}: {n} short. minerals come from the trees, under bargain.',
     nextShortMinNone: '{name}: {n} short. nothing pays minerals yet.',
     nextTipName: 'a tip',
     dGrow: 'grow', dLearn: 'learn', dBargain: 'bargain',
