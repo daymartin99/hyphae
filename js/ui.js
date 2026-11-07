@@ -112,6 +112,7 @@
     STANDS_FRONTIER: 4,       // of those rows, how many always go to ground you could take next
     FLUSH_BET_MAX: 0.25,      // fraction of held biomass the stake slider spans
     FLUSH_BET_DEFAULT: 0.40,  // of that span, so the slider opens on 10% of the book
+    BANK_FRACS: [0.10, 0.25], // Seed Bank's two sizes, as fractions of the labile the exit spares
 
     // Act III panels
     BANDS_SHOWN: 13,          // 03 §6.1 has thirteen and every one of them is a decision
@@ -303,6 +304,11 @@
     noPrimordia: 'nothing is fruiting. knot one, and the weather decides the rest.',
     fruit: 'fruit',
     slotsFull: 'every slot is knotted',
+    seedBank: 'seed bank',
+    spare: 'spare',
+    nothingSpare: 'nothing spare',
+    bankNote: 'labile carbon banked as spores, {g} each. banked spores do not decay, and ' +
+      'the grams the discharge asks for are never touched.',
 
     channels: 'channels',
     accord: 'accord',
@@ -5213,6 +5219,14 @@
     return api
   }
 
+  // Labile carbon the exit does not need: what ASCOSPORE asks in grams stays where it is.
+  function bankSpare (s) {
+    var pj = PJ()
+    var price = pj && pj.priceOf ? pj.priceOf('ascospore_discharge') : null
+    var keep = price && price.g ? num(price.g) : 0
+    return Math.max(0, num(s.res.biomass) - keep)
+  }
+
   function buildFlush (v, p) {
     var pv = panel('flush', { title: STR.p_flush })
 
@@ -5268,6 +5282,43 @@
     actLine.appendChild(acts)
     pv.body.appendChild(head.el)
 
+    // Seed Bank's verb. The card promises "labile carbon to spores" and flush.convert() has done
+    // it since the module landed, but only the stand-in could reach it: a player who bought the
+    // project got the decay switched off and no way to spend the other half of the sentence. The
+    // two sizes are fractions of what the exit leaves SPARE, because ASCOSPORE is priced in grams
+    // and spores both, and a conversion that ate the gram leg would pay for one half of the exit
+    // with the other — the same floor loop.js's topUpSpores() keeps.
+    var bank = row({})
+    var bankL0 = bank.line()
+    span(bankL0, 'row-name', STR.seedBank)
+    span(bankL0, 'row-sub', STR.spare)
+    var spareN = slot('row-num')
+    bankL0.appendChild(spareN)
+    var bankL1 = bank.line()
+    var bankTxt = span(bankL1, 'row-sub', '')
+    var bankBurst = el('div', 'burst')
+    bankL1.appendChild(bankBurst)
+    var bankBtns = U.BANK_FRACS.map(function (f) {
+      var b = btn('')
+      span(b, 'num', pct(f))
+      bindPress(b, function () {
+        var s = liveState()
+        var fl = HY.flush
+        var g = s ? bankSpare(s) * f : 0
+        if (!fl || !fl.convert || !(g > 0) || !commit(function () { return fl.convert(g) })) {
+          refuse(b)
+          return
+        }
+        flashSlot(sporesN, 'gain')
+      }, { onUp: true })
+      bankBurst.appendChild(b)
+      return b
+    })
+    bank.el.appendChild(el('p', 'row-note',
+      interp(STR.bankNote, { g: C().fmtMass(T().A2.SPORE_DIVISOR) })))
+    show(bank.el, false)
+    pv.body.appendChild(bank.el)
+
     var bag = {}
     p.__sync = function (s) {
       var fl = HY.flush
@@ -5276,6 +5327,22 @@
       var free = fl.used() < fl.slots()
       setSlot(slotsN, interp(STR.slotsUsed, { n: fl.used(), k: fl.slots() }), '')
       setSlot(sporesN, C().fmt(num(s.res.spores)), GLYPH.spores)
+      var banking = flagOn(s, 'seed_bank') && !!fl.convert
+      show(bank.el, banking)
+      if (banking) {
+        var spare = bankSpare(s)
+        setMass(spareN, spare)
+        // A spore is a whole number of SPORE_DIVISOR grams, so a size that floors to nothing is
+        // refused rather than offered: the button must not look like it does something it cannot.
+        var div = T().A2.SPORE_DIVISOR
+        for (var bi = 0; bi < bankBtns.length; bi++) {
+          var got = Math.floor(spare * U.BANK_FRACS[bi] / div)
+          setData(bankBtns[bi], 's', got > 0 ? 'afford' : 'want')
+          setAttr(bankBtns[bi], 'aria-label', STR.seedBank + ' ' + pct(U.BANK_FRACS[bi]) + ', ' +
+            C().fmt(got) + ' ' + STR.spores)
+        }
+        setText(bankTxt, spare >= div ? '' : STR.nothingSpare)
+      }
       var vol = num(s.res.biomass) * (bet.value() / U.SLIDER_STEPS) * U.FLUSH_BET_MAX
       bet.setMassReadout(vol, STR.stake + ' ' + C().fmtMass(vol))
       show(fruitBtn, free)
