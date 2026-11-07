@@ -450,13 +450,12 @@ canvas{ display:block; }
   bottom:0; margin-top:calc(var(--sp-16) * -1); height:var(--sp-16);
   background:linear-gradient(transparent, var(--bg)); pointer-events:none;
 }
-/* The FAB no longer takes a band of its own under the panels: that ~96 px lane existed only to
-   give the button somewhere to be, and it cost Act III a third of its panel space. With SETTLE on
-   screen the button docks beside it (ui.js dockFab, and the dock rules at the end of this sheet);
-   without it the button floats over the list, and the list pads its end by the button's height
-   and gaps so the last card — "standing", a band's richness — always scrolls clear of it. */
+/* The FAB's lane. With SETTLE or the ending bar on screen the button docks beside it (ui.js
+   dockFab, and the dock rules at the end of this sheet) and the lane collapses; with nothing to
+   dock beside, the button gets its own lane under the panels again, because floating over the
+   list it sat on live numbers. */
 .tail{ flex:0 0 auto; height:calc(var(--sp-8) + var(--tail-safe)); }
-.shell[data-fab="1"]:not([data-dock="1"]) .panels{ padding-bottom:calc(64px + var(--sp-24) + var(--sp-8)); }
+.shell[data-fab="1"]:not([data-dock]) .tail{ height:calc(64px + var(--sp-24) + var(--sp-8) + var(--tail-safe)); }
 
 /* ══ LEDGER / STATUS STRIP · 06 §5.1 ═══════════════════════════════════════ */
 
@@ -1645,10 +1644,12 @@ canvas{ display:block; }
 :root[data-numfont="mono"] .num,
 :root[data-numfont="mono"] [data-num]{ font-family:var(--font-mono); }
 
-/* The docked FAB's partner: SETTLE narrows to sit centred between the column edge and the button,
+/* The docked FAB's partner: SETTLE (or the ending bar) narrows to sit centred between the column edge and the button,
    on the button's centre line. Last in the sheet, so it wins over every earlier hero width. */
-.shell[data-dock="1"] .hero{ width:auto; min-width:0; max-width:280px; margin-top:var(--sp-8);
+.shell[data-dock="hero"] .hero,
+.shell[data-dock="endbar"] .endbar{ width:auto; min-width:0; max-width:280px; margin-top:var(--sp-8);
                              margin-inline:calc(var(--gutter) + 64px + var(--sp-12)); }
 @media (min-width:900px){
-  .shell[data-dock="1"] .hero{ margin-inline:calc(64px + var(--sp-16)); }
+  .shell[data-dock="hero"] .hero,
+  .shell[data-dock="endbar"] .endbar{ margin-inline:calc(64px + var(--sp-16)); }
 }
