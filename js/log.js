@@ -397,6 +397,21 @@
   L(1, 'a1.first_default', 'narrative', 'neg', '@defaultContract',
     'you did not deliver. it will not say so to you. it will say so to them.')
 
+  // The dead-spot pass (ab/deadspot-1): a casual run defaulted nine times and heard about it once,
+  // then sat at 24 tips for 25 minutes with reputation at 0 and nothing saying why. The watcher
+  // knew. It names the cause without naming the fix: the terms were bigger than the player.
+  L(1, 'a1.default_again', 'narrative', 'neg', '@defaultContract',
+    'you promised more than you are.',
+    { once: false, cooldown: 900 })
+
+  L(1, 'a1.default_known', 'narrative', 'neg', '@defaultContract',
+    'they have stopped asking what you are. they know.',
+    { once: false, cooldown: 900 })
+
+  L(1, 'a1.refusal_lifts', 'world', null, '@refusalLifts',
+    'the one you failed will speak to you again. it has not forgotten.',
+    { once: false, cooldown: 600 })
+
   L(1, 'a1.rep_thresh', 'world', null, 'netRep >= 38',
     'four of them are rooted within a metre of you. none arrived by accident.',
     { pred: function (s) { return s.a1.netRep >= REP_THRESH } })
@@ -3266,8 +3281,9 @@
     // 162, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
     // corpus was transcribed, `a2.brim` says the saturation rule the Insight strip turns on,
     // `a3.unlearn` is the receipt for the D the Act III break hands back, and `a3.revive` is the
-    // canopy's seed coming back from zero craft. Each is one line and each is counted, not excused.
-    ok(LINES.length === 163, 'corpus is ' + LINES.length + ' entries, expected 163')
+    // canopy's seed coming back from zero craft. `a1.default_again`, `a1.default_known` and
+    // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends (ab/deadspot-1). Each is counted, not excused.
+    ok(LINES.length === 166, 'corpus is ' + LINES.length + ' entries, expected 166')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3275,7 +3291,7 @@
     }
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
-    ok(counts.a1 === 48, 'act I lines: ' + counts.a1)
+    ok(counts.a1 === 51, 'act I lines: ' + counts.a1)
     ok(counts.a2 === 40, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 27, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)

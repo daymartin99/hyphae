@@ -1029,6 +1029,11 @@
   function driftRep (t, dt, season) {
     var s = S()
     if (num(t.refuseUntil) > num(s.t)) return
+    // The lock is time, and it ends (David: failure costs, but it is known; no soft lock). The
+    // watcher marks the end of it, so the player knows the door is open again without being told
+    // to walk through it.
+    // Frost also closes a tree for a season; only a tree the player failed is spoken of.
+    if (t.failed) { t.failed = 0; say('a1.refusal_lifts') }
     var implied = C().clamp(CT.NEW_REP_A + CT.NEW_REP_B * num(s.a1.netRep),
       CT.NEW_REP_MIN, CT.NEW_REP_MAX)
     if (num(t.rep) >= implied) return
@@ -1391,6 +1396,7 @@
     if (tree) {
       tree.rep = C().clamp(num(tree.rep) - CT.REP_FAIL * num(s.mult.arbitration), 0, T().A1.REP_MAX)
       tree.refuseUntil = num(s.t) + CT.REFUSE_SEASONS * T().CLOCK.SEASON_S
+      tree.failed = 1
       // The collateral is forfeit, and it makes the tree healthier — which raises its intake and
       // its photosynthesis. The tree you failed now needs you less. One line, and it is the
       // cruellest number in the act.
@@ -1400,7 +1406,9 @@
     C().setStock(s.a1, 'netRep',
       num(s.a1.netRep) - CT.NETREP_FAIL * num(s.mult.arbitration), T().A1.REP_MAX)
     s.stats.defaults += 1
-    say('a1.first_default')
+    // The first, then the cause, then (while the regard is gone) what it means. See log.js.
+    var nd = s.stats.defaults
+    say(nd <= 1 ? 'a1.first_default' : (nd === 2 || num(s.a1.netRep) >= 10) ? 'a1.default_again' : 'a1.default_known')
   }
 
   // ───────────────────────────────────────────────────────────────────────────
