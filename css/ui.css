@@ -1341,7 +1341,14 @@ canvas{ display:block; }
 /* A cut covers the whole screen, not just the column the curtain lives in (ui.js seqStep 'cut'). */
 .shell[data-cut="black"] .console,.shell[data-cut="black"] .tabbar{ background:#000; border-color:#000; }
 .shell[data-cut="white"] .console,.shell[data-cut="white"] .tabbar{ background:#fff; border-color:#fff; }
-.shell[data-cut] .console > *,.shell[data-cut] .tabbar > *{ visibility:hidden; }
+/* The tab bar goes dark with the cut. The console does not: a sequence empties it at its start
+   (log.js `flush`), so all it can hold is the sequence's own lines, and those are spoken OUT of the
+   dark. Hiding it here hid "The last of the deadfall is gone." and its two companions for the
+   whole black of the discharge, in every interface. */
+.shell[data-cut] .tabbar > *{ visibility:hidden; }
+.shell[data-cut="black"] .console{ color:#D8D4C8; }
+.shell[data-cut="white"] .console{ color:#22261F; }
+.shell[data-cut] .console .console-line{ opacity:1; color:inherit; }
 
 /* ══ ACT II / III ADDITIONS ════════════════════════════════════════════════
    Nothing here is a second component vocabulary. Every block below is either a canvas box that
@@ -1827,3 +1834,32 @@ canvas{ display:block; }
   background-blend-mode:normal;
 }
 :root:not([data-act="3"]) .shell[data-ui="d"][data-stage="2"] .ledger-val{ text-shadow:0 0 6px color-mix(in srgb, var(--signal) 22%, transparent); }
+
+/* ── Phase 5 · the loud transitions (10 D8). Transforms and opacity only (rule 5); nothing changes
+   luminance more than three times a second (rule 6). The calm variant never reaches these. ── */
+@keyframes d-shake{
+  0%{ transform:translate(0,0); } 15%{ transform:translate(calc(var(--shake) * -1), calc(var(--shake) * .5)); }
+  30%{ transform:translate(var(--shake), calc(var(--shake) * -.4)); } 45%{ transform:translate(calc(var(--shake) * -.6), calc(var(--shake) * -.3)); }
+  60%{ transform:translate(calc(var(--shake) * .5), calc(var(--shake) * .3)); } 80%{ transform:translate(calc(var(--shake) * -.2), 0); }
+  100%{ transform:translate(0,0); }
+}
+.shell[data-shake="1"]{ animation:d-shake var(--shake-ms, 300ms) linear both; }
+@keyframes d-flex{
+  0%{ transform:none; } 35%{ transform:scale(.95, 1.03) skewX(2.2deg); }
+  70%{ transform:scale(1.03, .96) skewX(-2.2deg); } 100%{ transform:scale(.99, 1.01); }
+}
+@keyframes d-flip{ 0%{ transform:perspective(900px) rotateY(0); } 100%{ transform:perspective(900px) rotateY(88deg) scale(.96); } }
+.curtain-word[data-loud="1"]{ font-weight:700; line-height:.95; letter-spacing:-.01em; color:#F4F1E8;
+  animation:d-slam 180ms cubic-bezier(.2,.9,.25,1) both; }
+@keyframes d-slam{ from{ opacity:0; transform:scale(1.35); } to{ opacity:1; transform:scale(1); } }
+.seq-crack{ position:absolute; inset:0; width:100%; height:100%; z-index:70; pointer-events:none; }
+/* The body bursts out of its window: the shipped full-plate beat, given the same weight as the
+   redesign's fixed window so it can win, exactly as the slide does. */
+.shell[data-ui="d"][data-fullplate="1"] .plate,
+.shell[data-ui="d"][data-fullplate="1"]:has(.ledger-row[data-lead="solo"]) .plate{
+  position:fixed; inset:0; z-index:40; height:100%; }
+.shell[data-ui="d"][data-fullplate="1"] .plate-toggle{ display:none; }
+.shell[data-ui="d"][data-fullplate="1"] .plate > canvas{ animation:none; transform-origin:50% 100%;
+  transition:transform 900ms cubic-bezier(.2,.9,.2,1); }
+.shell[data-ui="d"][data-fullplate="1"][data-swell="1"] .plate > canvas{ transform:scale(2.2); }
+:root .shell[data-ui="d"][data-stage][data-seqink="1"] .plate{ background-image:none; }

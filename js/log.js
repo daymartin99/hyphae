@@ -990,6 +990,42 @@
         step(7.00, 'line', { id: 'a2.open',
           text: 'Something in the network is repeating itself.', register: 2 })
       ],
+      // THE LOUD ONE (10 Phase 5, mock T_1). Stillness, then the hit: the body bursts out of its
+      // window to the whole screen and the old interface tears away from it. Four words, each one
+      // landing with a jolt. Silence, black. Then the same strokes come back read as a mind, with
+      // signal running down them for the first time, and Act II knits in. Every motion is a
+      // transform, an opacity or the canvas; nothing here changes luminance more than three times
+      // a second (06 §0.1 rule 6), and the cut is one change, not a flash.
+      loud: [
+        // The act flips in the state at step zero, so Act II's interface already exists under this:
+        // it goes at once, as in the shipped variant, and the body holds Act I's ink until the snap.
+        step(0.00, 'motion', { what: 'panelsFade', to: 0.0, ms: 140, holdConsole: true }),
+        step(0.00, 'motion', { what: 'holdInk' }),
+        step(0.90, 'motion', { what: 'shake', px: 12, ms: 520, haptic: 'heavy' }),
+        step(0.90, 'motion', { what: 'canvasFull', redrawHz: 12, wave: 'conduction',
+          hz: 0.32, peakAlpha: 0.8, passes: 10 }),
+        step(0.90, 'motion', { what: 'swell' }),
+        step(2.60, 'word', { text: 'STOP', px: 104, loud: 1 }),
+        step(2.60, 'motion', { what: 'shake', px: 7, ms: 260 }),
+        step(3.50, 'word', { text: 'TASTING', px: 66, loud: 1 }),
+        step(3.50, 'motion', { what: 'shake', px: 7, ms: 260 }),
+        step(4.40, 'word', { text: 'START', px: 92, loud: 1 }),
+        step(4.40, 'motion', { what: 'shake', px: 7, ms: 260 }),
+        step(5.30, 'word', { text: 'KNOWING', px: 66, loud: 1 }),
+        step(5.30, 'motion', { what: 'shake', px: 14, ms: 420, haptic: 'heavy' }),
+        step(6.30, 'motion', { what: 'cut', to: 'black', ms: 0, holdMs: 800 }),
+        step(6.30, 'motion', { what: 'unswell' }),
+        step(7.10, 'motion', { what: 'uncut' }),
+        step(7.10, 'motion', { what: 'mindOn' }),
+        step(7.10, 'motion', { what: 'shake', px: 4, ms: 160 }),
+        step(7.10, 'motion', { what: 'canvasFull', redrawHz: 12, wave: 'conduction',
+          hz: 0.5, peakAlpha: 0.9, passes: 6 }),
+        step(9.30, 'shell', { act: 2, fadeMs: 900, panel: 'MIND' }),
+        step(11.00, 'line', { text: 'the trees do not notice the change. that is the point.',
+          register: 1 }),
+        step(12.60, 'line', { id: 'a2.open',
+          text: 'Something in the network is repeating itself.', register: 2 })
+      ],
       reduced: [
         step(0.00, 'motion', { what: 'cut', to: 'black', ms: 0 }),
         step(0.90, 'word', { text: 'STOP', px: 34, tracking: 0.16, fadeMs: 220 }),
@@ -1026,6 +1062,25 @@
         step(7.90, 'line', { text: 'There is nothing beneath you.', register: 2 }),
         step(9.30, 'line', { text: 'You are very light.', register: 2 }),
         step(11.60, 'shell', { act: 3, fadeMs: 2000, keepConsole: true })
+      ],
+      // THE LOUD ONE (10 Phase 5, mock T_2): through the looking glass. The shipped drain and its
+      // held core are the stillness; then the whole screen bows like a pane, cracks out from the
+      // knot, turns over edge-on and goes black. The three lines come out of the dark, and Act III
+      // frosts in on the far side.
+      loud: [
+        step(0.00, 'motion', { what: 'panelsFade', to: 0.35, ms: 900, except: 'map', holdConsole: true }),
+        step(0.90, 'motion', { what: 'mapDrain', fromRing: 4, toRing: 0, perRingMs: 700 }),
+        step(3.70, 'motion', { what: 'holdCore', ms: 1200 }),
+        step(4.90, 'motion', { what: 'flex', ms: 1400 }),
+        step(6.30, 'motion', { what: 'crack', ms: 700 }),
+        step(6.30, 'motion', { what: 'shake', px: 12, ms: 480, haptic: 'heavy' }),
+        step(7.30, 'motion', { what: 'flip', ms: 900 }),
+        step(8.20, 'motion', { what: 'cut', to: 'black', ms: 0 }),
+        step(8.20, 'motion', { what: 'panelsFade', to: 0, ms: 0, holdConsole: true }),
+        step(8.20, 'line', { text: 'The last of the deadfall is gone.', register: 2 }),
+        step(9.60, 'line', { text: 'There is nothing beneath you.', register: 2 }),
+        step(11.00, 'line', { text: 'You are very light.', register: 2 }),
+        step(13.10, 'shell', { act: 3, fadeMs: 2000, keepConsole: true })
       ],
       reduced: [
         step(0.00, 'motion', { what: 'crossfade', ms: 1200 }),
@@ -2771,8 +2826,12 @@
     // the figure is read here so the sentence never ships with a bare {amt} in it.
     if (id === 'escape' && !opts.tokens && s) opts.tokens = { amt: s.res.carbon }
 
-    var steps = (opts.reduced !== undefined ? opts.reduced : reducedMotion(s))
-      ? (seq.reduced || seq.steps) : seq.steps
+    // Three variants: the calm one under reduced motion, the redesign's loud one while ?ui=d is on
+    // (docs/design/10 Phase 5), and the shipped one. Every variant speaks the same lines in the same
+    // order; only the scenery between them differs.
+    var calm = opts.reduced !== undefined ? opts.reduced : reducedMotion(s)
+    var loud = !calm && seq.loud && opts.loud !== false && HY.ui && HY.ui.uiMode && HY.ui.uiMode() === 'd'
+    var steps = calm ? (seq.reduced || seq.steps) : loud ? seq.loud : seq.steps
 
     soft = {
       seq: seq,
@@ -3092,6 +3151,18 @@
   function __selftest () {
     var f = []
     function ok (cond, label) { if (!cond) f.push(label) }
+
+    // 10 Phase 5: a loud variant is scenery only. It must speak the same lines, in the same order,
+    // as the shipped one, and it must end on the same shell, or the voice would differ by interface.
+    Object.keys(SEQUENCES).forEach(function (id) {
+      var q = SEQUENCES[id]
+      if (!q.loud) return
+      function said (st) { return st.filter(function (x) { return x.kind === 'line' }).map(function (x) { return x.payload.text }).join('|') }
+      function shell (st) { var sh = st.filter(function (x) { return x.kind === 'shell' }); return sh.length ? sh[sh.length - 1].payload.act : null }
+      ok(said(q.loud) === said(q.steps), 'sequence ' + id + ': the loud variant says something else')
+      ok(shell(q.loud) === shell(q.steps), 'sequence ' + id + ': the loud variant ends on another act')
+      for (var i = 1; i < q.loud.length; i++) ok(q.loud[i].at >= q.loud[i - 1].at, 'sequence ' + id + ': loud steps out of order')
+    })
 
     var i, j, e, t, low
 

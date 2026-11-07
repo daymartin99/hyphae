@@ -179,10 +179,12 @@
   // signal's colour, brighter as the pool fills, so Σ is visibly light in the body. `lit` is that
   // fill, quantised before it reaches a redraw key so a moving pool costs a repaint per twelfth.
   var reading = 'ink', readingLit = 0
+  var bodyOnly = false        // DECIDE's ink beat: the map draws the organism and nothing of the forest
   var MIND = { A_MIN: 1.6, A_MAX: 3.2, CEIL: 0.62, Q: 12 }
 
-  function setReading (r, lit) {
+  function setReading (r, lit, only) {
     var q = Math.round(Math.max(0, Math.min(1, +lit || 0)) * MIND.Q) / MIND.Q
+    bodyOnly = !!only
     if (r === reading && q === readingLit) return reading
     reading = r === 'mind' || r === 'glass' ? r : 'ink'
     readingLit = q
@@ -1899,7 +1901,7 @@
     if (!mapGeom || mapDirty) { buildMapGeom(); mapDirty = false }
     // `data` is a number (plateDue mixes it as int32): the reading goes in as two small integers,
     // never as text, or every data change would hash to the same value and the map would freeze.
-    var rk = reading === 'mind' ? 1 : reading === 'glass' ? 2 : 0
+    var rk = (reading === 'mind' ? 1 : reading === 'glass' ? 2 : 0) + (bodyOnly ? 4 : 0)
     if (!plateDue('map', mix32(mix32(regionsHash(regions), rk), Math.round(readingLit * MIND.Q)))) return
     var ctx = surf.netCtx
     var t0 = nowMs()
@@ -1907,7 +1909,8 @@
     // The map owns the whole surface for this pass, so the append-only contract is suspended and
     // the structural layer is redrawn beneath it at the alpha of 06 §7.6.
     ctx.clearRect(0, 0, surf.W, surf.H)
-    strokeUnderlay(ctx, 1)
+    strokeUnderlay(ctx, bodyOnly ? 1 / MAP.NET_ALPHA * 0.42 : 1)
+    if (bodyOnly) { own(nowMs() - t0); return }
 
     var n = regions.q.length
     for (var j = 0; j < n; j++) {
