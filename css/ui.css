@@ -1782,7 +1782,10 @@ canvas{ display:block; }
 /* NEXT is smaller and plainer than the voice so it never competes with it (10 D9). An empty
    NEXT keeps its slot (rule 8) and simply says nothing. */
 .shell[data-ui="d"] .next{ font-size:.8125rem; font-style:normal; font-family:var(--font-ui);
-  color:var(--ink-3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  color:var(--ink-3); line-height:1.3; padding-block:var(--sp-6);
+  /* One line when it fits; a second only when the fact needs it (A/B round 2: the route to minerals
+     was cut off at one). Never a third, so it never takes the voice's room. */
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden;
   transition:opacity var(--d-fade) linear; }
 /* The voice helps at times and is critical at times (David). When it turns to whoever is holding
    the phone, the body goes still (canvas `still`), and the helpful line steps back with it. */
@@ -1873,3 +1876,19 @@ canvas{ display:block; }
 /* The words sit over everything while they are on screen, the voice's own box included: it is six
    rows tall in the redesign and would otherwise cut the first word. */
 .curtain:has(.curtain-word[data-loud="1"]){ z-index:65; }
+
+/* ── A/B round 2's list (docs/design/ab/round-2.md) ── */
+/* The voice's oldest row fades out at the top rather than being sliced in half by the box. */
+.shell[data-ui="d"] .console{
+  -webkit-mask-image:linear-gradient(to bottom, transparent 0, #000 calc(var(--con-row) * 1.1));
+          mask-image:linear-gradient(to bottom, transparent 0, #000 calc(var(--con-row) * 1.1)); }
+/* The trailing digits read as a glitch ("193" + "17610"). In the redesign the body shows the growth,
+   and the rate sits beside the figure, so the strip keeps three figures and its unit. */
+.shell[data-ui="d"] .ledger .fine{ display:none; }
+/* A figure that opens an account is marked on its label, faintly, rather than on the number, so the
+   number keeps reading as a reading and buttons stay the only things that look pressable. */
+.shell[data-ui="d"] .ledger-row:not([data-acct=""]) .ledger-val{ text-decoration:none; }
+.shell[data-ui="d"] .ledger-row:not([data-acct=""]) .ledger-lab{
+  text-decoration:underline dotted color-mix(in srgb, var(--ink-3) 55%, transparent); text-underline-offset:.3em; }
+/* EXTEND keeps its 44 px target but gives the list back the margin it does not need in the redesign. */
+.shell[data-ui="d"] .hero{ min-height:52px; margin-top:var(--sp-8); margin-bottom:var(--sp-8); }
