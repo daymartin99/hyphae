@@ -1869,7 +1869,10 @@
     if (!regions || !regions.q) return
     if (!net) { ensureNet(); if (!net) return }
     if (!mapGeom || mapDirty) { buildMapGeom(); mapDirty = false }
-    if (!plateDue('map', regionsHash(regions) + '|' + reading + readingLit)) return
+    // `data` is a number (plateDue mixes it as int32): the reading goes in as two small integers,
+    // never as text, or every data change would hash to the same value and the map would freeze.
+    var rk = reading === 'mind' ? 1 : reading === 'glass' ? 2 : 0
+    if (!plateDue('map', mix32(mix32(regionsHash(regions), rk), Math.round(readingLit * MIND.Q)))) return
     var ctx = surf.netCtx
     var t0 = nowMs()
 
