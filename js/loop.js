@@ -773,10 +773,22 @@
     var sopts = { stochastic: o.stochastic !== false, offline: false }
     var bought = 0
     wanted = o.want === 'A' || o.want === 'B' || o.want === 'C' ? o.want : ''
+    // THE HUMAN STAND-IN (docs/design/10 Phase 6). The default bot looks every second, taps without
+    // rest and never errs, which is no player. These three habits make it one: it looks at the
+    // screen every `lookEvery` seconds and acts only then, it taps only `tapDuty` of the time, and
+    // with probability `slip` a look ends without buying what it could have. Seeded, so a measured
+    // run is a repeatable run. All three default to the perfect bot's values.
+    var look = o.lookEvery > 1 ? Math.round(o.lookEvery) : 1
+    var duty = o.tapDuty >= 0 && o.tapDuty < 1 ? o.tapDuty : 1
+    var slip = o.slip > 0 ? Math.min(0.9, o.slip) : 0
+    var hr = (look > 1 || duty < 1 || slip > 0) && C().rng ? C().rng(o.seed || 7) : null
     for (var sec = 0; sec < seconds; sec++) {
-      for (var k = 0; k < taps; k++) if (HY.act1 && HY.act1.onExtend) HY.act1.onExtend()
+      var tapping = duty >= 1 || (hr && hr.next() < duty)
+      if (tapping) for (var k = 0; k < taps; k++) if (HY.act1 && HY.act1.onExtend) HY.act1.onExtend()
       for (var j = 0; j < perSec; j++) simTick(dt, sopts)
       if (o.buy === false) continue
+      if (look > 1 && ((num(s.t) | 0) % look) !== 0) { s = S(); continue }
+      if (slip > 0 && hr && hr.next() < slip) { s = S(); continue }
       if (s.act === 2) { bought += playAct2(s, o); s = S(); continue }
       if (s.act === 3) { bought += playAct3(s, o); s = S(); continue }
       // Act I is a liquidity business before it is a clicker: a stand-in that
