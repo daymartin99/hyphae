@@ -1792,6 +1792,7 @@
       if (isD()) {
         var hv = heroVerb(liveState())
         if (hv === 'extend' || hv === 'settle') { onHero(e); return }
+        presenceBeat()
       }
       var b = net.getBoundingClientRect()
       var hx = e.clientX - b.left, hy = e.clientY - b.top
@@ -2830,9 +2831,24 @@
     return null
   }
 
+  // The presence's heartbeat, felt as well as seen: lub-dub under the thumb while the colony is still
+  // too small to see (David's brief). feel.js owns the buzz and its budget, Android's vibration and
+  // iOS's switch path alike, so this only asks for the two beats.
+  function presenceBeat () {
+    if (!isD() || !CANVAS() || !CANVAS().kickPresence) return
+    CANVAS().kickPresence()
+    var s = liveState(), f = FEEL()
+    if (!s || s.act !== 1 || !(CANVAS().grown < 260) || !f || !f.hapticAt) return
+    if (s.set && s.set.haptics === false) return
+    f.hapticAt(0, 10)
+    f.hapticAt(150, 7)
+  }
+
   function onHero (e, heldS) {
     var s = liveState()
     if (!s) return
+    // In the redesign every press reaches the thing under the floor (canvas kickPresence).
+    presenceBeat()
     if (LOG() && LOG().notifyInput) LOG().notifyInput()
     var verb = heroVerb(s)
     if (verb === 'extend' && A1() && A1().onExtend) {
@@ -4139,6 +4155,7 @@
     if (s.act >= 2 && cv.growNetwork && s.a1 && num(s.a1.hyphaeFinal) > 0) {
       cv.growNetwork(num(s.a1.hyphaeFinal))
     }
+    if (cv.setPresence) cv.setPresence(isD())
     if (cv.setReading) {
       var lit = 0
       if (isD() && s.act === 2 && HY.cognition && HY.cognition.signalCap) {
