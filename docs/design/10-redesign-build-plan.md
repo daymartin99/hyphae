@@ -98,6 +98,25 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
 - Tabs with readings: forest / mind / flush / pact. The LOG tab goes because the ticker replaces it.
 - Phosphor material: grid and scan lines in CSS, glow on canvas.
 
+**Phase 3 as built (Nov 2026):**
+- **The mind reading.** It is canvas `setReading('mind', fill)`: the Act I network under the map is stroked in the signal colour and grows brighter as the Σ pool fills. It is keyed into the map's redraw by twelfths, so it repaints only when the pool moves. A static instrument grid sits behind it in CSS.
+- **Accounts for every act's strip.** The rows are positional, so each act's painter names its rows' accounts. Every Act II and III loop step and the pulse are filed.
+- **NEXT for Act II.** It works through these in order:
+  1. a ripe primordium;
+  2. offers waiting;
+  3. D unspent;
+  4. the nearest mind-tab item.
+
+  Touching it opens that tab.
+- **Tab readings.** forest consumed %, mind fill % or D free, flush ripe, pact offers.
+- **LOG gives up its tab.** The voice holds the record.
+- **A ripe flush takes the pinned hold** (RELEASE · name · hold to take) on every tab, the way DECIDE does in Act I.
+- **Carried forward:**
+  - pacts drawn as partner nodes on the map's rim (new canvas geometry);
+  - the five-part grammar on the Act II cards.
+
+  The first belongs with Phase 4's canvas work, the second with the grammar pass.
+
 ### Phase 4 — Act III in D (L)
 - The glass reading: bands as rings, craft as bodies in flight, endings as lights that brighten with
   their conditions, the genome as a constellation.
