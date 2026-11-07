@@ -936,7 +936,9 @@
     var price = minPrice(s)
     if (!isFinite(price)) return 0
     var owed = A().RESERVE_S - runwaySeconds(s)
-    return owed > 0 ? owed * demandPerSec() * price : 0
+    var r = owed > 0 ? owed * demandPerSec() * price : 0
+    var lim = sugarCap(s) * A().RESERVE_CAP_FRAC   // G1d, as economy1.capReserve
+    return r > lim ? lim : r
   }
 
   // Seconds the floor can feed the network for, consumed in the player's own order at

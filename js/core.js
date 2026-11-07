@@ -167,6 +167,7 @@
       TERM_MAX: 8,              // seasons
       REP_MAX: 100,             // reputation units, per tree and net
       RESERVE_S: 60,            // s of feedstock held back from delivery (G1b)
+      RESERVE_CAP_FRAC: 0.5,    // × sugar cap: the most the G1b reserve may ever hold back
       SHORTFALL_FRAC: 0.05,     // fraction of one season's delivery ≈ 18 s of non-payment
       // failsafes (BIBLE §5.5; 08 §5.3, §11.3)
       WINDFALL_SUB: 50,         // g, totalSubstrate below which WINDFALL arms
