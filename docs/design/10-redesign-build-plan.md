@@ -125,6 +125,16 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
   the window are touched in the slide or the list.
 - Frost/void material.
 
+**Phase 4 as built (Nov 2026):**
+- **The glass reading.** It is canvas `setReading('glass')`. The Act I network is mirrored top to bottom in the void's ink. The bands tilt into orbits (y × 0.42). The endings are four distant lights: each one's brightness and size is the mean of its conditions, with carbon and other many-decade stocks read in decades. An open ending gets an amber core and a ring, so brightness is never the only signal. Craft are bodies in flight along the occupied bands, two per decade, the inner bands faster. The lights are keyed into the void's redraw by sixteenths.
+- **NEXT in Act III.** In order: an open ending ("… is open. it does not undo."), then D unspent, then the nearest ending's furthest condition ("the bloom: synchrony 0.31 of 0.80."). Touching it opens the tab.
+- **Tab readings.** The void tab shows occupied bands, counted the panel's way. The genome tab shows D free.
+- **The instrument grid** is Act II's material only.
+- **Found on the way:** the real genome is already a single column of steppers. The two-column grid the critic flagged was in the mock, not the game.
+- **Still carried:**
+  - pacts as partner nodes on the Act II map's rim;
+  - the five-part grammar on the cards.
+
 ### Phase 5 — Transitions (M)
 - **T_1 DECIDE** (about 13.6 s): a 1.4 s hold, freeze, the body bursts out and the page tears, then
   STOP / TASTING / START / KNOWING, silence, the ink snaps to graph, the mind turns on and Act II knits

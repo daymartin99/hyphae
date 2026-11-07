@@ -274,6 +274,33 @@
     START: -Math.PI / 2      // arcs open at twelve o'clock
   }
 
+  // THE LOOKING GLASS (10 Phase 4): the redesign's reading of the void. The same plate, seen from the
+  // other side: the Act I network mirrored top to bottom in the void's own ink, the bands tilted from
+  // a chart into orbits, the endings as four distant lights that brighten as their conditions fill,
+  // and the fleet as bodies moving along the bands it has reached, the inner ones faster.
+  var GLASS = {
+    TILT: 0.42,              // y-squash of a band: a ring seen edge-on enough to read as an orbit
+    NET_A: 0.10,             // the mirrored network: present, never louder than the bands
+    // Plate fractions, A B C ENCYST: inset from the corners, clear of the slide's handle top right.
+    LIGHTS: [[0.11, 0.30], [0.84, 0.32], [0.12, 0.80], [0.86, 0.78]],
+    L_R0: 1.6, L_R1: 5.5,    // px: a light at no progress, and at full
+    L_A0: 0.18, L_A1: 0.95,
+    HALO: 3.2,               // x radius: the soft disc around a bright light
+    Q: 16,                   // progress quantum for the redraw key
+    CRAFT_MAX: 24,           // bodies drawn at most
+    CRAFT_PER_DECADE: 2,     // bodies per decade of craft
+    CRAFT_R: 1.4,            // px
+    CRAFT_W: 0.32            // rad/s on band 0; band b goes at W / (1 + b/4)
+  }
+  var lights = []            // [{ p: 0..1, open: bool, taken: bool }] in GLASS.LIGHTS order
+  var craftN = 0
+  var glassGeom = null       // { cx, cy, fit, e: [] } from the last void draw, for the flux layer
+
+  function setLights (list, craft) {
+    lights = Array.isArray(list) ? list : []
+    craftN = +craft > 0 ? +craft : 0
+  }
+
   var WHEEL = {
     R: 96,                   // px
     DOT_R: 3.0, DOT_R_MAX: 6.5,
@@ -1609,6 +1636,7 @@
     // After the tips, so the head sits over the tip it came from rather than under it.
     if (sg) drawSurge(ctx, sg)
     if (s && s.act >= 2) stepPulses(ctx, tSec, s)
+    if (s && s.act >= 3 && reading === 'glass') drawCraft(ctx, tSec)
     // Fruiting bodies and fire are Act II objects. The a2 block survives the transition in memory
     // until the save is next written, and drawing from it in Act III would put mushrooms in space.
     if (s && s.act === 2) {
@@ -2029,16 +2057,29 @@
     if (!surf.attached && !attach()) return
     if (!bands || !bands.e) return
     // The void is sky over the ground the colony grew in: the Act I network stays under it, as it
-    // stayed under the hexes, and the rings are drawn over it.
+    // stayed under the hexes, and the rings are drawn over it. Through the looking glass (10 Phase 4)
+    // that network is seen from the other side, mirrored, and the rings tilt into orbits.
     if (!net) ensureNet()
-    if (!plateDue('void', bandsHash(bands))) return
+    var glass = reading === 'glass'
+    var dh = bandsHash(bands)
+    if (glass) {
+      dh = mix32(dh, 2)
+      for (var li = 0; li < lights.length; li++) {
+        var L = lights[li] || {}
+        dh = mix32(mix32(dh, Math.round(clamp01(L.p) * GLASS.Q)), (L.open ? 1 : 0) + (L.taken ? 2 : 0))
+      }
+    }
+    if (!plateDue('void', dh)) return
     var ctx = surf.netCtx
     var t0 = nowMs()
     ctx.clearRect(0, 0, surf.W, surf.H)
-    strokeUnderlay(ctx, 1)
+    if (glass) strokeMirror(ctx)
+    else strokeUnderlay(ctx, 1)
     var cx = surf.W / 2, cy = surf.H / 2
     var nb = bandCount(bands)
     var fit = Math.min(surf.W, surf.H) / VOID.SIZE
+    var ky = glass ? GLASS.TILT : 1
+    var TAU = Math.PI * 2
     ctx.save()
     ctx.lineCap = 'butt'
     for (var b = 0; b < nb; b++) {
@@ -2049,16 +2090,91 @@
       // an empty ring drawn eight pixels thick reads as a fleet that is not there.
       ctx.lineWidth = VOID.TRACK_W
       ctx.strokeStyle = rgba(pal.lineStrong, VOID.GAP_A)
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke()
+      ctx.beginPath(); ctx.ellipse(cx, cy, r, r * ky, 0, 0, TAU); ctx.stroke()
       if (e <= 0) continue
       // Widths scale with the plate for the same reason the radii do: the sky between two bands
-      // is the reading, and it has to survive a 900 px viewport as well as a 360 px one.
-      ctx.lineWidth = bandW(bands, b) * fit
+      // is the reading, and it has to survive a 900 px viewport as well as a 360 px one. Tilted,
+      // a ring's near and far edges sit closer, so the glass draws them thinner.
+      ctx.lineWidth = bandW(bands, b) * fit * (glass ? 0.7 : 1)
       ctx.strokeStyle = rgba(pal.signal, 0.85)
-      ctx.beginPath(); ctx.arc(cx, cy, r, VOID.START, VOID.START + Math.PI * 2 * e); ctx.stroke()
+      ctx.beginPath(); ctx.ellipse(cx, cy, r, r * ky, 0, VOID.START, VOID.START + TAU * e); ctx.stroke()
     }
     ctx.restore()
+    if (glass) {
+      drawLights(ctx)
+      var es = []
+      // Bodies fly where the fleet is (n > 0), which is what the void panel counts as occupied.
+      for (var k = 0; k < nb; k++) es.push(bands.n ? (bands.n[k] > 0 ? 1 : 0) : clamp01(bands.e[k]))
+      glassGeom = { cx: cx, cy: cy, fit: fit, e: es }
+    } else {
+      glassGeom = null
+    }
     own(nowMs() - t0)
+  }
+
+  // The Act I network, from the other side of the glass: the same strokes, mirrored about the
+  // plate's middle, in the void's ink, thin. One path for the whole mat.
+  function strokeMirror (ctx) {
+    if (!net) return
+    ctx.save()
+    ctx.translate(0, surf.H)
+    ctx.scale(1, -1)
+    ctx.globalAlpha = GLASS.NET_A
+    ctx.strokeStyle = rgba(pal.text, 1)
+    ctx.lineWidth = 0.7
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    for (var i = 1; i < net.n; i++) {
+      var p = net.par[i]
+      if (p < 0 || net.lost[i] || net.lost[p]) continue
+      ctx.moveTo(net.x[p], net.y[p]); ctx.lineTo(net.x[i], net.y[i])
+    }
+    ctx.stroke()
+    ctx.restore()
+    net.drawn = net.n
+  }
+
+  // The endings, far off. Brightness is progress and never information on its own (rule 7): an open
+  // ending also gets a ring, and the ENDINGS panel states every number.
+  function drawLights (ctx) {
+    var TAU = Math.PI * 2
+    for (var i = 0; i < GLASS.LIGHTS.length && i < lights.length; i++) {
+      var L = lights[i]
+      if (!L) continue
+      var p = clamp01(L.p)
+      var x = GLASS.LIGHTS[i][0] * surf.W, y = GLASS.LIGHTS[i][1] * surf.H
+      var r = GLASS.L_R0 + (GLASS.L_R1 - GLASS.L_R0) * p
+      var a = GLASS.L_A0 + (GLASS.L_A1 - GLASS.L_A0) * p
+      ctx.fillStyle = rgba(pal.text, a * 0.18)
+      ctx.beginPath(); ctx.arc(x, y, r * GLASS.HALO, 0, TAU); ctx.fill()
+      ctx.fillStyle = rgba(L.open ? pal.attention : pal.text, a)
+      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill()
+      if (L.open || L.taken) {
+        ctx.strokeStyle = rgba(pal.attention, 0.9)
+        ctx.lineWidth = 1
+        ctx.beginPath(); ctx.arc(x, y, r + 3, 0, TAU); ctx.stroke()
+      }
+    }
+  }
+
+  // The fleet in flight, on the flux layer: a few bodies per decade of craft, spread over the bands
+  // already reached, each moving along its own orbit. Under reduced motion they hold their places.
+  function drawCraft (ctx, tSec) {
+    var g = glassGeom
+    if (!g || !(craftN > 0)) return
+    var reached = []
+    for (var b = 0; b < g.e.length; b++) if (g.e[b] > 0) reached.push(b)
+    if (!reached.length) return
+    var n = Math.min(GLASS.CRAFT_MAX, Math.max(1, Math.round(GLASS.CRAFT_PER_DECADE * Math.log(1 + craftN) / Math.LN10)))
+    var TAU = Math.PI * 2, GOLD = 2.399963
+    ctx.fillStyle = rgba(pal.text, 0.85)
+    for (var i = 0; i < n; i++) {
+      var bb = reached[i % reached.length]
+      var r = (VOID.R0 + VOID.STEP * bb) * g.fit
+      var th = i * GOLD + (reduced ? 0 : tSec * GLASS.CRAFT_W / (1 + bb / 4))
+      var x = g.cx + Math.cos(th) * r, y = g.cy + Math.sin(th) * r * GLASS.TILT
+      ctx.beginPath(); ctx.arc(x, y, GLASS.CRAFT_R, 0, TAU); ctx.fill()
+    }
   }
 
   function clamp01 (v) { return v > 1 ? 1 : (v < 0 || v !== v ? 0 : v) }
@@ -3303,6 +3419,8 @@
     voice: voiceLine,
     // The redesign's reading of the body (10 D2): 'ink' | 'mind' | 'glass', and how lit (0…1).
     setReading: setReading,
+    // The looking glass's lights and fleet (10 Phase 4): endings as [{ p, open, taken }], and craft.
+    setLights: setLights,
     get reading () { return reading },
     get still () { return nowMs() < stillUntil },
     trade: tradeRelease,
