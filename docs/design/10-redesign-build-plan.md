@@ -146,6 +146,25 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
 - Retire the old cut-to-black sequences in finale.js and divergence.js. The words and lines stay;
   09 §4 timings get updated.
 
+**Phase 5 as built (Nov 2026):**
+- **Loud variants are data.** Each act sequence gains a `loud` variant beside `steps` and `reduced`, chosen while `?ui=d` is on and motion is not reduced. A self-test holds the line: a loud variant speaks the same lines in the same order and ends on the same act. Hurry is the shipped skip.
+- **DECIDE (13.6 s).** The act has already flipped in the state, so Act II's interface goes at once and the body is held as ink (canvas `bodyOnly`, no hexes, no grid).
+  1. At 0.9 s the body bursts to the whole screen and swells about its root (×2.2, compositor), with a heavy shake.
+  2. STOP / TASTING / START / KNOWING slam in at 104/66/92/66 px, each with a jolt.
+  3. Black at 6.3 s.
+  4. At 7.1 s the black lifts onto the same strokes read as the mind, with signal running down them.
+  5. Act II knits in at 9.3 s.
+  6. The two lines land at 11.0 and 12.6 s.
+- **The glass (13.1 s).**
+  1. The shipped drain and held core.
+  2. The screen bows like a pane (4.9 s), then cracks from the knot to the edges on a canvas made for the beat (6.3 s), with a heavy shake.
+  3. It turns edge-on (7.3 s).
+  4. Clean black (8.2 s): the cut takes the cracks and the turn with it.
+  5. The three lines come out of the dark, voice only.
+  6. Act III frosts in at 13.1 s.
+- **A shipped bug, fixed in both interfaces.** The cut-to-black rule hid the console's contents, so the discharge's three lines were never visible during its black. The console now shows them white on black; a sequence empties it first, so it can hold nothing else.
+- **Still to do:** a haptic pattern per beat beyond feel.js's three act events, and audio cues. feel.js owns both, and they ride with Phase 6's feel pass.
+
 ### Phase 6 — Pacing to ~7 hours (M)
 - A human-paced bot that hesitates, reads, makes the odd bad choice and goes away overnight.
   Measure each act's real hours.

@@ -4117,7 +4117,8 @@
         var sc = num(HY.cognition.signalCap(s))
         lit = sc > 0 ? num(s.res.signal) / sc : 0
       }
-      cv.setReading(isD() && s.act === 2 ? 'mind' : isD() && s.act >= 3 ? 'glass' : 'ink', lit)
+      var ink = !!(seqDom && seqDom.ink)
+      cv.setReading(isD() && s.act === 2 && !ink ? 'mind' : isD() && s.act >= 3 ? 'glass' : 'ink', lit, ink)
     }
     if (s.act >= 3) {
       if (cv.drawVoid) cv.drawVoid(a3Field(s))
@@ -7408,6 +7409,9 @@
     var els = [view.ledger, view.stack, view.hero, view.endbar, view.fab]
     var bar = view.shell.querySelector('.tabbar')
     if (bar) els.push(bar)
+    // The redesign's own rows go with the rest of the interface (10 Phase 5).
+    if (view.dnav) els.push(view.dnav)
+    if (view.next) els.push(view.next)
     return els
   }
 
@@ -7454,6 +7458,14 @@
         c.parentNode.removeChild(c)
       }
     }
+    // The loud variant's scenery comes down with everything else (10 Phase 5).
+    view.main.style.animation = ''
+    view.main.style.transform = ''
+    delete view.shell.dataset.shake
+    delete view.shell.dataset.swell
+    delete view.shell.dataset.seqink
+    for (i = 0; i < d.faded.length; i++) d.faded[i].style.transform = ''
+    if (d.crack && d.crack.parentNode) d.crack.parentNode.removeChild(d.crack)
     if (view.shell.dataset.fullplate) {
       delete view.shell.dataset.fullplate
       if (CANVAS() && CANVAS().resize) CANVAS().resize()   // the plate steps back into its window
@@ -7461,6 +7473,118 @@
     if (CANVAS() && CANVAS().stopMotion) CANVAS().stopMotion()
     var dd = doc()
     if (dd) dd.removeEventListener('pointerdown', seqTap, true)
+  }
+
+  // ── THE LOUD BEATS (10 Phase 5) ── each is a transform, an opacity, or a stroke on a canvas
+  // that exists only for the beat. Returns true when it handled the step.
+  function seqLoud (p) {
+    var w = p.what
+    if (w === 'shake') {
+      view.shell.style.setProperty('--shake', (p.px > 0 ? p.px : 8) + 'px')
+      view.shell.style.setProperty('--shake-ms', (p.ms > 0 ? p.ms : 300) + 'ms')
+      delete view.shell.dataset.shake
+      void view.shell.offsetWidth          // restart the animation on a second shake
+      setData(view.shell, 'shake', '1')
+      if (p.haptic === 'heavy') haptic(U.HAP_ACT[2], 'act.end')
+      return true
+    }
+    if (w === 'tear') {
+      // The old interface tears away from the body: what is above the plate's middle goes up and
+      // out, what is below goes down, each a little rotated, fading as it goes.
+      var pr = view.plate.getBoundingClientRect(), mid = pr.top + pr.height / 2
+      var rows = seqRows().concat([view.console])
+      rows.forEach(function (e) {
+        if (!e) return
+        var r = e.getBoundingClientRect(), up = r.top + r.height / 2 < mid
+        var ms = p.ms > 0 ? p.ms : 800
+        e.style.transition = 'opacity ' + ms + 'ms linear, transform ' + ms + 'ms cubic-bezier(.4,0,1,1)'
+        e.style.transform = up ? 'translate(-18px,-140px) rotate(-4deg)' : 'translate(18px,160px) rotate(4deg)'
+        e.style.opacity = '0'
+        if (seqDom.faded.indexOf(e) < 0) seqDom.faded.push(e)
+      })
+      return true
+    }
+    if (w === 'uncut') {
+      // Out of the black, onto the body: the words go and the curtain is clear again.
+      if (seqDom.curtain) { clear(seqDom.curtain); seqDom.curtain.style.background = 'transparent' }
+      delete view.shell.dataset.cut
+      return true
+    }
+    if (w === 'flex' || w === 'flip') {
+      view.main.style.animation = (w === 'flex' ? 'd-flex ' : 'd-flip ') + (p.ms > 0 ? p.ms : 1200) + 'ms ease-in-out both'
+      return true
+    }
+    if (w === 'crack') {
+      seqCrack(p.ms > 0 ? p.ms : 700)
+      return true
+    }
+    if (w === 'holdInk' || w === 'mindOn') {
+      // DECIDE's body stays ink, under the Act II state already in force, until the snap.
+      seqDom.ink = w === 'holdInk'
+      setData(view.shell, 'seqink', seqDom.ink ? '1' : '0')
+      return true
+    }
+    if (w === 'swell' || w === 'unswell') {
+      // The body swells about its root: a scale on the compositor, because the network is drawn in
+      // fixed-length segments and a bigger box alone would show the same small colony.
+      if (w === 'swell') setData(view.shell, 'swell', '1')
+      else delete view.shell.dataset.swell
+      return true
+    }
+    return false
+  }
+
+  // Cracks from the knot to the edges of the screen, drawn on a canvas made for the beat and taken
+  // away with the scenery. Seeded, so the same transition always breaks the same way.
+  function seqCrack (ms) {
+    var d = doc()
+    if (!d) return
+    var cv = d.createElement('canvas')
+    cv.className = 'seq-crack'
+    var W = view.shell.clientWidth, H = view.shell.clientHeight
+    var dpr = (win() && win().devicePixelRatio) || 1
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr)
+    view.shell.appendChild(cv)
+    seqDom.crack = cv
+    var ctx = cv.getContext('2d')
+    if (!ctx) return
+    ctx.scale(dpr, dpr)
+    var pr = view.plate.getBoundingClientRect(), sr = view.shell.getBoundingClientRect()
+    var cx = pr.left - sr.left + pr.width * 0.44, cy = pr.top - sr.top + pr.height / 2
+    var rng = C().rng ? C().rng(616) : null
+    function rnd () { return rng ? rng.next() : Math.random() }
+    var rays = [], RAYS = 11, k
+    for (k = 0; k < RAYS; k++) {
+      var th = (k / RAYS) * Math.PI * 2 + (rnd() - 0.5) * 0.4, pts = [[cx, cy]], x = cx, y = cy
+      var reach = Math.hypot(W, H)
+      for (var seg = 0; seg < 14; seg++) {
+        var len = reach / 14 * (0.7 + rnd() * 0.6)
+        th += (rnd() - 0.5) * 0.5
+        x += Math.cos(th) * len; y += Math.sin(th) * len
+        pts.push([x, y])
+      }
+      rays.push(pts)
+    }
+    var col = getComputedStyle(view.shell).getPropertyValue('--text-max') || '#fff'
+    var FR = 7, f = 0
+    function frame () {
+      if (!seqDom || seqDom.crack !== cv) return
+      f++
+      ctx.clearRect(0, 0, W, H)
+      ctx.strokeStyle = col.trim() || '#fff'
+      ctx.lineWidth = 1.2
+      ctx.globalAlpha = 0.9
+      ctx.beginPath()
+      ctx.arc(cx, cy, 9, 0, Math.PI * 2)
+      var upto = Math.ceil(14 * f / FR)
+      rays.forEach(function (pts) {
+        ctx.moveTo(pts[0][0], pts[0][1])
+        for (var i = 1; i <= upto && i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1])
+      })
+      ctx.stroke()
+      if (f < FR) setTimeout(frame, ms / FR)
+    }
+    frame()
   }
 
   function seqMotion (p) {
@@ -7471,6 +7595,11 @@
     // cover them, which in a light theme would leave a cut that never cuts. The words already
     // standing on the curtain stay; the console (z-60) keeps the voice, by design.
     if (p.what === 'cut') {
+      // A cut is a clean dark (10 Phase 5): the glass's cracks and its turn come down with it, so
+      // the voice that speaks out of the black is never on a surface turned edge-on or behind a crack.
+      if (seqDom.crack && seqDom.crack.parentNode) seqDom.crack.parentNode.removeChild(seqDom.crack)
+      seqDom.crack = null
+      view.main.style.animation = ''
       seqCurtain().style.background = p.to === 'white' ? '#FFFFFF' : '#000000'
       // The curtain lives in the column, and the column's stacking context sits under the console
       // and the tab bar, so a cut to black left a lit band through the middle of it and the tab
@@ -7497,6 +7626,7 @@
       }
       return
     }
+    if (seqLoud(p)) return
     if (p.what === 'panelsFade') {
       var rows = seqRows(), i
       for (i = 0; i < rows.length; i++) seqFadeEl(rows[i], p.to, p.ms)
@@ -7538,7 +7668,10 @@
     }
     if (!seqDom) return
     if (st.kind === 'word') {
-      seqCurtain().appendChild(el('p', 'curtain-word', p.text))
+      var w = el('p', 'curtain-word', p.text)
+      // The loud variant (10 Phase 5) sets each word at its own size and slams it in.
+      if (p.loud) { w.dataset.loud = '1'; if (p.px > 0) w.style.fontSize = p.px + 'px' }
+      seqCurtain().appendChild(w)
       haptic(U.HAP_ACT[1], 'act.mid')
     } else if (st.kind === 'motion') {
       seqMotion(p)
