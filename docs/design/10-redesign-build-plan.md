@@ -171,6 +171,28 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
 - Re-tune only then: reputation by volume, the renew toggle, an earlier Standing Order, and a use for
   spare biomass (the old Phase C list). The target is roughly 2 h / 3 h / 2 h.
 
+**Phase 6 as measured and tuned (Nov 2026):**
+- **The stand-in.** `HY.debug.play` gains `lookEvery`, `tapDuty` and `slip`, all seeded. "Human" looks every 20 s, taps 35 % of the time and slips 15 % of its looks. "Slower" is 45 s / 20 % / 30 %. Times are game time with the player present, offline excluded.
+- **Before** (THE BLOOM):
+
+  | Bot | Act I | Act II | Act III | Total |
+  |---|---|---|---|---|
+  | perfect | 1.8 h | 2.5 h | 4.0 h | 8.3 h |
+  | human | 2.0 h | 3.2 h | 3.8 h | 9.0 h |
+
+  Human pacing costs only 8 %, because the game is gated by waiting, not reflexes. In the void, carbon alone held the last 1.5 h, and band 13 finished at the same moment.
+- **Tuned.** `BLOOM_X` 9.00e34 → 1.00e33 and `TAU_GROWTH` 1.35 → 1.25 (08 updated). ENDING B is untouched; it stays the long ending at ~10 h.
+- **After** (THE BLOOM):
+
+  | Bot | Act III | Total |
+  |---|---|---|
+  | perfect | 2.5 h | 6.7 h |
+  | human | 2.7 h | 7.3 h |
+  | slower | 2.8 h | 9.0 h |
+
+  The five Bloom conditions now finish within about twenty minutes of one another.
+- **Still to measure.** A sessions-and-sleep profile, to give runs in days with offline credit (2 h at 100 %, to 6 h at 75 %, to 12 h at 50 %, capped). Then a hand playthrough of `?ui=d`, start to finish, because the hand pass finds what no bot does.
+
 ### Phase 7 — Cutover (S)
 - Flip the flag on by default, delete the old panel scroll, bump sw, update 06 and 09, then deploy
   gh-pages.
