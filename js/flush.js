@@ -749,7 +749,12 @@
     if (!s || !p) return null
     var now = yieldAt(s, p, Math.max(p.m, 1e-6))
     var mk = marker(p)
-    if (!mk) return { now: now, best: now, bestIn: 0, survive: 1, m: p.m }
+    // RIPE is the card's one call to action: the marker says the moment is now, or — with no
+    // forecast to read — the yield curve has turned over and every second from here costs spores.
+    // It is the same moment the estimate already reports as `bestIn 0`, made a boolean the UI can
+    // put on the collapsed row, minus the no-forecast case that reports 0 from birth.
+    var over = num(p.m) >= OVERRIPE_M
+    if (!mk) return { now: now, best: now, bestIn: 0, survive: 1, m: p.m, ripe: over }
 
     var dt = Math.max(mk.tau, 1e-6) / SEARCH_N
     var m = p.m, surv = 1, t = num(s.t)
@@ -761,7 +766,10 @@
       surv *= Math.exp(-hazardRate(s, probe, mReg, t + tau) * dt)
       m = Math.min(M_CAP, m + matRateAt(s, probe, mReg) * dt)
     }
-    return { now: now, best: yieldAt(s, p, Math.max(m, 1e-6)), bestIn: mk.tau, survive: surv, m: m }
+    return {
+      now: now, best: yieldAt(s, p, Math.max(m, 1e-6)), bestIn: mk.tau, survive: surv, m: m,
+      ripe: over || (mk.tau <= 0 && num(p.m) > HAZ_M_MIN)
+    }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1036,7 +1044,8 @@
       now: est ? est.now : 0,
       best: est ? est.best : 0,
       bestIn: est ? est.bestIn : 0,
-      survive: est ? est.survive : 1
+      survive: est ? est.survive : 1,
+      ripe: !!(est && est.ripe)
     }
   }
 

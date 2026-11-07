@@ -298,6 +298,7 @@
     mast: 'mast year',
     maturity: 'maturity',
     release: 'release',
+    ripeNow: 'ripe — release now',
     hold: 'hold',
     resume: 'resume',
     riskNow: 'risk',
@@ -3381,7 +3382,19 @@
     var g = HY.cognition
     var on = s.act >= 2 && !!g && !!g.unallocated && num(g.unallocated(s)) > 0 &&
       !!v.panels.diff && v.panels.diff.shown && v.tab !== 'mind'
-    v.tabs.forEach(function (t) { if (t.key === 'mind') setData(t.el, 'need', on ? '1' : '0') })
+    // FLUSH carries one while a primordium is ripe: it is losing spores every second nobody is
+    // looking at it. The estimate integrates the forecast, so it is read once a second, not at 10 Hz.
+    var fl = HY.flush
+    if (s.act !== 2 || !fl || !fl.list || !v.panels.flush || !v.panels.flush.shown) v.ripe = false
+    else if (!(Math.abs(num(s.t) - num(v.ripeAt)) < 1)) {
+      v.ripeAt = num(s.t)
+      v.ripe = fl.list().some(function (c) { return c.ripe })
+    }
+    var ripe = !!v.ripe && v.tab !== 'flush'
+    v.tabs.forEach(function (t) {
+      if (t.key === 'mind') setData(t.el, 'need', on ? '1' : '0')
+      else if (t.key === 'flush') setData(t.el, 'need', ripe ? '1' : '0')
+    })
   }
 
   // The 10 Hz slot: rates, panel bodies, cooldown rings and every ARIA label (BIBLE §4.2).
@@ -5228,6 +5241,20 @@
     acts.appendChild(holdBtn)
     ex.appendChild(acts)
 
+    // A ripe primordium loses spores for every second it waits, and its RELEASE lived only in the
+    // expander, so the moment the card exists to call was the moment it hid the verb. When the
+    // estimate says ripe, the verb comes out onto the collapsed row with a line saying why. It is a
+    // sibling of the row's main button, never inside it: a row does not nest one control in another.
+    var ripeActs = el('div', 'row-actions row-ripe')
+    span(ripeActs, 'row-sub', STR.ripeNow)
+    var ripeBtn = actionButton(STR.release, function (b) {
+      var fl = HY.flush
+      if (!fl || !commit(function () { return fl.release(api.id) })) refuse(b)
+    })
+    ripeActs.appendChild(ripeBtn)
+    r.el.insertBefore(ripeActs, ex)
+    show(ripeActs, false)
+
     var api = {
       el: r.el,
       id: -1,
@@ -5243,6 +5270,9 @@
         setText(bestTxt, interp(STR.bestIn, { v: secs(c.bestIn) }) + ' · ' +
           C().fmt(c.best) + ' ' + GLYPH.spores)
         setText(holdBtn, c.held ? STR.resume : STR.hold)
+        // Expanded, the RELEASE in the expander is already on screen; one verb, one place.
+        show(ripeActs, !!c.ripe && !r.isExpanded())
+        setData(r.el, 'live', c.ripe ? 'warn' : '0')
         r.label(c.name + ', ' + STR.maturity + ' ' + pct(c.m) + ', ' +
           C().fmt(c.now) + ' spores if released now')
       }
