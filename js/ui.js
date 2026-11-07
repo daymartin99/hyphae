@@ -4148,7 +4148,9 @@
       var ink = !!(seqDom && seqDom.ink)
       cv.setReading(isD() && s.act === 2 && !ink ? 'mind' : isD() && s.act >= 3 ? 'glass' : 'ink', lit, ink)
     }
-    if (s.act >= 3) {
+    var holdMind = !!(seqDom && seqDom.mind && s.a2 && s.a2.regions)
+    if (holdMind && cv.setReading) cv.setReading(isD() ? 'mind' : 'ink', 0.85)
+    if (s.act >= 3 && !holdMind) {
       if (cv.drawVoid) cv.drawVoid(a3Field(s))
     } else if (s.act >= 2) {
       if (cv.drawMap && s.a2) cv.drawMap(s.a2.regions)
@@ -7544,6 +7546,11 @@
     }
     if (w === 'crack') {
       seqCrack(p.ms > 0 ? p.ms : 700)
+      return true
+    }
+    if (w === 'holdMind' || w === 'mindOff') {
+      // The glass's build-up keeps Act II's forest on the plate, read as the mind, until the cut.
+      seqDom.mind = w === 'holdMind'
       return true
     }
     if (w === 'holdInk' || w === 'mindOn') {

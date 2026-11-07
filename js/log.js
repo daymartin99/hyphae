@@ -1083,7 +1083,11 @@
       // knot, turns over edge-on and goes black. The three lines come out of the dark, and Act III
       // frosts in on the far side.
       loud: [
-        step(0.00, 'motion', { what: 'panelsFade', to: 0.35, ms: 900, except: 'map', holdConsole: true }),
+        // The act flips in the state at step zero, so the build-up holds Act II's face: Act III's
+        // interface goes at once and the plate keeps drawing the forest, read as the mind, until the
+        // cut. Measured with a real discharge, it was the canopy that drained and cracked.
+        step(0.00, 'motion', { what: 'panelsFade', to: 0, ms: 300, except: 'map', holdConsole: true }),
+        step(0.00, 'motion', { what: 'holdMind' }),
         step(0.90, 'motion', { what: 'mapDrain', fromRing: 4, toRing: 0, perRingMs: 700 }),
         step(3.70, 'motion', { what: 'holdCore', ms: 1200 }),
         step(4.90, 'motion', { what: 'flex', ms: 1400 }),
@@ -1092,6 +1096,7 @@
         step(7.30, 'motion', { what: 'flip', ms: 900 }),
         step(8.20, 'motion', { what: 'cut', to: 'black', ms: 0 }),
         step(8.20, 'motion', { what: 'panelsFade', to: 0, ms: 0, holdConsole: true }),
+        step(8.20, 'motion', { what: 'mindOff' }),
         step(8.20, 'line', { text: 'The last of the deadfall is gone.', register: 2 }),
         step(9.60, 'line', { text: 'There is nothing beneath you.', register: 2 }),
         step(11.00, 'line', { text: 'You are very light.', register: 2 }),
