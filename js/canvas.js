@@ -174,6 +174,21 @@
     YOU: /(^|[^a-z])you(r|rs|rself)?([^a-z]|$)/i
   }
 
+  // THE READINGS (10 D2): the same network read three ways. 'ink' is the shipped drawing in every
+  // act. The redesign asks for 'mind' in Act II: the Act I network under the map drawn in the
+  // signal's colour, brighter as the pool fills, so Σ is visibly light in the body. `lit` is that
+  // fill, quantised before it reaches a redraw key so a moving pool costs a repaint per twelfth.
+  var reading = 'ink', readingLit = 0
+  var MIND = { A_MIN: 1.6, A_MAX: 3.2, CEIL: 0.62, Q: 12 }
+
+  function setReading (r, lit) {
+    var q = Math.round(Math.max(0, Math.min(1, +lit || 0)) * MIND.Q) / MIND.Q
+    if (r === reading && q === readingLit) return reading
+    reading = r === 'mind' || r === 'glass' ? r : 'ink'
+    readingLit = q
+    return reading
+  }
+
   var voiceWave = null        // { at } while a wave is travelling
   var stillUntil = 0          // ms clock: the body holds still until then
   var depth = null, depthN = 0, depthMax = 1
@@ -1854,7 +1869,7 @@
     if (!regions || !regions.q) return
     if (!net) { ensureNet(); if (!net) return }
     if (!mapGeom || mapDirty) { buildMapGeom(); mapDirty = false }
-    if (!plateDue('map', regionsHash(regions))) return
+    if (!plateDue('map', regionsHash(regions) + '|' + reading + readingLit)) return
     var ctx = surf.netCtx
     var t0 = nowMs()
 
@@ -1885,8 +1900,13 @@
     var cordW = 1 + FORM.CORD_W * form.cord
     var gspan = 1 + (FORM.CORD_GEN - 1) * form.cord
     ctx.save()
-    ctx.globalAlpha = MAP.NET_ALPHA * mul
-    ctx.strokeStyle = rgba(formStroke(), 1)
+    if (reading === 'mind') {
+      ctx.globalAlpha = Math.min(MIND.CEIL, MAP.NET_ALPHA * mul * (MIND.A_MIN + (MIND.A_MAX - MIND.A_MIN) * readingLit))
+      ctx.strokeStyle = rgba(pal.signal, 1)
+    } else {
+      ctx.globalAlpha = MAP.NET_ALPHA * mul
+      ctx.strokeStyle = rgba(formStroke(), 1)
+    }
     ctx.lineCap = 'round'
     for (var b = 0; b < 3; b++) {
       ctx.lineWidth = DRAW.WIDTHS[b] * cordW
@@ -3278,6 +3298,9 @@
     // The voice, answered (10 D9): a line lands and the body answers it. Returns 'wave', 'still'
     // (a line that turned to the player), or 'held' (a wave that waited out a stillness).
     voice: voiceLine,
+    // The redesign's reading of the body (10 D2): 'ink' | 'mind' | 'glass', and how lit (0…1).
+    setReading: setReading,
+    get reading () { return reading },
     get still () { return nowMs() < stillUntil },
     trade: tradeRelease,
 

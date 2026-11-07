@@ -65,57 +65,57 @@
     // 2 · Environment. Offline this relaxes toward the seasonal mean because
     //     the modules read opts.stochastic rather than drawing.
     if (act === 1 && a1) F('weather', a1.stepEnvironment, dt)
-    if (act === 2 && HY.flush) HY.flush.stepWeather(dt, o)
+    if (act === 2 && HY.flush) F('weather', HY.flush.stepWeather, dt, o)
 
     // 3 · Supply — BEFORE production, always (§4.1). Production reads stocks
     //     that supply has just written.
     if (act === 1 && ec) { F('standing order', ec.stepMarket, dt, o); F('trees', ec.stepTrees, dt) }
-    if (act === 2 && HY.forest) HY.forest.stepSupply(dt, o)
+    if (act === 2 && HY.forest) F('supply', HY.forest.stepSupply, dt, o)
 
     // 4 · Production.
     if (act === 1 && a1) F('eaten', a1.stepDecomposition, dt)
-    if (act === 2 && HY.forest) HY.forest.stepDecomp(dt, o)
-    if (act === 3 && HY.bloom) HY.bloom.stepHarvest(dt, o)
+    if (act === 2 && HY.forest) F('eaten', HY.forest.stepDecomp, dt, o)
+    if (act === 3 && HY.bloom) F('harvest', HY.bloom.stepHarvest, dt, o)
 
     // 5 · Subsistence and continuous losses. Mortality is attributed where it
     //     happens, so this must precede the hazards in step 11.
-    if (act === 3 && HY.bloom) HY.bloom.stepSubsist(dt, o)
+    if (act === 3 && HY.bloom) F('subsistence', HY.bloom.stepSubsist, dt, o)
 
     // 6 · Allocation and conversion. Feeds step 11's drift term.
-    if (act === 3 && HY.bloom) HY.bloom.stepAllocation(dt, o)
+    if (act === 3 && HY.bloom) F('allocation', HY.bloom.stepAllocation, dt, o)
 
     // 7 · Caps and spoilage. The signal clamp is deliberately not here.
     if (act === 1 && a1) F('spoiled', a1.stepSpoilage, dt)
-    if (act >= 2 && HY.flush) HY.flush.stepSpoilage(dt, o)
+    if (act >= 2 && HY.flush) F('spoiled', HY.flush.stepSpoilage, dt, o)
 
     // 8 · The strategic layer.
     if (act === 1 && ec) F('contracts', ec.deliverContracts, dt, o)
-    if (act >= 2 && ec) ec.stepMineralExchange(dt, o)
-    if (act === 2 && HY.pactbook) HY.pactbook.step(dt, o)
-    if (act === 3 && HY.divergence) HY.divergence.stepEngagements(dt, o)
+    if (act >= 2 && ec) F('minerals', ec.stepMineralExchange, dt, o)
+    if (act === 2 && HY.pactbook) F('pacts', HY.pactbook.step, dt, o)
+    if (act === 3 && HY.divergence) F('engagements', HY.divergence.stepEngagements, dt, o)
 
     // 9 · Cognition. The clamp sits here, after every producer and consumer of
     //     Signal has run, so saturation is measured on the net.
-    if (HY.cognition) F('growth', HY.cognition.step, dt, o)
+    if (HY.cognition) F('the mind', HY.cognition.step, dt, o)
 
     // 10 · Territory.
     if (act === 1 && a1) { F('claims', a1.stepClaim); F('neighbours', a1.stepNeighbours, s, false) }
-    if (act === 2 && HY.world) HY.world.step(dt, o)
-    if (act === 3 && HY.bloom) HY.bloom.stepExploration(dt, o)
+    if (act === 2 && HY.world) F('the forest', HY.world.step, dt, o)
+    if (act === 3 && HY.bloom) F('exploration', HY.bloom.stepExploration, dt, o)
 
     // 11 · Risk. Offline, hazards apply expected value and nothing ignites.
-    if (act === 2 && HY.flush) HY.flush.stepRisk(dt, o)
-    if (act === 3 && HY.divergence) HY.divergence.step(dt, o)
+    if (act === 2 && HY.flush) F('risk', HY.flush.stepRisk, dt, o)
+    if (act === 3 && HY.divergence) F('divergence', HY.divergence.step, dt, o)
 
     // 12 · Pulse. Never runs offline — a decision must not resolve while away.
-    if (!o.offline && HY.cognition && HY.cognition.stepPulse) HY.cognition.stepPulse(dt, o)
+    if (!o.offline && HY.cognition && HY.cognition.stepPulse) F('pulses', HY.cognition.stepPulse, dt, o)
 
     // 13 · Synchrony.
-    if (act === 3 && HY.finale) HY.finale.step(dt, o)
+    if (act === 3 && HY.finale) F('endings', HY.finale.step, dt, o)
 
     // 14 · Ladders and derived milestones.
-    if (HY.cognition && HY.cognition.stepLadders) HY.cognition.stepLadders(dt, o)
-    if (act === 3 && HY.bloom && HY.bloom.stepLadders) HY.bloom.stepLadders(dt, o)
+    if (HY.cognition && HY.cognition.stepLadders) F('ladders', HY.cognition.stepLadders, dt, o)
+    if (act === 3 && HY.bloom && HY.bloom.stepLadders) F('ladders', HY.bloom.stepLadders, dt, o)
 
     // 15 · Unlocks. Last of the gameplay steps: a project must never be revealed
     //      against a half-updated world.

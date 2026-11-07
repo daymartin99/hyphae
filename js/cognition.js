@@ -1288,7 +1288,7 @@
     respec: respec,
     respecCost: respecCost,
     pulseCost: pulseCost,
-    pulse: pulse,
+    pulse: HY.core.flowed('pulse', pulse),
     pulseStrength: pulseStrength,
 
     // the steps loop.js drives (BIBLE §4 steps 9, 12, 14)

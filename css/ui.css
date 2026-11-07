@@ -1778,8 +1778,8 @@ canvas{ display:block; }
 .shell[data-ui="d"] .next:not([data-empty="1"])::before{ content:"next"; margin-inline-end:var(--sp-12);
   font-family:var(--f-serif); font-style:italic; color:var(--next-ink); }
 /* A figure that opens an account says so the one way the grammar allows: a dotted underline. */
-.shell[data-ui="d"] .ledger-row:is([data-key="biomass"],[data-key="sugar"],[data-key="net"],[data-key="minerals"]){ cursor:pointer; }
-.shell[data-ui="d"] .ledger-row:is([data-key="biomass"],[data-key="sugar"],[data-key="net"],[data-key="minerals"]) .ledger-val{
+.shell[data-ui="d"] .ledger-row:not([data-acct=""]){ cursor:pointer; }
+.shell[data-ui="d"] .ledger-row:not([data-acct=""]) .ledger-val{
   text-decoration:underline dotted var(--ink-3); text-underline-offset:.28em; }
 .shell[data-ui="d"] .console{ cursor:pointer; }
 .acct-head{ margin-top:var(--sp-16); padding-bottom:var(--sp-4); border-bottom:1px solid var(--line-soft);
@@ -1808,3 +1808,22 @@ canvas{ display:block; }
 .dnav-tab[aria-selected="true"]::after{ content:""; position:absolute; left:30%; right:30%; bottom:10px;
   height:1px; background:var(--text-max); }
 .shell[data-dnav="1"]{ --tail-safe:0px; }
+
+/* ── Act II tab readings (10 Phase 3): what a tab holds, before it is opened ── */
+.tab-read{ display:none; }
+.shell[data-ui="d"] .tab-read:not(:empty){ display:block; font-family:var(--font-mono); font-size:.625rem;
+  line-height:1; color:var(--text-tertiary); letter-spacing:0; }
+.shell[data-ui="d"] .tab[data-need="1"] .tab-read{ color:var(--attention-text); }
+/* The voice's record is a touch on the voice in the redesign, so LOG gives up its tab. Its slot
+   stays (rule 8: the bar never re-lays out); it is simply empty. */
+.shell[data-ui="d"] .tab[data-tab="log"]{ visibility:hidden; pointer-events:none; }
+
+/* ── Act II's material: the mind (10 Phase 3). A faint instrument grid behind the body, CSS only and
+   static, so it costs the compositor nothing per frame; the glow is the canvas's own (setReading). */
+.shell[data-ui="d"][data-stage="2"] .plate{
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 23px, var(--line-soft) 23px 24px),
+    repeating-linear-gradient(90deg, transparent 0 23px, var(--line-soft) 23px 24px);
+  background-blend-mode:normal;
+}
+:root:not([data-act="3"]) .shell[data-ui="d"][data-stage="2"] .ledger-val{ text-shadow:0 0 6px color-mix(in srgb, var(--signal) 22%, transparent); }

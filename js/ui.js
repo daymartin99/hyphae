@@ -252,6 +252,12 @@
     nextShortEta: '{name}: {n} short, about {t} at this rate.',
     nextTipName: 'a tip',
     dGrow: 'grow', dLearn: 'learn', dBargain: 'bargain',
+    // Act II's NEXT and the tab readings (10 Phase 3). Facts, plain register.
+    nextRipe: '{name} is ripe. it is losing spores while it waits.',
+    nextOffer: 'an offer is waiting in the pact book.',
+    nextOffers: '{n} offers are waiting in the pact book.',
+    nextDFree: '{n} {u} unspent.',
+    readRipe: '{n} ripe', readOffers: '{n} offers', readFull: 'full', readPct: '{n}%', readD: '{n} {u}',
     save: 'save', reset: 'reset',
     auto: 'auto', dark: 'dark', light: 'light', on: 'on', off: 'off',
     high: 'high', med: 'med', low: 'low',
@@ -1799,7 +1805,7 @@
     // 10 Phase 2: in the redesign a figure is an account. The row asks its key at the tap, because
     // rows are re-keyed as the acts change what the strip is showing.
     v.ledgerRows.forEach(function (r) {
-      bindPress(r.el, function () { if (isD()) openAccount(r.el.dataset.key) }, { onUp: true, quiet: true })
+      bindPress(r.el, function () { if (isD()) openAccount(r.el.dataset.acct) }, { onUp: true, quiet: true })
     })
     v.ledgerRows[0].el.dataset.lead = 'solo'
 
@@ -1817,7 +1823,12 @@
     // Not a live region of its own: D02 allows exactly one, and NEXT speaks through announce().
     // A touch takes you to the verb it names, which is the one thing NEXT may do besides state.
     v.next = el('div', 'next')
-    bindPress(v.next, function () { if (isD() && nextGroup) setDTab(nextGroup) }, { onUp: true, quiet: true })
+    bindPress(v.next, function () {
+      if (!isD() || !nextGroup) return
+      var st = liveState()
+      if (st && st.act >= 2) setTab(nextGroup)
+      else setDTab(nextGroup)
+    }, { onUp: true, quiet: true })
     v.next.hidden = true
     scroll.appendChild(v.next)
 
@@ -1856,6 +1867,11 @@
     v.endbarKey = ''
     bindHold(endbar, function () {
       var fin = FIN()
+      if (v.endbarKey.indexOf(RELEASE_KEY) === 0) {
+        var fl = HY.flush, rid = +v.endbarKey.slice(RELEASE_KEY.length)
+        if (fl && fl.release) commit(function () { return fl.release(rid) })
+        return
+      }
       if (v.endbarKey === DECIDE_KEY) {
         var pj = PJ()
         if (pj && pj.refusal && !pj.refusal('decide')) commit(function () { return pj.purchase('decide') })
@@ -1929,6 +1945,11 @@
       })
     })
     shell.appendChild(bar)
+    // Each tab carries a reading in the redesign (10 Phase 3): what is on it, before you open it.
+    v.tabs.forEach(function (t) {
+      t.read = el('span', 'tab-read', '')
+      t.el.appendChild(t.read)
+    })
     shell.appendChild(buildDNav(v))
 
     // ── the console: the only *visible* live region, and log.js owns every word of it ──
@@ -2034,11 +2055,17 @@
   var FLOW_LAB = {
     eaten: 'eaten from the floor', 'standing order': 'the standing order', trees: 'the trees',
     contracts: 'contracts', spoiled: 'spoiled past the cap', touch: 'extend', bought: 'litter bought',
-    sold: 'litter sold', spent: 'growth bought', 'exit fees': 'exit fees', traded: 'minerals traded',
+    sold: 'litter sold', spent: 'growth bought', supply: 'what the stands supply', 'the mind': 'the mind',
+    pacts: 'pacts', pulse: 'pulses', pulses: 'pulses', risk: 'risk', 'the forest': 'the forest', ladders: 'ladders',
+    harvest: 'the harvest', subsistence: 'subsistence', allocation: 'allocation', exploration: 'exploration',
+    engagements: 'engagements', divergence: 'divergence', endings: 'endings', 'exit fees': 'exit fees', traded: 'minerals traded',
     season: 'the season', weather: 'the weather', claims: 'claims', neighbours: 'neighbours',
     growth: 'growth', minerals: 'the mineral exchange', other: 'other'
   }
-  var ACCT_KEY = { biomass: 'biomass', sugar: 'sugar', net: 'sugar', minerals: 'minerals' }
+  // The four strip rows are positional: each act paints its own stocks into the same rows, so a row
+  // is told which account it opens by the painter, never by the key it was built with.
+  var ACCT_BY_ACT = { 1: ['biomass', 'sugar', 'minerals', 'sugar'], 2: ['biomass', 'signal', 'insight', 'minerals'],
+    3: ['carbon', 'signal', 'craft', 'insight'] }
   var ACCT_ALPHA = 0.25          // EWMA weight per sample: about a minute of memory at 1 Hz
   var ACCT_MAX_DT = 30           // s of game time: a gap longer than this is a catch-up, not a rate
   var acct = { last: null, t: -1, rate: {}, open: null }
@@ -2085,8 +2112,7 @@
 
   function acctAmount (key, v) {
     var a = Math.abs(v)
-    var str = key === 'minerals' ? C().fmt(a) + ' ' + GLYPH.minerals
-      : key === 'sugar' ? C().fmt(a) + ' ' + GLYPH.sugar : C().fmtMass(a)
+    var str = key === 'biomass' ? C().fmtMass(a) : C().fmt(a) + ' ' + (GLYPH[key] || '')
     return (v < 0 ? '\u2212' : '+') + interp(STR.acctPerS, { n: str })
   }
 
@@ -2119,8 +2145,7 @@
     body.appendChild(el('p', 'g-why', acctWhy(rows)))
   }
 
-  function openAccount (rowKey) {
-    var key = ACCT_KEY[rowKey]
+  function openAccount (key) {
     if (!key) return false
     var sh = sheet({ id: 'acct', title: key })
     fillAccount(sh.body, key)
@@ -2141,12 +2166,28 @@
   // already affordable, then the nearest shortfall (with how long it is at the stock's own net
   // rate, when that rate is climbing), then the next tip, which is always there to be had.
   var nextGroup = null
+  // projects.js currency keys → the stock (and the glyph) they are held in.
+  var CUR_STOCK = { g: 'biomass', sug: 'sugar', min: 'minerals', sig: 'signal', psi: 'insight', spore: 'spores',
+    carbon: 'carbon', accord: 'accord', alpha: 'alleles', canon: 'canon' }
 
   function nextLine (s) {
     var pj = PJ(), i
     nextGroup = null
-    if (!s || s.act !== 1 || !pj) return ''
-    if (pj.refusal && pj.refusal('decide') === null) return STR.nextDecide
+    if (!s || !pj) return ''
+    if (s.act === 1 && pj.refusal && pj.refusal('decide') === null) return STR.nextDecide
+    if (s.act === 2) {
+      // What is being lost first, then what is being offered, then what is owed and unspent.
+      var fl = HY.flush
+      var ripe = fl && fl.list ? fl.list().filter(function (c) { return c.ripe }) : []
+      if (ripe.length) { nextGroup = 'flush'; return interp(STR.nextRipe, { name: ripe[0].name || '' }) }
+      var pb = HY.pactbook
+      var nOff = pb && pb.offers ? pb.offers().length : 0
+      if (nOff === 1) { nextGroup = 'pact'; return STR.nextOffer }
+      if (nOff > 1) { nextGroup = 'pact'; return interp(STR.nextOffers, { n: nOff }) }
+      var cg = HY.cognition
+      var dFree = cg && cg.unallocated ? num(cg.unallocated(s)) : 0
+      if (dFree >= 1) { nextGroup = 'mind'; return interp(STR.nextDFree, { n: Math.floor(dFree), u: GLYPH.diff }) }
+    }
     // Candidates: every buyable thing on screen, and the next tip, priced in full ({ g, min }) so
     // its real blocker is named, which is often minerals rather than the grams beside it.
     var cands = []
@@ -2154,9 +2195,10 @@
     for (i = 0; i < list.length; i++) {
       var p = list[i]
       if (!p.buyable || p.id === 'decide' || pj.isBought(p.id)) continue
-      cands.push({ name: p.title.toLowerCase(), price: pj.priceOf(p.id) || {}, ok: pj.refusal(p.id) === null, group: 'learn' })
+      cands.push({ name: p.title.toLowerCase(), price: pj.priceOf(p.id) || {}, ok: pj.refusal(p.id) === null,
+        group: s.act === 1 ? 'learn' : 'mind' })
     }
-    if (A1() && A1().tipCost) {
+    if (s.act === 1 && A1() && A1().tipCost) {
       var tp = { g: num(A1().tipCost()) }
       if (A1().tipMineralCost) tp.min = num(A1().tipMineralCost())
       cands.push({ name: STR.nextTipName, price: tp, ok: true, group: 'grow' })
@@ -2189,9 +2231,8 @@
     }
     if (!worst) return ''
     var short = num(best.price[worst]) - pj.holding(worst)
-    var unit = worst === 'g' ? C().fmtMass(short)
-      : C().fmt(short) + ' ' + (worst === 'sug' ? GLYPH.sugar : worst === 'min' ? GLYPH.minerals : worst)
-    var stockKey = worst === 'g' ? 'biomass' : worst === 'sug' ? 'sugar' : worst === 'min' ? 'minerals' : null
+    var stockKey = CUR_STOCK[worst] || null
+    var unit = worst === 'g' ? C().fmtMass(short) : C().fmt(short) + ' ' + (GLYPH[stockKey] || worst)
     var rate = stockKey ? accountRows(stockKey).net : 0
     if (rate > 0 && C().fmtTime) return interp(STR.nextShortEta, { name: best.name, n: unit, t: C().fmtTime(short / rate) })
     return interp(STR.nextShort, { name: best.name, n: unit })
@@ -2277,6 +2318,29 @@
 
   function dnavOn (v) { return !!(v.dnav && !v.dnav.hidden) }
 
+  function paintTabReads (v, s) {
+    var d = isD() && s && s.act === 2
+    var read = {}
+    if (d) {
+      var fl = HY.flush, pb = HY.pactbook, cg = HY.cognition
+      var nRipe = fl && fl.list ? fl.list().filter(function (c) { return c.ripe }).length : 0
+      if (nRipe) read.flush = interp(STR.readRipe, { n: nRipe })
+      var nOff = pb && pb.offers ? pb.offers().length : 0
+      if (nOff) read.pact = interp(STR.readOffers, { n: nOff })
+      var dFree = cg && cg.unallocated ? Math.floor(num(cg.unallocated(s))) : 0
+      if (dFree >= 1) read.mind = interp(STR.readD, { n: dFree, u: GLYPH.diff })
+      else if (cg && cg.signalCap) {
+        var cap = num(cg.signalCap(s))
+        var f = cap > 0 ? num(s.res.signal) / cap : 0
+        read.mind = f >= 0.995 ? STR.readFull : interp(STR.readPct, { n: Math.floor(f * 100) })
+      }
+      // The same measurement the forest panel prints, from the same call, so the two never differ.
+      var fo = HY.forest
+      if (fo && fo.forestConsumed) read.forest = pct(num(fo.forestConsumed(s)))
+    }
+    v.tabs.forEach(function (t) { if (t.read) setText(t.read, read[t.key] || '') })
+  }
+
   function isD () {
     return !!(view && view.shell.dataset.ui === 'd')
   }
@@ -2305,6 +2369,8 @@
       view.autoMin = false
       if (view.shell.dataset.plate === 'min') delete view.shell.dataset.plate
       show(view.next, true)
+      // The voice's whole record is one touch on the voice (openVoice), so LOG is not a tab here.
+      if (view.tab === 'log') setTab('forest')
       // The fold handle becomes the slide's: the body is never folded, only opened.
       show(view.plateToggle, true)
       setAttr(view.plateToggle, 'aria-label', STR.openBody)
@@ -3428,6 +3494,8 @@
   }
 
   function paintLedger (v, s, rev) {
+    var acc = ACCT_BY_ACT[s.act >= 3 ? 3 : s.act >= 2 ? 2 : 1]
+    for (var ai = 0; ai < v.ledgerRows.length; ai++) setData(v.ledgerRows[ai].el, 'acct', acc[ai] || '')
     if (s.act >= 3) return paintLedgerA3(v, s, rev)
     if (s.act >= 2) return paintLedgerA2(v, s, rev)
     var shown = 1
@@ -3574,6 +3642,7 @@
   // permanently "available" from void + 20:00 and it is a concession, not an ending. Once any
   // ending has been taken the dismantle owns the screen and the bar goes with everything else.
   var DECIDE_KEY = 'decide'
+  var RELEASE_KEY = 'release:'
 
   function paintEndbar (v, s) {
     var fin = FIN()
@@ -3593,10 +3662,18 @@
         if (list[i].available && !list[i].taken) { pick = list[i]; break }
       }
     }
+    // 10 Phase 3: in the redesign a ripe flush takes the pinned hold, on every tab, the way DECIDE
+    // does in Act I. A primordium left past ripe is losing spores, and the release is the act's beat.
+    if (!pick && isD() && s && s.act === 2 && v.ripe && HY.flush && HY.flush.list) {
+      var rl = HY.flush.list().filter(function (c) { return c.ripe })
+      if (rl.length) pick = { key: RELEASE_KEY + rl[0].id, title: STR.release, sub: rl[0].name || '' }
+    }
     show(v.endbar, !!pick)
     if (!pick) { v.endbarKey = ''; return }
     v.endbarKey = pick.key
     setText(v.endbarTitle, pick.title)
+    // `sub` is the redesign's own field: an ending's record carries fields of its own and none is read.
+    setText(v.endbarNote, pick.sub ? pick.sub + ' \u00b7 ' + STR.endTake : STR.endTake)
     setAttr(v.endbar, 'aria-label', pick.title + ', ' + STR.endTake)
   }
 
@@ -3908,6 +3985,7 @@
       syncAccount()
     }
     paintDNav(v, s)
+    paintTabReads(v, s)
     stage(v, s, rev)
     tabs(v, s, rev)
     needDot(v, s)
@@ -3962,6 +4040,14 @@
     // free when it is already there, a regrowth from the seed when the page is new.
     if (s.act >= 2 && cv.growNetwork && s.a1 && num(s.a1.hyphaeFinal) > 0) {
       cv.growNetwork(num(s.a1.hyphaeFinal))
+    }
+    if (cv.setReading) {
+      var lit = 0
+      if (isD() && s.act === 2 && HY.cognition && HY.cognition.signalCap) {
+        var sc = num(HY.cognition.signalCap(s))
+        lit = sc > 0 ? num(s.res.signal) / sc : 0
+      }
+      cv.setReading(isD() && s.act === 2 ? 'mind' : 'ink', lit)
     }
     if (s.act >= 3) {
       if (cv.drawVoid) cv.drawVoid(a3Field(s))

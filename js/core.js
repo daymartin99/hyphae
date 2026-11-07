@@ -878,7 +878,7 @@
   // them into rates by sampling. A write outside any named step is 'other', and that is honest too.
   // ───────────────────────────────────────────────────────────────────────────
 
-  var FLOW_KEYS = { sugar: 1, minerals: 1, biomass: 1 }
+  var FLOW_KEYS = { sugar: 1, minerals: 1, biomass: 1, signal: 1, insight: 1, carbon: 1, spores: 1, craft: 1 }
   function num0 (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
   var flows = {}
   var flowTag = 'other'
