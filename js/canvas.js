@@ -2225,6 +2225,15 @@
         ctx.lineWidth = 1
         ctx.beginPath(); ctx.arc(x, y, r + 3, 0, TAU); ctx.stroke()
       }
+      // Named, faintly (A/B round 3: unnamed, the lights read as discs that might be pickups). The
+      // name says what a light is; its brightness says how near it is; a touch opens it.
+      if (L.name) {
+        ctx.font = '9px ui-monospace, SFMono-Regular, Menlo, monospace'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        ctx.fillStyle = rgba(L.open ? pal.attention : pal.tertiary, L.open ? 0.9 : 0.55 + 0.35 * p)
+        ctx.fillText(L.name, Math.min(surf.W - 4 - ctx.measureText(L.name).width / 2, Math.max(4 + ctx.measureText(L.name).width / 2, x)), y + r + 7)
+      }
     }
   }
 

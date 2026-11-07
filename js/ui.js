@@ -2331,7 +2331,8 @@
     if (!(isD() && s && s.act >= 3 && FIN() && FIN().endings)) { cv.setLights([], 0); return }
     var list = FIN().endings(s), out = []
     for (var i = 0; i < list.length; i++) {
-      out.push({ p: endingProgress(list[i]), open: !!list[i].available && !list[i].taken, taken: !!list[i].taken })
+      out.push({ p: endingProgress(list[i]), open: !!list[i].available && !list[i].taken, taken: !!list[i].taken,
+        name: String(list[i].title || '').toLowerCase() })
     }
     cv.setLights(out, num(s.res.craft))
   }

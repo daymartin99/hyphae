@@ -1892,3 +1892,10 @@ canvas{ display:block; }
   text-decoration:underline dotted color-mix(in srgb, var(--ink-3) 55%, transparent); text-underline-offset:.3em; }
 /* EXTEND keeps its 44 px target but gives the list back the margin it does not need in the redesign. */
 .shell[data-ui="d"] .hero{ min-height:52px; margin-top:var(--sp-8); margin-bottom:var(--sp-8); }
+
+/* A/B round 3: unaffordable buttons read as merely dark. In the redesign they wear the grammar's
+   locked mark, a dashed outline, so "not yet" is a shape and not just a shade (rule 7). */
+.shell[data-ui="d"] .act-btn[data-s="want"],
+.shell[data-ui="d"] .burst > button[data-s="want"],
+.shell[data-ui="d"] .stepper > button[data-s="want"]{
+  border-style:dashed; background:transparent; }
