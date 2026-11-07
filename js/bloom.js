@@ -213,6 +213,8 @@
   var RICH_KNOWN_E = 0.20          // §6.2: rich is unknown until e ≥ this
   var LAMBDA_REF = 1.0             // §3.3: λ_b = 1 on one planet
   var OFFLINE_PRED_CAP = 0.25      // §22: predation capped at 25% of the fleet for the whole absence
+  var OFF_X_KEEP = 0.5             // a band is never harvested below half its carbon at departure, away
+  var OFF_N_KEEP = 0.6             // the fleet never falls below 60% of its size at departure, away
 
   // ───────────────────────────────────────────────────────────────────────────
   // MODULE-LOCAL STATE
@@ -231,6 +233,18 @@
   var lastAct = 0
   var wasOffline = false
   var predBudget = Infinity        // craft predation may still take this offline window
+  // THE HOLD (docs/design/10 Phase 6). Time away is worth something and never breaks the game. With
+  // nobody steering, the fleet used to strip every band bare overnight, bank all of it as carbon,
+  // then starve to zero on empty bands: measured, one 23 h night took carbon from 1.7e27 to 9.4e34
+  // and the fleet from 3.1e18 to nothing, and the board never moved again. Away, the colony now
+  // holds its ground: no band is drawn below OFF_X_KEEP of what it held when the player left, and
+  // the fleet never falls below OFF_N_KEEP of its size then. Live play keeps every risk it had.
+  var offX = null                  // per band, carbon held at departure (null when not away)
+  var offN = 0                     // total fleet at departure
+  var offNb = null                 // per band, fleet at departure
+  var offC = 0                     // carbon banked at departure: never less on return
+  // What the hold did this absence, for the voice to account for on return (log.js NEEDS: held_*).
+  var hold = { unpaid: 0, refed: 0, floored: 0 }
   var warnings = []                // { band, at } — H5's 40 s notice; never crosses a reload
   var humpFor = 0                  // s a band has spent with surplus falling while n rose
   var lastHumpN = 0, lastHumpSurplus = 0
@@ -769,7 +783,7 @@
     var o = opts || { stochastic: true, offline: false }
     enter(s, o)
 
-    if (inCanopy(s)) { autoSettle(s, dt); revive(s, dt) }
+    if (inCanopy(s)) { autoSettle(s, dt); revive(s, dt) } else reviveVoid(s, dt)
 
     var n = count(s), b, h, drawn
     for (b = 0; b < n; b++) {
@@ -779,6 +793,10 @@
       // A band cannot be harvested past what is in it. Clamping the draw rather than the rate is
       // what makes a depleted band go quiet instead of going negative.
       drawn = Math.min(h * dt, heldX(s, b))
+      if (o.offline && offX && offX[b] !== undefined) {
+        var room = Math.max(0, heldX(s, b) - offX[b] * OFF_X_KEEP)
+        if (drawn > room) { drawn = room; hold.floored = Math.max(hold.floored, 1) }
+      }
       if (!(drawn > 0)) continue
       addX(s, b, -drawn)
       addCarbon(s, drawn)
@@ -840,6 +858,27 @@
     return best
   }
 
+  // The void's floor, on the canopy's terms (10 Phase 6). A fleet that overshoots its bands can
+  // starve to nothing in live play as surely as in the canopy, and with no craft and no spores the
+  // void had no way back: measured, one hour after a night away the whole fleet was gone and the
+  // run never moved again. So while the fleet is under REVIVE_FRAC of the richest band's carrying
+  // capacity, that band regrows toward it over REVIVE_S. A setback, never a dead board.
+  function reviveVoid (s, dt) {
+    var b, best = -1, top = 0
+    for (b = 0; b < bandCount(); b++) {
+      if (!(heldX(s, b) > 0)) continue
+      var k = nStar(b, s) * A().REVIVE_FRAC
+      if (k > top) { top = k; best = b }
+    }
+    if (best < 0) return
+    var have = num(totalCraft(s))
+    if (have >= top) return
+    var add = Math.min(top - have, top * dt / A().REVIVE_S)
+    if (!(add > 0)) return
+    if (!(have > 0)) fire('a3.revive')
+    s.a3.bands.n[best] = num(s.a3.bands.n[best]) + add
+  }
+
   function revive (s, dt) {
     var best = bestHeld(s)
     if (best < 0) return
@@ -866,6 +905,31 @@
     stepSenescence(s, dt)
     stepPredation(s, dt, o)
     stepStellar(s, dt, o)
+    if (o.offline) holdFleet(s)
+  }
+
+  // Restores the whole fleet, in proportion across the bands that hold it, to the floor it may not
+  // fall below while the player is away. Proportional, so it never puts craft where there were none.
+  function holdFleet (s) {
+    if (!offX) return
+    // The bank first. Upkeep is billed against carbon, and with harvest held to the band floor a
+    // night's bill could empty it: measured, a canopy night took 1.6e18 g to zero. Away, an unpaid
+    // bill goes unpaid; the player never comes back to less than they left with.
+    if (num(s.res.carbon) < offC) {
+      hold.unpaid += offC - num(s.res.carbon)
+      C().setStock(s.res, 'carbon', offC)
+    }
+    if (!(offN > 0)) return
+    var floor = offN * OFF_N_KEEP
+    var have = num(totalCraft(s))
+    if (have >= floor || !offNb) return
+    // The shortfall goes back where the fleet was when the player left, in those proportions, so a
+    // night away never quietly abandons a band the player had settled.
+    var arr = inCanopy(s) ? s.a3.biomes.n : s.a3.bands.n, b, short = floor - have
+    hold.refed += short
+    for (b = 0; b < arr.length && b < offNb.length; b++) {
+      if (offNb[b] > 0) arr[b] = num(arr[b]) + short * offNb[b] / offN
+    }
   }
 
   // §7.4. Craft die at exactly the rate that closes the deficit, so the system is self-limiting
@@ -1075,7 +1139,9 @@
     }
 
     var al = liveAlloc(s)
-    if (total > 0) {
+    // Away, the fleet holds steady (10 Phase 6): how it grows and where it goes are the player's
+    // split, and no decision runs offline (08 §10). Craft already in flight still land.
+    if (total > 0 && !o.offline) {
       stepReplication(dt, s, sur, total, al[0])
       stepDispersal(dt, s, sur, total, al[1])
     }
@@ -1617,6 +1683,21 @@
       // §22's cap is budgeted once for the whole absence, not per macro-step.
       if (wasOffline) predBudget = totalCraft(s) * OFFLINE_PRED_CAP
       else predBudget = Infinity
+      if (wasOffline && s.act === 3) {
+        offX = []
+        for (var ob = 0; ob < count(s); ob++) offX.push(heldX(s, ob))
+        offN = num(totalCraft(s))
+        offC = num(s.res.carbon)
+        hold = { unpaid: 0, refed: 0, floored: 0 }
+        var arr0 = inCanopy(s) ? s.a3.biomes.n : s.a3.bands.n
+        offNb = []
+        for (var nb = 0; nb < arr0.length; nb++) offNb.push(num(arr0[nb]))
+      } else {
+        offX = null
+        offN = 0
+        offC = 0
+        offNb = null
+      }
     }
     if (lastAct === 3) return
     lastAct = 3
@@ -2033,6 +2114,8 @@
   // ───────────────────────────────────────────────────────────────────────────
 
   HY.bloom = {
+    // The hold's account of the last absence (10 Phase 6), for the return report.
+    holdReport: function () { return { unpaid: hold.unpaid, refed: hold.refed, floored: hold.floored } },
     // Phase A
     settle: settle,
     reach: reach,
