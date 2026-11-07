@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Act III, the glass</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#050508}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
+button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
+@keyframes d-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.008)}}
+@keyframes d-ringA{0%{transform:scaleY(.42) scale(.3);opacity:.9}100%{transform:scaleY(.42) scale(8);opacity:0}}
+@keyframes d-ringB{0%{transform:scaleY(.42) scale(.3);opacity:.9}100%{transform:scaleY(.42) scale(8);opacity:0}}
+@keyframes d-shim{0%{stroke-dashoffset:12}60%{stroke-dashoffset:-100}100%{stroke-dashoffset:-100}}
+@keyframes d-orb{to{transform:rotate(360deg)}}
+@keyframes d-twinkle{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes d-ghost{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes d-tip{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.7);opacity:.5}}
+@keyframes d-in{from{opacity:0;letter-spacing:.12em}to{opacity:1;letter-spacing:.01em}}
+@keyframes d-fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes d-sheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes d-drop{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes d-sweep{0%{transform:translateX(-260px)}100%{transform:translateX(520px)}}
+.d-shim{stroke-dasharray:12 300;animation:d-shim 9s ease-in-out infinite}
+.d-twinkle{animation:d-twinkle 3.2s ease-in-out infinite}
+.d-ghost{animation:d-ghost 1.8s ease-in-out infinite}
+.d-tip{transform-box:fill-box;transform-origin:center;animation:d-tip 2.6s ease-in-out infinite}
+.d-in{animation:d-in 900ms ease-out both}
+.d-fade{animation:d-fade 320ms ease-out both}
+.d-verb .d-ul{transform:scaleX(.16);transform-origin:left;transition:transform 260ms cubic-bezier(.2,.7,.2,1)}
+.d-verb:active .d-ul,.d-verb:hover .d-ul{transform:scaleX(1)}
+.d-verb:active{opacity:.85}
+.d-acct:active{opacity:.7}
+.d-hit{cursor:pointer}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+  <!-- material: frost. a slow cold noise over the whole plate -->
+  <svg width="390" height="844" aria-hidden="true" style="position:absolute;left:0;top:0;pointer-events:none">
+    <filter id="d3frost"><feTurbulence type="fractalNoise" baseFrequency=".012 .03" numOctaves="3" seed="9"></feTurbulence><feColorMatrix type="matrix" values="0 0 0 0 .78  0 0 0 0 .78  0 0 0 0 .9  0 0 0 .45 -.12"></feColorMatrix></filter>
+    <rect width="390" height="844" filter="url(#d3frost)"></rect>
+  </svg>
+
+  <!-- ═══ LEDGER (0–76). The core figures never leave it. ═══ -->
+  <div style="position:absolute;left:0;right:0;top:0;height:76px;border-bottom:1px solid var(--rule-2)">
+    <button class="d-acct" onClick="{{openCarbon}}" aria-label="carbon 679 yottagrams, rising 3.53 a second. open its account." style="position:absolute;left:12px;top:4px;height:68px;padding:0 4px;display:flex;flex-direction:column;justify-content:center">
+      <span style="display:flex;align-items:baseline;gap:5px">
+        <span style="font:300 44px/1 var(--f-serif);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.01em;color:var(--ink);text-shadow:1px 0 0 #3A3A4E,-1px 0 0 #15463A;text-decoration:underline dotted var(--rule-2);text-decoration-thickness:1px;text-underline-offset:6px">{{carbon}}</span>
+        <span style="font:400 18px/1 var(--f-serif);color:var(--ink-2)">YΧ</span>
+      </span>
+      <span style="font:400 11.5px/1 var(--f-mono);color:var(--ink-3);margin-top:7px">carbon <span style="color:var(--thread)">+3.53 YΧ/s</span></span>
+    </button>
+    <button class="d-acct" onClick="{{openCraft}}" aria-label="craft, signal, insight and synchrony. open the craft account." style="position:absolute;left:190px;right:12px;top:4px;height:68px;padding:0 4px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+      <span style="font:italic 400 12.5px/16px var(--f-serif);color:var(--ink-3);align-self:flex-end">{{meta}}</span>
+      <sc-for list="{{ledgerRows}}" as="lr" hint-placeholder-count="3">
+        <span style="display:flex;align-items:baseline;width:100%;font:400 12px/16px var(--f-mono);color:var(--ink-2)">
+          <span>{{lr.k}}</span>
+          <span style="flex:1;margin:0 4px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+          <span style="color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px">{{lr.v}}</span>
+        </span>
+      </sc-for>
+    </button>
+  </div>
+
+  <!-- ═══ BODY WINDOW (76–288). The same body, through the glass. Touch: observe. ═══ -->
+  <div style="position:absolute;left:0;top:76px;width:390px;height:212px;overflow:hidden">
+    <button aria-label="the body, seen from the other side: a planet, thirteen bands, the fleet in flight. touch to observe; touch a light to read its ending." onClick="{{observe}}" style="position:absolute;inset:0;width:390px;height:212px;cursor:pointer"></button>
+    <!-- the pane: a soft sweep of light, and the plate's registration marks -->
+    <svg width="390" height="212" aria-hidden="true" style="position:absolute;left:0;top:0;pointer-events:none">
+      <path d="M8 14h10M13 9v10M372 14h10M377 9v10M8 198h10M13 193v10M372 198h10M377 193v10" style="stroke:var(--rule-2);stroke-width:1"></path>
+    </svg>
+    <div aria-hidden="true" style="position:absolute;left:0;top:-40px;width:60px;height:300px;background:#D2CFE4;opacity:.035;transform-origin:center;pointer-events:none;animation:d-sweep 11s ease-in-out infinite;rotate:24deg"></div>
+    <div style="position:absolute;inset:0;pointer-events:none;transform-origin:172px 106px;animation:d-breathe 9s ease-in-out infinite">
+      <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none">
+        <defs>
+          <filter id="d3glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.6" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+        </defs>
+        <!-- thirteen bands -->
+        <sc-for list="{{rings}}" as="rg" hint-placeholder-count="13">
+          <ellipse cx="172" cy="106" rx="{{rg.rx}}" ry="{{rg.ry}}" fill="none" style="{{rg.style}}"></ellipse>
+        </sc-for>
+        <!-- something wild on band 3 -->
+        <path d="{{wildArc}}" fill="none" stroke-dasharray="2 3" style="stroke:var(--danger);stroke-width:1.3;opacity:.85"></path>
+        <!-- the body: every branch laid along its band -->
+        <sc-for list="{{segs}}" as="g" hint-placeholder-count="48">
+          <path d="{{g.d}}" fill="none" stroke-linecap="round" style="{{g.style}}"></path>
+        </sc-for>
+        <g style="filter:url(#d3glow)">
+          <sc-for list="{{segs}}" as="g" hint-placeholder-count="48">
+            <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="d-shim" style="{{g.fxStyle}}"></path>
+          </sc-for>
+        </g>
+        <!-- amber: the band the next move is about -->
+        <ellipse cx="172" cy="106" rx="{{amber.rx}}" ry="{{amber.ry}}" fill="none" stroke-dasharray="3 5" class="d-ghost" style="stroke:var(--next);stroke-width:1.5"></ellipse>
+        <!-- the planet. it was the knot -->
+        <circle cx="172" cy="106" r="9.5" style="fill:var(--raised);stroke:var(--ink-2);stroke-width:.8"></circle>
+        <path d="M172 96.5 A9.5 9.5 0 0 1 172 115.5 A6 9.5 0 0 0 172 96.5Z" style="fill:var(--ink-2);opacity:.55"></path>
+        <!-- the endings: four distant lights, brighter as they come within reach -->
+        <sc-for list="{{lights}}" as="lt" hint-placeholder-count="4">
+          <g>
+            <circle cx="{{lt.x}}" cy="{{lt.y}}" r="{{lt.halo}}" style="{{lt.haloStyle}}"></circle>
+            <circle cx="{{lt.x}}" cy="{{lt.y}}" r="{{lt.core}}" class="d-twinkle" style="{{lt.coreStyle}}"></circle>
+            <text x="{{lt.lx}}" y="{{lt.ly}}" text-anchor="{{lt.anchor}}" style="font:italic 400 10.5px var(--f-serif);fill:var(--ink-3)">{{lt.label}}</text>
+          </g>
+        </sc-for>
+        <!-- touch: the lights open their endings here. the bands sit 4 px apart edge-on, too close
+             for a finger, so in the window a touch observes; open the slide to touch a band -->
+        <sc-for list="{{lights}}" as="lt" hint-placeholder-count="4">
+          <circle cx="{{lt.x}}" cy="{{lt.y}}" r="18" fill="#000" fill-opacity=".01" class="d-hit" onClick="{{lt.open}}" style="pointer-events:all"></circle>
+        </sc-for>
+      </svg>
+      <!-- the fleet in flight: drawn on the true plane, then the plane is tipped edge-on -->
+      <div style="position:absolute;inset:0;transform-origin:172px 106px;transform:scaleY(.42);pointer-events:none">
+        <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible">
+          <sc-for list="{{orbits}}" as="ob" hint-placeholder-count="8">
+            <g style="{{ob.style}}">
+              <sc-for list="{{ob.craft}}" as="c" hint-placeholder-count="2">
+                <circle cx="{{c.x}}" cy="{{c.y}}" r="2.6" style="fill:var(--ink)"></circle>
+              </sc-for>
+            </g>
+          </sc-for>
+        </svg>
+      </div>
+    </div>
+    <div aria-hidden="true" style="{{ringStyle}}"></div>
+    <div style="position:absolute;left:16px;bottom:12px;font:italic 400 12.5px/1 var(--f-serif);color:var(--ink-3);pointer-events:none">{{caption}}</div>
+    <button aria-label="open the slide" onClick="{{openSlide}}" style="position:absolute;right:4px;bottom:2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--ink-2)">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M11 2.5h4.5V7M7 15.5H2.5V11M15.5 2.5l-5 5M2.5 15.5l5-5"></path></svg>
+    </button>
+  </div>
+
+  <!-- ═══ VOICE (288–340). Sparse, centred transmissions. ═══ -->
+  <button onClick="{{toggleLog}}" aria-expanded="{{logExpanded}}" aria-label="{{voiceAria}}" style="position:absolute;left:0;right:0;top:288px;height:52px;border-top:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);box-sizing:border-box;padding:5px 32px 0;display:block;width:390px;text-align:center">
+    <span style="display:block;font:400 12px/18px var(--f-serif);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{voice1}}</span>
+    <span class="{{voiceCls}}" style="display:block;font:400 15px/22px var(--f-serif);letter-spacing:.01em;color:var(--ink);text-shadow:1px 0 0 #3A3A4E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{voice2}}</span>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke-width="1.3" stroke-linecap="round" aria-hidden="true" style="{{logChev}}"><path d="M3 5l4 4 4-4" style="stroke:var(--ink-3)"></path></svg>
+  </button>
+
+  <!-- ═══ NEXT (340–404) ═══ -->
+  <button onClick="{{goNext}}" aria-label="{{nextAria}}" style="position:absolute;left:0;right:0;top:340px;height:64px;padding:0 16px;display:flex;align-items:center;gap:12px;width:390px;box-sizing:border-box">
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="flex:none"><circle cx="7" cy="7" r="3.4" fill="none" stroke-width="1.4" class="d-tip" style="stroke:var(--next)"></circle></svg>
+    <span style="flex:1">
+      <span style="display:block;font:300 19px/1.2 var(--f-serif);color:var(--ink)">{{nextLine}}</span>
+      <span style="display:block;font:400 11.5px/15px var(--f-mono);color:var(--ink-3);margin-top:3px">{{nextSub}}</span>
+    </span>
+  </button>
+
+  <!-- ═══ VERBS (404–776) ═══ -->
+  <div style="position:absolute;left:0;right:0;top:404px;height:372px;border-top:1px solid var(--rule-2);overflow:hidden">
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+      <div style="{{r.wrap}}">
+        <span style="{{r.marginStyle}}">{{r.margin}}</span>
+        <div style="flex:1;min-width:0">
+          <sc-if value="{{r.isTap}}" hint-placeholder-val="{{true}}">
+            <button class="d-verb" onClick="{{r.onTap}}" aria-label="{{r.aria}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="position:relative;display:inline-block">
+                  <span style="{{r.wordStyle}}">{{r.word}}</span>
+                  <span class="d-ul" style="{{r.ulStyle}}"></span>
+                </span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="{{r.costStyle}}">{{r.cost}}</span>
+              </span>
+              <span style="{{S.sub}}">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isLocked}}" hint-placeholder-val="{{false}}">
+            <button onClick="{{r.onTap}}" aria-label="{{r.aria}}" aria-expanded="{{r.expanded}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="{{S.locked}}">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                <span style="{{S.lockedCost}}">{{r.cost}}</span>
+              </span>
+              <span style="{{S.subMono}}">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isAcct}}" hint-placeholder-val="{{false}}">
+            <button class="d-acct" onClick="{{r.onTap}}" aria-label="{{r.aria}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="{{S.acct}}">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="{{r.costStyle}}">{{r.cost}}</span>
+              </span>
+              <span style="{{S.sub}}">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isRead}}" hint-placeholder-val="{{false}}">
+            <div style="padding:9px 0 8px">
+              <span style="display:flex;align-items:baseline">
+                <span style="{{S.read}}">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                <span style="{{S.readCost}}">{{r.cost}}</span>
+              </span>
+              <span style="{{S.subMono}}">{{r.sub}}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{r.isPair}}" hint-placeholder-val="{{false}}">
+            <div style="display:flex">
+              <sc-for list="{{r.cells}}" as="ce" hint-placeholder-count="2">
+                <button class="d-verb" onClick="{{ce.onTap}}" aria-label="{{ce.aria}}" style="flex:1;min-height:44px;display:flex;flex-direction:column;justify-content:center;padding-right:10px">
+                  <span style="display:flex;align-items:baseline;width:100%">
+                    <span style="font:400 15px/1.2 var(--f-serif);color:var(--ink)">{{ce.name}}</span>
+                    <span style="flex:1"></span>
+                    <span style="font:400 12px/1 var(--f-mono);color:var(--ink)">{{ce.v}}</span>
+                  </span>
+                  <span style="font:400 11px/1.3 var(--f-mono);color:var(--thread);letter-spacing:-.02em">{{ce.bar}}</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-if>
+          <sc-if value="{{r.isAlloc}}" hint-placeholder-val="{{false}}">
+            <div style="display:flex;align-items:center;min-height:50px">
+              <span style="flex:1;min-width:0">
+                <span style="display:flex;align-items:baseline">
+                  <span style="font:400 17px/1.2 var(--f-serif);color:var(--ink)">{{r.word}}</span>
+                  <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                  <span style="font:400 13px/1 var(--f-mono);color:var(--ink)">{{r.cost}}</span>
+                </span>
+                <span style="{{S.subMono}}">{{r.sub}}</span>
+              </span>
+              <button class="d-verb" onClick="{{r.dec}}" aria-label="{{r.decAria}}" style="width:44px;height:44px;text-align:center;font:300 22px/1 var(--f-serif);color:var(--ink-2)">−</button>
+              <button class="d-verb" onClick="{{r.inc}}" aria-label="{{r.incAria}}" style="width:44px;height:44px;text-align:center;font:300 22px/1 var(--f-serif);color:var(--ink)">+</button>
+            </div>
+          </sc-if>
+          <sc-if value="{{r.isHold}}" hint-placeholder-val="{{false}}">
+            <button onPointerDown="{{r.down}}" onPointerUp="{{r.up}}" onPointerLeave="{{r.up}}" aria-label="{{r.aria}}" style="display:block;position:relative;width:100%;min-height:50px;padding:7px 0 10px;touch-action:none">
+              <span style="display:flex;align-items:baseline">
+                <span style="{{r.holdWord}}">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="{{r.holdCost}}">hold</span>
+              </span>
+              <span style="{{S.subMono}}">{{r.sub}}</span>
+              <svg width="310" height="14" viewBox="0 0 310 14" aria-hidden="true" style="position:absolute;left:0;bottom:-3px;overflow:visible">
+                <path d="M0 7 Q80 3 155 7 T310 7 M38 6 q8 -6 18 -5 M86 6.6 q8 6 18 5 M134 7 q8 -6 18 -5 M182 7.4 q8 6 18 5 M230 7 q8 -6 18 -5 M276 7.2 q8 6 18 5" pathLength="100" fill="none" stroke-linecap="round" style="{{r.fill}}"></path>
+              </svg>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.showWhy}}" hint-placeholder-val="{{false}}">
+            <div class="d-fade" style="{{S.why}}"><span style="color:var(--next-ink)">↳</span><span>{{r.why}}</span></div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ═══ NAV (776–844) ═══ -->
+  <div style="position:absolute;left:0;right:0;top:776px;height:68px;border-top:1px solid var(--rule-2);display:flex;padding:0 8px;box-sizing:border-box">
+    <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="4">
+      <button onClick="{{tb.go}}" aria-current="{{tb.current}}" aria-label="{{tb.aria}}" style="flex:1;height:68px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-left:8px">
+        <span style="{{tb.bar}}"></span>
+        <span style="{{tb.nameStyle}}">{{tb.name}}</span>
+        <span style="{{tb.readStyle}}">{{tb.reading}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <!-- ═══ THE LOG ═══ -->
+  <sc-if value="{{logOpen}}" hint-placeholder-val="{{false}}">
+    <div role="log" aria-label="the transmissions" style="position:absolute;left:0;right:0;top:340px;bottom:0;z-index:8;background:var(--raised);border-top:1px solid var(--rule-2);animation:d-drop 260ms ease-out both;overflow:hidden;text-align:center">
+      <div style="padding:16px 24px">
+        <sc-for list="{{log}}" as="lg" hint-placeholder-count="8">
+          <div style="padding:9px 0;border-bottom:1px solid var(--rule)">
+            <div style="font:400 10.5px/1 var(--f-mono);color:var(--ink-3)">{{lg.t}}</div>
+            <div style="{{lg.style}}">{{lg.text}}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═══ A SHEET, under glass ═══ -->
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-label="{{sh.title}}" style="position:absolute;left:0;right:0;top:340px;bottom:0;z-index:9;background:#121219;border-top:1px solid var(--ink-3);animation:d-sheet 300ms cubic-bezier(.2,.8,.2,1) both">
+      <div aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:1px;background:var(--ink);opacity:.25"></div>
+      <div style="display:flex;align-items:center;height:48px;padding:0 4px 0 16px;border-bottom:1px solid var(--rule-2)">
+        <span style="font:italic 400 14px/1 var(--f-serif);color:var(--ink-3)">{{sh.kind}}</span>
+        <span style="flex:1"></span>
+        <button onClick="{{closeSheet}}" aria-label="close the sheet" style="min-width:56px;height:44px;font:italic 400 15px var(--f-serif);color:var(--ink-2);text-align:center;text-decoration:underline;text-underline-offset:4px">close</button>
+      </div>
+      <div style="padding:14px 16px 0">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+          <span style="font:300 26px/1.1 var(--f-serif);color:var(--ink);text-shadow:1px 0 0 #3A3A4E">{{sh.title}}</span>
+          <span style="{{sh.tagStyle}}">{{sh.tag}}</span>
+        </div>
+        <div style="margin-top:12px;border-top:1px solid var(--rule-2)">
+          <sc-for list="{{sh.lines}}" as="sl" hint-placeholder-count="4">
+            <div style="display:flex;align-items:baseline;min-height:30px;border-bottom:1px solid var(--rule);font:400 12.5px/1.2 var(--f-mono)">
+              <span style="color:var(--ink-3)">{{sl.k}}</span>
+              <span style="flex:1;margin:0 6px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+              <span style="{{sl.vStyle}}">{{sl.v}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{sh.hasWhy}}" hint-placeholder-val="{{true}}">
+          <div style="margin-top:12px;display:flex;gap:6px;font:400 15px/1.45 var(--f-serif);color:var(--ink-2)"><span style="color:var(--next-ink)">↳</span><span>{{sh.why}}</span></div>
+        </sc-if>
+        <div style="margin-top:6px">
+          <sc-for list="{{sh.verbs}}" as="r" hint-placeholder-count="2">
+            <div>
+              <sc-if value="{{r.isTap}}" hint-placeholder-val="{{true}}">
+                <button class="d-verb" onClick="{{r.onTap}}" aria-label="{{r.aria}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+                  <span style="display:flex;align-items:baseline">
+                    <span style="position:relative;display:inline-block"><span style="{{r.wordStyle}}">{{r.word}}</span><span class="d-ul" style="{{r.ulStyle}}"></span></span>
+                    <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                    <span style="{{r.costStyle}}">{{r.cost}}</span>
+                  </span>
+                  <span style="{{S.sub}}">{{r.sub}}</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{r.isLocked}}" hint-placeholder-val="{{false}}">
+                <button onClick="{{r.onTap}}" aria-label="{{r.aria}}" aria-expanded="{{r.expanded}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+                  <span style="display:flex;align-items:baseline">
+                    <span style="{{S.locked}}">{{r.word}}</span>
+                    <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                    <span style="{{S.lockedCost}}">{{r.cost}}</span>
+                  </span>
+                  <span style="{{S.subMono}}">{{r.sub}}</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{r.isHold}}" hint-placeholder-val="{{false}}">
+                <button onPointerDown="{{r.down}}" onPointerUp="{{r.up}}" onPointerLeave="{{r.up}}" aria-label="{{r.aria}}" style="display:block;position:relative;width:100%;min-height:50px;padding:7px 0 10px;touch-action:none">
+                  <span style="display:flex;align-items:baseline">
+                    <span style="{{r.holdWord}}">{{r.word}}</span>
+                    <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                    <span style="{{r.holdCost}}">hold</span>
+                  </span>
+                  <span style="{{S.subMono}}">{{r.sub}}</span>
+                  <svg width="358" height="14" viewBox="0 0 358 14" aria-hidden="true" style="position:absolute;left:0;bottom:-3px;overflow:visible">
+                    <path d="M0 7 Q90 3 179 7 T358 7 M42 6 q8 -6 18 -5 M98 6.6 q8 6 18 5 M154 7 q8 -6 18 -5 M210 7.4 q8 6 18 5 M266 7 q8 -6 18 -5 M318 7.2 q8 6 18 5" pathLength="100" fill="none" stroke-linecap="round" style="{{r.fill}}"></path>
+                  </svg>
+                </button>
+              </sc-if>
+              <sc-if value="{{r.showWhy}}" hint-placeholder-val="{{false}}">
+                <div class="d-fade" style="{{S.why}}"><span style="color:var(--next-ink)">↳</span><span>{{r.why}}</span></div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═══ THE SLIDE. The plate stood upright: the bands are far enough apart to touch. ═══ -->
+  <sc-if value="{{slide}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-label="the slide" style="position:absolute;inset:0;z-index:20;background:var(--ground);animation:d-sheet 420ms cubic-bezier(.2,.8,.2,1) both">
+      <div style="position:absolute;left:0;top:316px;width:390px;height:212px;transform:rotate(90deg) scale(1.8);transform-origin:195px 106px">
+        <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none">
+          <sc-for list="{{rings}}" as="rg" hint-placeholder-count="13">
+            <ellipse cx="172" cy="106" rx="{{rg.rx}}" ry="{{rg.ry}}" fill="none" style="{{rg.style}}"></ellipse>
+          </sc-for>
+          <sc-for list="{{segs}}" as="g" hint-placeholder-count="48">
+            <path d="{{g.d}}" fill="none" stroke-linecap="round" style="{{g.style}}"></path>
+          </sc-for>
+          <ellipse cx="172" cy="106" rx="{{amber.rx}}" ry="{{amber.ry}}" fill="none" stroke-dasharray="3 5" class="d-ghost" style="stroke:var(--next);stroke-width:1.2"></ellipse>
+          <circle cx="172" cy="106" r="9.5" style="fill:var(--raised);stroke:var(--ink-2);stroke-width:.8"></circle>
+          <sc-for list="{{rings}}" as="rg" hint-placeholder-count="13">
+            <ellipse cx="172" cy="106" rx="{{rg.rx}}" ry="{{rg.ry}}" fill="none" stroke="#000" stroke-opacity=".01" stroke-width="6" class="d-hit" onClick="{{rg.openFromSlide}}" style="pointer-events:stroke"></ellipse>
+          </sc-for>
+        </svg>
+      </div>
+      <div style="position:absolute;left:16px;right:8px;top:0;height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule-2)">
+        <span style="font:italic 300 26px/1 var(--f-serif);color:var(--ink)">the plate</span>
+        <button onClick="{{closeSlide}}" aria-label="close the slide" style="min-width:64px;height:44px;font:400 14px var(--f-serif);color:var(--ink-2);text-decoration:underline;text-underline-offset:4px;text-align:center">close</button>
+      </div>
+      <div style="position:absolute;left:16px;right:16px;bottom:18px;border-top:1px solid var(--rule-2);padding-top:10px;font:400 14px/1.5 var(--f-serif);color:var(--ink-2)">Touch a band. Its sheet rises, as it does from the window.</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.G = this.bodyGeom();
+    this.state = {
+      tab: 'void', sheet: null, why: '', logOpen: false, slide: false,
+      carbon: 679, clock: 20480, obs: 0, fresh: false,
+      rep: 60, dis: 20, genes: [2, 1, 4, 1, 1, 2, 1, 0], free: 3, taken: '', regened: false,
+      hold: { key: '', p: 0 },
+      lines: [
+        ['5:22:10', 'The canopy is open in every direction.'],
+        ['5:29:44', 'Craft do not last. You are running a population, not a machine.'],
+        ['5:33:02', 'Band 3 is out of carbon. It replicates for another ninety seconds anyway.'],
+        ['5:37:30', 'Rings of distance draw out from the centre. The bands are mapped, and all of them lead away.'],
+        ['5:40:51', 'The far edge answers eleven minutes after you speak. It is not disobeying.']
+      ]
+    };
+    this.LY = [0.0016, 12.0, 25.8, 55.5, 119, 257, 552, 1187, 2552, 5487, 11798, 25365, 54535];
+    this.OCC = [0.92, 0.88, 0.85, 0.12, 0.79, 0.71, 0.62, 0.30, 0, 0, 0, 0, 0];
+    this.AX = [['ballistospory', 'reach further, land worse'], ['germination', 'more of what lands takes hold'], ['myceliation', 'harvest more'], ['sporulation', 'replicate faster'], ['melanisation', 'survive radiation'], ['dormancy', 'cheap to keep, slow to wake'], ['fidelity', 'copy yourself well'], ['antagonism', 'what you do to things that are not you']];
+    this._tick = setInterval(() => this.setState({ carbon: this.state.carbon + 3.53, clock: this.state.clock + 1, fresh: false }), 1000);
+  }
+
+  // ── THE BODY: one seeded geometry, read three ways. This block is identical in D_0..D_3. ──
+  bodyGeom(){
+    let s = 61;
+    const R = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const K = { x: 172, y: 106 }, SQ = 0.6, segs = [], q = [], ARMS = 7;
+    for (let i = 0; i < ARMS; i++) q.push({ x: K.x, y: K.y, a: i * 6.2832 / ARMS + 0.35 + (R() - 0.5) * 0.5, d: 0, p: -1 });
+    while (q.length && segs.length < 96) {
+      const o = q.shift();
+      const L = (36 - o.d * 4) * (0.78 + R() * 0.44);
+      const a = o.a + (R() - 0.5) * 0.42;
+      const x2 = o.x + Math.cos(a) * L, y2 = o.y + Math.sin(a) * L * SQ;
+      const bend = (R() - 0.5) * L * 0.55;
+      const id = segs.length;
+      segs.push({ id: id, p: o.p, d: o.d, a: a, L: L, bend: bend, x1: o.x, y1: o.y, x2: x2, y2: y2,
+        cx: (o.x + x2) / 2 - Math.sin(a) * bend, cy: (o.y + y2) / 2 + Math.cos(a) * bend * SQ });
+      if (o.d < 6) {
+        q.push({ x: x2, y: y2, a: a + (R() - 0.5) * 0.3, d: o.d + 1, p: id });
+        if (R() < 0.62 - o.d * 0.06) q.push({ x: x2, y: y2, a: a + (R() < 0.5 ? -1 : 1) * (0.45 + R() * 0.55), d: o.d + 1, p: id });
+      }
+    }
+    const kids = segs.map(() => []);
+    segs.forEach(g => { if (g.p >= 0) kids[g.p].push(g.id); });
+    // the looking glass: mirror through the knot, put each branch on a band by how many forks
+    // it is from the knot (so growth settles the bands inside-out, as Act III does), and lay the
+    // branch's own length along that orbit. TILT is the plane seen edge-on.
+    const TILT = 0.42, BR = b => 16 + b * 10.4;
+    const P = (r, t) => ({ x: K.x + r * Math.cos(t), y: K.y + r * Math.sin(t) * TILT });
+    segs.forEach(g => {
+      const dx = -(g.x2 - K.x), dy = (g.y2 - K.y) / SQ;
+      const band = Math.min(12, g.d * 2 + (g.id % 2));
+      const r = BR(band), t1 = Math.atan2(dy, dx);
+      const span = Math.min(1.1, g.L / r) * (g.bend >= 0 ? 1 : -1), t0 = t1 - span;
+      const a0 = P(r, t0), a1 = P(r, t1), c = P(r / Math.cos(span / 2), t0 + span / 2);
+      Object.assign(g, { band: band, gr: r, gt: t1, gx1: a0.x, gy1: a0.y, gcx: c.x, gcy: c.y, gx2: a1.x, gy2: a1.y });
+    });
+    return { K: K, segs: segs, kids: kids, TILT: TILT, BR: BR };
+  }
+  // one path grammar for all three readings (M · Q), so the strokes can morph between them
+  bodyPath(g, reading){
+    const f = v => Math.round(v * 10) / 10;
+    if (reading === 'ink') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f(g.cx) + ' ' + f(g.cy) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    if (reading === 'mind') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f((g.x1 + g.x2) / 2) + ' ' + f((g.y1 + g.y2) / 2) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    return 'M' + f(g.gx1) + ' ' + f(g.gy1) + ' Q' + f(g.gcx) + ' ' + f(g.gcy) + ' ' + f(g.gx2) + ' ' + f(g.gy2);
+  }
+  isTip(id, n){ return id < n && this.G.kids[id].every(k => k >= n); }
+  // ── end of the shared block ──
+
+  componentWillUnmount(){ clearInterval(this._tick); clearInterval(this._hi); }
+  N(){ return 48; }  // the body has reached band 7: branches 0..47
+  stamp(){ const c = this.state.clock; return Math.floor(c / 3600) + ':' + String(Math.floor(c / 60) % 60).padStart(2, '0') + ':' + String(c % 60).padStart(2, '0'); }
+  say(text, extra){ this.setState(Object.assign({ lines: this.state.lines.concat([[this.stamp(), text]]), fresh: true }, extra || {})); }
+  bar(p, w){ const k = Math.max(0, Math.min(w, Math.round(p * w))); return '▓'.repeat(k) + '░'.repeat(w - k); }
+  arc(b, t0, t1){
+    const r = this.G.BR(b), K = this.G.K, T = this.G.TILT;
+    const P = t => (K.x + r * Math.cos(t)).toFixed(1) + ' ' + (K.y + r * Math.sin(t) * T).toFixed(1);
+    let d = 'M' + P(t0);
+    for (let k = 1; k <= 16; k++) d += ' L' + P(t0 + (t1 - t0) * k / 16);
+    return d;
+  }
+  holdStart(key, ms, done){
+    clearInterval(this._hi);
+    const t0 = Date.now(); this._h0 = t0;
+    this.setState({ hold: { key: key, p: 0 } });
+    this._hi = setInterval(() => {
+      const p = Math.min(1, (Date.now() - t0) / ms);
+      this.setState({ hold: { key: key, p: p } });
+      if (p >= 1) { clearInterval(this._hi); this._hi = null; done(); this.setState({ hold: { key: '', p: 0 } }); }
+    }, 30);
+  }
+  holdEnd(key){
+    if (!this._hi) return;
+    clearInterval(this._hi); this._hi = null;
+    const short = Date.now() - this._h0 < 300;
+    this.setState({ hold: { key: '', p: 0 }, why: short ? 'hold-' + key : this.state.why });
+  }
+  endings(){
+    const g = this.state.genes;
+    return [
+      { key: 'A', title: 'THE BLOOM', x: 26, y: 22, conds: [['synchrony', 0.31, 0.80, '0.31 / 0.80'], ['carbon', 0.46, 1, '41.2 / 90.0 aa'], ['insight', 0.16, 1, '382 / 2.40 k Ψ'], ['signal held', 0.024, 1, '261 k / 11.0 M Σ'], ['bands', 8 / 13, 1, '8 / 13']], why: 'Nothing is complete yet. The furthest five bands have not been reached.' },
+      { key: 'B', title: 'THE FRUITING BODY', x: 364, y: 22, conds: [['synchrony', 0.31, 0.97, '0.31 / 0.97'], ['fidelity', 0.94, 0.985, '0.94 / 0.985'], ['carbon', 0.31, 1, '41.2 / 132 aa'], ['lineages', 0, 1, '2 living, none wanted']], why: 'Two lineages are living. It wants one body, all of it in phase.' },
+      { key: 'C', title: 'THE INHERITANCE', x: 26, y: 192, locked: true, conds: [['successor', 0, 1, 'not formed'], ['sequenced', 0, 1, 'no']], why: 'Something you made will want the void. It is not here yet.' },
+      { key: 'ENCYST', title: 'ENCYST', x: 364, y: 192, conds: [['in the void', 1, 1, '24:10 / 20:00']], why: 'A concession, not an ending. Nothing here comes with you but the craft, the carbon and what you have learned.' }
+    ].map(e => { const p = e.conds.reduce((a, c) => a + Math.min(1, c[1] / c[2]), 0) / e.conds.length; const met = e.conds.filter(c => c[1] >= c[2]).length; return Object.assign(e, { p: p, met: met, open: met === e.conds.length }); });
+  }
+  renderVals(){
+    const s = this.state, G = this.G, n = this.N();
+    const f = v => Math.round(v * 10) / 10;
+    const SER = 'var(--f-serif)', MONO = 'var(--f-mono)';
+
+    // ── the body, through the glass ──
+    const segs = G.segs.slice(0, n).map(g => ({
+      d: this.bodyPath(g, 'glass'),
+      style: 'stroke:var(--body);stroke-width:' + (g.d === 0 ? 1.4 : 1) + ';opacity:.85',
+      fxStyle: 'stroke:var(--thread);stroke-width:1.5;opacity:.75;animation-delay:-' + ((g.id * 0.61) % 9).toFixed(2) + 's'
+    }));
+    const reached = 8;
+    const rings = [];
+    for (let b = 0; b < 13; b++) {
+      const r = G.BR(b), sel = s.sheet && s.sheet.kind === 'band' && s.sheet.b === b;
+      rings.push({
+        rx: f(r), ry: f(r * G.TILT),
+        style: 'stroke:' + (sel ? 'var(--ink)' : 'var(--rule-2)') + ';stroke-width:' + (sel ? 1.4 : b < reached ? 0.8 : 0.6) + ';stroke-dasharray:' + (b < reached ? '0' : '2 5'),
+        open: () => this.setState({ sheet: { kind: 'band', b: b }, logOpen: false, why: '' }),
+        openFromSlide: () => this.setState({ sheet: { kind: 'band', b: b }, slide: false, logOpen: false, why: '' })
+      });
+    }
+    const orbits = [];
+    for (let b = 0; b < 13; b++) {
+      const craft = G.segs.filter(g => g.band === b && this.isTip(g.id, n)).map(g => ({ x: f(G.K.x + g.gr * Math.cos(g.gt)), y: f(G.K.y + g.gr * Math.sin(g.gt)) }));
+      if (!craft.length) continue;
+      orbits.push({ craft: craft, style: 'transform-origin:172px 106px;animation:d-orb ' + Math.round(24 * Math.pow(G.BR(b) / 16, 0.6)) + 's linear infinite' });
+    }
+    const E = this.endings();
+    const lights = E.map(e => ({
+      x: e.x, y: e.y, title: e.title, label: e.title.toLowerCase(), lx: e.x < 200 ? e.x - 4 : e.x + 4, ly: e.y < 100 ? e.y + 20 : e.y - 12, anchor: e.x < 200 ? 'start' : 'end',
+      core: (1.4 + e.p * 2.6).toFixed(1), halo: (5 + e.p * 12).toFixed(1),
+      coreStyle: 'fill:' + (e.open ? 'var(--thread)' : 'var(--ink)') + ';opacity:' + (0.5 + e.p * 0.5).toFixed(2),
+      haloStyle: 'fill:' + (e.open ? 'var(--thread)' : 'var(--ink-2)') + ';opacity:' + (0.05 + e.p * 0.14).toFixed(2),
+      open: () => this.setState({ sheet: { kind: 'end', k: e.key }, logOpen: false, why: '' })
+    }));
+
+    // ── NEXT ──
+    let next;
+    if (s.dis < 30) next = { line: 'Band 8 is dark and full. 1.55e32 Χ, and no craft.', sub: 'At ' + s.dis + '% dispersal the first arrive in 18:20 · amber on the eighth ring', tab: 'fleet', band: 8 };
+    else if (s.genes[4] < 2) next = { line: 'Past band 7, craft are brittle. Melanisation is ' + s.genes[4] + '.', sub: 'Craft bound for band 8 lose a fifth in transit · amber on the seventh ring', tab: 'genome', band: 7 };
+    else next = { line: 'The Bloom asks for one phase. Synchrony is 0.31 of 0.80.', sub: 'It rises as bands fall into step. Nothing else presses.', tab: 'lights', band: 0 };
+    const ab = G.BR(next.band);
+    const amber = { rx: f(ab + (next.band ? 0 : 4)), ry: f((ab + (next.band ? 0 : 4)) * G.TILT) };
+
+    // ── grammar styles, Act III material ──
+    const S = {
+      sub: 'display:block;font:400 13.5px/18px ' + SER + ';color:var(--ink-3);margin-top:2px',
+      subMono: 'display:block;font:400 11.5px/16px ' + MONO + ';color:var(--ink-3);margin-top:3px',
+      locked: 'display:inline-block;padding:1px 7px 2px;border:1px dashed var(--locked);font:400 17px/1.2 ' + SER + ';color:var(--ink-3)',
+      lockedCost: 'font:400 11.5px/1 ' + MONO + ';color:var(--ink-3)',
+      acct: 'font:400 17px/1.2 ' + SER + ';color:var(--ink);text-decoration:underline dotted var(--ink-3);text-decoration-thickness:1px;text-underline-offset:5px',
+      read: 'font:400 17px/1.2 ' + SER + ';color:var(--ink-2)',
+      readCost: 'font:400 12px/1 ' + MONO + ';color:var(--ink-2);white-space:pre',
+      why: 'display:flex;gap:6px;padding:0 0 10px;font:400 15px/1.45 ' + SER + ';color:var(--ink-2)'
+    };
+    const word = ok => 'font:' + (ok ? 500 : 400) + ' 18px/1.2 ' + SER + ';color:' + (ok ? 'var(--ink)' : 'var(--ink-3)');
+    const cost = ok => 'font:400 12.5px/1 ' + MONO + ';color:' + (ok ? 'var(--ink)' : 'var(--next-ink)');
+    const ul = ok => 'position:absolute;left:0;right:0;bottom:-3px;height:1px;background:' + (ok ? 'var(--ink)' : 'var(--ink-3)');
+    const base = { isTap: false, isLocked: false, isAcct: false, isRead: false, isPair: false, isAlloc: false, isHold: false, showWhy: false, why: '', expanded: 'false', margin: '', sub: '', cost: '', onTap: () => {} };
+    const why = id => s.why === id;
+    const tog = id => () => this.setState({ why: s.why === id ? '' : id });
+    const TAP = o => Object.assign({}, base, { isTap: true, wordStyle: word(o.ok), costStyle: cost(o.ok), ulStyle: ul(o.ok) }, o);
+    const LOCK = (id, o) => Object.assign({}, base, { isLocked: true, onTap: tog(id), expanded: why(id) ? 'true' : 'false', showWhy: why(id) }, o);
+    const ACCT = o => Object.assign({}, base, { isAcct: true, costStyle: 'font:400 12.5px/1 ' + MONO + ';color:' + (o.hot ? 'var(--next)' : 'var(--thread)') }, o);
+    const READ = o => Object.assign({}, base, { isRead: true }, o);
+    const HOLD = (key, ms, danger, o, done) => Object.assign({}, base, {
+      isHold: true, down: () => this.holdStart(key, ms, done), up: () => this.holdEnd(key),
+      holdWord: 'font:400 18px/1.2 ' + SER + ';color:' + (danger ? 'var(--danger)' : 'var(--ink)'),
+      holdCost: 'font:italic 400 14px/1 ' + SER + ';color:' + (danger ? 'var(--danger)' : 'var(--next)'),
+      fill: 'stroke:' + (danger ? 'var(--danger)' : 'var(--thread)') + ';stroke-width:1.3;stroke-dasharray:100;stroke-dashoffset:' + (s.hold.key === key ? (100 - s.hold.p * 100).toFixed(1) : 100) + ';opacity:' + (s.hold.key === key ? 1 : 0) + ';filter:drop-shadow(0 0 3px #B6EDD6)',
+      showWhy: why('hold-' + key)
+    }, o);
+    const openBand = b => () => this.setState({ sheet: { kind: 'band', b: b }, why: '' });
+    const bank = 100 - s.rep - s.dis;
+
+    const rows = [];
+    if (s.tab === 'void') {
+      rows.push(READ({ margin: 'bands', word: 'Reached', cost: reached + ' / 13', sub: 'A solid ring is yours; a dashed ring has not been looked at.' }));
+      [6, 7, 8].forEach(b => rows.push(ACCT({ word: 'Band ' + b, hot: b === 8, cost: b < 8 ? 'occ ' + this.OCC[b].toFixed(2) : 'dark, full', sub: this.LY[b].toLocaleString('en-US') + ' ly · ' + (b < 8 ? this.bar(this.OCC[b], 10) + ' yours' : '1.55e32 Χ, no craft'), aria: 'band ' + b + ', open its sheet', onTap: openBand(b) })));
+      rows.push(TAP({ margin: 'look', ok: true, word: 'Observe', cost: '4.0 kΣ', sub: 'Or touch the body. A pulse drags the band it lands on toward its phase.', aria: 'observe, 4 kilo-signal', onTap: () => this.observe() }));
+      rows.push(LOCK('phase', { word: 'Set the phase', cost: 'Υ 0.50', sub: 'Needs synchrony 0.50 · now 0.31', aria: 'set the phase, locked', why: 'Every part of you agrees on the hour, or none of it does. Synchrony is 0.31.' }));
+    } else if (s.tab === 'genome') {
+      const cells = this.AX.map((a, i) => ({ name: a[0], v: String(s.genes[i]), bar: this.bar(s.genes[i] / 6, 6), aria: a[0] + ' ' + s.genes[i] + '. tap to place a point.',
+        onTap: () => { if (s.free <= 0) { this.setState({ why: 'nofree' }); return; } const g = s.genes.slice(); g[i]++; const extra = { genes: g, free: s.free - 1 }; if (i === 4) this.say('Black, now. That is the mechanism.', extra); else this.setState(extra); } }));
+      for (let k = 0; k < 4; k++) rows.push(Object.assign({}, base, { isPair: true, margin: k === 0 ? s.free + ' D' : '', cells: [cells[k * 2], cells[k * 2 + 1]], showWhy: k === 3 && why('nofree'), why: 'Every locus is placed. A regenome empties them all and opens a window to place them again.' }));
+      rows.push(READ({ margin: 'cost', word: 'Length ' + s.genes.reduce((a, b) => a + b, 0), cost: 'fidelity 0.94', sub: 'Longer genomes cost mass, and mass is subsistence.' }));
+      rows.push(HOLD('regen', 700, true, { word: s.regened ? 'Rewriting · 0:52' : 'Regenome', sub: 'Empties every locus. They come back as something else.', aria: 'regenome. press and hold.', why: 'Held, not tapped. Every locus empties.' },
+        () => this.say('They come back. The genome that returns is not the one you sent.', { regened: true, free: s.free + s.genes.reduce((a, b) => a + b, 0), genes: [0, 0, 0, 0, 0, 0, 0, 0] })));
+    } else if (s.tab === 'fleet') {
+      const set = (k, d) => () => { const st = { rep: s.rep, dis: s.dis }; st[k] = Math.max(0, st[k] + d); if (st.rep + st.dis > 100) return; const ex = Object.assign({}, st); if (k === 'dis' && d > 0 && st.dis === 30) this.say('Too far. The signal fades before it lands. Some of them will not.', ex); else this.setState(ex); };
+      rows.push(Object.assign({}, base, { isAlloc: true, margin: 'split', word: 'Replicate', cost: s.rep + '%', sub: '+' + (s.rep * 0.14).toFixed(1) + ' Pn/s craft', dec: set('rep', -10), inc: set('rep', 10), decAria: 'replicate less', incAria: 'replicate more' }));
+      rows.push(Object.assign({}, base, { isAlloc: true, word: 'Disperse', cost: s.dis + '%', sub: s.dis > 0 ? 'band 8 in ' + (s.dis >= 30 ? '12:15' : '18:20') : 'nothing leaves', dec: set('dis', -10), inc: set('dis', 10), decAria: 'disperse less', incAria: 'disperse more' }));
+      rows.push(READ({ word: 'Bank', cost: bank + '%', sub: (12.7 * bank / 100).toFixed(2) + ' YΧ/s kept. The rest of the split.' }));
+      rows.push(ACCT({ margin: 'losses', word: 'What kills you', cost: '−2.73 Pn/s', sub: 'Six hazards. Radiation the largest.', aria: 'what kills you, open its account', onTap: () => this.setState({ sheet: { kind: 'acct', k: 'deaths' } }) }));
+      rows.push(READ({ word: 'Craft mass', cost: '4.1e7 g', sub: 'Craft do not last. You are running a population.' }));
+    } else {
+      E.forEach((e, i) => {
+        if (e.locked) rows.push(LOCK('end-' + e.key, { margin: i === 0 ? 'lights' : '', word: e.title.toLowerCase(), cost: e.met + ' of ' + e.conds.length, sub: 'Needs the successor · it has not formed', aria: e.title + ', locked', why: e.why }));
+        else rows.push(ACCT({ margin: i === 0 ? 'lights' : '', hot: e.open, word: e.title.toLowerCase(), cost: e.open ? 'within reach' : e.met + ' of ' + e.conds.length, sub: this.bar(e.p, 12) + ' ' + Math.round(e.p * 100) + '% of the way', aria: e.title + ', open its sheet', onTap: () => this.setState({ sheet: { kind: 'end', k: e.key } }) }));
+      });
+    }
+    rows.forEach((r, i) => {
+      r.wrap = 'display:flex;align-items:flex-start;padding:0 16px 0 0;' + (r.margin && i > 0 ? 'border-top:1px solid var(--rule);margin-top:2px;' : '');
+      r.marginStyle = 'width:72px;flex:none;text-align:right;padding:15px 14px 0 0;box-sizing:border-box;font:italic 400 14px/1 ' + SER + ';color:var(--ink-3)';
+    });
+
+    // ── sheets ──
+    let sh = null;
+    const KV = (k, v, c) => ({ k: k, v: v, vStyle: 'color:' + (c || 'var(--ink)') });
+    if (s.sheet && s.sheet.kind === 'band') {
+      const b = s.sheet.b, o = this.OCC[b], dark = b >= reached;
+      sh = { kind: 'band', title: b === 0 ? 'Band 0 · Sol' : 'Band ' + b, tag: this.LY[b].toLocaleString('en-US') + ' ly', tagCol: 'var(--ink-2)',
+        lines: dark ? [KV('occupancy', 'none', 'var(--ink-3)'), KV('resource', b === 8 ? '1.55e32 Χ' : 'not looked at', b === 8 ? 'var(--ink)' : 'var(--ink-3)'), KV('craft', '0 n', 'var(--ink-3)')]
+          : [KV('occupancy', this.bar(o, 10) + ' ' + o.toFixed(2)), KV('yours / wild', b === 3 ? '0.12 / 0.41' : o.toFixed(2) + ' / 0.00', b === 3 ? 'var(--danger)' : 'var(--ink)'), KV('surplus', (o * 2.1).toFixed(2) + ' YΧ/s', 'var(--thread)'), KV('craft', (o * 0.4).toFixed(2) + ' En')],
+        why: b === 3 ? 'Band 3 is out of carbon. Something wild is living underneath.' : dark ? (b === 8 ? 'Dark, and full. Nothing of yours has arrived.' : 'Nothing out there is adjacent to you.') : '',
+        verbs: b === 8 ? [TAP({ ok: true, word: 'Disperse here', cost: '+10%', sub: 'The first arrive in 12:15 at a 30% split', aria: 'disperse toward band 8', onTap: () => this.say('Too far. The signal fades before it lands. Some of them will not.', { dis: Math.min(100 - s.rep, s.dis + 10), sheet: null }) })]
+          : dark ? [LOCK('band-far', { word: 'Disperse here', cost: '', sub: 'Needs band ' + (b - 1) + ' first', aria: 'disperse, locked', why: 'Craft settle the bands in order. The nearer dark comes first.' })]
+          : [TAP({ ok: true, word: 'Harvest', cost: 'surplus', sub: 'Draw the band toward subsistence', aria: 'harvest band ' + b, onTap: () => this.say('The band gives what it has. It does not refill.', { sheet: null }) })] };
+    } else if (s.sheet && s.sheet.kind === 'end') {
+      const e = E.find(x => x.key === s.sheet.k);
+      const lines = e.conds.map(c => KV(c[0], this.bar(Math.min(1, c[1] / c[2]), 6) + ' ' + c[3], c[1] >= c[2] ? 'var(--thread)' : 'var(--ink)'));
+      const taken = s.taken === e.key;
+      sh = { kind: e.key === 'ENCYST' ? 'a concession' : 'an ending', title: e.title, tag: e.met + ' of ' + e.conds.length, tagCol: e.open ? 'var(--thread)' : 'var(--ink-2)', lines: lines, why: e.why,
+        verbs: taken ? [READ({ word: 'Taken', cost: '', sub: 'You draw in. It takes about a day.' })]
+          : e.open ? [HOLD('take', 1200, false, { word: 'Take ' + e.title.toLowerCase(), sub: 'This does not come back.', aria: 'take ' + e.title + '. press and hold.', why: 'Held, not tapped. It does not come back.' }, () => this.say('You draw in. It takes about a day.', { taken: e.key }))]
+          : [LOCK('take-' + e.key, { word: 'Take', cost: (e.conds.length - e.met) + ' to go', sub: 'Every condition, at once', aria: 'take, locked', why: e.why })] };
+    } else if (s.sheet && s.sheet.kind === 'acct') {
+      const A = {
+        carbon: ['Carbon', Math.floor(s.carbon) + ' YΧ', [KV('+ surplus banked', '+' + (12.7 * bank / 100).toFixed(2) + ' YΧ/s', 'var(--thread)'), KV('+ returned by dead craft', '+2.26 YΧ/s', 'var(--thread)'), KV('· replication, dispersal', 'spent at source', 'var(--ink-3)')], 'Every one you settle is carbon the void will need, and the canopy does not refill.'],
+        craft: ['Craft', '2.58 En', [KV('+ replication', '+11.1 Pn/s', 'var(--thread)'), KV('− six hazards', '−2.73 Pn/s', 'var(--danger)'), KV('net', '+8.37 Pn/s', 'var(--thread)')], 'Craft do not last. You are running a population, not a machine.'],
+        deaths: ['What kills you', '−2.73 Pn/s', [KV('radiation', '−1.42', 'var(--danger)'), KV('stellar events', '−0.61', 'var(--danger)'), KV('starvation, band 3', '−0.38', 'var(--danger)'), KV('three more', '−0.32', 'var(--danger)')], 'The fungus growing toward the reactor core is black. That is the mechanism.']
+      }[s.sheet.k];
+      sh = { kind: 'account', title: A[0], tag: A[1], tagCol: 'var(--ink)', lines: A[2], why: A[3], verbs: [] };
+    }
+    if (sh) { sh.tagStyle = 'font:400 12.5px/1 ' + MONO + ';color:' + sh.tagCol; sh.hasWhy = !!sh.why; }
+
+    const tabs = [['void', reached + ' / 13'], ['genome', s.free + ' D free'], ['fleet', s.rep + ' / ' + s.dis + ' / ' + bank], ['lights', '1 within reach']].map(t => {
+      const on = s.tab === t[0];
+      const hot = t[0] === next.tab;
+      return {
+        name: t[0], reading: t[1], current: on ? 'page' : 'false', aria: t[0] + ', ' + t[1],
+        go: () => this.setState({ tab: t[0], why: '', sheet: null, logOpen: false }),
+        bar: 'position:absolute;left:8px;right:8px;top:-1px;height:1px;background:var(--ink);transform-origin:center;transition:transform 300ms;transform:scaleX(' + (on ? 1 : 0) + ')',
+        nameStyle: 'font:italic ' + (on ? '400' : '300') + ' 17px/1 ' + SER + ';color:' + (on ? 'var(--ink)' : 'var(--ink-2)'),
+        readStyle: 'font:400 11px/1.4 ' + MONO + ';margin-top:5px;color:' + (hot ? 'var(--next)' : 'var(--ink-3)')
+      };
+    });
+
+    const lines = s.lines;
+    const log = lines.slice().reverse().map((l, i) => ({ t: l[0], text: l[1], style: 'margin-top:5px;font:400 ' + (i === 0 ? 15.5 : 14) + 'px/1.45 ' + SER + ';color:' + (i === 0 ? 'var(--ink)' : 'var(--ink-2)') }));
+    const pa = s.obs % 2 === 0;
+    const b3 = G.BR(3);
+
+    return {
+      rootStyle: '--ground:#08080C;--sunk:#050508;--raised:#121219;--ink:#D2CFE4;--ink-2:#A8A4C6;--ink-3:#8B87A8;--rule:#1F1F2C;--rule-2:#3A3A4E;--body:#C9C6DE;--body-old:#3A3A4E;--thread:#B6EDD6;--thread-glow:#B6EDD6;--next:#F5D28F;--next-ink:#F5D28F;--danger:#E0917A;--locked:#5A5878;' +
+        "--f-serif:'Newsreader',ui-serif,Georgia,serif;--f-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--f-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
+        'width:390px;height:844px;overflow:hidden;position:relative;background:var(--ground);color:var(--ink);font-family:var(--f-ui)',
+      carbon: Math.floor(s.carbon), meta: this.stamp() + ' · Υ 0.31',
+      ledgerRows: [{ k: 'craft', v: '2.58 En' }, { k: 'signal', v: '261 kΣ' }, { k: 'insight', v: '382 Ψ' }],
+      openCarbon: () => this.setState({ sheet: { kind: 'acct', k: 'carbon' }, logOpen: false }),
+      openCraft: () => this.setState({ sheet: { kind: 'acct', k: 'craft' }, logOpen: false }),
+      segs: segs, rings: rings, orbits: orbits, lights: lights, amber: amber,
+      wildArc: this.arc(3, 2.2, 3.4),
+      observe: () => this.observe(),
+      ringStyle: 'position:absolute;left:152px;top:86px;width:40px;height:40px;border-radius:50%;border:1px solid var(--thread);pointer-events:none;opacity:0;animation:' + (s.obs ? (pa ? 'd-ringA' : 'd-ringB') + ' 2.4s cubic-bezier(.2,.6,.3,1)' : 'none'),
+      caption: 'plate iii · ' + reached + ' of 13 bands reached · Υ 0.31',
+      voice1: lines[lines.length - 2][1], voice2: lines[lines.length - 1][1], voiceCls: s.fresh ? 'd-in' : '',
+      voiceAria: 'the transmissions. latest: ' + lines[lines.length - 1][1] + '. touch to read them all.',
+      toggleLog: () => this.setState({ logOpen: !s.logOpen, sheet: null }), logOpen: s.logOpen, logExpanded: s.logOpen ? 'true' : 'false',
+      logChev: 'position:absolute;right:16px;top:19px;transition:transform 200ms;transform:rotate(' + (s.logOpen ? 180 : 0) + 'deg)',
+      log: log,
+      nextLine: next.line, nextSub: next.sub, nextAria: 'next: ' + next.line,
+      goNext: () => this.setState({ tab: next.tab, sheet: null, logOpen: false, why: '' }),
+      rows: rows, S: S, tabs: tabs,
+      sheetOpen: !!sh, sh: sh || { kind: '', title: '', tag: '', tagStyle: '', lines: [], why: '', hasWhy: false, verbs: [] },
+      closeSheet: () => this.setState({ sheet: null }),
+      slide: s.slide, openSlide: () => this.setState({ slide: true }), closeSlide: () => this.setState({ slide: false })
+    };
+  }
+  observe(){ this.say('You send a signal into the void. Some of it returns.', { obs: this.state.obs + 1 }); }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Act II, the mind</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#050604}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
+button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
+@keyframes d-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.012)}}
+@keyframes d-bumpA{0%{transform:scale(1)}30%{transform:scale(1.03)}100%{transform:scale(1)}}
+@keyframes d-bumpB{0%{transform:scale(1)}30%{transform:scale(1.03)}100%{transform:scale(1)}}
+@keyframes d-ringA{0%{transform:scale(.25);opacity:.9}100%{transform:scale(5);opacity:0}}
+@keyframes d-ringB{0%{transform:scale(.25);opacity:.9}100%{transform:scale(5);opacity:0}}
+@keyframes d-pkt{from{stroke-dashoffset:5}to{stroke-dashoffset:-100}}
+@keyframes d-pktIn{from{stroke-dashoffset:-100}to{stroke-dashoffset:5}}
+/* a pulse: one surge from the hub to every tip. two names so each pulse restarts it */
+@keyframes d-surgeA{0%{stroke-dashoffset:34}100%{stroke-dashoffset:-100}}
+@keyframes d-surgeB{0%{stroke-dashoffset:34}100%{stroke-dashoffset:-100}}
+@keyframes d-tip{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.7);opacity:.5}}
+@keyframes d-ghost{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes d-in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@keyframes d-sheet{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes d-drop{from{transform:translateY(-16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes d-scan{from{transform:translateY(-212px)}to{transform:translateY(212px)}}
+.d-pkt{stroke-dasharray:5 300;animation:d-pkt linear infinite}
+.d-pktIn{stroke-dasharray:5 300;animation:d-pktIn linear infinite}
+.d-surgeA{stroke-dasharray:34 300;animation:d-surgeA 1100ms cubic-bezier(.3,.6,.4,1) both}
+.d-surgeB{stroke-dasharray:34 300;animation:d-surgeB 1100ms cubic-bezier(.3,.6,.4,1) both}
+.d-tip{transform-box:fill-box;transform-origin:center;animation:d-tip 2.6s ease-in-out infinite}
+.d-ghost{animation:d-ghost 1.8s ease-in-out infinite}
+.d-in{animation:d-in 320ms ease-out both}
+.d-verb .d-ul{transform:scaleX(.16);transform-origin:left;transition:transform 260ms cubic-bezier(.2,.7,.2,1)}
+.d-verb:active .d-ul,.d-verb:hover .d-ul{transform:scaleX(1)}
+.d-verb:active{opacity:.85}
+.d-acct:active{opacity:.7}
+.d-hex{cursor:pointer}
+.d-hex:active{opacity:.6}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition-duration:1ms !important}}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+  <!-- material: phosphor. a tick grid, and scan lines over everything -->
+  <svg width="390" height="844" aria-hidden="true" style="position:absolute;left:0;top:0;pointer-events:none">
+    <defs>
+      <pattern id="d2scan" width="4" height="3" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#8CDCBB" fill-opacity=".045"></rect></pattern>
+      <pattern id="d2grid" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M13 10v6M10 13h6" stroke="#1B201A" stroke-width="1"></path></pattern>
+    </defs>
+    <rect y="76" width="390" height="212" fill="url(#d2grid)"></rect>
+    <rect width="390" height="844" fill="url(#d2scan)"></rect>
+  </svg>
+
+  <!-- ═══ LEDGER (0–76) ═══ -->
+  <div style="position:absolute;left:0;right:0;top:0;height:76px;border-bottom:1px solid var(--rule-2)">
+    <button class="d-acct" onClick="{{openBiomass}}" aria-label="{{biomassAria}}" style="position:absolute;left:12px;top:4px;height:68px;padding:0 4px;display:flex;flex-direction:column;justify-content:center">
+      <span style="display:flex;align-items:baseline;gap:6px">
+        <span style="font:400 36px/1 var(--f-mono);font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:var(--ink);text-shadow:0 0 10px #3A8E74;text-decoration:underline dotted var(--rule-2);text-decoration-thickness:1px;text-underline-offset:6px">2.44</span>
+        <span style="font:400 16px/1 var(--f-mono);color:var(--ink-2)">Mt</span>
+      </span>
+      <span style="font:400 11.5px/1 var(--f-mono);color:var(--ink-3);margin-top:8px">Biomass <span style="color:var(--thread)">+1.70 kt/s</span></span>
+    </button>
+    <button class="d-acct" onClick="{{openSignal}}" aria-label="{{restAria}}" style="position:absolute;left:190px;right:12px;top:4px;height:68px;padding:0 4px;display:flex;flex-direction:column;justify-content:center;gap:2px">
+      <span style="font:400 11px/16px var(--f-mono);color:var(--ink-3);align-self:flex-end;white-space:pre">{{meta}}</span>
+      <sc-for list="{{ledgerRows}}" as="lr" hint-placeholder-count="3">
+        <span style="display:flex;align-items:baseline;width:100%;font:400 12px/16px var(--f-mono);color:var(--ink-2)">
+          <span>{{lr.k}}</span>
+          <span style="flex:1;margin:0 4px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+          <span style="{{lr.vStyle}}">{{lr.v}}</span>
+        </span>
+      </sc-for>
+    </button>
+  </div>
+
+  <!-- ═══ BODY WINDOW (76–288). Touch it: pulse. Touch a stand: its sheet rises. ═══ -->
+  <div style="position:absolute;left:0;top:76px;width:390px;height:212px;overflow:hidden">
+    <button aria-label="{{bodyAria}}" onClick="{{pulse}}" style="position:absolute;inset:0;width:390px;height:212px;cursor:pointer"></button>
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:2px;background:var(--thread);opacity:.08;pointer-events:none;animation:d-scan 7s linear infinite"></div>
+    <div style="position:absolute;inset:0;pointer-events:none;transform-origin:172px 106px;animation:d-breathe 6.4s ease-in-out infinite">
+      <div style="{{bumpStyle}}">
+        <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none">
+          <defs>
+            <filter id="d2glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.8" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+          </defs>
+          <!-- the rival, arriving from the north-east edge -->
+          <path d="M295 88 Q330 70 352 66" fill="none" stroke-dasharray="3 4" style="stroke:var(--danger);stroke-width:1;opacity:.8"></path>
+          <!-- edges -->
+          <sc-for list="{{segs}}" as="g" hint-placeholder-count="96">
+            <path d="{{g.d}}" fill="none" stroke-linecap="round" style="{{g.style}}"></path>
+          </sc-for>
+          <!-- signal packets on the edges, and the surge when you pulse -->
+          <g style="filter:url(#d2glow)">
+            <sc-for list="{{segs}}" as="g" hint-placeholder-count="96">
+              <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="{{g.fxCls}}" style="{{g.fxStyle}}"></path>
+            </sc-for>
+            <sc-for list="{{segs}}" as="g" hint-placeholder-count="96">
+              <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="{{g.surgeCls}}" style="{{g.surgeStyle}}"></path>
+            </sc-for>
+          </g>
+          <sc-for list="{{nodes}}" as="nd" hint-placeholder-count="40">
+            <rect x="{{nd.x}}" y="{{nd.y}}" width="3.2" height="3.2" style="fill:var(--thread-glow)"></rect>
+          </sc-for>
+          <sc-for list="{{tips}}" as="t" hint-placeholder-count="35">
+            <circle cx="{{t.x}}" cy="{{t.y}}" r="2.2" class="d-tip" style="{{t.style}}"></circle>
+          </sc-for>
+          <!-- the hub -->
+          <rect x="167" y="101" width="10" height="10" transform="rotate(45 172 106)" style="fill:var(--ground);stroke:var(--thread-glow);stroke-width:1.2"></rect>
+          <rect x="170.5" y="104.5" width="3" height="3" style="fill:var(--thread-glow)"></rect>
+          <!-- stands: hex clusters on the edges -->
+          <sc-for list="{{stands}}" as="h" hint-placeholder-count="9">
+            <g class="d-hex" onClick="{{h.open}}" style="pointer-events:all">
+              <circle cx="{{h.x}}" cy="{{h.y}}" r="16" fill="#000" fill-opacity=".01"></circle>
+              <path d="{{h.hex}}" style="{{h.hexStyle}}"></path>
+              <path d="{{h.hex2}}" style="{{h.hex2Style}}"></path>
+            </g>
+          </sc-for>
+          <!-- Armillaria -->
+          <g class="d-hex" onClick="{{openOffer}}" style="pointer-events:all">
+            <circle cx="352" cy="66" r="16" fill="#000" fill-opacity=".01"></circle>
+            <path d="{{rivalHex}}" fill="none" stroke-dasharray="2 2" style="stroke:var(--danger);stroke-width:1.2"></path>
+          </g>
+          <!-- amber: the next move, on the body -->
+          <circle cx="{{amber.x}}" cy="{{amber.y}}" r="11" fill="none" class="d-ghost" style="{{amber.style}}"></circle>
+          <text x="{{amber.lx}}" y="{{amber.ly}}" style="{{amber.labelStyle}}">{{amber.label}}</text>
+        </svg>
+      </div>
+    </div>
+    <div aria-hidden="true" style="{{ringStyle}}"></div>
+    <div style="position:absolute;left:16px;bottom:12px;font:500 11px/1 var(--f-mono);color:var(--thread);text-shadow:0 0 6px #3A8E74;pointer-events:none">{{caption}}</div>
+    <button aria-label="open the slide" onClick="{{openSlide}}" style="position:absolute;right:4px;bottom:2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--ink-2)">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M11 2.5h4.5V7M7 15.5H2.5V11M15.5 2.5l-5 5M2.5 15.5l5-5"></path></svg>
+    </button>
+  </div>
+
+  <!-- ═══ VOICE (288–340). Capitalised chatter, in phosphor. ═══ -->
+  <button onClick="{{toggleLog}}" aria-expanded="{{logExpanded}}" aria-label="{{voiceAria}}" style="position:absolute;left:0;right:0;top:288px;height:52px;border-top:1px solid var(--rule-2);border-bottom:1px solid var(--rule-2);box-sizing:border-box;padding:6px 40px 0 16px;display:block;width:390px">
+    <span style="display:block;font:400 12px/20px var(--f-mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{voice1}}</span>
+    <span class="{{voiceCls}}" style="display:block;font:500 12.5px/20px var(--f-mono);color:var(--ink);text-shadow:0 0 7px #3A8E74;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{voice2}}</span>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke-width="1.3" stroke-linecap="round" aria-hidden="true" style="{{logChev}}"><path d="M3 5l4 4 4-4" style="stroke:var(--ink-3)"></path></svg>
+  </button>
+
+  <!-- ═══ NEXT (340–404) ═══ -->
+  <button onClick="{{goNext}}" aria-label="{{nextAria}}" style="position:absolute;left:0;right:0;top:340px;height:64px;padding:0 16px;display:flex;align-items:center;gap:12px;width:390px;box-sizing:border-box">
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="flex:none"><circle cx="7" cy="7" r="3.4" fill="none" stroke-width="1.4" class="d-tip" style="stroke:var(--next)"></circle></svg>
+    <span style="flex:1">
+      <span style="display:block;font:500 15px/1.25 var(--f-mono);color:var(--ink)">{{nextLine}}</span>
+      <span style="display:block;font:400 11.5px/15px var(--f-mono);color:var(--ink-3);margin-top:3px">{{nextSub}}</span>
+    </span>
+  </button>
+
+  <!-- ═══ VERBS (404–776) ═══ -->
+  <div style="position:absolute;left:0;right:0;top:404px;height:372px;border-top:1px solid var(--rule-2);overflow:hidden">
+    <sc-for list="{{rows}}" as="r" hint-placeholder-count="7">
+      <div style="{{r.wrap}}">
+        <span style="{{r.marginStyle}}">{{r.margin}}</span>
+        <div style="flex:1;min-width:0">
+          <sc-if value="{{r.isTap}}" hint-placeholder-val="{{true}}">
+            <button class="d-verb" onClick="{{r.onTap}}" aria-label="{{r.aria}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="position:relative;display:inline-block">
+                  <span style="{{r.wordStyle}}">{{r.word}}</span>
+                  <span class="d-ul" style="{{r.ulStyle}}"></span>
+                </span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="{{r.costStyle}}">{{r.cost}}</span>
+              </span>
+              <span style="{{S.sub}}">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isLocked}}" hint-placeholder-val="{{false}}">
+            <button onClick="{{r.onTap}}" aria-label="{{r.aria}}" aria-expanded="{{r.expanded}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="{{S.locked}}">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                <span style="{{S.lockedCost}}">{{r.cost}}</span>
+              </span>
+              <span style="{{S.subMono}}">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isAcct}}" hint-placeholder-val="{{false}}">
+            <button class="d-acct" onClick="{{r.onTap}}" aria-label="{{r.aria}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+              <span style="display:flex;align-items:baseline">
+                <span style="{{S.acct}}">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="{{r.costStyle}}">{{r.cost}}</span>
+              </span>
+              <span style="{{S.sub}}">{{r.sub}}</span>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.isRead}}" hint-placeholder-val="{{false}}">
+            <div style="padding:9px 0 8px">
+              <span style="display:flex;align-items:baseline">
+                <span style="{{S.read}}">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                <span style="{{S.readCost}}">{{r.cost}}</span>
+              </span>
+              <span style="{{S.subMono}}">{{r.sub}}</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{r.isHold}}" hint-placeholder-val="{{false}}">
+            <button onPointerDown="{{r.down}}" onPointerUp="{{r.up}}" onPointerLeave="{{r.up}}" aria-label="{{r.aria}}" style="display:block;position:relative;width:100%;min-height:50px;padding:7px 0 10px;touch-action:none">
+              <span style="display:flex;align-items:baseline">
+                <span style="{{S.hold}}">{{r.word}}</span>
+                <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                <span style="{{S.holdCost}}">hold</span>
+              </span>
+              <span style="{{S.subMono}}">{{r.sub}}</span>
+              <svg width="310" height="14" viewBox="0 0 310 14" aria-hidden="true" style="position:absolute;left:0;bottom:-3px;overflow:visible">
+                <path d="M0 7 L110 7 L230 7 L310 7 M38 7 l12 -6 M74 7 l12 6 M121 7 l14 -6 M168 7 l12 6 M214 7 l14 -6 M262 7 l12 6" pathLength="100" fill="none" stroke-linecap="square" style="{{r.fill}}"></path>
+              </svg>
+            </button>
+          </sc-if>
+          <sc-if value="{{r.showWhy}}" hint-placeholder-val="{{false}}">
+            <div class="d-in" style="{{S.why}}"><span style="color:var(--next-ink)">↳</span><span>{{r.why}}</span></div>
+          </sc-if>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- ═══ NAV (776–844). Words on a rule; each carries its live reading. ═══ -->
+  <div style="position:absolute;left:0;right:0;top:776px;height:68px;border-top:1px solid var(--rule-2);display:flex;padding:0 8px;box-sizing:border-box">
+    <sc-for list="{{tabs}}" as="tb" hint-placeholder-count="4">
+      <button onClick="{{tb.go}}" aria-current="{{tb.current}}" aria-label="{{tb.aria}}" style="flex:1;height:68px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-left:8px">
+        <span style="{{tb.bar}}"></span>
+        <span style="{{tb.nameStyle}}">{{tb.name}}</span>
+        <span style="{{tb.readStyle}}">{{tb.reading}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <!-- ═══ THE LOG ═══ -->
+  <sc-if value="{{logOpen}}" hint-placeholder-val="{{false}}">
+    <div role="log" aria-label="the log" style="position:absolute;left:0;right:0;top:340px;bottom:0;z-index:8;background:var(--raised);border-top:1px solid var(--thread);animation:d-drop 260ms ease-out both;overflow:hidden">
+      <div style="padding:8px 0">
+        <sc-for list="{{log}}" as="lg" hint-placeholder-count="10">
+          <div style="display:flex;align-items:baseline;min-height:30px;border-bottom:1px solid var(--rule)">
+            <span style="width:72px;flex:none;text-align:right;padding-right:12px;font:400 11px/1 var(--f-mono);color:var(--ink-3)">{{lg.t}}</span>
+            <span style="{{lg.style}}">{{lg.text}}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═══ A SHEET. Rises over NEXT, the verbs and the nav; the body stays in view. ═══ -->
+  <sc-if value="{{sheetOpen}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-label="{{sh.title}}" style="position:absolute;left:0;right:0;top:340px;bottom:0;z-index:9;background:var(--raised);border-top:1px solid var(--thread);box-shadow:0 -1px 12px #15463A;animation:d-sheet 300ms cubic-bezier(.2,.8,.2,1) both">
+      <div style="display:flex;align-items:center;height:48px;padding:0 4px 0 16px;border-bottom:1px solid var(--rule-2)">
+        <span style="font:400 11.5px/1 var(--f-mono);color:var(--ink-3)">{{sh.kind}}</span>
+        <span style="flex:1"></span>
+        <button onClick="{{closeSheet}}" aria-label="close the sheet" style="min-width:56px;height:44px;font:400 13px var(--f-mono);color:var(--ink-2);text-align:center;text-decoration:underline;text-underline-offset:4px">close</button>
+      </div>
+      <div style="padding:14px 16px 0">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px">
+          <span style="font:400 22px/1.1 var(--f-mono);letter-spacing:-.02em;color:var(--ink);text-shadow:0 0 8px #15463A">{{sh.title}}</span>
+          <span style="{{sh.tagStyle}}">{{sh.tag}}</span>
+        </div>
+        <div style="margin-top:12px;border-top:1px solid var(--rule-2)">
+          <sc-for list="{{sh.lines}}" as="sl" hint-placeholder-count="4">
+            <div style="display:flex;align-items:baseline;min-height:30px;border-bottom:1px solid var(--rule);font:400 12.5px/1.2 var(--f-mono)">
+              <span style="color:var(--ink-3)">{{sl.k}}</span>
+              <span style="flex:1;margin:0 6px;border-bottom:1px dotted var(--rule-2);transform:translateY(-3px)"></span>
+              <span style="{{sl.vStyle}}">{{sl.v}}</span>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{sh.hasWhy}}" hint-placeholder-val="{{true}}">
+          <div style="margin-top:12px;display:flex;gap:6px;font:400 12.5px/1.5 var(--f-mono);color:var(--ink-2)"><span style="color:var(--next-ink)">↳</span><span>{{sh.why}}</span></div>
+        </sc-if>
+        <div style="margin-top:6px">
+          <sc-for list="{{sh.verbs}}" as="r" hint-placeholder-count="3">
+            <div>
+              <sc-if value="{{r.isTap}}" hint-placeholder-val="{{true}}">
+                <button class="d-verb" onClick="{{r.onTap}}" aria-label="{{r.aria}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+                  <span style="display:flex;align-items:baseline">
+                    <span style="position:relative;display:inline-block"><span style="{{r.wordStyle}}">{{r.word}}</span><span class="d-ul" style="{{r.ulStyle}}"></span></span>
+                    <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                    <span style="{{r.costStyle}}">{{r.cost}}</span>
+                  </span>
+                  <span style="{{S.sub}}">{{r.sub}}</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{r.isLocked}}" hint-placeholder-val="{{false}}">
+                <button onClick="{{r.onTap}}" aria-label="{{r.aria}}" aria-expanded="{{r.expanded}}" style="display:block;width:100%;min-height:50px;padding:7px 0 6px">
+                  <span style="display:flex;align-items:baseline">
+                    <span style="{{S.locked}}">{{r.word}}</span>
+                    <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule);transform:translateY(-4px)"></span>
+                    <span style="{{S.lockedCost}}">{{r.cost}}</span>
+                  </span>
+                  <span style="{{S.subMono}}">{{r.sub}}</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{r.isHold}}" hint-placeholder-val="{{false}}">
+                <button onPointerDown="{{r.down}}" onPointerUp="{{r.up}}" onPointerLeave="{{r.up}}" aria-label="{{r.aria}}" style="display:block;position:relative;width:100%;min-height:50px;padding:7px 0 10px;touch-action:none">
+                  <span style="display:flex;align-items:baseline">
+                    <span style="{{S.hold}}">{{r.word}}</span>
+                    <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+                    <span style="{{S.holdCost}}">hold</span>
+                  </span>
+                  <span style="{{S.subMono}}">{{r.sub}}</span>
+                  <svg width="358" height="14" viewBox="0 0 358 14" aria-hidden="true" style="position:absolute;left:0;bottom:-3px;overflow:visible">
+                    <path d="M0 7 L120 7 L250 7 L358 7 M40 7 l12 -6 M84 7 l12 6 M136 7 l14 -6 M190 7 l12 6 M244 7 l14 -6 M300 7 l12 6" pathLength="100" fill="none" stroke-linecap="square" style="{{r.fill}}"></path>
+                  </svg>
+                </button>
+              </sc-if>
+              <sc-if value="{{r.showWhy}}" hint-placeholder-val="{{false}}">
+                <div class="d-in" style="{{S.why}}"><span style="color:var(--next-ink)">↳</span><span>{{r.why}}</span></div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ═══ THE SLIDE. The graph stood upright; every stand is touchable. ═══ -->
+  <sc-if value="{{slide}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-label="the slide" style="position:absolute;inset:0;z-index:20;background:var(--ground);animation:d-sheet 420ms cubic-bezier(.2,.8,.2,1) both">
+      <div style="position:absolute;left:0;top:316px;width:390px;height:212px;transform:rotate(90deg) scale(1.8);transform-origin:195px 106px">
+        <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none">
+          <sc-for list="{{segs}}" as="g" hint-placeholder-count="96">
+            <path d="{{g.d}}" fill="none" stroke-linecap="round" style="{{g.style}}"></path>
+          </sc-for>
+          <g style="filter:url(#d2glow)">
+            <sc-for list="{{segs}}" as="g" hint-placeholder-count="96">
+              <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="{{g.fxCls}}" style="{{g.fxStyle}}"></path>
+            </sc-for>
+          </g>
+          <sc-for list="{{nodes}}" as="nd" hint-placeholder-count="40">
+            <rect x="{{nd.x}}" y="{{nd.y}}" width="3.2" height="3.2" style="fill:var(--thread-glow)"></rect>
+          </sc-for>
+          <rect x="167" y="101" width="10" height="10" transform="rotate(45 172 106)" style="fill:var(--ground);stroke:var(--thread-glow);stroke-width:1.2"></rect>
+          <sc-for list="{{stands}}" as="h" hint-placeholder-count="9">
+            <g class="d-hex" onClick="{{h.openFromSlide}}" style="pointer-events:all">
+              <circle cx="{{h.x}}" cy="{{h.y}}" r="13" fill="#000" fill-opacity=".01"></circle>
+              <path d="{{h.hex}}" style="{{h.hexStyle}}"></path>
+              <path d="{{h.hex2}}" style="{{h.hex2Style}}"></path>
+            </g>
+          </sc-for>
+        </svg>
+      </div>
+      <div style="position:absolute;left:16px;right:8px;top:0;height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule-2)">
+        <span style="font:400 18px/1 var(--f-mono);color:var(--ink);text-shadow:0 0 8px #3A8E74">The slide <span style="font-size:11.5px;color:var(--ink-3)">· 96 edges · 9 stands shown</span></span>
+        <button onClick="{{closeSlide}}" aria-label="close the slide" style="min-width:64px;height:44px;font:400 13px var(--f-mono);color:var(--ink-2);text-decoration:underline;text-underline-offset:4px;text-align:center">close</button>
+      </div>
+      <div style="position:absolute;left:16px;right:16px;bottom:18px;border-top:1px solid var(--rule-2);padding-top:10px;font:400 12.5px/18px var(--f-mono);color:var(--ink-2)">Touch a stand. Its sheet rises over the list, as it does from the window.</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.G = this.bodyGeom();
+    this.state = {
+      tab: 'forest', sheet: null, why: '', logOpen: false, slide: false,
+      sig: 126.1, psi: 5.69, clock: 13880, pulse: 0, pulsedAt: -999,
+      released: false, accepted: false, severed: false, killed: {}, dens: {},
+      hold: { key: '', p: 0 }, fresh: false,
+      lines: [
+        ['3:38:02', 'Something in the network is repeating itself.'],
+        ['3:40:15', 'Below the brim it is just signal. Insight only comes while the pool is full.'],
+        ['3:42:51', 'There is a road. Eleven centimetres of dead mineral, and absolute.'],
+        ['3:44:30', 'Monotropa has never made a sugar. It eats fungi. It is offering anyway.'],
+        ['3:46:07', 'Mass moves along the cords without you. Advances continue while you look away.'],
+        ['3:49:40', 'Something is growing toward you from the north and it is not a tree.'],
+        ['3:51:02', 'The wind has been westerly for six hours. Tomorrow it will not be.']
+      ]
+    };
+    // nine of the stands, pinned to the body's own edges
+    this.STANDS = [
+      { seg: 17, name: 'Pine Bottom', sp: 'Pine', so: 'Peat', dens: 0.62, sig: 19 },
+      { seg: 18, name: 'Hollow Creek', sp: 'Birch', so: 'Loam', dens: 0.71, sig: 24, ripe: true },
+      { seg: 22, name: 'Alder Flat', sp: 'Alder', so: 'Clay', dens: 0.44, sig: 12 },
+      { seg: 25, name: 'Black Birch Reach', sp: 'Birch', so: 'Sand', dens: 0.58, sig: 17 },
+      { seg: 30, name: 'Long Ford Lee', sp: 'Oak', so: 'Loam', dens: 0.80, sig: 28 },
+      { seg: 39, name: 'Still Ash Copse', sp: 'Ash', so: 'Clay', dens: 0.36, sig: 9 },
+      { seg: 47, name: 'Old Beech Hollow', sp: 'Beech', so: 'Scree', dens: 0, sig: 0, dead: true },
+      { seg: 55, name: 'Wet Scree Bend', sp: 'Hemlock', so: 'Scree', dens: 0.51, sig: 14 },
+      { seg: 72, name: 'Far Oak Rise', sp: 'Oak', so: 'Burn', dens: 0, sig: 0, consumed: true }
+    ];
+    this._tick = setInterval(() => {
+      const s = this.state;
+      const full = s.sig >= 130;
+      this.setState({ sig: Math.min(130, s.sig + 1.01), psi: full ? s.psi + 1.76 : s.psi, clock: s.clock + 1, fresh: false });
+    }, 1000);
+  }
+
+  // ── THE BODY: one seeded geometry, read three ways. This block is identical in D_0..D_3. ──
+  bodyGeom(){
+    let s = 61;
+    const R = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const K = { x: 172, y: 106 }, SQ = 0.6, segs = [], q = [], ARMS = 7;
+    for (let i = 0; i < ARMS; i++) q.push({ x: K.x, y: K.y, a: i * 6.2832 / ARMS + 0.35 + (R() - 0.5) * 0.5, d: 0, p: -1 });
+    while (q.length && segs.length < 96) {
+      const o = q.shift();
+      const L = (36 - o.d * 4) * (0.78 + R() * 0.44);
+      const a = o.a + (R() - 0.5) * 0.42;
+      const x2 = o.x + Math.cos(a) * L, y2 = o.y + Math.sin(a) * L * SQ;
+      const bend = (R() - 0.5) * L * 0.55;
+      const id = segs.length;
+      segs.push({ id: id, p: o.p, d: o.d, a: a, L: L, bend: bend, x1: o.x, y1: o.y, x2: x2, y2: y2,
+        cx: (o.x + x2) / 2 - Math.sin(a) * bend, cy: (o.y + y2) / 2 + Math.cos(a) * bend * SQ });
+      if (o.d < 6) {
+        q.push({ x: x2, y: y2, a: a + (R() - 0.5) * 0.3, d: o.d + 1, p: id });
+        if (R() < 0.62 - o.d * 0.06) q.push({ x: x2, y: y2, a: a + (R() < 0.5 ? -1 : 1) * (0.45 + R() * 0.55), d: o.d + 1, p: id });
+      }
+    }
+    const kids = segs.map(() => []);
+    segs.forEach(g => { if (g.p >= 0) kids[g.p].push(g.id); });
+    // the looking glass: mirror through the knot, put each branch on a band by how many forks
+    // it is from the knot (so growth settles the bands inside-out, as Act III does), and lay the
+    // branch's own length along that orbit. TILT is the plane seen edge-on.
+    const TILT = 0.42, BR = b => 16 + b * 10.4;
+    const P = (r, t) => ({ x: K.x + r * Math.cos(t), y: K.y + r * Math.sin(t) * TILT });
+    segs.forEach(g => {
+      const dx = -(g.x2 - K.x), dy = (g.y2 - K.y) / SQ;
+      const band = Math.min(12, g.d * 2 + (g.id % 2));
+      const r = BR(band), t1 = Math.atan2(dy, dx);
+      const span = Math.min(1.1, g.L / r) * (g.bend >= 0 ? 1 : -1), t0 = t1 - span;
+      const a0 = P(r, t0), a1 = P(r, t1), c = P(r / Math.cos(span / 2), t0 + span / 2);
+      Object.assign(g, { band: band, gr: r, gt: t1, gx1: a0.x, gy1: a0.y, gcx: c.x, gcy: c.y, gx2: a1.x, gy2: a1.y });
+    });
+    return { K: K, segs: segs, kids: kids, TILT: TILT, BR: BR };
+  }
+  // one path grammar for all three readings (M · Q), so the strokes can morph between them
+  bodyPath(g, reading){
+    const f = v => Math.round(v * 10) / 10;
+    if (reading === 'ink') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f(g.cx) + ' ' + f(g.cy) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    if (reading === 'mind') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f((g.x1 + g.x2) / 2) + ' ' + f((g.y1 + g.y2) / 2) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    return 'M' + f(g.gx1) + ' ' + f(g.gy1) + ' Q' + f(g.gcx) + ' ' + f(g.gcy) + ' ' + f(g.gx2) + ' ' + f(g.gy2);
+  }
+  isTip(id, n){ return id < n && this.G.kids[id].every(k => k >= n); }
+  // ── end of the shared block ──
+
+  componentWillUnmount(){ clearInterval(this._tick); clearInterval(this._hi); }
+  stamp(){ const c = this.state.clock; return Math.floor(c / 3600) + ':' + String(Math.floor(c / 60) % 60).padStart(2, '0') + ':' + String(c % 60).padStart(2, '0'); }
+  say(text, extra){ this.setState(Object.assign({ lines: this.state.lines.concat([[this.stamp(), text]]), fresh: true }, extra || {})); }
+  hex(cx, cy, r){ let d = ''; for (let k = 0; k < 6; k++) { const a = Math.PI / 180 * (60 * k - 30); d += (k ? 'L' : 'M') + (cx + r * Math.cos(a)).toFixed(1) + ' ' + (cy + r * Math.sin(a)).toFixed(1); } return d + 'Z'; }
+  holdStart(key, ms, done){
+    clearInterval(this._hi);
+    const t0 = Date.now(); this._h0 = t0;
+    this.setState({ hold: { key: key, p: 0 } });
+    this._hi = setInterval(() => {
+      const p = Math.min(1, (Date.now() - t0) / ms);
+      this.setState({ hold: { key: key, p: p } });
+      if (p >= 1) { clearInterval(this._hi); this._hi = null; done(); this.setState({ hold: { key: '', p: 0 } }); }
+    }, 30);
+  }
+  holdEnd(key){
+    if (!this._hi) return;
+    clearInterval(this._hi); this._hi = null;
+    const short = Date.now() - this._h0 < 300;
+    this.setState({ hold: { key: '', p: 0 }, why: short ? 'hold-' + key : this.state.why });
+  }
+  doPulse(){
+    const s = this.state;
+    if (s.sig < 72.3) { this.setState({ why: 'pulse', tab: 'mind' }); return; }
+    this.say('It becomes something else.', { sig: s.sig - 72.3, pulse: s.pulse + 1, pulsedAt: s.clock });
+  }
+  renderVals(){
+    const s = this.state, G = this.G, n = 96;
+    const f = v => Math.round(v * 10) / 10;
+    const MONO = 'var(--f-mono)';
+    const full = s.sig >= 130;
+
+    // ── the body as a graph ──
+    const pa = s.pulse % 2 === 0;
+    const segs = G.segs.map(g => ({
+      d: this.bodyPath(g, 'mind'),
+      style: 'stroke:var(--body);stroke-width:' + (g.d === 0 ? 1.6 : 1.1) + ';opacity:' + (g.d > 3 ? 0.7 : 1),
+      fxCls: g.id % 3 === 2 ? 'd-pktIn' : 'd-pkt',
+      fxStyle: 'stroke:var(--thread-glow);stroke-width:2.4;animation-duration:' + (1.3 + (g.id % 5) * 0.42).toFixed(2) + 's;animation-delay:-' + ((g.id * 0.37) % 3).toFixed(2) + 's',
+      surgeCls: s.pulse ? (pa ? 'd-surgeA' : 'd-surgeB') : '',
+      surgeStyle: (s.pulse ? '' : 'display:none;') + 'stroke:var(--thread-glow);stroke-width:2.8;animation-delay:' + (g.d * 0.16).toFixed(2) + 's'
+    }));
+    const nodes = G.segs.filter(g => !this.isTip(g.id, n)).map(g => ({ x: f(g.x2 - 1.6), y: f(g.y2 - 1.6) }));
+    const tips = G.segs.filter(g => this.isTip(g.id, n)).map(g => ({ x: f(g.x2), y: f(g.y2), style: 'fill:var(--ground);stroke:var(--thread-glow);stroke-width:1.1;animation-delay:-' + ((g.id * 0.29) % 2.6).toFixed(2) + 's' }));
+    const stands = this.STANDS.map((st, i) => {
+      const g = G.segs[st.seg], x = g.x2, y = g.y2;
+      const killed = s.killed[i], dens = st.dens + (s.dens[i] || 0);
+      const sel = s.sheet && s.sheet.kind === 'stand' && s.sheet.i === i;
+      let fill = dens > 0.7 ? '#3A8E74' : dens > 0.5 ? '#15463A' : '#0D2A24', stroke = 'var(--thread)';
+      if (st.dead) { fill = '#331309'; stroke = 'var(--danger)'; }
+      else if (st.consumed || killed) { fill = '#101310'; stroke = '#3A4236'; }
+      if (sel) stroke = 'var(--ink)';
+      return {
+        x: f(x), y: f(y), hex: this.hex(x, y, 6.5), hex2: this.hex(x + 9.5, y - 5.5, 4),
+        hexStyle: 'fill:' + fill + ';stroke:' + stroke + ';stroke-width:' + (sel ? 2 : 1.1),
+        hex2Style: 'fill:none;stroke:' + stroke + ';stroke-width:.8;opacity:.7',
+        open: () => this.setState({ sheet: { kind: 'stand', i: i }, logOpen: false, why: '' }),
+        openFromSlide: () => this.setState({ sheet: { kind: 'stand', i: i }, slide: false, logOpen: false, why: '' })
+      };
+    });
+
+    // ── NEXT, and its amber on the body ──
+    const hc = G.segs[18];
+    let next, amber;
+    if (!s.released) {
+      next = { line: 'Primordium 1 is ripe. The westerly turns in 0:41.', sub: 'After that, spores land on the road · amber at Hollow Creek', tab: 'flush' };
+      amber = { x: hc.x2, y: hc.y2, label: 'ripe', lx: hc.x2 + 14, ly: hc.y2 + 4 };
+    } else if (!s.accepted) {
+      next = { line: 'Armillaria offers 2 channels for 40 min. Stake 12 kΣ.', sub: 'Channels 3 of 5 are taken · amber on the north-east edge', tab: 'pact' };
+      amber = { x: 352, y: 66, label: '', lx: 0, ly: 0 };
+    } else {
+      next = { line: 'Substrate Assay is 340 Ψ. You have ' + s.psi.toFixed(2) + '.', sub: full ? 'Insight fills at 1.76 Ψ/s while the pool is full · amber at the hub' : 'Insight is stopped until the pool is full · amber at the hub', tab: 'mind' };
+      amber = { x: 172, y: 106, label: '', lx: 0, ly: 0 };
+    }
+    amber = Object.assign(amber, { x: f(amber.x), y: f(amber.y), style: 'stroke:var(--next);stroke-width:1.4', labelStyle: 'font:500 9.5px ' + MONO + ';fill:var(--next)' });
+
+    // ── grammar styles, Act II material ──
+    const S = {
+      sub: 'display:block;font:400 11.5px/16px ' + MONO + ';color:var(--ink-3);margin-top:3px',
+      subMono: 'display:block;font:400 11.5px/16px ' + MONO + ';color:var(--ink-3);margin-top:3px',
+      locked: 'display:inline-block;padding:1px 7px 2px;border:1px dashed var(--locked);font:400 14.5px/1.2 ' + MONO + ';color:var(--ink-3)',
+      lockedCost: 'font:400 11.5px/1 ' + MONO + ';color:var(--ink-3)',
+      acct: 'font:400 14.5px/1.2 ' + MONO + ';color:var(--ink);text-decoration:underline dotted var(--ink-3);text-decoration-thickness:1px;text-underline-offset:5px',
+      read: 'font:400 14.5px/1.2 ' + MONO + ';color:var(--ink-2)',
+      readCost: 'font:400 12px/1 ' + MONO + ';color:var(--ink-2);white-space:pre',
+      hold: 'font:400 14.5px/1.2 ' + MONO + ';color:var(--danger)',
+      holdCost: 'font:400 12px/1 ' + MONO + ';color:var(--danger)',
+      why: 'display:flex;gap:6px;padding:0 0 10px;font:400 12.5px/1.45 ' + MONO + ';color:var(--ink-2)'
+    };
+    const word = ok => 'font:500 15px/1.2 ' + MONO + ';color:' + (ok ? 'var(--ink)' : 'var(--ink-3)') + (ok ? ';text-shadow:0 0 8px #15463A' : '');
+    const cost = ok => 'font:400 12.5px/1 ' + MONO + ';color:' + (ok ? 'var(--ink)' : 'var(--next-ink)');
+    const ul = ok => 'position:absolute;left:0;right:0;bottom:-3px;height:1.5px;background:' + (ok ? 'var(--thread-glow)' : 'var(--ink-3)') + ';box-shadow:0 0 6px #62C39A';
+    const base = { isTap: false, isLocked: false, isAcct: false, isRead: false, isHold: false, showWhy: false, why: '', expanded: 'false', margin: '', sub: '', cost: '', onTap: () => {} };
+    const why = id => s.why === id;
+    const tog = id => () => this.setState({ why: s.why === id ? '' : id });
+    const TAP = o => Object.assign({}, base, { isTap: true, wordStyle: word(o.ok), costStyle: cost(o.ok), ulStyle: ul(o.ok) }, o);
+    const LOCK = (id, o) => Object.assign({}, base, { isLocked: true, onTap: tog(id), expanded: why(id) ? 'true' : 'false', showWhy: why(id) }, o);
+    const ACCT = o => Object.assign({}, base, { isAcct: true, costStyle: 'font:400 12.5px/1 ' + MONO + ';color:var(--thread)' }, o);
+    const READ = o => Object.assign({}, base, { isRead: true }, o);
+    const HOLD = (key, ms, o, done) => Object.assign({}, base, {
+      isHold: true, down: () => this.holdStart(key, ms, done), up: () => this.holdEnd(key),
+      fill: 'stroke:var(--danger);stroke-width:1.4;stroke-dasharray:100;stroke-dashoffset:' + (s.hold.key === key ? (100 - s.hold.p * 100).toFixed(1) : 100) + ';opacity:' + (s.hold.key === key ? 1 : 0) + ';filter:drop-shadow(0 0 3px #A24B32)',
+      showWhy: why('hold-' + key)
+    }, o);
+    const openStand = i => () => this.setState({ sheet: { kind: 'stand', i: i }, why: '' });
+
+    const rows = [];
+    if (s.tab === 'forest') {
+      [4, 1, 0].forEach((i, k) => {
+        const st = this.STANDS[i], d = st.dens + (s.dens[i] || 0);
+        rows.push(ACCT({ margin: k === 0 ? 'stands' : '', word: st.name, cost: s.killed[i] ? 'litter' : '+' + Math.round(st.sig + (s.dens[i] || 0) * 60) + ' Σ/s', sub: st.sp + ' on ' + st.so + ' · density ' + d.toFixed(2) + (st.ripe && !s.released ? ' · primordium ripe' : ''), aria: st.name + ', open its sheet', onTap: openStand(i) }));
+      });
+      rows.push(READ({ word: '49 more', cost: '52 / 61 held', sub: 'Touch them on the body, or open the slide.' }));
+      rows.push(TAP({ margin: 'grow', ok: true, word: '[ Advance ]', cost: '12.0 kt', sub: 'The far bank · under the road in 2:10 · 3 fronts free', aria: 'advance toward the far bank, 12.0 kilotonnes',
+        onTap: () => this.say('Threads mass at the border of the far bank and wait for a gap.') }));
+      rows.push(LOCK('survey', { word: 'Survey', cost: '340 Ψ', sub: 'Needs Substrate Assay · ' + Math.max(0, 340 - s.psi).toFixed(0) + ' Ψ more', aria: 'survey, locked. tap to read why.', why: 'The fog was never fog. It was a number you had not paid for.' }));
+    } else if (s.tab === 'mind') {
+      rows.push(READ({ margin: 'pool', word: full ? 'Full' : 'Filling', cost: this.bar(s.sig / 130, 14) + ' ' + Math.round(s.sig / 1.3) + '%', sub: 'Below the brim it is just signal. Insight only comes while the pool is full.' }));
+      const pOk = s.sig >= 72.3;
+      rows.push(TAP({ margin: 'think', ok: pOk, word: '[ Pulse ]', cost: pOk ? '72.3 kΣ' : (72.3 - s.sig).toFixed(1) + ' kΣ short', sub: 'Over half the pool. Insight stops until it refills · or touch the body', aria: 'pulse, spends 72.3 kilo-signal', onTap: () => this.doPulse(),
+        showWhy: why('pulse') && !pOk, why: 'The pool is ' + Math.round(s.sig / 1.3) + '%. A pulse spends over half of it.' }));
+      rows.push(TAP({ margin: 'learn', ok: s.psi >= 110, word: 'Septal Gating', cost: s.psi >= 110 ? '110 Ψ' : (110 - s.psi).toFixed(0) + ' Ψ short', sub: 'The far stands hear sooner. Quicker now.', aria: 'septal gating, 110 insight', onTap: tog('sept'),
+        showWhy: why('sept') && s.psi < 110, why: full ? 'At 1.76 Ψ/s, in ' + Math.ceil((110 - s.psi) / 1.76) + ' s. Only while the pool stays full.' : 'Insight is stopped. The pool is not full.' }));
+      rows.push(TAP({ ok: s.psi >= 340, word: 'Substrate Assay', cost: s.psi >= 340 ? '340 Ψ' : (340 - s.psi).toFixed(0) + ' Ψ short', sub: 'Names what lies in the fog. Opens Survey.', aria: 'substrate assay, 340 insight', onTap: tog('assay'),
+        showWhy: why('assay') && s.psi < 340, why: 'Insight fills only while the pool is full. ' + (full ? 'It is full now.' : 'It is not.') }));
+      rows.push(LOCK('diff', { word: 'Differentiation', cost: '', sub: 'Needs 70 stands · 18 more', aria: 'differentiation, locked', why: 'The network has enough of itself to specialise at seventy. The forest next to the forest is the same forest.' }));
+    } else if (s.tab === 'flush') {
+      if (!s.released) rows.push(TAP({ margin: 'fruit', ok: true, word: '[ Release ]', cost: 'ripe', sub: 'Primordium 1 at Hollow Creek · 4.1e8 spores · westerly 0:41', aria: 'release primordium 1',
+        onTap: () => this.say('One of them found wet bark on the far side of the road.', { released: true }) }));
+      else rows.push(READ({ margin: 'fruit', word: 'Primordium 1', cost: 'released', sub: '4.1e8 spores on the westerly. One found wet bark.' }));
+      rows.push(READ({ word: 'Primordium 2', cost: this.bar(0.64, 10) + ' 0.64', sub: 'Best in 3:10. The weather decides the rest.' }));
+      rows.push(READ({ word: 'Primordium 3', cost: this.bar(0.21, 10) + ' 0.21', sub: 'Best in 9:40.' }));
+      rows.push(TAP({ ok: true, word: '[ Fruit ]', cost: '1.20 kt', sub: 'Knot a fourth. Slots 3 / 4.', aria: 'knot a fourth primordium, 1.20 kilotonnes', onTap: () => this.say('A knot of tissue, below the litter. The weather decides the rest.') }));
+      rows.push(ACCT({ margin: 'bank', word: 'Seed bank', cost: '2.6e9 spores', sub: 'Banked spores do not decay.', aria: 'seed bank, open its account', onTap: () => this.setState({ sheet: { kind: 'acct', k: 'bank' } }) }));
+      rows.push(READ({ margin: 'sky', word: 'Wind', cost: 'westerly · 6 h', sub: 'Grazing low. No mast year.' }));
+    } else {
+      if (!s.accepted) rows.push(ACCT({ margin: 'offers', word: 'Armillaria', cost: 'stake 12 kΣ', sub: '2 channels · term 40 min · it wants the north edge', aria: 'Armillaria offers a pact. open it.', onTap: () => this.setState({ sheet: { kind: 'offer' } }) }));
+      else rows.push(READ({ margin: 'offers', word: 'Armillaria', cost: 'signed', sub: 'It has no way to check what you are.' }));
+      rows.push(ACCT({ margin: 'signed', word: 'The pine', cost: '52.7 ⛬/s', sub: 'Root · Pine Bottom · strain 0.28', aria: 'the pine, open its pact', onTap: () => this.setState({ sheet: { kind: 'pact', k: 'pine' } }) }));
+      if (!s.severed) rows.push(ACCT({ word: 'The termites', cost: '+0.06 × gross', sub: 'Brood · the standing dead · strain 0.49', aria: 'the termites, open their pact', onTap: () => this.setState({ sheet: { kind: 'pact', k: 'termites' } }) }));
+      rows.push(ACCT({ word: 'The coralroot', cost: '0.51 Ψ/s', sub: 'Ghost · strain 0.00', aria: 'the coralroot, open its pact', onTap: () => this.setState({ sheet: { kind: 'pact', k: 'coral' } }) }));
+      rows.push(READ({ margin: 'book', word: 'Channels', cost: (s.accepted ? 5 : 3) + ' / 5', sub: 'Book strain ' + (s.accepted ? '0.61' : '0.44') + '. The book is under strain.' }));
+    }
+    rows.forEach((r, i) => {
+      r.wrap = 'display:flex;align-items:flex-start;padding:0 16px 0 0;' + (r.margin && i > 0 ? 'border-top:1px solid var(--rule);margin-top:2px;' : '');
+      r.marginStyle = 'width:72px;flex:none;text-align:right;padding:15px 14px 0 0;box-sizing:border-box;font:400 11px/1 ' + MONO + ';color:var(--ink-3)';
+    });
+
+    // ── sheets ──
+    let sh = null;
+    const KV = (k, v, c) => ({ k: k, v: v, vStyle: 'color:' + (c || 'var(--ink)') });
+    if (s.sheet && s.sheet.kind === 'stand') {
+      const i = s.sheet.i, st = this.STANDS[i], killed = s.killed[i], d = st.dens + (s.dens[i] || 0);
+      if (st.dead) sh = { kind: 'Stand · dead', title: st.name, tag: 'dead', tagCol: 'var(--danger)', lines: [KV('species', st.sp + ' on ' + st.so), KV('signal', '0 Σ/s', 'var(--ink-3)'), KV('cause', 'Phellinus', 'var(--danger)')], why: 'Phellinus does not spread. It arrives, and then it is simply where things are.', verbs: [] };
+      else if (st.consumed || killed) sh = { kind: 'Stand · consumed', title: st.name, tag: 'litter, then humus', tagCol: 'var(--ink-3)', lines: [KV('species', st.sp + ' on ' + st.so), KV('signal', '0 Σ/s', 'var(--ink-3)'), KV('carries', 'signal across')], why: 'It carries signal across and makes none. A stand you ate is a wire.', verbs: [] };
+      else sh = { kind: 'Stand · held', title: st.name, tag: 'held', tagCol: 'var(--thread)', lines: [
+          KV('species', st.sp + ' on ' + st.so), KV('density', this.bar(d, 10) + ' ' + d.toFixed(2)), KV('signal', '+' + Math.round(st.sig + (s.dens[i] || 0) * 60) + ' Σ/s', 'var(--thread)'), KV('live interface', (0.6 + d * 0.4).toFixed(2) + ' m²')
+        ], why: '', verbs: [
+          TAP({ ok: s.sig >= 2.4, word: '[ Denser ]', cost: '2.4 kΣ', sub: 'Density +0.08 · +6% interface', aria: 'make denser, 2.4 kilo-signal', onTap: () => { const dd = Object.assign({}, s.dens); dd[i] = (dd[i] || 0) + 0.08; this.say('The weave in ' + st.name + ' tightens.', { dens: dd, sig: s.sig - 2.4 }); } }),
+          LOCK('survey-s', { word: 'Survey', cost: '', sub: 'Needs Substrate Assay', aria: 'survey, locked', why: 'The fog was never fog. It was a number you had not paid for.' }),
+          HOLD('kill', 600, { word: 'Kill stand', sub: 'It becomes litter over 13 min. It cannot regrow.', aria: 'kill ' + st.name + '. press and hold.', why: 'Held, not tapped. This one does not come back.' },
+            () => { const k = Object.assign({}, this.state.killed); k[i] = true; this.say('It stops photosynthesising now. It becomes litter over thirteen minutes.', { killed: k }); })
+        ] };
+    } else if (s.sheet && s.sheet.kind === 'offer') {
+      sh = { kind: 'Offer · rival', title: 'Armillaria', tag: 'offers', tagCol: 'var(--danger)', lines: [KV('stake', '12 kΣ'), KV('channels', '2 of your 5'), KV('term', '40 min'), KV('it wants', 'the north edge', 'var(--danger)')],
+        why: 'One organism, nine hundred hectares, two thousand years.', verbs: [
+          TAP({ ok: true, word: '[ Accept ]', cost: '2 channels', sub: 'Strain rises to 0.61. It keeps the stake on a breach.', aria: 'accept the offer', onTap: () => this.say('It agrees. It has no way to check what you are.', { accepted: true, sheet: null }) }),
+          TAP({ ok: true, word: '[ Decline ]', cost: '', sub: 'Nothing signed. The network stays as it was.', aria: 'decline the offer', onTap: () => this.say('Nothing signed. The network stays as it was.', { sheet: null }) })
+        ] };
+    } else if (s.sheet && s.sheet.kind === 'pact') {
+      const P = { pine: ['The pine', 'root', '52.7 ⛬/s', '0.28', 'Bond holds while you comply.'], termites: ['The termites', 'brood', '+0.06 × gross', '0.49', 'They kept the stake last time. The channels were still full of them.'], coral: ['The coralroot', 'ghost', '0.51 Ψ/s', '0.00', 'Monotropa has never made a sugar. It eats fungi. It is offering anyway.'] }[s.sheet.k];
+      sh = { kind: 'Pact · ' + P[1], title: P[0], tag: 'strain ' + P[3], tagCol: Number(P[3]) > 0.4 ? 'var(--danger)' : 'var(--thread)', lines: [KV('pays', P[2], 'var(--thread)'), KV('strain', this.bar(Number(P[3]), 10) + ' ' + P[3]), KV('channels', '1 / 5')], why: P[4], verbs: [
+          TAP({ ok: true, word: '[ Comply ]', cost: '', sub: 'Strain −0.10 over the next term.', aria: 'comply', onTap: () => this.say('The network strains and settles back.', { sheet: null }) }),
+          HOLD('sever', 600, { word: 'Sever', sub: 'They keep the stake. This cannot be renewed.', aria: 'sever the pact. press and hold.', why: 'Held, not tapped. A severed pact does not come back.' },
+            () => this.say('They kept the stake. The channels are still full of them.', { severed: s.sheet.k === 'termites' ? true : s.severed, sheet: null }))
+        ] };
+    } else if (s.sheet && s.sheet.kind === 'acct') {
+      const A = {
+        biomass: ['Biomass', '2.44 Mt', [KV('+ held stands', '+1.42 kt/s', 'var(--thread)'), KV('+ litter from the killed', '+0.31 kt/s', 'var(--thread)'), KV('− fronts advancing', '−0.03 kt/s', 'var(--danger)'), KV('net', '+1.70 kt/s', 'var(--thread)')], 'Mass moves along the cords without you.'],
+        signal: ['Signal', s.sig.toFixed(1) + ' / 130 kΣ', [KV('+ 52 stands × interface', '+1.18 kΣ/s', 'var(--thread)'), KV('− lag across 96 edges', '−0.17 kΣ/s', 'var(--danger)'), KV('net', full ? 'full' : '+1.01 kΣ/s', 'var(--thread)')], full ? 'Full. Insight fills at 1.76 Ψ/s for as long as it stays full.' : 'Full in ' + Math.ceil((130 - s.sig) / 1.01) + ' s. Insight only comes while the pool is full.'],
+        bank: ['Seed bank', '2.6e9 spores', [KV('+ released, landed', '+4.1e8'), KV('· decay', 'none')], 'Labile carbon banked as spores. Banked spores do not decay.']
+      }[s.sheet.k];
+      sh = { kind: 'Account', title: A[0], tag: A[1], tagCol: 'var(--ink)', lines: A[2], why: A[3], verbs: [] };
+    }
+    if (sh) { sh.tagStyle = 'font:400 12.5px/1 ' + MONO + ';color:' + sh.tagCol; sh.hasWhy = !!sh.why; sh.verbs.forEach(v => { v.wrap = ''; }); }
+
+    const tabs = [['forest', '52 / 61'], ['mind', Math.round(s.sig / 1.3) + '%'], ['flush', s.released ? '0 ripe' : '1 ripe'], ['pact', s.accepted ? '5 / 5' : '1 offer']].map(t => {
+      const on = s.tab === t[0];
+      const hot = (t[0] === 'flush' && !s.released) || (t[0] === 'pact' && s.released && !s.accepted);
+      return {
+        name: t[0], reading: t[1], current: on ? 'page' : 'false', aria: t[0] + ', ' + t[1],
+        go: () => this.setState({ tab: t[0], why: '', sheet: null, logOpen: false }),
+        bar: 'position:absolute;left:8px;right:8px;top:-1px;height:2px;background:var(--thread-glow);box-shadow:0 0 8px #62C39A;transform-origin:left;transition:transform 300ms;transform:scaleX(' + (on ? 1 : 0) + ')',
+        nameStyle: 'font:' + (on ? '500' : '400') + ' 14px/1 ' + MONO + ';color:' + (on ? 'var(--ink)' : 'var(--ink-2)') + (on ? ';text-shadow:0 0 8px #3A8E74' : ''),
+        readStyle: 'font:400 11px/1.4 ' + MONO + ';margin-top:5px;color:' + (hot ? 'var(--next)' : 'var(--ink-3)')
+      };
+    });
+
+    const lines = s.lines;
+    const log = lines.slice().reverse().map((l, i) => ({ t: l[0], text: l[1], style: 'flex:1;padding:7px 16px 7px 0;font:' + (i === 0 ? 500 : 400) + ' 12.5px/1.4 ' + MONO + ';color:' + (i === 0 ? 'var(--ink)' : i < 4 ? 'var(--ink-2)' : 'var(--ink-3)') }));
+
+    return {
+      rootStyle: '--ground:#0B0D0C;--sunk:#070906;--raised:#101310;--ink:#EFEBDD;--ink-2:#B0B6A6;--ink-3:#8C9484;--rule:#1B201A;--rule-2:#3A4236;--body:#3A8E74;--body-old:#2C3329;--thread:#62C39A;--thread-glow:#8CDCBB;--next:#E9B75C;--next-ink:#E9B75C;--danger:#E0917A;--locked:#4E5749;' +
+        "--f-serif:'Newsreader',ui-serif,Georgia,serif;--f-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--f-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;" +
+        'width:390px;height:844px;overflow:hidden;position:relative;background:var(--ground);color:var(--ink);font-family:var(--f-ui)',
+      meta: this.stamp() + '  pool ' + this.bar(s.sig / 130, 8) + ' ' + Math.round(s.sig / 1.3) + '%',
+      ledgerRows: [
+        { k: 'signal', v: s.sig.toFixed(1) + ' kΣ', vStyle: 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' },
+        { k: 'insight', v: s.psi.toFixed(2) + ' Ψ ' + (full ? '+1.76' : 'stopped'), vStyle: 'color:' + (full ? 'var(--ink)' : 'var(--next)') + ';text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' },
+        { k: 'minerals', v: '925 k⛬', vStyle: 'color:var(--ink);text-decoration:underline dotted var(--rule-2);text-underline-offset:3px' }
+      ],
+      biomassAria: 'biomass 2.44 megatonnes, rising 1.70 kilotonnes a second. open its account.',
+      restAria: 'signal, insight and minerals. open the signal account.',
+      openBiomass: () => this.setState({ sheet: { kind: 'acct', k: 'biomass' }, logOpen: false }),
+      openSignal: () => this.setState({ sheet: { kind: 'acct', k: 'signal' }, logOpen: false }),
+      segs: segs, nodes: nodes, tips: tips, stands: stands, rivalHex: this.hex(352, 66, 7), amber: amber,
+      openOffer: () => this.setState({ sheet: { kind: 'offer' }, logOpen: false }),
+      bodyAria: 'the network, 96 edges and 52 stands. touch to pulse; touch a stand to open it.',
+      pulse: () => this.doPulse(),
+      bumpStyle: 'position:absolute;inset:0;transform-origin:172px 106px;animation:' + (s.pulse ? (pa ? 'd-bumpA' : 'd-bumpB') + ' 600ms ease-out' : 'none'),
+      ringStyle: 'position:absolute;left:152px;top:86px;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--thread-glow);box-shadow:0 0 10px #62C39A;pointer-events:none;opacity:0;animation:' + (s.pulse ? (pa ? 'd-ringA' : 'd-ringB') + ' 1.3s ease-out' : 'none'),
+      caption: 'Fig. 2 · 96 edges · 61 nodes · ' + (s.clock - s.pulsedAt < 30 ? 'pulse spent ' + (s.clock - s.pulsedAt) + ' s ago' : 'pulse ready'),
+      voice1: lines[lines.length - 2][1], voice2: lines[lines.length - 1][1], voiceCls: s.fresh ? 'd-in' : '',
+      voiceAria: 'the log. latest: ' + lines[lines.length - 1][1] + '. touch to read the whole log.',
+      toggleLog: () => this.setState({ logOpen: !s.logOpen, sheet: null }), logOpen: s.logOpen, logExpanded: s.logOpen ? 'true' : 'false',
+      logChev: 'position:absolute;right:16px;top:19px;transition:transform 200ms;transform:rotate(' + (s.logOpen ? 180 : 0) + 'deg)',
+      log: log,
+      nextLine: next.line, nextSub: next.sub, nextAria: 'next: ' + next.line,
+      goNext: () => this.setState({ tab: next.tab, sheet: null, logOpen: false, why: '' }),
+      rows: rows, S: S, tabs: tabs,
+      sheetOpen: !!sh, sh: sh || { kind: '', title: '', tag: '', tagStyle: '', lines: [], why: '', hasWhy: false, verbs: [] },
+      closeSheet: () => this.setState({ sheet: null }),
+      slide: s.slide, openSlide: () => this.setState({ slide: true }), closeSlide: () => this.setState({ slide: false })
+    };
+  }
+  bar(p, w){ const k = Math.max(0, Math.min(w, Math.round(p * w))); return '▓'.repeat(k) + '░'.repeat(w - k); }
+}
+</script>
+</body>
+</html>

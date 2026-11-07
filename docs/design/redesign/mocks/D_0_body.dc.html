@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The body</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#050604}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent;text-align:left}
+button:focus-visible{outline:2px solid var(--next);outline-offset:2px}
+/* the body breathes: one slow scale about the knot, 6.4 s, the same in every act */
+@keyframes d-breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
+/* a touch makes it swell once. two names so a second touch restarts it */
+@keyframes d-bumpA{0%{transform:scale(1)}30%{transform:scale(1.035)}100%{transform:scale(1)}}
+@keyframes d-bumpB{0%{transform:scale(1)}30%{transform:scale(1.035)}100%{transform:scale(1)}}
+@keyframes d-ringA{0%{transform:scale(.25);opacity:.9}100%{transform:scale(4.2);opacity:0}}
+@keyframes d-ringB{0%{transform:scale(.25);opacity:.9}100%{transform:scale(4.2);opacity:0}}
+/* every path has pathLength=100, so one keyframe serves every branch whatever its length */
+@keyframes d-grow{from{stroke-dashoffset:100}to{stroke-dashoffset:0}}
+@keyframes d-wave{0%{stroke-dashoffset:24}16%{stroke-dashoffset:-100}100%{stroke-dashoffset:-100}}
+@keyframes d-pkt{from{stroke-dashoffset:5}to{stroke-dashoffset:-100}}
+@keyframes d-pktIn{from{stroke-dashoffset:-100}to{stroke-dashoffset:5}}
+@keyframes d-shim{0%{stroke-dashoffset:12}60%{stroke-dashoffset:-100}100%{stroke-dashoffset:-100}}
+@keyframes d-tip{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.7);opacity:.5}}
+@keyframes d-ghost{0%,100%{opacity:.3}50%{opacity:1}}
+@keyframes d-orb{to{transform:rotate(360deg)}}
+@keyframes d-twinkle{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes d-slideUp{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes d-cap{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+.d-grow{stroke-dasharray:100;animation:d-grow 900ms cubic-bezier(.2,.7,.2,1) both}
+.d-wave{stroke-dasharray:24 300;animation:d-wave 6.4s ease-out infinite}
+.d-pkt{stroke-dasharray:5 300;animation:d-pkt linear infinite}
+.d-pktIn{stroke-dasharray:5 300;animation:d-pktIn linear infinite}
+.d-shim{stroke-dasharray:12 300;animation:d-shim 9s ease-in-out infinite}
+.d-tip{transform-box:fill-box;transform-origin:center;animation:d-tip 2.6s ease-in-out infinite}
+.d-ghost{animation:d-ghost 1.8s ease-in-out infinite}
+.d-twinkle{animation:d-twinkle 3.2s ease-in-out infinite}
+.d-verb .d-ul{transform:scaleX(.18);transform-origin:left;transition:transform 260ms cubic-bezier(.2,.7,.2,1)}
+.d-verb:active .d-ul,.d-verb:hover .d-ul{transform:scaleX(1)}
+.d-read:active{opacity:.75}
+/* reduced motion: the body stops breathing and the readings cross-fade instead of morphing */
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important}
+  path,circle,rect,ellipse,div{transition-duration:400ms !important;transition-property:opacity !important}
+}
+</style>
+</helmet>
+<div style="{{rootStyle}}">
+
+  <!-- ═══ MATERIAL. Three layers, one per reading; only one is ever lit. ═══ -->
+  <svg width="390" height="844" aria-hidden="true" style="{{grainLayer}}">
+    <filter id="d0grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="4" stitchTiles="stitch"></feTurbulence><feColorMatrix type="saturate" values="0"></feColorMatrix></filter>
+    <rect width="390" height="844" filter="url(#d0grain)"></rect>
+  </svg>
+  <svg width="390" height="844" aria-hidden="true" style="{{scanLayer}}">
+    <defs>
+      <pattern id="d0scan" width="4" height="3" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#8CDCBB" fill-opacity=".05"></rect></pattern>
+      <pattern id="d0grid" width="26" height="26" patternUnits="userSpaceOnUse"><path d="M13 10v6M10 13h6" stroke="#2C3329" stroke-width="1"></path></pattern>
+    </defs>
+    <rect width="390" height="844" fill="url(#d0grid)"></rect>
+    <rect width="390" height="844" fill="url(#d0scan)"></rect>
+  </svg>
+  <svg width="390" height="844" aria-hidden="true" style="{{frostLayer}}">
+    <filter id="d0frost"><feTurbulence type="fractalNoise" baseFrequency=".012 .03" numOctaves="3" seed="9"></feTurbulence><feColorMatrix type="matrix" values="0 0 0 0 .78  0 0 0 0 .78  0 0 0 0 .9  0 0 0 .5 -.12"></feColorMatrix></filter>
+    <rect width="390" height="844" filter="url(#d0frost)"></rect>
+    <path d="M-20 300 L250 60" stroke="#D2CFE4" stroke-opacity=".07" stroke-width="22"></path>
+    <path d="M40 330 L300 96" stroke="#D2CFE4" stroke-opacity=".05" stroke-width="2"></path>
+  </svg>
+
+  <!-- ═══ LEDGER SLOT (0–76). Here: the title of the sheet. ═══ -->
+  <div style="position:absolute;left:16px;right:16px;top:0;height:76px;display:flex;align-items:flex-end;justify-content:space-between;padding-bottom:10px;box-sizing:border-box;border-bottom:1px solid var(--rule)">
+    <div>
+      <div style="font:italic 300 36px/1 var(--f-serif);letter-spacing:-.01em;color:var(--ink);transition:color 1.6s">the body</div>
+    </div>
+    <div style="text-align:right;font:400 11.5px/16px var(--f-mono);color:var(--ink-3);transition:color 1.6s">
+      <div>one geometry, seed 61</div>
+      <div>96 branches, read three ways</div>
+    </div>
+  </div>
+
+  <!-- ═══ BODY WINDOW (76–288). The same element in every act, in the same place. ═══ -->
+  <div style="position:absolute;left:0;top:76px;width:390px;height:212px;overflow:hidden">
+    <button aria-label="{{bodyAria}}" onClick="{{grow}}" style="position:absolute;inset:0;width:390px;height:212px;cursor:pointer"></button>
+    <div style="position:absolute;inset:0;pointer-events:none;transform-origin:172px 106px;animation:d-breathe 6.4s ease-in-out infinite">
+      <div style="{{bumpStyle}}">
+        <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none">
+          <defs>
+            <filter id="d0ink" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" seed="3"></feTurbulence><feDisplacementMap in="SourceGraphic" scale="2.4"></feDisplacementMap></filter>
+            <filter id="d0glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.8" result="b"></feGaussianBlur><feMerge><feMergeNode in="b"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge></filter>
+          </defs>
+          <!-- glass: the thirteen bands -->
+          <sc-for list="{{rings}}" as="rg" hint-placeholder-count="13">
+            <ellipse cx="172" cy="106" rx="{{rg.rx}}" ry="{{rg.ry}}" fill="none" style="{{rg.style}}"></ellipse>
+          </sc-for>
+          <!-- the strokes: one list, three readings -->
+          <g style="{{segFilter}}">
+            <sc-for list="{{segs}}" as="g" hint-placeholder-count="41">
+              <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="{{g.cls}}" style="{{g.style}}"></path>
+            </sc-for>
+          </g>
+          <g style="{{fxFilter}}">
+            <sc-for list="{{segs}}" as="g" hint-placeholder-count="41">
+              <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="{{g.fxCls}}" style="{{g.fxStyle}}"></path>
+            </sc-for>
+          </g>
+          <!-- amber: where the next one goes -->
+          <path d="{{ghost.d}}" pathLength="100" fill="none" stroke-linecap="round" stroke-dasharray="3 4" class="d-ghost" style="{{ghost.style}}"></path>
+          <circle cx="{{ghost.x}}" cy="{{ghost.y}}" r="3.4" fill="none" class="d-tip" style="{{ghost.dot}}"></circle>
+          <!-- nodes (mind) -->
+          <sc-for list="{{nodes}}" as="nd" hint-placeholder-count="20">
+            <rect x="{{nd.x}}" y="{{nd.y}}" width="3.2" height="3.2" style="{{nd.style}}"></rect>
+          </sc-for>
+          <!-- tips -->
+          <sc-for list="{{tips}}" as="t" hint-placeholder-count="20">
+            <circle cx="{{t.x}}" cy="{{t.y}}" r="{{t.r}}" class="{{t.cls}}" style="{{t.style}}"></circle>
+          </sc-for>
+          <!-- the knot / the hub / the planet -->
+          <g style="{{knotInk}}">
+            <circle cx="172" cy="106" r="5.2" style="fill:var(--ground);stroke:var(--body);stroke-width:1.6"></circle>
+            <circle cx="172" cy="106" r="2" style="fill:var(--body)"></circle>
+          </g>
+          <g style="{{knotMind}}">
+            <rect x="167" y="101" width="10" height="10" transform="rotate(45 172 106)" style="fill:var(--ground);stroke:var(--thread-glow);stroke-width:1.2"></rect>
+            <rect x="170.5" y="104.5" width="3" height="3" style="fill:var(--thread-glow)"></rect>
+          </g>
+          <g style="{{knotGlass}}">
+            <circle cx="172" cy="106" r="9.5" style="fill:var(--raised);stroke:var(--ink-2);stroke-width:.8"></circle>
+            <path d="M172 96.5 A9.5 9.5 0 0 1 172 115.5 A6 9.5 0 0 0 172 96.5Z" style="fill:var(--ink-2);opacity:.55"></path>
+          </g>
+          <!-- glass: the four endings as distant lights -->
+          <sc-for list="{{lights}}" as="lt" hint-placeholder-count="4">
+            <g style="{{lt.style}}">
+              <circle cx="{{lt.x}}" cy="{{lt.y}}" r="7" style="fill:var(--thread);opacity:.12"></circle>
+              <circle cx="{{lt.x}}" cy="{{lt.y}}" r="1.8" class="d-twinkle" style="fill:var(--ink)"></circle>
+            </g>
+          </sc-for>
+        </svg>
+        <!-- glass: craft in flight. drawn on the unsquashed plane, then the plane is tipped -->
+        <div style="{{orbitLayer}}">
+          <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible">
+            <sc-for list="{{orbits}}" as="ob" hint-placeholder-count="6">
+              <g style="{{ob.style}}">
+                <sc-for list="{{ob.craft}}" as="c" hint-placeholder-count="2">
+                  <circle cx="{{c.x}}" cy="{{c.y}}" r="2.6" style="fill:var(--ink)"></circle>
+                </sc-for>
+              </g>
+            </sc-for>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div aria-hidden="true" style="{{ringStyle}}"></div>
+    <!-- the plate's caption, in the reading's own hand -->
+    <div style="{{capStyle}}">{{caption}}</div>
+    <button aria-label="open the slide" onClick="{{openSlide}}" style="position:absolute;right:4px;bottom:2px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--ink-2)">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" aria-hidden="true"><path d="M11 2.5h4.5V7M7 15.5H2.5V11M15.5 2.5l-5 5M2.5 15.5l5-5"></path></svg>
+    </button>
+  </div>
+
+  <!-- ═══ VOICE SLOT (288–340). The voice as each act writes it. ═══ -->
+  <div style="position:absolute;left:0;right:0;top:288px;height:52px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);box-sizing:border-box;padding:5px 16px 0">
+    <div style="{{voiceOld}}">{{voice1}}</div>
+    <div style="{{voiceNew}}">{{voice2}}</div>
+  </div>
+
+  <!-- ═══ NEXT SLOT (340–404). A fact, tied to the amber on the body. ═══ -->
+  <div style="position:absolute;left:16px;right:16px;top:340px;height:64px;display:flex;align-items:center;gap:12px">
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" style="flex:none"><circle cx="7" cy="7" r="3.4" fill="none" stroke-width="1.4" class="d-tip" style="stroke:var(--next)"></circle></svg>
+    <div style="flex:1">
+      <div style="{{nextStyle}}">{{nextLine}}</div>
+      <div style="font:400 11.5px/15px var(--f-mono);color:var(--ink-3);margin-top:3px">the amber on the body is the same fact</div>
+    </div>
+  </div>
+
+  <!-- ═══ VERBS SLOT (404–776). Here: the key to the three readings. ═══ -->
+  <div style="position:absolute;left:16px;right:16px;top:412px">
+    <div style="display:flex;align-items:baseline;height:24px;border-bottom:1px solid var(--rule-2);font:italic 400 14px/1 var(--f-serif);color:var(--ink-3)">
+      <span style="width:62px;flex:none"></span>
+      <span style="{{colHead.ink}}">I · ink</span>
+      <span style="{{colHead.mind}}">II · mind</span>
+      <span style="{{colHead.glass}}">III · glass</span>
+    </div>
+    <sc-for list="{{legend}}" as="lg" hint-placeholder-count="5">
+      <div style="display:flex;align-items:baseline;height:28px;border-bottom:1px solid var(--rule)">
+        <span style="width:62px;flex:none;font:400 11.5px/1 var(--f-mono);color:var(--ink-3)">{{lg.k}}</span>
+        <span style="{{lg.s0}}">{{lg.v0}}</span>
+        <span style="{{lg.s1}}">{{lg.v1}}</span>
+        <span style="{{lg.s2}}">{{lg.v2}}</span>
+      </div>
+    </sc-for>
+
+    <div style="margin-top:14px">
+      <button class="d-verb" onClick="{{grow}}" aria-label="grow a thread" style="display:flex;align-items:baseline;width:100%;min-height:48px;padding-top:6px;box-sizing:border-box">
+        <span style="position:relative;display:inline-block">
+          <span style="font:500 22px/1.1 var(--f-serif);color:var(--ink)">grow</span>
+          <span class="d-ul" style="position:absolute;left:0;right:0;bottom:-3px;height:2px;background:var(--ink)"></span>
+        </span>
+        <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+        <span style="font:400 12.5px/1 var(--f-mono);color:var(--ink-2)">or touch the body</span>
+      </button>
+      <button class="d-verb" onClick="{{openSlide}}" aria-label="open the slide" style="display:flex;align-items:baseline;width:100%;min-height:48px;padding-top:6px;box-sizing:border-box">
+        <span style="position:relative;display:inline-block">
+          <span style="font:500 22px/1.1 var(--f-serif);color:var(--ink)">open the slide</span>
+          <span class="d-ul" style="position:absolute;left:0;right:0;bottom:-3px;height:2px;background:var(--ink)"></span>
+        </span>
+        <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+        <span style="font:400 12.5px/1 var(--f-mono);color:var(--ink-2)">touch its parts</span>
+      </button>
+      <button class="d-verb" onClick="{{toggleAuto}}" aria-pressed="{{autoPressed}}" style="display:flex;align-items:baseline;width:100%;min-height:48px;padding-top:6px;box-sizing:border-box">
+        <span style="position:relative;display:inline-block">
+          <span style="font:500 22px/1.1 var(--f-serif);color:var(--ink)">{{autoLabel}}</span>
+          <span class="d-ul" style="position:absolute;left:0;right:0;bottom:-3px;height:2px;background:var(--ink)"></span>
+        </span>
+        <span style="flex:1;margin:0 8px;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)"></span>
+        <span style="font:400 12.5px/1 var(--f-mono);color:var(--ink-2)">I → II → III</span>
+      </button>
+    </div>
+    <div style="margin-top:12px;font:400 11.5px/16px var(--f-mono);color:var(--ink-3)">{{readout}}</div>
+  </div>
+
+  <!-- ═══ NAV SLOT (776–844). Here: the reading switch. Words on a rule, not pills. ═══ -->
+  <div style="position:absolute;left:0;right:0;top:776px;height:68px;border-top:1px solid var(--rule-2);display:flex;padding:0 8px;box-sizing:border-box">
+    <sc-for list="{{readings}}" as="r" hint-placeholder-count="3">
+      <button class="d-read" onClick="{{r.go}}" aria-pressed="{{r.pressed}}" aria-label="{{r.aria}}" style="flex:1;height:68px;position:relative;display:flex;flex-direction:column;justify-content:center;padding-left:10px">
+        <span style="{{r.bar}}"></span>
+        <span style="{{r.numStyle}}">{{r.num}}</span>
+        <span style="{{r.nameStyle}}">{{r.name}}</span>
+      </button>
+    </sc-for>
+  </div>
+
+  <!-- ═══ THE SLIDE. The same body, stood upright and full height. Touch a part to read it. ═══ -->
+  <sc-if value="{{slide}}" hint-placeholder-val="{{false}}">
+    <div role="dialog" aria-label="the slide" style="position:absolute;inset:0;z-index:20;background:var(--ground);animation:d-slideUp 420ms cubic-bezier(.2,.8,.2,1) both">
+      <div style="position:absolute;left:0;top:316px;width:390px;height:212px;transform:rotate(90deg) scale(1.8);transform-origin:195px 106px">
+        <div style="position:absolute;inset:0;transform-origin:172px 106px;animation:d-breathe 6.4s ease-in-out infinite">
+          <svg width="390" height="212" viewBox="0 0 390 212" aria-hidden="true" style="position:absolute;left:0;top:0;overflow:visible;pointer-events:none">
+            <sc-for list="{{rings}}" as="rg" hint-placeholder-count="13">
+              <ellipse cx="172" cy="106" rx="{{rg.rx}}" ry="{{rg.ry}}" fill="none" style="{{rg.style}}"></ellipse>
+            </sc-for>
+            <g style="{{segFilter}}">
+              <sc-for list="{{segs}}" as="g" hint-placeholder-count="41">
+                <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" style="{{g.style}}"></path>
+              </sc-for>
+            </g>
+            <g style="{{fxFilter}}">
+              <sc-for list="{{segs}}" as="g" hint-placeholder-count="41">
+                <path d="{{g.d}}" pathLength="100" fill="none" stroke-linecap="round" class="{{g.fxCls}}" style="{{g.fxStyle}}"></path>
+              </sc-for>
+            </g>
+            <sc-for list="{{nodes}}" as="nd" hint-placeholder-count="20">
+              <rect x="{{nd.x}}" y="{{nd.y}}" width="3.2" height="3.2" style="{{nd.style}}"></rect>
+            </sc-for>
+            <sc-for list="{{tips}}" as="t" hint-placeholder-count="20">
+              <circle cx="{{t.x}}" cy="{{t.y}}" r="{{t.r}}" class="{{t.cls}}" style="{{t.style}}"></circle>
+            </sc-for>
+            <sc-for list="{{tips}}" as="t" hint-placeholder-count="20">
+              <circle cx="{{t.x}}" cy="{{t.y}}" r="{{t.ring}}" fill="none" style="{{t.pickStyle}}"></circle>
+            </sc-for>
+            <g style="{{knotInk}}"><circle cx="172" cy="106" r="5.2" style="fill:var(--ground);stroke:var(--body);stroke-width:1.6"></circle><circle cx="172" cy="106" r="2" style="fill:var(--body)"></circle></g>
+            <g style="{{knotMind}}"><rect x="167" y="101" width="10" height="10" transform="rotate(45 172 106)" style="fill:var(--ground);stroke:var(--thread-glow);stroke-width:1.2"></rect></g>
+            <g style="{{knotGlass}}"><circle cx="172" cy="106" r="9.5" style="fill:var(--raised);stroke:var(--ink-2);stroke-width:.8"></circle><path d="M172 96.5 A9.5 9.5 0 0 1 172 115.5 A6 9.5 0 0 0 172 96.5Z" style="fill:var(--ink-2);opacity:.55"></path></g>
+            <!-- touch targets: every live tip, and the knot -->
+            <sc-for list="{{tips}}" as="t" hint-placeholder-count="20">
+              <circle cx="{{t.x}}" cy="{{t.y}}" r="12" fill="#000" fill-opacity=".01" onClick="{{t.pick}}" style="{{t.hitStyle}}"></circle>
+            </sc-for>
+            <circle cx="172" cy="106" r="13" fill="#000" fill-opacity=".01" onClick="{{pickKnot}}" style="pointer-events:all;cursor:pointer"></circle>
+          </svg>
+        </div>
+      </div>
+      <div style="position:absolute;left:16px;right:8px;top:0;height:64px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--rule)">
+        <span style="font:italic 300 26px/1 var(--f-serif);color:var(--ink)">the slide <span style="font:400 12px var(--f-mono);color:var(--ink-3);font-style:normal">· {{readingName}}</span></span>
+        <button onClick="{{closeSlide}}" aria-label="close the slide" style="min-width:64px;height:44px;font:400 14px var(--f-mono);color:var(--ink-2);text-decoration:underline;text-underline-offset:4px;text-align:center">close</button>
+      </div>
+      <div style="position:absolute;left:16px;right:16px;bottom:18px;min-height:64px;border-top:1px solid var(--rule-2);padding-top:10px">
+        <div style="{{pickHeadStyle}}">{{pickHead}}</div>
+        <div style="font:400 12.5px/18px var(--f-mono);color:var(--ink-2);margin-top:4px;animation:d-cap 300ms ease-out both">{{pickBody}}</div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props){
+    super(props);
+    this.G = this.bodyGeom();
+    this.state = { reading: 'ink', n: 41, born: 41, slide: false, pick: -2, auto: false, pulse: 0 };
+    this._auto = null;
+  }
+  componentWillUnmount(){ clearInterval(this._auto); this._auto = null;
+  }
+
+  // ── THE BODY: one seeded geometry, read three ways. This block is identical in D_0..D_3. ──
+  bodyGeom(){
+    let s = 61;
+    const R = () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    const K = { x: 172, y: 106 }, SQ = 0.6, segs = [], q = [], ARMS = 7;
+    for (let i = 0; i < ARMS; i++) q.push({ x: K.x, y: K.y, a: i * 6.2832 / ARMS + 0.35 + (R() - 0.5) * 0.5, d: 0, p: -1 });
+    while (q.length && segs.length < 96) {
+      const o = q.shift();
+      const L = (36 - o.d * 4) * (0.78 + R() * 0.44);
+      const a = o.a + (R() - 0.5) * 0.42;
+      const x2 = o.x + Math.cos(a) * L, y2 = o.y + Math.sin(a) * L * SQ;
+      const bend = (R() - 0.5) * L * 0.55;
+      const id = segs.length;
+      segs.push({ id: id, p: o.p, d: o.d, a: a, L: L, bend: bend, x1: o.x, y1: o.y, x2: x2, y2: y2,
+        cx: (o.x + x2) / 2 - Math.sin(a) * bend, cy: (o.y + y2) / 2 + Math.cos(a) * bend * SQ });
+      if (o.d < 6) {
+        q.push({ x: x2, y: y2, a: a + (R() - 0.5) * 0.3, d: o.d + 1, p: id });
+        if (R() < 0.62 - o.d * 0.06) q.push({ x: x2, y: y2, a: a + (R() < 0.5 ? -1 : 1) * (0.45 + R() * 0.55), d: o.d + 1, p: id });
+      }
+    }
+    const kids = segs.map(() => []);
+    segs.forEach(g => { if (g.p >= 0) kids[g.p].push(g.id); });
+    // the looking glass: mirror through the knot, put each branch on a band by how many forks
+    // it is from the knot (so growth settles the bands inside-out, as Act III does), and lay the
+    // branch's own length along that orbit. TILT is the plane seen edge-on.
+    const TILT = 0.42, BR = b => 16 + b * 10.4;
+    const P = (r, t) => ({ x: K.x + r * Math.cos(t), y: K.y + r * Math.sin(t) * TILT });
+    segs.forEach(g => {
+      const dx = -(g.x2 - K.x), dy = (g.y2 - K.y) / SQ;
+      const band = Math.min(12, g.d * 2 + (g.id % 2));
+      const r = BR(band), t1 = Math.atan2(dy, dx);
+      const span = Math.min(1.1, g.L / r) * (g.bend >= 0 ? 1 : -1), t0 = t1 - span;
+      const a0 = P(r, t0), a1 = P(r, t1), c = P(r / Math.cos(span / 2), t0 + span / 2);
+      Object.assign(g, { band: band, gr: r, gt: t1, gx1: a0.x, gy1: a0.y, gcx: c.x, gcy: c.y, gx2: a1.x, gy2: a1.y });
+    });
+    return { K: K, segs: segs, kids: kids, TILT: TILT, BR: BR };
+  }
+  // one path grammar for all three readings (M · Q), so the strokes can morph between them
+  bodyPath(g, reading){
+    const f = v => Math.round(v * 10) / 10;
+    if (reading === 'ink') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f(g.cx) + ' ' + f(g.cy) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    if (reading === 'mind') return 'M' + f(g.x1) + ' ' + f(g.y1) + ' Q' + f((g.x1 + g.x2) / 2) + ' ' + f((g.y1 + g.y2) / 2) + ' ' + f(g.x2) + ' ' + f(g.y2);
+    return 'M' + f(g.gx1) + ' ' + f(g.gy1) + ' Q' + f(g.gcx) + ' ' + f(g.gcy) + ' ' + f(g.gx2) + ' ' + f(g.gy2);
+  }
+  isTip(id, n){ return id < n && this.G.kids[id].every(k => k >= n); }
+  // ── end of the shared block ──
+
+  tokens(r){
+    // the act tokens. same names in every act; only the values move.
+    const T = {
+      ink:   { ground: '#EAE6D9', sunk: '#E0DBCB', raised: '#F3F0E6', ink: '#0F1310', ink2: '#3A382E', ink3: '#635F52', rule: '#CFC9B6', rule2: '#B7B09B', body: '#22261F', bodyOld: '#6E6858', thread: '#166B53', threadGlow: '#2A7F63', next: '#8A5E0E', nextInk: '#7A5109', danger: '#7E3320', locked: '#96917F' },
+      mind:  { ground: '#0B0D0C', sunk: '#070906', raised: '#101310', ink: '#EFEBDD', ink2: '#B0B6A6', ink3: '#8C9484', rule: '#1B201A', rule2: '#3A4236', body: '#3A8E74', bodyOld: '#2C3329', thread: '#62C39A', threadGlow: '#8CDCBB', next: '#E9B75C', nextInk: '#E9B75C', danger: '#E0917A', locked: '#4E5749' },
+      glass: { ground: '#08080C', sunk: '#050508', raised: '#121219', ink: '#D2CFE4', ink2: '#A8A4C6', ink3: '#8B87A8', rule: '#1F1F2C', rule2: '#3A3A4E', body: '#C9C6DE', bodyOld: '#3A3A4E', thread: '#B6EDD6', threadGlow: '#B6EDD6', next: '#F5D28F', nextInk: '#F5D28F', danger: '#E0917A', locked: '#5A5878' }
+    }[r];
+    return '--ground:' + T.ground + ';--sunk:' + T.sunk + ';--raised:' + T.raised + ';--ink:' + T.ink + ';--ink-2:' + T.ink2 + ';--ink-3:' + T.ink3 +
+      ';--rule:' + T.rule + ';--rule-2:' + T.rule2 + ';--body:' + T.body + ';--body-old:' + T.bodyOld + ';--thread:' + T.thread + ';--thread-glow:' + T.threadGlow +
+      ';--next:' + T.next + ';--next-ink:' + T.nextInk + ';--danger:' + T.danger + ';--locked:' + T.locked +
+      ";--f-serif:'Newsreader',ui-serif,Georgia,serif;--f-mono:ui-monospace,SFMono-Regular,Menlo,monospace;--f-ui:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;";
+  }
+  grow(){
+    const s = this.state;
+    if (s.n >= 96) { this.setState({ pulse: s.pulse + 1 }); return; }
+    this.setState({ n: s.n + 1, born: s.n, pulse: s.pulse + 1 });
+  }
+  toggleAuto(){
+    if (this._auto) { clearInterval(this._auto); this._auto = null; this.setState({ auto: false }); return; }
+    const order = ['ink', 'mind', 'glass'];
+    const step = () => { const i = order.indexOf(this.state.reading); this.setState({ reading: order[(i + 1) % 3] }); };
+    step();
+    this._auto = setInterval(step, 3600);
+    this.setState({ auto: true });
+  }
+  renderVals(){
+    const s = this.state, G = this.G, rd = s.reading, n = s.n;
+    const ink = rd === 'ink', mind = rd === 'mind', glass = rd === 'glass';
+    const E = 'cubic-bezier(.65,0,.25,1)', MS = 1600;
+    const tr = 'transition:d ' + MS + 'ms ' + E + ',stroke-width ' + MS + 'ms ' + E + ',stroke ' + MS + 'ms ' + E + ',opacity ' + MS + 'ms ' + E + ';';
+    const f = v => Math.round(v * 10) / 10;
+    const ops = v => 'opacity:' + v + ';transition:opacity ' + MS + 'ms ' + E + ';';
+    const LY = [0.0016, 12.0, 25.8, 55.5, 119, 257, 552, 1187, 2552, 5487, 11798, 25365, 54535];
+
+    // strokes
+    const segs = G.segs.map(g => {
+      const vis = g.id < n, fresh = g.id >= n - 3;
+      const d = this.bodyPath(g, rd);
+      const w = ink ? 2.6 * Math.pow(0.74, g.d) + 0.35 : mind ? (g.d === 0 ? 1.6 : 1.1) : (g.d === 0 ? 1.3 : 0.9);
+      const col = ink ? (fresh ? 'var(--thread)' : 'var(--body)') : 'var(--body)';
+      const base = "d:path('" + d + "');" + tr + (vis ? '' : 'display:none;');
+      let fxCls = '', fxStyle = base;
+      if (ink) { fxCls = 'd-wave'; fxStyle += 'stroke:var(--thread);stroke-width:' + f(w * 0.9) + ';opacity:.8;animation-delay:' + (g.d * 0.32).toFixed(2) + 's;'; }
+      else if (mind) {
+        fxCls = g.id % 3 === 2 ? 'd-pktIn' : 'd-pkt';
+        fxStyle += 'stroke:var(--thread-glow);stroke-width:2.4;opacity:1;animation-duration:' + (1.3 + (g.id % 5) * 0.42).toFixed(2) + 's;animation-delay:-' + ((g.id * 0.37) % 3).toFixed(2) + 's;';
+      } else { fxCls = 'd-shim'; fxStyle += 'stroke:var(--thread);stroke-width:1.4;opacity:.7;animation-delay:-' + ((g.id * 0.61) % 9).toFixed(2) + 's;'; }
+      return { d: d, cls: vis && g.id >= s.born ? 'd-grow' : '', style: base + 'stroke:' + col + ';stroke-width:' + f(w) + ';opacity:' + (glass ? 0.78 : 1) + ';', fxCls: fxCls, fxStyle: fxStyle };
+    });
+    // nodes: junctions that have grown past themselves
+    const nodes = G.segs.map(g => {
+      const on = g.id < n && !this.isTip(g.id, n);
+      return { x: f(g.x2 - 1.6), y: f(g.y2 - 1.6), style: 'fill:var(--thread-glow);' + (on ? '' : 'display:none;') + ops(mind ? 1 : 0) };
+    });
+    // tips: one circle per branch, lit only while it is a tip, so nothing shifts as it grows
+    const tips = G.segs.map(g => {
+      const on = this.isTip(g.id, n);
+      const x = glass ? g.gx2 : g.x2, y = glass ? g.gy2 : g.y2;
+      const pos = 'cx:' + f(x) + 'px;cy:' + f(y) + 'px;transition:cx ' + MS + 'ms ' + E + ',cy ' + MS + 'ms ' + E + ',opacity ' + MS + 'ms,fill ' + MS + 'ms;';
+      const look = ink ? 'fill:var(--thread);' : mind ? 'fill:var(--ground);stroke:var(--thread-glow);stroke-width:1.2;' : 'fill:var(--ink);';
+      return {
+        x: f(x), y: f(y), r: ink ? 2.2 : mind ? 2.4 : 1.5, ring: 6,
+        cls: glass ? '' : 'd-tip',
+        style: pos + look + (on ? '' : 'display:none;') + 'animation-delay:-' + ((g.id * 0.29) % 2.6).toFixed(2) + 's;',
+        pickStyle: pos + 'stroke:var(--next);stroke-width:1.2;' + (on && s.pick === g.id ? '' : 'display:none;'),
+        hitStyle: pos + 'pointer-events:all;cursor:pointer;' + (on ? '' : 'display:none;'),
+        pick: () => this.setState({ pick: g.id })
+      };
+    });
+    // amber: the next branch, before it exists
+    const ng = G.segs[Math.min(n, 95)];
+    const hasNext = n < 96;
+    const ghost = {
+      d: this.bodyPath(ng, rd),
+      style: "d:path('" + this.bodyPath(ng, rd) + "');" + tr + 'stroke:var(--next);stroke-width:1.5;' + (hasNext ? '' : 'display:none;'),
+      x: f(glass ? ng.gx2 : ng.x2), y: f(glass ? ng.gy2 : ng.y2),
+      dot: 'cx:' + f(glass ? ng.gx2 : ng.x2) + 'px;cy:' + f(glass ? ng.gy2 : ng.y2) + 'px;transition:cx ' + MS + 'ms ' + E + ',cy ' + MS + 'ms ' + E + ';stroke:var(--next);stroke-width:1.4;' + (hasNext ? '' : 'display:none;')
+    };
+    // bands
+    const owned = {};
+    G.segs.forEach(g => { if (g.id < n) owned[g.band] = (owned[g.band] || 0) + 1; });
+    const rings = [];
+    for (let b = 0; b < 13; b++) {
+      const r = G.BR(b);
+      rings.push({ rx: f(r), ry: f(r * G.TILT), style: 'stroke:var(--rule-2);stroke-width:' + (owned[b] ? 0.9 : 0.6) + ';stroke-dasharray:' + (owned[b] ? '0' : '2 5') + ';' + ops(glass ? 1 : 0) });
+    }
+    // craft in flight, grouped by band so each band keeps its own period
+    const orbits = [];
+    for (let b = 0; b < 13; b++) {
+      const craft = G.segs.filter(g => g.band === b && this.isTip(g.id, n)).map(g => ({ x: f(G.K.x + g.gr * Math.cos(g.gt)), y: f(G.K.y + g.gr * Math.sin(g.gt)) }));
+      if (!craft.length) continue;
+      orbits.push({ craft: craft, style: 'transform-origin:172px 106px;animation:d-orb ' + Math.round(24 * Math.pow(G.BR(b) / 16, 0.6)) + 's linear infinite;' });
+    }
+    const lights = [[24, 20], [368, 26], [30, 192], [360, 188]].map((p, i) => ({ x: p[0], y: p[1], style: ops(glass ? 1 : 0) + 'animation-delay:' + i * 0.7 + 's' }));
+
+    const tipN = G.segs.filter(g => this.isTip(g.id, n)).length;
+    const nodeN = n - tipN;
+    const captions = {
+      ink: 'fig. 1 · the body, ink on paper · ' + n + ' threads, ' + tipN + ' tips',
+      mind: 'Fig. 2 · ' + n + ' edges · ' + nodeN + ' nodes · signal root to tip',
+      glass: 'plate iii · mirrored through the knot · 13 bands · ' + tipN + ' craft'
+    };
+    const capStyle = {
+      ink: 'position:absolute;left:16px;bottom:12px;font:italic 400 12.5px/1 var(--f-serif);color:var(--ink-3);pointer-events:none',
+      mind: 'position:absolute;left:16px;bottom:12px;font:500 11px/1 var(--f-mono);color:var(--thread);text-shadow:0 0 6px #3A8E74;pointer-events:none',
+      glass: 'position:absolute;left:16px;bottom:12px;font:italic 400 12.5px/1 var(--f-serif);color:var(--ink-3);pointer-events:none'
+    }[rd];
+    const voices = {
+      ink: ['it grows while you are not looking at it', 'a pale end, softer than anything around it.'],
+      mind: ['3:46:07  Something in the network is repeating itself.', '3:51:02  Mass moves along the cords without you.'],
+      glass: ['', 'Thirteen bands, one phase. The furthest is answering something ancient.']
+    }[rd];
+    const voiceOld = {
+      ink: 'font:italic 400 14.5px/20px var(--f-serif);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis',
+      mind: 'font:400 12px/20px var(--f-mono);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis',
+      glass: 'height:6px'
+    }[rd];
+    const voiceNew = {
+      ink: 'font:italic 400 16.5px/22px var(--f-serif);color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis',
+      mind: 'font:500 12.5px/20px var(--f-mono);color:var(--ink);text-shadow:0 0 7px #3A8E74;white-space:nowrap;overflow:hidden;text-overflow:ellipsis',
+      glass: 'font:400 15px/20px var(--f-serif);letter-spacing:.01em;text-align:center;color:var(--ink);text-shadow:1px 0 0 #3A3A4E'
+    }[rd];
+    const nexts = {
+      ink: 'a tip costs 66 g. you have 41.',
+      mind: 'Primordium 1 is ripe. The westerly turns in 0:41.',
+      glass: 'Band 8 is dark and full. 1.55e32 Χ, and no craft.'
+    };
+    const nextStyle = {
+      ink: 'font:400 19px/1.2 var(--f-serif);color:var(--ink)',
+      mind: 'font:500 15px/1.25 var(--f-mono);color:var(--ink)',
+      glass: 'font:300 19px/1.2 var(--f-serif);letter-spacing:.01em;color:var(--ink)'
+    }[rd];
+
+    const colOn = 'flex:1;color:var(--ink);font-weight:500;transition:color 600ms';
+    const colOff = 'flex:1;color:var(--ink-3);transition:color 600ms';
+    const cellOn = 'flex:1;font:400 13.5px/1 var(--f-serif);color:var(--ink);transition:color 600ms';
+    const cellOff = 'flex:1;font:400 13.5px/1 var(--f-serif);color:var(--ink-3);opacity:.8;transition:color 600ms';
+    const L = [
+      ['stroke', 'hypha', 'edge', 'orbit'],
+      ['tip', 'living point', 'node', 'craft'],
+      ['knot', 'the knot', 'the hub', 'the planet'],
+      ['pulse', 'breath', 'signal Σ', 'phase'],
+      ['touch', 'grow', 'pulse', 'thrust']
+    ];
+    const legend = L.map(r => ({ k: r[0], v0: r[1], v1: r[2], v2: r[3], s0: ink ? cellOn : cellOff, s1: mind ? cellOn : cellOff, s2: glass ? cellOn : cellOff }));
+
+    const names = { ink: 'I · ink', mind: 'II · mind', glass: 'III · glass' };
+    const readings = [['ink', 'I', 'ink, the understory'], ['mind', 'II', 'mind, the network'], ['glass', 'III', 'glass, the void']].map(r => {
+      const on = rd === r[0];
+      return {
+        num: r[1], name: r[2], pressed: on ? 'true' : 'false', aria: 'read the body as ' + r[2],
+        go: () => { if (this._auto) { clearInterval(this._auto); this._auto = null; } this.setState({ reading: r[0], auto: false }); },
+        bar: 'position:absolute;left:10px;right:10px;top:-1px;height:3px;background:var(--thread);transform-origin:left;transition:transform 400ms ' + E + ';transform:scaleX(' + (on ? 1 : 0) + ')',
+        numStyle: 'font:' + (on ? '500' : '300') + ' 22px/1 var(--f-serif);color:' + (on ? 'var(--ink)' : 'var(--ink-3)'),
+        nameStyle: 'font:400 11px/1.4 var(--f-mono);margin-top:4px;color:' + (on ? 'var(--ink-2)' : 'var(--ink-3)')
+      };
+    });
+
+    // the slide's caption: what a touched part is, in each reading
+    let pickHead = 'touch a tip, or the knot', pickBody = 'everything you can touch here also has a row in a list. the body is a second way in, never the only one.';
+    if (s.pick === -1) {
+      pickHead = { ink: 'the knot', mind: 'The hub', glass: 'The planet, from far away' }[rd];
+      pickBody = { ink: 'where it started. 0:00, the forest floor is warm.', mind: 'Every pulse leaves from here. Lag 0.0 s.', glass: 'It was the knot. It is still where everything leaves from.' }[rd];
+    } else if (s.pick >= 0) {
+      const g = G.segs[s.pick];
+      pickHead = { ink: 'tip ' + (g.id + 1), mind: 'Node ' + (g.id + 1), glass: 'Craft on band ' + g.band }[rd];
+      pickBody = {
+        ink: (g.d + 1) + ' forks from the knot · eats 0.87 g/s of leaf litter',
+        mind: (g.d + 1) + ' hops from the hub · lag ' + ((g.d + 1) * 0.4).toFixed(1) + ' s · ' + (0.3 + (g.id % 7) * 0.11).toFixed(2) + ' kΣ/s',
+        glass: LY[g.band].toLocaleString('en-US') + ' ly out · in flight · the same branch, seen from the other side'
+      }[rd];
+    }
+
+    const pa = s.pulse % 2 === 0;
+    return {
+      rootStyle: this.tokens(rd) + 'width:390px;height:844px;overflow:hidden;position:relative;background:var(--ground);color:var(--ink);font-family:var(--f-ui);transition:background-color ' + MS + 'ms ' + E + ',color ' + MS + 'ms;',
+      grainLayer: 'position:absolute;left:0;top:0;pointer-events:none;mix-blend-mode:multiply;' + ops(ink ? 0.12 : 0),
+      scanLayer: 'position:absolute;left:0;top:0;pointer-events:none;' + ops(mind ? 1 : 0),
+      frostLayer: 'position:absolute;left:0;top:0;pointer-events:none;' + ops(glass ? 1 : 0),
+      segFilter: ink ? 'filter:url(#d0ink)' : '',
+      fxFilter: ink ? '' : 'filter:url(#d0glow)',
+      segs: segs, nodes: nodes, tips: tips, ghost: ghost, rings: rings, orbits: orbits, lights: lights,
+      orbitLayer: 'position:absolute;inset:0;transform-origin:172px 106px;transform:scaleY(' + G.TILT + ');' + ops(glass ? 1 : 0),
+      knotInk: ops(ink ? 1 : 0), knotMind: ops(mind ? 1 : 0), knotGlass: ops(glass ? 1 : 0),
+      bumpStyle: 'position:absolute;inset:0;transform-origin:172px 106px;animation:' + (s.pulse ? (pa ? 'd-bumpA' : 'd-bumpB') + ' 700ms ease-out' : 'none'),
+      ringStyle: 'position:absolute;left:152px;top:86px;width:40px;height:40px;border-radius:50%;border:1.5px solid var(--thread);pointer-events:none;opacity:0;' + (glass ? 'transform:scaleY(.42);' : '') + 'animation:' + (s.pulse ? (pa ? 'd-ringA' : 'd-ringB') + ' 1.4s ease-out' : 'none'),
+      caption: captions[rd], capStyle: capStyle,
+      bodyAria: 'the body, ' + n + ' threads. touch to grow one.',
+      voice1: voices[0], voice2: voices[1], voiceOld: voiceOld, voiceNew: voiceNew,
+      nextLine: nexts[rd], nextStyle: nextStyle,
+      colHead: { ink: ink ? colOn : colOff, mind: mind ? colOn : colOff, glass: glass ? colOn : colOff },
+      legend: legend, readings: readings, readingName: names[rd],
+      readout: 'threads ' + n + ' / 96 · tips ' + tipN + ' · breath 6.4 s · amber is the next move in every reading; biolum is the body itself.',
+      grow: () => this.grow(),
+      toggleAuto: () => this.toggleAuto(), autoLabel: s.auto ? 'stop the through-line' : 'play the through-line', autoPressed: s.auto ? 'true' : 'false',
+      slide: s.slide,
+      openSlide: () => this.setState({ slide: true, pick: -2 }),
+      closeSlide: () => this.setState({ slide: false }),
+      pickKnot: () => this.setState({ pick: -1 }),
+      pickHead: pickHead, pickBody: pickBody,
+      pickHeadStyle: { ink: 'font:italic 400 20px/1.2 var(--f-serif);color:var(--ink)', mind: 'font:500 15px/1.3 var(--f-mono);color:var(--ink);text-shadow:0 0 7px #3A8E74', glass: 'font:300 20px/1.2 var(--f-serif);color:var(--ink)' }[rd]
+    };
+  }
+}
+</script>
+</body>
+</html>
