@@ -487,6 +487,16 @@
     'Nothing overflowed. It went somewhere.',
     { pred: function (s) { return s.res.insight >= 1 } })
 
+  // The rule the whole Insight economy turns on, said once, on the first tick the pool falls back
+  // below the brim after Insight exists — the moment the strip's Insight rate turns to `filling`.
+  L(2, 'a2.brim', 'narrative', null, 'everSaturated && !saturated && flags.turgor',
+    'Below the brim it is just signal. Insight only comes while the pool is full.',
+    { pred: function (s) {
+      var g = HY.cognition
+      return s.stats.everSaturated === true && F.flag(s, 'turgor') &&
+        !!g && !!g.saturated && !g.saturated(s)
+    } })
+
   L(2, 'a2.first_D', 'world', 'pos', 'D >= 1',
     'The network has enough of itself to specialise.',
     { pred: function (s) { return s.res.D >= 1 } })
@@ -614,6 +624,19 @@
 
   L(3, 'a3.settle', 'world', null, '@settleTap && settles == 1',
     'Forty-two in a hundred take hold. The rest are on rock or in water.')
+
+  // cognition.freeReallocate() hands every D back on the II→III boundary, silently, and the
+  // Differentiation panel moves to GENOME. The line is the receipt; the tab's dot is the pointer.
+  // It waits for two points or more, because one point does not take the plural.
+  L(3, 'a3.unlearn', 'narrative', null, "unallocated == D >= 2 && phase == 'canopy'",
+    'The climb unlearns every specialisation. There are {k} points, unspent.',
+    { pred: function (s) {
+      var g = HY.cognition
+      // Nothing allocated yet: the state the respec leaves, not D the canopy earned since.
+      return s.phase === 'canopy' && !!g && !!g.unallocated && g.unallocated(s) >= 2 &&
+        g.unallocated(s) >= num(s.res.D)
+    },
+    tokens: function (s) { return { k: HY.cognition.unallocated(s) } } })
 
   L(3, 'a3.germ', 'narrative', 'pos', 'flags.germ_tube',
     'You are growing faster than you are dying now. That is the whole of it.',
@@ -1535,7 +1558,8 @@
       if (e.once && firedHas(s, e.id)) { pool.splice(i, 1); continue }
       var hit = false
       try { hit = !!e.pred(s) } catch (err) { hit = false }
-      if (hit) enqueue(s, e, null, null)
+      // A polled line carries no tokens unless it says how to read them off the state it fired on.
+      if (hit) enqueue(s, e, e.tokens ? e.tokens(s) : null, null)
     }
 
     // Delayed lines (the fire trio's +600 s beat) are not persisted: they are news with a fuse,
@@ -3144,10 +3168,11 @@
     }
 
     // ── The corpus itself ────────────────────────────────────────────────────
-    // 160, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
-    // corpus was transcribed, and `a3.revive` is the canopy's seed coming back from zero craft. Each
-    // is one world line and each is counted, not excused.
-    ok(LINES.length === 160, 'corpus is ' + LINES.length + ' entries, expected 160')
+    // 162, not 09 §8's 158: `a1.deadhead` is the receipt for a verb that did not exist when the
+    // corpus was transcribed, `a2.brim` says the saturation rule the Insight strip turns on,
+    // `a3.unlearn` is the receipt for the D the Act III break hands back, and `a3.revive` is the
+    // canopy's seed coming back from zero craft. Each is one line and each is counted, not excused.
+    ok(LINES.length === 162, 'corpus is ' + LINES.length + ' entries, expected 162')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3156,8 +3181,8 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 48, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 38, 'act II lines: ' + counts.a2)
-    ok(counts.a3 === 26, 'act III lines: ' + counts.a3)
+    ok(counts.a2 === 39, 'act II lines: ' + counts.a2)
+    ok(counts.a3 === 27, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
     ok(counts.obs === 25, 'observations: ' + counts.obs)

@@ -943,6 +943,9 @@ canvas{ display:block; }
 .row-actions{ display:flex; gap:var(--sp-8); flex-wrap:wrap; margin-top:var(--sp-12); }
 /* A row of act buttons shares the line evenly, so CONDUCTION fits beside VESICLES at 390px. */
 .row-line>.row-actions{ flex:1 1 100%; width:100%; }
+/* A ripe primordium's RELEASE, out of the expander: the note on the left, the verb on the right. */
+.row-ripe{ align-items:center; justify-content:space-between; }
+.row-ripe > .row-sub{ color:var(--attention); }
 .summary{ margin-top:var(--sp-12); }
 .pool-list,.sub-list{ display:block; }
 .field[data-locked="1"] .slider,.field[data-locked="1"] .field-val{ opacity:.4; }
