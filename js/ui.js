@@ -225,6 +225,9 @@
     toEmpty: 'to empty',
     owed: 'owed',
     nothing: '—',
+    decide: 'decide',
+    minNone: 'nothing pays you this yet',
+    minIdle: 'no tree is paying',
     seasons: '{n} seasons',
 
     theme: 'theme', haptics: 'haptics', motion: 'motion', slow: 'slow',
@@ -1800,6 +1803,11 @@
     v.endbarKey = ''
     bindHold(endbar, function () {
       var fin = FIN()
+      if (v.endbarKey === DECIDE_KEY) {
+        var pj = PJ()
+        if (pj && pj.refusal && !pj.refusal('decide')) commit(function () { return pj.purchase('decide') })
+        return
+      }
       if (v.endbarKey && fin && fin.takeEnding) fin.takeEnding(v.endbarKey)
     })
     v.endbar = endbar
@@ -2368,7 +2376,10 @@
   function autoPlate () {
     var s = liveState(), st = view.stack
     var w = win()
-    if (!s || s.act < 2 || (w && w.innerWidth >= 900)) return
+    // Act I folds too, once its handle exists (stage(): the understory's reveal). Its stack is the
+    // longest in the game — about fifteen windowfuls on a phone — and it was read through a band
+    // the map never gave back.
+    if (!s || (s.act < 2 && !view.plateShown) || (w && w.innerWidth >= 900)) return
     var top = st.scrollTop
     if (view.autoMin) {
       if (top <= 0) { view.autoMin = false; setPlate(false) }
@@ -2438,7 +2449,16 @@
     // A panel arrives at the bottom of the existing stack, never in the middle, so nothing the
     // player was looking at moves. EXTEND, once it has joined the stack, stays after all of them:
     // it is the last row of the scroll and not the last panel to have arrived.
-    view.stack.appendChild(p.view.el)
+    // The one exception: TIPS, the act's first purchase and its every-minute verb, goes above the
+    // floor. Appended, it arrived ~1,350 px down an 844 px phone under three floor cards with
+    // nothing pointing at it. It arrives ~35 s in, when the eye is on EXTEND and the count, so the
+    // floor moving down once costs less than the first decision being invisible.
+    var floor = view.panels.floor
+    if (id === 'tips' && floor && floor.shown && floor.view.el.parentNode === view.stack) {
+      view.stack.insertBefore(p.view.el, floor.view.el)
+    } else {
+      view.stack.appendChild(p.view.el)
+    }
     // ADAPTATIONS is a global panel that started life on the MIND tab. In Act III that slot's
     // subject is the genome, so the tree stays below whatever the act itself puts there rather
     // than above it by seniority.
@@ -3000,6 +3020,12 @@
       setText(r2.lab, STR.minerals)
       setStockFine(r2.val, num(s.res.minerals), GLYPH.minerals)
       setRate(r2.rate, rateOf(v, 'minerals'), GLYPH.minerals)
+      // A dash said nothing about why. Minerals come from trees, on terms; say which half is missing.
+      if (!(Math.abs(rateOf(v, 'minerals')) > U.RATE_ZERO)) {
+        var paying = (s.a1.contracts || []).some(function (c) { return c.state === 'active' })
+        if (!s.a1.trees.length) setSlot(r2.rate, STR.minNone, '')
+        else if (!paying) setSlot(r2.rate, STR.minIdle, '')
+      }
     } else {
       show(r2.el, false)
     }
@@ -3091,10 +3117,19 @@
   // The pinned take control. ENCYST is skipped for the same reason endingAvailable skips it: it is
   // permanently "available" from void + 20:00 and it is a concession, not an ending. Once any
   // ending has been taken the dismantle owns the screen and the bar goes with everything else.
+  var DECIDE_KEY = 'decide'
+
   function paintEndbar (v, s) {
     var fin = FIN()
     var pick = null
-    if (s && s.act >= 3 && fin && fin.endings && !(fin.ending && fin.ending(s) &&
+    // Act I's ending is a decision too, and it was a card at the foot of a fifteen-screen list with
+    // nothing on screen saying the moment had come. When DECIDE is on the board it takes the bar
+    // the endings use: above EXTEND, under the thumb, held.
+    if (s && s.act === 1 && v.rev && v.rev.decide) {
+      var pj = PJ()
+      if (pj && pj.refusal && !pj.refusal('decide')) pick = { key: DECIDE_KEY, title: STR.decide }
+    }
+    if (!pick && s && s.act >= 3 && fin && fin.endings && !(fin.ending && fin.ending(s) &&
         fin.ending(s).key)) {
       var list = fin.endings(s)
       for (var i = 0; i < list.length; i++) {
@@ -3568,7 +3603,9 @@
     var mk = marketRow(type, r)
     r.expander().appendChild(acts)
 
+    var openRow = function () { r.setExpanded(true) }
     return {
+      open: openRow,
       el: r.el,
       sync: function (s, order, rev) {
         var held = num(s.a1.sub[type])
@@ -3643,6 +3680,13 @@
           pools.appendChild(r.el)
         }
         r.sync(s, n, rev)
+        // The first time the market is open, the first layer's card opens with it: the buy buttons
+        // live inside the cards, and the floor goes bare minutes in with nothing saying where they
+        // are. The litter market panel this replaced did the same for its first row.
+        if (n === 1 && rev && rev.market && !p.__marketShown) {
+          p.__marketShown = true
+          if (r.open) r.open()
+        }
       })
       Object.keys(rows).forEach(function (k) { show(rows[k].el, !!seen[k]) })
       pv.setCount(n)
@@ -4592,8 +4636,10 @@
           c.markNew()
           if (!reducedMotion()) c.el.classList.add('reveal')
           // Cards keep their arrival order. The reveal queue re-sorts by affordability every tick;
-          // re-ordering the DOM with it would make the panel twitch under the thumb.
-          pv.body.appendChild(c.el)
+          // re-ordering the DOM with it would make the panel twitch under the thumb. A pinned card
+          // (an act's fork, DECIDE among them) arrives at the top instead of the bottom.
+          if (entry.pinned) pv.body.insertBefore(c.el, pv.body.firstChild)
+          else pv.body.appendChild(c.el)
         }
         c.setCost(entry.priceTag)
         var far = !!(pj.beyond && pj.beyond(entry.id, s))
@@ -6385,8 +6431,10 @@
   }
 
   function definePanels (v) {
-    def(v, 'floor', function (s, rev) { return rev.substrate }, buildFloor, null, actI)
+    // TIPS first: it is the act's first purchase and its every-minute verb, and below three floor
+    // cards it arrived at ~1,350 px down a 844 px phone, under the fold with nothing pointing at it.
     def(v, 'tips', function (s, rev) { return rev.tips }, buildTips, null, actI)
+    def(v, 'floor', function (s, rev) { return rev.substrate }, buildFloor, null, actI)
     def(v, 'seasons', function (s, rev) { return rev.seasons }, buildSeasons, null, actI)
     def(v, 'understory', function (s, rev) { return rev.trees }, buildUnderstory, null, actI)
     def(v, 'patches', needPatches, buildPatches, null, actI)

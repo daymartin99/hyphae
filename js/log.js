@@ -338,7 +338,7 @@
     { pred: function (s) { return s.res.sugar > F.sugarCap(s) } })
 
   L(1, 'a1.mineral_warn', 'world', 'warn', 'tips >= 20',
-    'the tips are thinning. they are made of things you cannot make.',
+    'the tips are thinning. something rooted nearby has what they are made of.',
     { pred: function (s) { return s.a1.tips >= T().A1.MIN_WARN_TIPS } })
 
   L(1, 'a1.first_mineral', 'world', 'pos', 'mineral >= 1',
@@ -1315,6 +1315,7 @@
     if (recentlySaid(s, text)) return false
 
     if (entry.once) markFired(s, entry.id)
+    storyAt = s.t
     if (entry.channel === 'observation') {
       s.log.lastObsAt = s.t
       obsSeen[entry.id] = 1
@@ -2414,8 +2415,15 @@
     the_offer: 'The others go quiet for a moment. Something has been offered, and it is waiting on you.'
   }
 
-  var PU = { GAP: 1.4, CD: 5, AFTER_S: 1.3, NUDGE_SAT_S: 45, NUDGE_CD: { undeployed: 150, overflow: 210 } }
-  var pressBag = {}, pressAt = {}, afterQueue = [], nudgeAt = {}, satSince = -1, lastSeason = -1, seasonDue = -1
+  // CD_GROW / CD_MAX_MUL: a verb's flavour thins as it repeats — 5 s apart at first, then each
+  // CD_GROW lines adds another 5 s, up to two minutes. STORY_HOLD: no flavour for twenty seconds
+  // after a corpus line, so the act's own sentences are not pushed off a five-row console by
+  // "you push. something in the leaf mould pushes back" (a hand player watched the Act I climax
+  // line scroll away under litter receipts within seconds).
+  var PU = { GAP: 1.4, CD: 5, CD_GROW: 4, CD_MAX_MUL: 24, STORY_HOLD: 20, AFTER_S: 1.3,
+    NUDGE_SAT_S: 45, NUDGE_CD: { undeployed: 150, overflow: 210 } }
+  var pressBag = {}, pressAt = {}, pressN = {}, afterQueue = [], nudgeAt = {}, satSince = -1, lastSeason = -1, seasonDue = -1
+  var storyAt = -Infinity
 
   function num (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
 
@@ -2458,7 +2466,9 @@
     var set = PRESS[verb], list = set && (set[s.act] || set[0])
     if (!list || !list.length) return false
     if (!force) {
-      if (pressAt[verb] !== undefined && s.t - pressAt[verb] < PU.CD) return false
+      var cd = PU.CD * Math.min(PU.CD_MAX_MUL, 1 + num(pressN[verb]) / PU.CD_GROW)
+      if (pressAt[verb] !== undefined && s.t - pressAt[verb] < cd) return false
+      if (s.t - storyAt < PU.STORY_HOLD) return false
       if (s.t - num(s.log.lastLineAt) < PU.GAP) return false
       if (pressAt._any !== undefined && s.t - pressAt._any < PU.GAP) return false
     }
@@ -2466,6 +2476,7 @@
     if (!text) return false
     pressAt[verb] = s.t
     pressAt._any = s.t
+    pressN[verb] = num(pressN[verb]) + 1
     return sayBeat(s, 'press.' + verb, text, verb === 'refused' ? 'amb' : null)
   }
 
@@ -2987,7 +2998,7 @@
   function init (s) {
     s = s || S()
     queue.length = 0
-    pressBag = {}; pressAt = {}; afterQueue.length = 0; nudgeAt = {}; satSince = -1; lastSeason = -1; seasonDue = -1
+    pressBag = {}; pressAt = {}; pressN = {}; storyAt = -Infinity; afterQueue.length = 0; nudgeAt = {}; satSince = -1; lastSeason = -1; seasonDue = -1
     pendingReturn.length = 0
     delayed.length = 0
     recent.length = 0
