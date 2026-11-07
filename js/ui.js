@@ -351,6 +351,7 @@
     mapKey: 'held stands are filled; the frontier is outlined; a dotted edge is a barrier.',
     collapseMap: 'collapse the map',
     expandMap: 'expand the map',
+    openBody: 'open the body', closeBody: 'close the body',
 
     // ── Act III ───────────────────────────────────────────────────────────────
     p_canopy: 'the canopy',
@@ -1760,8 +1761,17 @@
       tapAt = null
       if (!d || scrolling()) return
       if (Math.hypot(e.clientX - d.x, e.clientY - d.y) > U.PRESS_SLOP_PX) return
+      // 10 D4: in the redesign, touching the body is a second route to the act's own verb. Only the
+      // two that are free to repeat: NEW GROWTH ends the run and is never one stray touch away.
+      if (isD()) {
+        var hv = heroVerb(liveState())
+        if (hv === 'extend' || hv === 'settle') { onHero(e); return }
+      }
       var b = net.getBoundingClientRect()
-      focusRegionAt(e.clientX - b.left, e.clientY - b.top)
+      var hx = e.clientX - b.left, hy = e.clientY - b.top
+      // Measured in the slide, then the slide closes, so the card it opens is on screen.
+      if (isD() && view.shell.dataset.slide === '1') slide(false)
+      focusRegionAt(hx, hy)
     })
 
     // ── the ledger: four rows, allocated at boot, shown as they are earned ──
@@ -2020,10 +2030,18 @@
       view.autoMin = false
       if (view.shell.dataset.plate === 'min') delete view.shell.dataset.plate
       show(view.next, true)
+      // The fold handle becomes the slide's: the body is never folded, only opened.
+      show(view.plateToggle, true)
+      setAttr(view.plateToggle, 'aria-label', STR.openBody)
+      setAttr(view.plateToggle, 'aria-expanded', 'false')
     } else {
       delete view.shell.dataset.ui
+      delete view.shell.dataset.slide
+      delete view.shell.dataset.still
       if (d) delete d.documentElement.dataset.ui
       show(view.next, false)
+      show(view.plateToggle, !!view.plateShown)
+      setPlate(false)
       consolePos(wantedConsolePos())
       if (view.plateShown && recall('hyphae.plate') === 'min') setPlate(true)
     }
@@ -2316,6 +2334,9 @@
     // log.js delivers to its subscribers immediately after it has rendered the row, so the row this
     // hears about is the console's last child. That is the only fact this needs.
     if (LOG() && LOG().onLine) LOG().onLine(holdLine)
+    // 10 D9: in the redesign the body answers the voice. Every line, so it is subscribed once and
+    // asks the switch each time rather than being added and removed with it.
+    if (LOG() && LOG().onLine) LOG().onLine(function (line) { if (isD() && CANVAS() && CANVAS().voice) CANVAS().voice(line) })
     // The act transitions' scenery: the curtain, the fades, the cut, the reveal (09 §4–§5).
     if (LOG() && LOG().hostSequence) LOG().hostSequence(seqHost)
 
@@ -2524,11 +2545,25 @@
   // has no owning module, so it lives here beside the theme, which is the same kind of thing.
   function togglePlate () {
     if (!view) return false
+    if (isD()) return slide(view.shell.dataset.slide !== '1')
     view.autoMin = false
     var min = view.shell.dataset.plate === 'min'
     setPlate(!min)
     store('hyphae.plate', min ? 'open' : 'min')
     return !min
+  }
+
+  // THE SLIDE (10 §skeleton): the body window opened to the whole screen, to be watched, and in
+  // Act II touched at a size a finger can hit. It is the same canvas in a bigger frame, so nothing
+  // new is drawn; the network re-derives into the larger box the way it does on any resize.
+  function slide (open) {
+    if (!view) return false
+    if (open) setData(view.shell, 'slide', '1')
+    else delete view.shell.dataset.slide
+    setAttr(view.plateToggle, 'aria-label', open ? STR.closeBody : STR.openBody)
+    setAttr(view.plateToggle, 'aria-expanded', open ? 'true' : 'false')
+    layout()
+    return open
   }
 
   function setPlate (min) {
@@ -3674,6 +3709,8 @@
     // Nothing draws while the finger is moving: this is worth ~1.5 ms per frame during the one
     // moment the player is most likely to notice jank (06 §6.7 rule 8).
     if (!view.scrolling && cv.drawFlux) cv.drawFlux(t)
+    // The breath is the stylesheet's; while the voice has turned to the player it holds (10 D9).
+    if (isD()) setData(view.shell, 'still', cv.still ? '1' : '0')
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

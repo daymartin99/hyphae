@@ -1705,7 +1705,6 @@ canvas{ display:block; }
 .shell[data-ui="d"] .plate,
 .shell[data-ui="d"]:has(.ledger-row[data-lead="solo"]) .plate{ height:var(--plate-full); }
 .shell[data-ui="d"] .plate > canvas{ height:100%; top:auto; bottom:0; transform:none; }
-.shell[data-ui="d"] .plate-toggle{ display:none; }
 /* A ticker keeps its newest line: the text sits on the slot's floor and older rows leave by the
    top edge, never a half-line of the newest one cut at the bottom. */
 .shell[data-ui="d"] .console{ border-top:0; border-bottom:1px solid var(--rule);
@@ -1742,3 +1741,31 @@ canvas{ display:block; }
 }
 .g-why{ padding-top:var(--sp-4); color:var(--ink-3); font-family:var(--f-serif); font-style:italic; }
 .g-hold{ min-height:var(--tap); }
+
+/* ── the body breathes (10 Phase 1). A scale about the inoculation, on the compositor (rule 5):
+   the canvases are never redrawn for it. It holds while the voice has turned to the player
+   (data-still, 10 D9), and it is absent under reduced motion, where the frame is simply still. */
+@keyframes d-breathe{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.014); } }
+.shell[data-ui="d"] .plate > canvas{ transform-origin:50% 100%;
+  animation:d-breathe 6.4s ease-in-out infinite; }
+.shell[data-ui="d"][data-still="1"] .plate > canvas{ animation-play-state:paused; }
+@media (prefers-reduced-motion: reduce){ .shell[data-ui="d"] .plate > canvas{ animation:none; } }
+:root[data-motion="reduce"] .shell[data-ui="d"] .plate > canvas{ animation:none; }
+@media (prefers-reduced-motion: reduce){
+  :root[data-motion="full"] .shell[data-ui="d"] .plate > canvas{ animation:d-breathe 6.4s ease-in-out infinite; }
+}
+
+/* ── the slide: the same body window, opened to the whole screen. The handle that folds the old
+   plate is the one that opens this, so the slot never gains a control. */
+.shell[data-ui="d"] .plate-toggle{ display:flex; top:var(--sp-4); bottom:auto; }
+.shell[data-ui="d"] .plate-toggle svg{ transform:rotate(180deg); }
+/* :has() in the plate's height rule above outranks a plain attribute pair, so the slide states its
+   height with the same :has() weight rather than with !important. */
+.shell[data-ui="d"][data-slide="1"] .main{ z-index:300; }
+.shell[data-ui="d"][data-slide="1"] .plate,
+.shell[data-ui="d"][data-slide="1"]:has(.ledger-row[data-lead="solo"]) .plate{
+  position:fixed; inset:0; z-index:300; height:100%;
+  padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
+}
+.shell[data-ui="d"][data-slide="1"] .plate-toggle{ top:calc(var(--sp-8) + env(safe-area-inset-top)); }
+.shell[data-ui="d"][data-slide="1"] .plate-toggle svg{ transform:none; }

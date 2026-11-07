@@ -151,6 +151,33 @@
                              // simply not drawn falling in its entirety
   }
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE VOICE, ANSWERED (docs/design/10 D9)
+  //
+  // The voice is the driver, and the body is the thing it is talking about, so when a line lands
+  // the body answers it: a brightening that travels from the inoculation out to the tips along the
+  // network's own paths, by depth, not by distance, so it follows the hyphae rather than a ring.
+  // A line that says "you" is the other kind of moment. The voice has turned to whoever is holding
+  // the phone, and the body does the opposite of answering: it goes still, tips held at the mean of
+  // their breath, until the line has had time to be read. Redesign only; reduced motion draws
+  // neither, because a static frame already says everything a wave would.
+  // ───────────────────────────────────────────────────────────────────────────
+
+  var VOICE = {
+    WAVE_MS: 1700,           // root to tip
+    BAND: 0.16,              // the lit band, as a fraction of the deepest path
+    A: 0.85,                 // its peak alpha, fading as it travels
+    W: 1.7,                  // px: a touch over the trunk stroke, so the pulse reads as swelling
+    HZ: 30,                  // the clock it borrows while travelling
+    STILL_MS_PER_CH: 55,     // reading time a turned line is given...
+    STILL_MIN: 2600, STILL_MAX: 7000,   // ...inside these bounds
+    YOU: /(^|[^a-z])you(r|rs|rself)?([^a-z]|$)/i
+  }
+
+  var voiceWave = null        // { at } while a wave is travelling
+  var stillUntil = 0          // ms clock: the body holds still until then
+  var depth = null, depthN = 0, depthMax = 1
+
   var FLUX = {
     TIP_N: 60,               // trailing nodes that carry a tip glow
     TIP_R: 1.6,              // px
@@ -1373,6 +1400,65 @@
     }
   }
 
+  // Depth along the network, filled forward: the network is append-only and a parent always comes
+  // before its child, so each new node is its parent's depth plus one and nothing is recomputed.
+  function syncDepth () {
+    if (!net) return
+    if (!depth || depth.length < net.x.length) { depth = new Uint16Array(net.x.length); depthN = 0; depthMax = 1 }
+    if (net.n < depthN) { depthN = 0; depthMax = 1 }
+    for (var i = depthN; i < net.n; i++) {
+      var p = net.par[i]
+      depth[i] = p >= 0 && p < i ? depth[p] + 1 : 0
+      if (depth[i] > depthMax) depthMax = depth[i]
+    }
+    depthN = net.n
+  }
+
+  function voiceLine (line, tMs) {
+    if (typeof tMs !== 'number') tMs = nowMs()
+    var text = line && typeof line.text === 'string' ? line.text : ''
+    if (VOICE.YOU.test(text)) {
+      var hold = Math.min(VOICE.STILL_MAX, Math.max(VOICE.STILL_MIN, text.length * VOICE.STILL_MS_PER_CH))
+      stillUntil = tMs + hold
+      voiceWave = null
+      return 'still'
+    }
+    if (tMs < stillUntil) return 'held'
+    voiceWave = { at: tMs }
+    return 'wave'
+  }
+
+  function drawVoiceWave (ctx, tMs) {
+    var t = (tMs - voiceWave.at) / VOICE.WAVE_MS
+    if (!(t >= 0) || t >= 1 || !net || net.n < 2) { voiceWave = null; lastFlux = 0; return }
+    syncDepth()
+    var front = t * (1 + VOICE.BAND) * depthMax
+    var band = VOICE.BAND * depthMax
+    // The segments themselves are re-inked in the band, in the strongest ink the theme has (dark
+    // ink on paper, spore white on soil), so the pulse runs along the hyphae instead of beside
+    // them. Three alpha bins, one stroke each: the whole wave is three draw calls.
+    var fade = VOICE.A * (1 - t * t)
+    ctx.strokeStyle = rgba(pal.text, 1)
+    ctx.lineCap = 'round'
+    ctx.lineWidth = VOICE.W
+    for (var bin = 0; bin < 3; bin++) {
+      var lo = band * bin / 3, hi = band * (bin + 1) / 3
+      ctx.globalAlpha = fade * (1 - bin / 3)
+      ctx.beginPath()
+      for (var i = 1; i < net.n; i++) {
+        if (net.lost[i]) continue
+        var k = front - depth[i]
+        if (k < lo || k >= hi) continue
+        var p = net.par[i]
+        if (p < 0) continue
+        ctx.moveTo(net.x[p], net.y[p])
+        ctx.lineTo(net.x[i], net.y[i])
+      }
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+  }
+
   function surgeAt (tMs) {
     if (!surge) return null
     var t = tMs - surge.at
@@ -1477,6 +1563,7 @@
     // 1.1 s fall in nine frames, and tissue letting go in nine frames is a slideshow. So does a
     // trade: litter falling in five frames is not falling.
     var hz = sg ? FLUX.SURGE_HZ : (shedGhost ? SHED.HZ : (tradeFx ? LITTER.FX_HZ : T().fluxHz))
+    if (voiceWave && !reduced) hz = Math.max(hz, VOICE.HZ)
 
     if (reduced || hz <= 0) {
       // Once per state change, never on a clock. A static frame is always present — this branch
@@ -1502,7 +1589,8 @@
     drawTradeFx(ctx, tMs)
     // Before the tips, so what has been let go is behind what is still there.
     drawShed(ctx, tMs)
-    drawTips(ctx, tSec)
+    drawTips(ctx, tSec, tMs < stillUntil)
+    if (voiceWave && !reduced) drawVoiceWave(ctx, tMs)
     // After the tips, so the head sits over the tip it came from rather than under it.
     if (sg) drawSurge(ctx, sg)
     if (s && s.act >= 2) stepPulses(ctx, tSec, s)
@@ -1519,7 +1607,7 @@
   // node — four at cold boot, sixty at the ceiling. A young colony is a few points of light and a
   // mature one has a busy, crowded front, which is the difference a fixed sixty was hiding. The
   // arc grows with cord for the same reason the strokes do: it is the same tissue.
-  function drawTips (ctx, tSec) {
+  function drawTips (ctx, tSec, still) {
     var starve = starving()
     var col = starve ? pal.tertiary : formStroke()
     var want = form.tips
@@ -1532,7 +1620,7 @@
       shown++
       var a
       if (starve) a = FLUX.TIP_STARVE_A
-      else if (reduced) a = FLUX.TIP_STATIC_A
+      else if (reduced || still) a = FLUX.TIP_STATIC_A
       else a = FLUX.TIP_A + FLUX.TIP_AMP * Math.sin(TAU * tSec / FLUX.TIP_PERIOD + i * FLUX.TIP_SPREAD)
       ctx.globalAlpha = a
       ctx.beginPath()
@@ -3144,6 +3232,21 @@
       f.push('surface: a draw call with no data threw: ' + (err && err.message ? err.message : err))
     }
 
+    // 10 D9: a line answers with a wave; a line that turns to the player stills the body instead,
+    // and a wave that arrives inside the stillness waits rather than breaking it.
+    var keepStill = stillUntil, keepWave = voiceWave
+    stillUntil = 0
+    voiceWave = null
+    ok(voiceLine({ text: 'the forest floor is warm' }, 1000) === 'wave', 'D9: a line did not send a wave')
+    ok(voiceLine({ text: 'you have been making this the whole time' }, 2000) === 'still',
+      'D9: a line that says you did not still the body')
+    ok(voiceLine({ text: 'Something in the network is repeating itself.' }, 2500) === 'held',
+      'D9: a wave broke a stillness')
+    ok(voiceLine({ text: 'the youngest tips' }, 1e9) === 'wave', 'D9: "youngest" read as you')
+    ok(voiceLine({ text: 'Your stands are dry.' }, 2e9) === 'still', 'D9: "your" was not read as you')
+    stillUntil = keepStill
+    voiceWave = keepWave
+
     return f
   }
 
@@ -3172,6 +3275,10 @@
     // The release. ui.js calls this at the instant a charge lifts and an extension was actually
     // paid for, with the same 0…1 pressure the button drew and the floor priced.
     surge: surgeRelease,
+    // The voice, answered (10 D9): a line lands and the body answers it. Returns 'wave', 'still'
+    // (a line that turned to the player), or 'held' (a wave that waited out a stillness).
+    voice: voiceLine,
+    get still () { return nowMs() < stillUntil },
     trade: tradeRelease,
 
     // The shed. OPTIONAL — see SHED at the top of this file. Any mechanic that debits `hyphae` is
