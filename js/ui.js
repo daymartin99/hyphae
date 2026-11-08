@@ -226,7 +226,9 @@
     short: '{n} short',
     skip: 'tap to continue',
     floorBare: 'the floor is bare',
-    toEmpty: 'to empty',
+    // 'left', not 'to empty': the longer word wrapped AFTER FOOD onto a second line whenever sugar ran
+    // negative, and the header grew under the thumb (invested playtest, every redesign player).
+    toEmpty: 'left',
     owed: 'owed',
     nothing: '—',
     decide: 'decide',
@@ -982,7 +984,12 @@
 
   function refuse (node) {
     if (node) node.__refused = 1
-    beat('refused', true)
+    // The voice's refusal is chosen at random, so alone it can say "not the season" when the real
+    // wall is collateral. When the control knows its reason, the voice says its line and then the
+    // reason, plainly, in brackets: the upgrade cards' own form (invested rerun, Sam: three refusals
+    // in a row, "none of them named the missing thing").
+    var why = node && node.dataset && node.dataset.short ? node.dataset.short : ''
+    beat('refused', true, why ? { why: why } : null)
     haptic(U.HAP_ERROR, 'ui.error')
     if (node && node.dataset && node.dataset.short) announce(node.dataset.short)
   }
@@ -3500,6 +3507,7 @@
     if (rot > 0) {
       if (!r.sub) {
         r.sub = el('div', 'ledger-sub')
+        r.sub.dataset.kind = 'rot'
         r.el.parentNode.insertBefore(r.sub, r.el.nextSibling)
       }
       show(r.sub, true)

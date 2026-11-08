@@ -253,6 +253,7 @@
     FORWARD_FILLS: 12,        // fills fixed by forward_contracts
     FORWARD_MARK: 1.05,       // × fair value, for each of them
     STANDING_PENALTY: 1.08,   // standing_order pays this much more than you would
+    STANDING_CEIL: 1.50,      // × fair value: the default most it will pay per gram, penalty included
     STANDING_FLOOR: 0.15,     // × cap: the stock level below which the standing order stops buying
     STANDING_MAX_FRAC: 0.02,  // × cap per second: the automated fill rate
     // THE PRICE-IMPACT CEILING, in units of `fair`, per second of market time.
@@ -788,7 +789,11 @@
       if (!unlocked(k)) continue
       cap = capOf(k)
       cfg = standing[k] || {}
-      ceil = isFinite(cfg.ceil) ? cfg.ceil : fairValue(k)
+      // The default ceiling is a margin over fair value, not fair value itself: with the 8% penalty
+      // included, fair value meant a market anywhere near fair was "too dear", so the order sat
+      // idle and the floor went bare under it (invested rerun: "the automation doesn't seem to
+      // run"; measured, 45 of 120 away-minutes bare with or without it). It buys badly, as sold.
+      ceil = isFinite(cfg.ceil) ? cfg.ceil : fairValue(k) * MK.STANDING_CEIL
       floor = isFinite(cfg.floor) ? cfg.floor : MK.STANDING_FLOOR * cap
       unit = unitPrice(k) * MK.STANDING_PENALTY
       if (!(unit > 0) || unit > ceil) continue
