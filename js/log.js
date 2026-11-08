@@ -2402,7 +2402,7 @@
     trade_memory: 'the trees become legible. their hunger now shows under each name in the stand.',
     antifreeze_glycoproteins: 'winter no longer thins you out. the cold months pay better than they did.',
     the_deer_in_the_gully: 'something large stops moving in the gully. carrion now appears among the litter.',
-    patch_second_shadow: 'a second patch of floor darkens at the edge of the map. it is yours to spread into.',
+    patch_second_shadow: 'a second patch of floor darkens at your edge. it is yours to spread into.',
     peroxidase_mn: 'fallen logs soften under you. they are on the list now, heavy and slow.',
     standing_order: 'somewhere below you, something starts buying on its own. it pays a little too much and never stops.',
     necromass_recycling: 'dead ends fold back into you. a small share of every loss returns as substrate.',
@@ -2560,7 +2560,7 @@
   // line scroll away under litter receipts within seconds).
   var PU = { GAP: 1.4, CD: 5, CD_GROW: 4, CD_MAX_MUL: 24, STORY_HOLD: 20, AFTER_S: 1.3,
     NUDGE_SAT_S: 45, NUDGE_CD: { undeployed: 150, overflow: 210 } }
-  var pressBag = {}, pressAt = {}, pressN = {}, afterQueue = [], nudgeAt = {}, satSince = -1, lastSeason = -1, seasonDue = -1
+  var pressBag = {}, pressAt = {}, pressN = {}, afterQueue = [], nudgeAt = {}, nudgeN = {}, satSince = -1, lastSeason = -1, seasonDue = -1
   var storyAt = -Infinity
 
   function num (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
@@ -2673,10 +2673,18 @@
     else if (fs.mix > 1.1) key = 'mix'
     if (!key) return
     var cd = { bare: 150, drying: 240, sponge: 900, mix: 1200 }[key] || 0
+    // Silence over repetition (David; Robin in the invested rerun heard "nothing left underneath
+    // you" eight or nine times in 4.5 hours). A floor nudge waits twice as long each time it is
+    // said, and once its pool has been said through, it is not said again in this sitting.
+    var pool = (PRESS[key] && (PRESS[key][s.act] || PRESS[key][0])) || []
+    var said = num(nudgeN[key])
+    if (pool.length && said >= pool.length) { if (key.indexOf('season') === 0) seasonDue = -1; return }
+    if (key.indexOf('season') < 0) cd = cd * Math.pow(2, said)
     if (nudgeAt[key] !== undefined && s.t - nudgeAt[key] < cd) return
     if (key.indexOf('season') < 0 && s.t - num(s.log.lastLineAt) < PU.GAP * 4) return
     if (press(key, null, true)) {
       nudgeAt[key] = s.t
+      nudgeN[key] = num(nudgeN[key]) + 1
       if (key.indexOf('season') === 0) seasonDue = -1
     }
   }
