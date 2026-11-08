@@ -1282,7 +1282,13 @@
   // the hit area and adds a second thing to look at.
   // projects.js tags every fork that charges nothing `(a decision)`; that note is the one honest
   // marker of "this is not a purchase".
-  function isDecision (entry) { return !!entry && entry.note === 'a decision' }
+  // Every irreversible card is held, not only the four decisions: twelve irreversible purchases
+  // (Perennial Mycelium, Forward Contracts, the Ghost Pipe Compact…) bought on a single tap, and a
+  // layout jump bought Perennial Mycelium by accident and took a player's seasons (fun test, Robin).
+  function isDecision (entry) {
+    return !!entry && (entry.note === 'a decision' ||
+      (entry.tags && entry.tags.indexOf('irreversible') >= 0))
+  }
 
   function card (spec) {
     spec = spec || {}
