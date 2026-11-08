@@ -1,4 +1,4 @@
-const b='hyphae-v50'
+const b='hyphae-v54'
 const a=['./','./index.html']
 const c=['./manifest.webmanifest','./apple-touch-icon.png','./icon-512.png']
 self.addEventListener('install',(e)=>{e.waitUntil(caches.open(b).then(async(cache)=>{const f=await Promise.all(a.map((u)=>cache.add(u).then(()=>!0,()=>!1)))
