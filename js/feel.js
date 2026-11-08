@@ -2454,6 +2454,8 @@
         ka.gain.setValueAtTime(0.75 * v, t); ka.gain.exponentialRampToValueAtTime(0.0005, t + 0.42)
         k.start(t); k.stop(t + 0.45)
         pump.gain.setValueAtTime(0.62, t); pump.gain.linearRampToValueAtTime(1, t + 0.3)
+        // The screen keeps the beat too, for anyone who cannot hear it (realtime only).
+        if (!all) setTimeout(beatOut, Math.max(0, (t - ac.currentTime) * 1000))
       } else if (e.k === 'snare') {
         hit(t, null, 'bandpass', 1700, 0.7, 0.32, 0.2)
         var st = ac.createOscillator(), sa = g(0); st.frequency.value = hz(4); st.connect(sa); sa.connect(drumBus)
@@ -2492,7 +2494,24 @@
     }
   }
 
-  var piece = null, pieceUntil = 0
+  var piece = null, pieceUntil = 0, pieceName = '', pieceAt = 0
+  var beatFns = []
+  function onBeat (fn) { if (typeof fn === 'function') beatFns.push(fn) }
+  function beatOut () {
+    if (!piece) return
+    for (var i = 0; i < beatFns.length; i++) { try { beatFns[i]() } catch (e) { void 0 } }
+  }
+
+  // What is playing, in words: for the playtest harness, which cannot hear, and for anything that
+  // wants to say so on screen. Sections follow pieceEvents' bar plan.
+  function nowPlaying () {
+    if (!piece || nowMs() >= pieceUntil) return mode() === 'off' ? 'sound off' : 'no music (' + mode() + ' sound)'
+    var P = PIECES[pieceName], bar = 240 / P.bpm, el = (nowMs() - pieceAt) / 1000, b = Math.floor(el / bar)
+    var bars = Math.floor(PIECE_S / bar)
+    var sec = b < 4 ? 'keys alone, opening' : b < 20 ? 'the groove' : b < 28 ? 'breakdown, no kick' :
+      b < bars - 6 ? 'the groove again' : 'fading out'
+    return pieceName + ' piece, lo-fi, ' + P.bpm + ' bpm, ' + sec + ', ' + Math.max(0, Math.round(PIECE_S - el)) + ' s left'
+  }
   // One at a time: a new piece fades the old one out. The bed steps back while a piece plays.
   function startPiece (name) {
     if (!ctx || !G || !ready || mode() === 'off' || !PIECES[name]) return false
@@ -2500,6 +2519,7 @@
     var t0 = ctx.currentTime + 0.1
     piece = schedulePiece(ctx, G.master, name, t0, PIECE_S)
     pieceUntil = nowMs() + PIECE_S * 1000
+    pieceName = name; pieceAt = nowMs()
     try {
       G.bedDuck.gain.cancelScheduledValues(t0)
       G.bedDuck.gain.setTargetAtTime(0.35, t0, 1.5)
@@ -2515,6 +2535,9 @@
     score(which)
     var w = win()
     if (w && CUE_AFTER[which]) w.setTimeout(function () { startPiece(which) }, CUE_AFTER[which])
+    // The voice says it whether or not it can be heard: muted phones are most phones.
+    var line = which === 'decide' ? 'a2.music' : which === 'escape' ? 'a3.music' : ''
+    if (line && HY.log && HY.log.logLater) { try { HY.log.logLater(line, CUE_AFTER[which] / 1000 + 8) } catch (e) { void 0 } }
     return true
   }
 
@@ -3412,6 +3435,8 @@
     skipScore: skipScore,
     startPiece: startPiece,
     cue: cue,
+    onBeat: onBeat,
+    nowPlaying: nowPlaying,
     stopPiece: stopPiece,
     renderPiece: renderPiece,
     PIECES: PIECES,

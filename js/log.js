@@ -510,6 +510,12 @@
     'Something in the network is repeating itself.',
     { pred: function (s) { return s.act === 2 } })
 
+  // The music, said for anyone who cannot hear it: a muted phone, a blind playtest, sound off. The
+  // voice notes it the way it notes everything, without explaining it (David: "a noise says there
+  // are things happening"). Fired by feel.cue a beat after the piece begins.
+  L(2, 'a2.music', 'world', null, '@piece && act == 2',
+    'Somewhere under the network, slow keys begin. Something is keeping time.')
+
   L(2, 'a2.first_claim', 'world', 'pos', 'claimed == 2',
     '{region}. Something there is willing to talk.',
     { pred: function (s) { return s.stats.claimedCount >= 2 } })
@@ -667,6 +673,9 @@
     } })
 
   // ── ACT III · BLOOM (R3) ───────────────────────────────────────────────────
+
+  L(3, 'a3.music', 'world', null, '@piece && act == 3',
+    'Far off, keys. Colder. Nobody is playing them.')
 
   L(3, 'a3.settle', 'world', null, '@settleTap && settles == 1',
     'Forty-two in a hundred take hold. The rest are on rock or in water.')
@@ -3343,7 +3352,7 @@
     // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends, and
     // `a1.waiting` notices a player who has not touched anything (ab/deadspot-1); `a1.threads_reach` and
     // `a1.threads_close` hint at Anastomosis's hidden gate (ab/bounce-2). Each is counted, not excused.
-    ok(LINES.length === 169, 'corpus is ' + LINES.length + ' entries, expected 169')
+    ok(LINES.length === 171, 'corpus is ' + LINES.length + ' entries, expected 171')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3352,8 +3361,8 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 54, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 40, 'act II lines: ' + counts.a2)
-    ok(counts.a3 === 27, 'act III lines: ' + counts.a3)
+    ok(counts.a2 === 41, 'act II lines: ' + counts.a2)
+    ok(counts.a3 === 28, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
     ok(counts.obs === 25, 'observations: ' + counts.obs)
