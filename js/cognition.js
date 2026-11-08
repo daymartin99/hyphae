@@ -1285,6 +1285,7 @@
     ripeness: ripeness,
     grantD: grantD,
     allocate: allocate,
+    canAllocate: canAllocate,
     respec: respec,
     respecCost: respecCost,
     pulseCost: pulseCost,

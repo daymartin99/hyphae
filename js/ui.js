@@ -252,6 +252,7 @@
     nextAfford: '{name} is within reach.',
     nextGather: 'something is gathering. {t}.',
     nextBare: 'the floor is bare. more is for sale, under grow.',
+    nextCeiling: '{name}: {n} Σ. you hold at most {cap}. the forest makes room.',
     signNothing: 'at that size it pays nothing',
     signNo: 'the tree will not sign these terms',
     nextGatherNo: 'something is gathering.',
@@ -2232,7 +2233,10 @@
       if (nOff === 1) { nextGroup = 'pact'; return STR.nextOffer }
       if (nOff > 1) { nextGroup = 'pact'; return interp(STR.nextOffers, { n: nOff }) }
       var cg = HY.cognition
-      var dFree = cg && cg.unallocated ? num(cg.unallocated(s)) : 0
+      // D is only news once it can be spent: before Differentiation it cannot, and saying "unspent"
+      // pointed Act II's first hour at a door that was locked (fun test, Sam: "8 unspent D points I
+      // couldn't use yet").
+      var dFree = cg && cg.unallocated && (!cg.canAllocate || cg.canAllocate(s)) ? num(cg.unallocated(s)) : 0
       if (dFree >= 1) { nextGroup = 'mind'; return interp(STR.nextDFree, { n: Math.floor(dFree), u: GLYPH.diff }) }
     }
     if (s.act >= 3 && FIN() && FIN().endings) {
@@ -2307,6 +2311,16 @@
       }
     }
     if (!worst) return ''
+    // Act II's first stall (fun test, Sam: "every new cost sat above my signal ceiling and I couldn't
+    // see how to raise it"). Waiting cannot pay a price above the ceiling, so NEXT says that, and
+    // where room comes from, rather than counting down to a total that can never be held.
+    if (s.act >= 2 && worst === 'sig' && HY.cognition && HY.cognition.signalCap) {
+      var capS = num(HY.cognition.signalCap(s))
+      if (capS > 0 && num(best.price.sig) > capS) {
+        nextGroup = 'forest'
+        return interp(STR.nextCeiling, { name: best.name, n: C().fmt(num(best.price.sig)), cap: C().fmt(capS) })
+      }
+    }
     var short = num(best.price[worst]) - pj.holding(worst)
     var stockKey = CUR_STOCK[worst] || null
     var unit = worst === 'g' ? C().fmtMass(short) : C().fmt(short) + ' ' + (GLYPH[stockKey] || worst)
