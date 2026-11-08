@@ -2821,6 +2821,13 @@
     // 10 D9: in the redesign the body answers the voice. Every line, so it is subscribed once and
     // asks the switch each time rather than being added and removed with it.
     if (LOG() && LOG().onLine) LOG().onLine(function (line) { if (isD() && CANVAS() && CANVAS().voice) CANVAS().voice(line) })
+    // While a piece plays the body keeps its beat: a short brightening on every kick, so a muted
+    // phone still shows that something is playing (David: "a noise says there are things happening").
+    if (HY.feel && HY.feel.onBeat) HY.feel.onBeat(function () {
+      if (!view || !view.plate || reducedMotion()) return
+      setData(view.plate, 'beat', '1')
+      setTimeout(function () { if (view && view.plate) delete view.plate.dataset.beat }, 170)
+    })
     // The act transitions' scenery: the curtain, the fades, the cut, the reveal (09 §4–§5).
     if (LOG() && LOG().hostSequence) LOG().hostSequence(seqHost)
 

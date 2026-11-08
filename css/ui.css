@@ -1730,6 +1730,9 @@ canvas{ display:block; }
 /* The rot line comes and goes as sugar crosses its cap. Collapsing it moved every button below the
    header between a look and a tap; once it has appeared it keeps its row, blank when nothing rots. */
 .shell[data-ui="d"] .ledger-sub[data-kind="rot"][hidden]{ display:flex; visibility:hidden; }
+/* The body keeps the music's beat: a brief lift on each kick, back over a quarter of a second. */
+.shell[data-ui="d"] .plate > canvas{ transition:filter 240ms ease-out; }
+.shell[data-ui="d"] .plate[data-beat="1"] > canvas{ filter:brightness(1.18) saturate(1.1); transition:filter 40ms ease-out; }
 .shell[data-ui="d"] .plate > canvas{ height:100%; top:auto; bottom:0; transform:none; }
 /* A ticker keeps its newest line: the text sits on the slot's floor and older rows leave by the
    top edge, never a half-line of the newest one cut at the bottom. */
