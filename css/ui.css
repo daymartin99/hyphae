@@ -317,7 +317,11 @@ html{ font-size:100%; -webkit-text-size-adjust:100%; background:var(--bg);
       color-scheme:dark light; overscroll-behavior:none; }
 body{ font:var(--t-body); color:var(--text-primary); background:var(--bg);
       -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
-      overscroll-behavior:none; touch-action:manipulation;
+      overscroll-behavior:none;
+      /* pan-y, not manipulation: the game never pans sideways, and a horizontal swipe across a card
+         was taken as swipe-back even with the root's overscroll guard (invested rerun, a blank page
+         at minute 18). Sliders keep their drag; touch-action only narrows what the page may do. */
+      touch-action:pan-y;
       -webkit-tap-highlight-color:transparent;
       transition:background-color var(--d-act) linear; }
 button{ font:inherit; color:inherit; background:none; border:0; cursor:pointer;
@@ -327,7 +331,9 @@ canvas{ display:block; }
 :focus-visible{ outline:2px solid var(--focus); outline-offset:2px; border-radius:inherit; }
 .vh{ position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
      clip-path:inset(50%); white-space:nowrap; border:0; }
-.scroll{ overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+/* touch-action is read only up to the nearest scroller, so the vertical-only rule on body never
+   reached a card inside one: each scroller states it again. */
+.scroll{ overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; touch-action:pan-y; }
 
 /* ══ SHELL · 06 §4.1–4.3 ═══════════════════════════════════════════════════ */
 
@@ -443,7 +449,7 @@ canvas{ display:block; }
 .panels{ position:relative;
          flex:1 1 0; min-height:var(--panels-min); padding-top:var(--sp-12);
          overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
-         scroll-behavior:smooth; }
+         scroll-behavior:smooth; touch-action:pan-y; }
 /* A list that ends mid-card reads as a rendering fault rather than as more content: both blind
    judges called the clipped sliver above the hero a glitch. A short fade over the last rows says
    "there is more below" in the only vocabulary a scroller has. It is fixed to the frame, not the
@@ -1254,7 +1260,7 @@ canvas{ display:block; }
              background:var(--line-strong); margin:10px auto 0; flex:0 0 auto; }
 .sheet-title{ font:var(--t-title); color:var(--text-max);
               padding:var(--sp-16) var(--gutter) var(--sp-8); flex:0 0 auto; }
-.sheet-body{ overflow-y:auto; overscroll-behavior:contain; flex:1 1 auto;
+.sheet-body{ overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; flex:1 1 auto;
              padding:0 var(--gutter) var(--sp-16); }
 /* Cancel is left, Confirm is right: right is thumb-natural for the dominant hand and confirm is
    the common case. */
