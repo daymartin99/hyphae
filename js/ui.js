@@ -249,6 +249,7 @@
     nextDecide: 'decide is held below. it does not undo.',
     nextAfford: '{name} is within reach.',
     nextGather: 'something is gathering. {t}.',
+    nextBare: 'the floor is bare. more is for sale, under grow.',
     nextGatherNo: 'something is gathering.',
     nextShort: '{name}: {n} short.',
     nextShortEta: '{name}: {n} short, about {t} at this rate.',
@@ -2192,6 +2193,13 @@
     nextGroup = null
     if (!s || !pj) return ''
     if (s.act === 1 && pj.refusal && pj.refusal('decide') === null) return STR.nextDecide
+    // A bare floor stops everything, so it owns the line. In the bounce-off test all three blind
+    // players on this skeleton reached it by minute 17; NEXT went on saying "a tip is within
+    // reach" over a dead EXTEND, and none of them found the litter on sale under grow.
+    if (s.act === 1 && A1() && A1().totalSubstrate && !(A1().totalSubstrate() > 0)) {
+      nextGroup = 'grow'
+      return STR.nextBare
+    }
     // The wait for DECIDE. Signal has no use yet, and the line must not say what it is for: only that
     // it is going somewhere, and how long. The road stays hidden; the player still walks it.
     if (s.act === 1 && pj.isBought('action_potential')) {

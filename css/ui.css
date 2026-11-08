@@ -1712,6 +1712,12 @@ canvas{ display:block; }
 .shell[data-ui="d"] .ledger::after{ content:none; }
 .shell[data-ui="d"] .plate,
 .shell[data-ui="d"]:has(.ledger-row[data-lead="solo"]) .plate{ height:var(--plate-full); }
+/* The bounce-off test (ab/bounce-1): once sugar arrives the ledger is four rows deep, and the panel
+   list was left 162 px for 889 px of birch card. Two of three blind players on this skeleton quit
+   with the deal's controls hidden under EXTEND. The list keeps a working height; the body window
+   gives way to it, down to a strip that still shows the body breathing. */
+.shell[data-ui="d"]{ --panels-min:min(300px, 36dvh); }
+.shell[data-ui="d"] .plate{ min-height:112px; }
 .shell[data-ui="d"] .plate > canvas{ height:100%; top:auto; bottom:0; transform:none; }
 /* A ticker keeps its newest line: the text sits on the slot's floor and older rows leave by the
    top edge, never a half-line of the newest one cut at the bottom. */

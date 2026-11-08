@@ -525,7 +525,10 @@
     for (k in pr) {
       if (!Object.prototype.hasOwnProperty.call(pr, k)) continue
       // Key order is the order the entry was written in, which is the order it means to be read.
-      if (CUR[k] && pr[k] > 0) parts.push(renderCost(k, pr[k]))
+      // Grams are paid out of the labile pool, not the size the ledger leads with. In the bounce-off
+      // test three of six blind players stood on 1.4 kg of BIOMASS failing to buy a 1.10 kg card,
+      // and none of them was told why. In Act I, where both lines are on screen, the tag says which.
+      if (CUR[k] && pr[k] > 0) parts.push(renderCost(k, pr[k]) + (k === 'g' && s && s.act === 1 ? ' labile' : ''))
     }
     var tag = parts.length ? parts.join(TAG_JOIN) : FREE_TAG
     return p.note ? tag + ' (' + p.note + ')' : tag
