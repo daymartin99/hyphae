@@ -1,5 +1,7 @@
 # HYPHAE — THE VISUAL & INTERACTION LANGUAGE
 
+> **Phase 7 (Nov 2026): the redesign is the shipped layout.** The screen skeleton, the five-part interaction grammar, the three readings of the body and the loud transitions are specified in `10-redesign-build-plan.md` (D1–D9). Where that plan and this document disagree on layout, the plan wins. The palette, type and motion tokens here still stand. The old panel scroll survives only behind `?ui=old` until step 7b removes it.
+
 **Status:** normative. This document is the source of truth for every pixel, colour, curve and
 millisecond in the shipped build. Where it disagrees with `01-act1-understory.md`,
 `02-act2-network.md` or `03-act3-bloom.md` on a *visual* matter, this document wins. Where it

@@ -238,7 +238,7 @@
 
     theme: 'theme', haptics: 'haptics', motion: 'motion', slow: 'slow',
     verbose: 'spoken status', tier: 'detail', textSize: 'text size',
-    uiPick: 'interface', uiOld: 'current', uiNew: 'new, in progress',
+    uiPick: 'interface', uiOld: 'old (going away)', uiNew: 'current',
 
     // THE ACCOUNTS (10 Phase 2): a ledger figure, opened. Facts only, in the plain register.
     acctFrom: 'comes from', acctTo: 'goes to', acctNet: 'net',
@@ -2492,13 +2492,9 @@
     return !!(view && view.shell.dataset.ui === 'd')
   }
 
-  function wantedUi () {
-    var w = win()
-    var q = w && w.location && typeof w.location.search === 'string' ? w.location.search : ''
-    var m = /[?&]ui=(d|old)/.exec(q)
-    if (m) return m[1] === 'd' ? 'd' : 'old'
-    return recall('hyphae.ui') === 'd' ? 'd' : 'old'
-  }
+  // Phase 7b: the redesign is the only interface. The old shell's code paths remain behind uiMode('old')
+  // for the self-tests until they are cleared out; nothing a player can reach selects them.
+  function wantedUi () { return 'd' }
 
   function uiMode (mode) {
     if (!view) return 'old'
@@ -7432,11 +7428,6 @@
           persist()
         }))
 
-        settingRow(body, STR.uiPick, seg([
-          { value: 'old', label: STR.uiOld },
-          { value: 'd', label: STR.uiNew }
-        ], uiMode(), function (val) { uiMode(val) }))
-
         settingRow(body, STR.verbose, seg([
           { value: 'off', label: STR.off },
           { value: 'on', label: STR.on }
@@ -8204,7 +8195,7 @@
       kids.indexOf(view.next) < kids.indexOf(view.stack), 'D: the skeleton is out of order')
     uiMode('old')
     ok(view.next.hidden && view.shell.dataset.ui === undefined, 'D: switching off left it on')
-    store('hyphae.ui', keepUi === 'd' ? 'd' : 'old')
+    store('hyphae.ui', keepUi === 'old' ? 'old' : 'd')   // nothing stored reads as D since Phase 7
     if (d.documentElement.dataset.ui && !(keepView && keepView.shell.dataset.ui === 'd')) delete d.documentElement.dataset.ui
     if (keepView && keepView.shell.dataset.ui === 'd') d.documentElement.dataset.ui = 'd'
 

@@ -1,5 +1,12 @@
 # HYPHAE — NARRATIVE, VOICE, AND TEXT
 
+> **Phase 7 (Nov 2026): the voice under the redesign.** The voice sits directly under the body as a six-row ticker, and touching it opens the full record (10 D9). Since the playtests (`ab/deadspot-1`, `bounce-1`, `bounce-2`, `fun-1`), it also follows these rules:
+> - Floor and season lines back off, and retire once said through. Silence wins over repetition.
+> - A refusal carries its plain reason in brackets after the line.
+> - The watcher keeps count of unpaid terms and says when a failed tree speaks again.
+> - It hints at Anastomosis's gate without naming it.
+> - It notices an untouched game ("it is waiting for you.").
+
 **Status:** normative. This document is the **single source of truth for every human-readable string
 in HYPHAE.** If a string appears here and also in `01`–`07`, the version here ships. Where this
 document reproduces a line already authored in a sibling doc it is marked `[inherited]` and is
