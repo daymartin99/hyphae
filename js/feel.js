@@ -2006,6 +2006,7 @@
     if (m === 'off') {
       // A12: every oscillator stopped within 400 ms, then the context suspended, then zero CPU.
       hapticCancel()
+      stopPiece()
       releaseAllVoices(AUD.life.releaseMs)
       if (ctx && G) ramp(G.master.gain, 0, 0.12)
       later(AUD.life.offStopMs, function () {
@@ -2279,6 +2280,275 @@
       { attack: 0.900, release: 2.600, gain: 0.10, send: 0.62, weight: 4 })
     ramp(G && G.bedGain ? G.bedGain.gain : null, 0, 20.0 / 3)
     at(20000, endScore)
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // THE PIECES · a few minutes of music after the biggest decisions (David, Nov 2026)
+  // ───────────────────────────────────────────────────────────────────────────
+  //
+  // The stingers above are seconds long. A decision that ends an act earns more: about three
+  // minutes of slow synth, then silence again. Original music in a mood (low, breathy, synth, a
+  // long room), not anyone's song. The house rule holds: every pitch is an integer harmonic of
+  // 55 Hz, so the pieces belong to the same world as every other sound in the game. One plays at a
+  // time; a second replaces the first. The engine takes any AudioContext and a destination, so the
+  // same code renders the 20-second samples offline (renderPiece) and plays in the game.
+  var PIECES = {
+    // After DECIDE: warm lo-fi. Amaj9, E9 (the harmonic 7th), C#m7, A6/9 (the harmonic 13th), open
+    // voicings on an electric piano with tape wobble, swung dusty drums, vinyl underneath.
+    decide: { seed: 31, bpm: 76, swing: 0.58, cut: 5200, bass: [2, 3, 2, 2],
+      chords: [[4, 10, 12, 15, 18], [6, 12, 15, 21, 27], [5, 10, 12, 15, 18], [4, 9, 10, 12, 13]],
+      scale: [8, 9, 10, 12, 15, 16, 18, 20], snare: true, bell: 0.6 },
+    // After ESCAPE: the same room gone cold. No bass, rim clicks for a snare, a glassier piano,
+    // chords coloured by the 7th and 11th partials, half the drums.
+    escape: { seed: 53, bpm: 68, swing: 0.55, cut: 6800, bass: null,
+      chords: [[7, 14, 16, 21], [8, 11, 14, 16], [6, 14, 18, 21], [7, 11, 16, 22]],
+      scale: [14, 16, 18, 21, 22, 24, 28], snare: false, bell: 1.6 }
+  }
+  var PIECE_S = 180, PIECE_IN = 5, PIECE_OUT = 12
+
+  function pieceRng (seed) {
+    var x = seed >>> 0 || 1
+    return function () { x ^= x << 13; x >>>= 0; x ^= x >>> 17; x ^= x << 5; x >>>= 0; return x / 4294967296 }
+  }
+
+  function pieceIR (ac, secs) {
+    var len = Math.floor(ac.sampleRate * secs), b = ac.createBuffer(2, len, ac.sampleRate), r = pieceRng(7)
+    for (var c = 0; c < 2; c++) {
+      var d = b.getChannelData(c)
+      for (var i = 0; i < len; i++) d[i] = (r() * 2 - 1) * Math.pow(1 - i / len, 4)
+    }
+    return b
+  }
+
+  // The score as data: every event of the piece, decided up front from the seed, so the game and
+  // the offline sample play exactly the same music. Sections, in bars: an intro of keys alone, the
+  // groove, a breakdown without the kick, the groove again, and an outro.
+  function pieceEvents (P, dur) {
+    var r = pieceRng(P.seed), ev = [], beat = 60 / P.bpm, bar = beat * 4
+    var bars = Math.floor(dur / bar)
+    function motif () {
+      var m = [], idx = Math.floor(r() * P.scale.length), n = 4 + Math.floor(r() * 3)
+      for (var i = 0; i < n; i++) {
+        idx = Math.max(0, Math.min(P.scale.length - 1, idx + (r() < 0.5 ? -1 : 1) * (1 + Math.floor(r() * 2))))
+        m.push({ e: Math.floor(r() * 16), h: P.scale[idx] })   // an eighth within the 2-bar phrase
+      }
+      return m.sort(function (a, b) { return a.e - b.e })
+    }
+    var hookA = motif(), hookB = motif()
+    for (var b = 0; b < bars; b++) {
+      var t = b * bar
+      var sec = b < 4 ? 'intro' : b < 20 ? 'A' : b < 28 ? 'B' : b < bars - 6 ? 'A' : 'out'
+      var ch = P.chords[b % P.chords.length]
+      // Keys: the chord on beat one, strummed a few milliseconds apart, and again, softer, on the
+      // "and" of three every other bar.
+      ev.push({ t: t, k: 'chord', h: ch, v: 1 })
+      if (b % 2) ev.push({ t: t + beat * 2.5, k: 'chord', h: ch, v: 0.55 })
+      if (P.bass && sec !== 'intro') {
+        ev.push({ t: t, k: 'bass', h: P.bass[b % P.bass.length] })
+        ev.push({ t: t + beat * 2.5, k: 'bass', h: P.bass[b % P.bass.length] })
+      }
+      var drums = sec === 'A' || sec === 'out' || sec === 'B'
+      for (var e = 0; e < 8 && drums; e++) {
+        var te = t + e * beat / 2 + (e % 2 ? (P.swing - 0.5) * beat : 0)
+        ev.push({ t: te, k: 'hat', v: e % 2 ? 0.55 : 1 })
+      }
+      if (sec === 'A' || sec === 'out') {
+        ev.push({ t: t, k: 'kick' })
+        if (P.snare || b % 2 === 0) ev.push({ t: t + beat * 2.5 + (P.swing - 0.5) * beat, k: 'kick', v: 0.7 })
+        if (P.snare) { ev.push({ t: t + beat, k: 'snare' }); ev.push({ t: t + beat * 3, k: 'snare' }) }
+        else ev.push({ t: t + beat * 2, k: 'rim' })
+      }
+      // The hook every two bars from the groove on: A in the grooves, B in the breakdown.
+      if (b % 2 === 0 && sec !== 'intro') {
+        var hk = sec === 'B' ? hookB : hookA
+        for (var i = 0; i < hk.length; i++) {
+          if (r() < 0.12) continue                                // a note dropped now and then
+          ev.push({ t: t + hk[i].e * beat / 2 + (hk[i].e % 2 ? (P.swing - 0.5) * beat : 0), k: 'note', h: hk[i].h })
+        }
+      }
+    }
+    return ev.sort(function (a, b) { return a.t - b.t })
+  }
+
+  // Schedules the piece from t0 for `dur` seconds into `dest`. Realtime, it streams events a few
+  // seconds ahead; offline (`all`), it schedules everything at once. Returns stop(fadeS).
+  function schedulePiece (ac, dest, name, t0, dur, all) {
+    var P = PIECES[name]
+    if (!P) return null
+    var r = pieceRng(P.seed + 1), live = []
+    function g (v) { var n = ac.createGain(); n.gain.value = v; return n }
+    function hz (h) { return 55 * h }
+
+    // The bus: everything through a dusty low-pass and a soft saturation, with a long hall.
+    var out = g(0)
+    out.connect(dest)
+    out.gain.setValueAtTime(0, t0)
+    out.gain.linearRampToValueAtTime(0.9, t0 + PIECE_IN)
+    out.gain.setValueAtTime(0.9, t0 + Math.max(PIECE_IN, dur - PIECE_OUT))
+    out.gain.linearRampToValueAtTime(0, t0 + dur)
+    var dust = ac.createBiquadFilter(); dust.type = 'lowpass'; dust.frequency.value = P.cut; dust.Q.value = 0.5
+    var sat = ac.createWaveShaper(), curve = new Float32Array(1024)
+    for (var ci = 0; ci < 1024; ci++) { var xx = ci / 511.5 - 1; curve[ci] = Math.tanh(1.6 * xx) / Math.tanh(1.6) }
+    sat.curve = curve
+    sat.connect(dust); dust.connect(out)
+    var verb = ac.createConvolver(); verb.buffer = pieceIR(ac, 3.2)
+    var wet = g(0.28); verb.connect(wet); wet.connect(sat)
+    // The keys and bass sit in a "pump" that dips on every kick, the way lo-fi breathes.
+    var pump = g(1); pump.connect(sat); pump.connect(verb)
+    var drumBus = g(0.9); drumBus.connect(sat)
+    // Tape wobble and tremolo, shared by every key voice.
+    var wob = ac.createOscillator(); wob.frequency.value = 0.55
+    var wobAmt = g(7); wob.connect(wobAmt); wob.start(t0)
+    var trem = ac.createOscillator(); trem.frequency.value = 4.2
+    var tremAmt = g(0.12), keys = g(0.88); trem.connect(tremAmt); tremAmt.connect(keys.gain); trem.start(t0)
+    keys.connect(pump)
+    var dl = ac.createDelay(2); dl.delayTime.value = 60 / P.bpm * 0.75
+    var fb = g(0.32), dlo = g(0.35); dl.connect(fb); fb.connect(dl); dl.connect(dlo); dlo.connect(pump)
+    // Vinyl: hiss and crackle for the whole piece.
+    var nb = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate), nd = nb.getChannelData(0)
+    for (var q = 0; q < nd.length; q++) {
+      var pop = r() < 0.00035 ? (r() * 2 - 1) * 0.9 : 0
+      nd[q] = (r() * 2 - 1) * 0.06 + pop
+    }
+    var vin = ac.createBufferSource(); vin.buffer = nb; vin.loop = true
+    var vhp = ac.createBiquadFilter(); vhp.type = 'highpass'; vhp.frequency.value = 2400
+    var vg = g(0.18); vin.connect(vhp); vhp.connect(vg); vg.connect(out); vin.start(t0); vin.stop(t0 + dur + 1)
+    var noise = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), nz = noise.getChannelData(0)
+    for (var z = 0; z < nz.length; z++) nz[z] = r() * 2 - 1
+    var stops = [wob, trem, vin]
+
+    function ep (t, h, v, bell) {
+      // An electric piano: a sine carrier, frequency-modulated by its own pitch with a fading index.
+      var f = hz(h), c = ac.createOscillator(), m = ac.createOscillator(), mi = g(f * bell), a = g(0)
+      c.frequency.value = f; m.frequency.value = f
+      wobAmt.connect(c.detune)
+      m.connect(mi); mi.connect(c.frequency); c.connect(a); a.connect(keys); a.connect(dl)
+      mi.gain.setValueAtTime(f * bell, t); mi.gain.exponentialRampToValueAtTime(f * 0.08, t + 0.9)
+      var lv = 0.09 * v * (f > 700 ? 0.7 : 1)
+      a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(lv, t + 0.006)
+      a.gain.exponentialRampToValueAtTime(lv * 0.35, t + 0.6); a.gain.exponentialRampToValueAtTime(0.0005, t + 3.4)
+      c.start(t); m.start(t); c.stop(t + 3.5); m.stop(t + 3.5)
+    }
+    function hit (t, src, type, f, q, lv, dec, bus) {
+      var s2 = ac.createBufferSource(); s2.buffer = noise
+      var fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q
+      var a = g(0); s2.connect(fl); fl.connect(a); a.connect(bus || drumBus)
+      a.gain.setValueAtTime(lv, t); a.gain.exponentialRampToValueAtTime(0.0005, t + dec)
+      s2.start(t, r() * 0.5); s2.stop(t + dec + 0.05)
+    }
+    function play (e) {
+      var t = t0 + e.t
+      if (e.k === 'chord') {
+        for (var i = 0; i < e.h.length; i++) ep(t + i * 0.012 + r() * 0.006, e.h[i], e.v * 0.8, P.bell)
+      } else if (e.k === 'note') {
+        ep(t, e.h, 1.15, P.bell * 1.3)
+      } else if (e.k === 'bass') {
+        var o = ac.createOscillator(), a = g(0); o.type = 'triangle'; o.frequency.value = hz(e.h)
+        o.connect(a); a.connect(pump)
+        a.gain.setValueAtTime(0, t); a.gain.linearRampToValueAtTime(0.16, t + 0.02)
+        a.gain.exponentialRampToValueAtTime(0.0005, t + 1.6); o.start(t); o.stop(t + 1.7)
+      } else if (e.k === 'kick') {
+        var k = ac.createOscillator(), ka = g(0), v = e.v || 1
+        k.frequency.setValueAtTime(110, t); k.frequency.exponentialRampToValueAtTime(55, t + 0.11)
+        k.connect(ka); ka.connect(drumBus)
+        ka.gain.setValueAtTime(0.75 * v, t); ka.gain.exponentialRampToValueAtTime(0.0005, t + 0.42)
+        k.start(t); k.stop(t + 0.45)
+        pump.gain.setValueAtTime(0.62, t); pump.gain.linearRampToValueAtTime(1, t + 0.3)
+      } else if (e.k === 'snare') {
+        hit(t, null, 'bandpass', 1700, 0.7, 0.32, 0.2)
+        var st = ac.createOscillator(), sa = g(0); st.frequency.value = hz(4); st.connect(sa); sa.connect(drumBus)
+        sa.gain.setValueAtTime(0.12, t); sa.gain.exponentialRampToValueAtTime(0.0005, t + 0.1); st.start(t); st.stop(t + 0.12)
+      } else if (e.k === 'rim') {
+        hit(t, null, 'bandpass', 3200, 6, 0.2, 0.05)
+      } else if (e.k === 'hat') {
+        hit(t, null, 'highpass', 7500, 0.7, 0.07 * e.v, 0.045)
+      }
+    }
+
+    var ev = pieceEvents(P, dur), next = 0, timer = null
+    function pump2 (horizon) {
+      while (next < ev.length && t0 + ev[next].t < horizon) { if (t0 + ev[next].t >= ac.currentTime - 0.05) play(ev[next]); next++ }
+    }
+    if (all) pump2(Infinity)
+    else {
+      pump2(ac.currentTime + 4)
+      timer = setInterval(function () { pump2(ac.currentTime + 4); if (next >= ev.length) { clearInterval(timer); timer = null } }, 1000)
+    }
+    return {
+      stop: function (fadeS) {
+        var now = ac.currentTime, f = fadeS || 3
+        if (timer) { clearInterval(timer); timer = null }
+        next = ev.length
+        try {
+          out.gain.cancelScheduledValues(now)
+          out.gain.setValueAtTime(out.gain.value, now)
+          out.gain.linearRampToValueAtTime(0, now + f)
+        } catch (e) { /* a piece that cannot fade still stops below */ }
+        setTimeout(function () {
+          for (var i = 0; i < stops.length; i++) { try { stops[i].stop() } catch (e) { void 0 } }
+          try { out.disconnect() } catch (e) { void 0 }
+        }, (f + 0.5) * 1000)
+      }
+    }
+  }
+
+  var piece = null, pieceUntil = 0
+  // One at a time: a new piece fades the old one out. The bed steps back while a piece plays.
+  function startPiece (name) {
+    if (!ctx || !G || !ready || mode() === 'off' || !PIECES[name]) return false
+    if (piece) { piece.stop(3); piece = null }
+    var t0 = ctx.currentTime + 0.1
+    piece = schedulePiece(ctx, G.master, name, t0, PIECE_S)
+    pieceUntil = nowMs() + PIECE_S * 1000
+    try {
+      G.bedDuck.gain.cancelScheduledValues(t0)
+      G.bedDuck.gain.setTargetAtTime(0.35, t0, 1.5)
+      G.bedDuck.gain.setTargetAtTime(1, t0 + PIECE_S - PIECE_OUT, 4)
+    } catch (e) { /* the bed keeps its level */ }
+    return true
+  }
+
+  // The stinger, then the piece once the stinger is done. The piece is timed with a plain timer,
+  // not the transition's own, so tapping through the sequence cuts the stinger but keeps the music.
+  var CUE_AFTER = { decide: 4200, escape: 11800 }
+  function cue (which) {
+    score(which)
+    var w = win()
+    if (w && CUE_AFTER[which]) w.setTimeout(function () { startPiece(which) }, CUE_AFTER[which])
+    return true
+  }
+
+  function stopPiece () { if (piece) { piece.stop(2); piece = null; pieceUntil = 0 } }
+
+  // Renders `secs` of a piece offline and returns a 16-bit stereo WAV as a byte array: the samples
+  // David listens to before anything ships, and a check that the piece renders at all.
+  function renderPiece (name, secs, startAt) {
+    var w = win(), OAC = w && (w.OfflineAudioContext || w.webkitOfflineAudioContext)
+    if (!OAC || !PIECES[name]) return Promise.resolve(null)
+    var sr = 44100, from = num(startAt), off = new OAC(2, Math.floor(sr * (from + secs)), sr)
+    // The piece renders from its start and the clip is cut from `from`, so a sample can sit mid-piece
+    // past the fade-in; the cut ends on a short fade so it does not click.
+    schedulePiece(off, off.destination, name, 0, Math.min(PIECE_S, from + secs + PIECE_OUT), true)
+    return off.startRendering().then(function (buf) {
+      var skip = Math.floor(sr * from), n = buf.length - skip
+      var a = buf.getChannelData(0).subarray(skip), b = buf.getChannelData(1).subarray(skip)
+      var bytes = new Uint8Array(44 + n * 4), dv = new DataView(bytes.buffer)
+      function str (o, s2) { for (var i = 0; i < s2.length; i++) bytes[o + i] = s2.charCodeAt(i) }
+      str(0, 'RIFF'); dv.setUint32(4, 36 + n * 4, true); str(8, 'WAVEfmt ')
+      dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 2, true)
+      dv.setUint32(24, sr, true); dv.setUint32(28, sr * 4, true); dv.setUint16(32, 4, true)
+      dv.setUint16(34, 16, true); str(36, 'data'); dv.setUint32(40, n * 4, true)
+      var peak = 0, i
+      for (i = 0; i < n; i++) peak = Math.max(peak, Math.abs(a[i]), Math.abs(b[i]))
+      var norm = peak > 0 ? Math.min(4, 0.89 / peak) : 1
+      var fade = Math.floor(sr * 1.5)
+      for (i = 0; i < n; i++) {
+        var e = i > n - fade ? (n - i) / fade : 1
+        dv.setInt16(44 + i * 4, Math.max(-1, Math.min(1, a[i] * norm * e)) * 32767, true)
+        dv.setInt16(46 + i * 4, Math.max(-1, Math.min(1, b[i] * norm * e)) * 32767, true)
+      }
+      return bytes
+    })
   }
 
   var SCORES = { decide: scoreDecide, escape: scoreEscape,
@@ -3140,6 +3410,11 @@
     // the score for act transitions and endings (07 §6)
     score: score,
     skipScore: skipScore,
+    startPiece: startPiece,
+    cue: cue,
+    stopPiece: stopPiece,
+    renderPiece: renderPiece,
+    PIECES: PIECES,
     setAct: setActPalette,
     arrive: arrive,
     clearWarn: clearWarn,
@@ -3160,6 +3435,7 @@
     AUD: AUD,
     get ready () { return ready },
     get voices () { return voices.length },
+    get piecePlaying () { return !!piece && nowMs() < pieceUntil },
     __selftest: __selftest
   }
 })(window.HY = window.HY || {})

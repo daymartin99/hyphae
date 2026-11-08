@@ -854,7 +854,9 @@
   function OBS (n, minAct, text, src) {
     L(0, 'obs.' + (n < 10 ? '0' + n : n), 'observation', 'amb',
       '@idle && act >= ' + minAct, text,
-      { once: false, minAct: minAct, weight: 1, bin: src ? 'fact' : null, src: src || null })
+      // once: true (fun test 2, Robin: "a repeated line is like a novel reprinting a page"). A fact is
+      // said once; when the pool is spent the idle voice is quiet.
+      { once: true, minAct: minAct, weight: 1, bin: src ? 'fact' : null, src: src || null })
   }
   OBS(1, 1, 'mycelium does not have a front. every part of it is the front.')
   OBS(2, 1, 'the largest organism ever measured is a fungus, and it is mostly water.',
@@ -2597,14 +2599,22 @@
 
   // A bag, not a die: every line in the pool is heard once before any repeats. A line whose
   // tokens the caller did not supply is skipped rather than printed with its braces showing.
+  // A beat's pool is said through once and then it is quiet: silence over repetition (fun test 2,
+  // Robin heard "signed in sugar" and "you wrap a root" two or three times each). Refusals are the
+  // exception; they carry their reason in brackets and must always answer.
   function pick (key, list, ctx) {
+    var refusal = key.indexOf('refused') === 0
     var bag = pressBag[key], n = 0, t
-    if (!bag || !bag.length) bag = pressBag[key] = shuffled(list.slice())
+    if (!bag) bag = pressBag[key] = shuffled(list.slice())
+    if (!bag.length) {
+      if (!refusal) return ''
+      bag = pressBag[key] = shuffled(list.slice())
+    }
     while (bag.length && n < list.length) {
       t = bag.pop(); n++
       t = interpolate(t, ctx || null, S(), null)
       if (!/\{\w+\}/.test(t)) return t
-      if (!bag.length) bag = pressBag[key] = shuffled(list.slice())
+      if (!bag.length && refusal) bag = pressBag[key] = shuffled(list.slice())
     }
     return ''
   }
@@ -2905,6 +2915,10 @@
     freeze()
     seqT = null
     if (seq.flush) flushConsole(s)
+    // The two act changes are cued in sound: their stinger now, then a few minutes of music.
+    if ((id === 'decide' || id === 'escape') && HY.feel && HY.feel.cue) {
+      try { HY.feel.cue(id) } catch (e) { void 0 }
+    }
     // ESCAPE's one line states the carbon that is moving, and its caller does not pass tokens;
     // the figure is read here so the sentence never ships with a bare {amt} in it.
     if (id === 'escape' && !opts.tokens && s) opts.tokens = { amt: s.res.carbon }
