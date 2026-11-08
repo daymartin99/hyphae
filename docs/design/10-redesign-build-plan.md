@@ -230,7 +230,10 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
 
 **Phase 7 as built (Nov 2026):**
 - **7a, done.** `?ui=d` is the default. The old shell answers only to `?ui=old` or a stored choice, and settings label it "old (going away)". Docs 06 and 09 point here. V1 is retired as a test control after `ab/fun-1`.
-- **7b, next.** Delete the old shell's code paths and the `?ui=old` switch, then deploy gh-pages.
+- **7b, done.** The redesign is locked on. `?ui=old` and the settings toggle are gone, and nothing a player can reach selects the old shell.
+- **Still to do:**
+  - Clear out the old shell's dead branches: 25 `isD()` checks in `ui.js`, and the base CSS rules the D overrides replaced. This is tidying only, with no change in behaviour, done as its own pass with the redraw and boot checks.
+  - Deploy gh-pages, with David's go.
 
 **Order:** 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7. Phase 5 can start any time after Phase 1, so if you want the
 loud bit sooner we pull it forward.

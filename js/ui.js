@@ -2492,15 +2492,9 @@
     return !!(view && view.shell.dataset.ui === 'd')
   }
 
-  function wantedUi () {
-    var w = win()
-    var q = w && w.location && typeof w.location.search === 'string' ? w.location.search : ''
-    var m = /[?&]ui=(d|old)/.exec(q)
-    if (m) return m[1] === 'd' ? 'd' : 'old'
-    // Phase 7: the redesign is the game. The old shell answers only to ?ui=old or a player who chose
-    // it in settings, and goes with 7b.
-    return recall('hyphae.ui') === 'old' ? 'old' : 'd'
-  }
+  // Phase 7b: the redesign is the only interface. The old shell's code paths remain behind uiMode('old')
+  // for the self-tests until they are cleared out; nothing a player can reach selects them.
+  function wantedUi () { return 'd' }
 
   function uiMode (mode) {
     if (!view) return 'old'
@@ -7433,11 +7427,6 @@
           if (s) s.set.slow = val === 'on'
           persist()
         }))
-
-        settingRow(body, STR.uiPick, seg([
-          { value: 'old', label: STR.uiOld },
-          { value: 'd', label: STR.uiNew }
-        ], uiMode(), function (val) { uiMode(val) }))
 
         settingRow(body, STR.verbose, seg([
           { value: 'off', label: STR.off },
