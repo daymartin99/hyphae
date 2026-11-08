@@ -5186,6 +5186,10 @@
       var tree = e1 ? e1.treeById(id) : null
       if (!s || !tree) return
       var t = readTerms(s, tree)
+      // signContract holds collateral to the labile pool before the tree reads the terms. Test the
+      // same position here, or the button approves a deal the tree then refuses (invested playtest:
+      // SIGN showed success, no contract started, and the oak's refusal line played for a birch).
+      t.collateral = Math.min(num(t.collateral), num(s.res.biomass))
       if (!e1.accepts(tree, t.volume, t.term, t.exclusive, t.collateral)) {
         // Refusal is a counter-offer, never a wall: the largest legal position today — or, when
         // there is none, the reason there is none. Said on the button, not only to the live region.
@@ -5197,7 +5201,14 @@
         refuseFlash(signBtn)   // the beat, the buzz, and `why` read out — refuse() does all three
         return
       }
-      commit(function () { e1.signContract(id, t.volume, t.term, t.collateral, t.exclusive) })
+      var made = commit(function () { return e1.signContract(id, t.volume, t.term, t.collateral, t.exclusive) })
+      if (!made) {
+        // Nothing started, so nothing may look as if it did: no success beat, the card stays open.
+        var why2 = refusalWhy(s, tree)
+        if (why2) signBtn.dataset.short = why2
+        refuseFlash(signBtn)
+        return
+      }
       beat('sign', true)
       r.setExpanded(false)
     }, { onUp: true })
