@@ -228,6 +228,10 @@ go before merge. Effort: S ≈ a session, M ≈ 2–3, L ≈ 4+.
 - Flip the flag on by default, delete the old panel scroll, bump sw, update 06 and 09, then deploy
   gh-pages.
 
+**Phase 7 as built (Nov 2026):**
+- **7a, done.** `?ui=d` is the default. The old shell answers only to `?ui=old` or a stored choice, and settings label it "old (going away)". Docs 06 and 09 point here. V1 is retired as a test control after `ab/fun-1`.
+- **7b, next.** Delete the old shell's code paths and the `?ui=old` switch, then deploy gh-pages.
+
 **Order:** 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7. Phase 5 can start any time after Phase 1, so if you want the
 loud bit sooner we pull it forward.
 

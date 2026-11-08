@@ -238,7 +238,7 @@
 
     theme: 'theme', haptics: 'haptics', motion: 'motion', slow: 'slow',
     verbose: 'spoken status', tier: 'detail', textSize: 'text size',
-    uiPick: 'interface', uiOld: 'current', uiNew: 'new, in progress',
+    uiPick: 'interface', uiOld: 'old (going away)', uiNew: 'current',
 
     // THE ACCOUNTS (10 Phase 2): a ledger figure, opened. Facts only, in the plain register.
     acctFrom: 'comes from', acctTo: 'goes to', acctNet: 'net',
@@ -2497,7 +2497,9 @@
     var q = w && w.location && typeof w.location.search === 'string' ? w.location.search : ''
     var m = /[?&]ui=(d|old)/.exec(q)
     if (m) return m[1] === 'd' ? 'd' : 'old'
-    return recall('hyphae.ui') === 'd' ? 'd' : 'old'
+    // Phase 7: the redesign is the game. The old shell answers only to ?ui=old or a player who chose
+    // it in settings, and goes with 7b.
+    return recall('hyphae.ui') === 'old' ? 'old' : 'd'
   }
 
   function uiMode (mode) {
@@ -8204,7 +8206,7 @@
       kids.indexOf(view.next) < kids.indexOf(view.stack), 'D: the skeleton is out of order')
     uiMode('old')
     ok(view.next.hidden && view.shell.dataset.ui === undefined, 'D: switching off left it on')
-    store('hyphae.ui', keepUi === 'd' ? 'd' : 'old')
+    store('hyphae.ui', keepUi === 'old' ? 'old' : 'd')   // nothing stored reads as D since Phase 7
     if (d.documentElement.dataset.ui && !(keepView && keepView.shell.dataset.ui === 'd')) delete d.documentElement.dataset.ui
     if (keepView && keepView.shell.dataset.ui === 'd') d.documentElement.dataset.ui = 'd'
 
