@@ -255,6 +255,9 @@
     nextBare: 'the floor is bare. more is for sale, under grow.',
     nextCeiling: '{name}: {n} Σ. you hold at most {cap}. the forest makes room.',
     signNothing: 'at that size it pays nothing',
+    covOk: 'you make {make} {u}; the trees would take {take}. room to spare.',
+    covTight: 'you make {make} {u}; the trees would take {take}. a bad season and it defaults.',
+    covOver: 'you make {make} {u}; the trees would take {take}. this defaults.',
     signNo: 'the tree will not sign these terms',
     nextGatherNo: 'something is gathering.',
     nextShort: '{name}: {n} short.',
@@ -5149,6 +5152,10 @@
     cov.classList.add('meter--grow')
     covLine.appendChild(cov)
     summary.appendChild(covLine)
+    // The bar in words (fun test: "coverage" was never explained, and deals defaulted with no cause
+    // shown). What you make, what the trees would take, and what that means, before SIGN.
+    var covTxt = el('div', 'row-sub row-cov')
+    summary.appendChild(covTxt)
 
     // Refusal is a counter-offer, never a wall — and the counter-offer is standing on screen while
     // the thumb is still on the slider, not delivered as a reprimand after the tap.
@@ -5221,6 +5228,10 @@
       var coverage = income > 0 ? (book.committed + t.volume) / income : 1
       cov.set(coverage, coverage >= 1 ? 'bad' : coverage > U.COVER_WARN ? 'warn' : '',
         Math.round(coverage * 100) + ' percent of what you make')
+      setText(covTxt, interp(coverage >= 1 ? STR.covOver : coverage > U.COVER_WARN ? STR.covTight : STR.covOk, {
+        make: C().fmt(Math.max(0, income)), take: C().fmt(book.committed + t.volume), u: SUG_S
+      }))
+      setData(covTxt, 'tone', coverage >= 1 ? 'neg' : coverage > U.COVER_WARN ? 'warn' : '')
       var ok = e1.accepts(tree, t.volume, t.term, t.exclusive, t.collateral)
       setData(signBtn, 'state', ok ? 'idle' : 'locked')
       var ct = ok ? null : e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral)
