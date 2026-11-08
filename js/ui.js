@@ -226,7 +226,9 @@
     short: '{n} short',
     skip: 'tap to continue',
     floorBare: 'the floor is bare',
-    toEmpty: 'to empty',
+    // 'left', not 'to empty': the longer word wrapped AFTER FOOD onto a second line whenever sugar ran
+    // negative, and the header grew under the thumb (invested playtest, every redesign player).
+    toEmpty: 'left',
     owed: 'owed',
     nothing: '—',
     decide: 'decide',
@@ -3500,6 +3502,7 @@
     if (rot > 0) {
       if (!r.sub) {
         r.sub = el('div', 'ledger-sub')
+        r.sub.dataset.kind = 'rot'
         r.el.parentNode.insertBefore(r.sub, r.el.nextSibling)
       }
       show(r.sub, true)

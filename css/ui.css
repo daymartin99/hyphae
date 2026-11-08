@@ -1721,6 +1721,9 @@ canvas{ display:block; }
    gives way to it, down to a strip that still shows the body breathing. */
 .shell[data-ui="d"]{ --panels-min:min(300px, 36dvh); }
 .shell[data-ui="d"] .plate{ min-height:112px; }
+/* The rot line comes and goes as sugar crosses its cap. Collapsing it moved every button below the
+   header between a look and a tap; once it has appeared it keeps its row, blank when nothing rots. */
+.shell[data-ui="d"] .ledger-sub[data-kind="rot"][hidden]{ display:flex; visibility:hidden; }
 .shell[data-ui="d"] .plate > canvas{ height:100%; top:auto; bottom:0; transform:none; }
 /* A ticker keeps its newest line: the text sits on the slot's floor and older rows leave by the
    top edge, never a half-line of the newest one cut at the bottom. */
