@@ -1282,7 +1282,8 @@
     collateral = Math.max(0, num(collateral))
     if (collateral > s.res.biomass) collateral = s.res.biomass
     if (!accepts(tree, volume, trap ? maxTerm(tree) : termSeasons, exclusive, collateral)) {
-      say('a1.oak_refuse')
+      // The oak's line is the oak's. Said for every tree, it read as the reason a birch refused.
+      if (tree.species === 'oak') say('a1.oak_refuse')
       return null
     }
     var rate = offer(tree, volume, termSeasons, collateral, exclusive)
