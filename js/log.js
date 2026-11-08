@@ -474,6 +474,18 @@
     'a second place. the same rules, six metres away.',
     { pred: function (s) { return s.a1.patches >= 2 } })
 
+  // The road's hidden gate (ab/bounce-2): Anastomosis waits on 500 m of thread with four places,
+  // and thread is mostly tips. Two blind invested players claimed all six patches, stopped buying
+  // tips because "only the numbers go up", and never saw it open. Nothing named the gate and
+  // nothing should; the watcher says only that the threads are going somewhere.
+  L(1, 'a1.threads_reach', 'world', null, 'patches >= 4 && hyphae >= 0.5 gate',
+    'at the edges, your threads are reaching for each other. they have not met.',
+    { once: false, cooldown: 1200, pred: function (s) { return threadNear(s, 0.5, 0.85) } })
+
+  L(1, 'a1.threads_close', 'world', null, 'patches >= 4 && hyphae >= 0.85 gate',
+    'they are close now. the gap between them is the length of a few more tips.',
+    { pred: function (s) { return threadNear(s, 0.85, 1) } })
+
   L(1, 'a1.anastomosis', 'world', null, 'flags.anastomosis',
     'two threads met and did not stop at each other',
     { pred: function (s) { return F.flag(s, 'anastomosis') } })
@@ -2553,6 +2565,17 @@
 
   function num (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
 
+  // How far the thread is toward Anastomosis's gate, for the two lines that hint at it without
+  // naming it: true while the fraction sits in [lo, hi) with the places already claimed.
+  function threadNear (s, lo, hi) {
+    var A = T().A1
+    if (!s.a1 || num(s.a1.patches) < 4 || F.flag(s, 'anastomosis')) return false
+    var h = A.HYPHAE_PER_TIP * num(s.a1.tips) + A.HYPHAE_PER_PATCH * (num(s.a1.patches) - 1) +
+      num(s.a1.hyphaeManual)
+    var f = h / A.HYPHAE_GATE
+    return f >= lo && f < hi
+  }
+
   function shuffled (a) {
     var r = C().rng(C().hash32('press', (S() ? S().seed : 1) + a.length + Math.floor(Math.random() * 1e6)))
     var i, j, t
@@ -3291,8 +3314,9 @@
     // `a3.unlearn` is the receipt for the D the Act III break hands back, and `a3.revive` is the
     // canopy's seed coming back from zero craft. `a1.default_again`, `a1.default_known` and
     // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends, and
-    // `a1.waiting` notices a player who has not touched anything (ab/deadspot-1). Each is counted, not excused.
-    ok(LINES.length === 167, 'corpus is ' + LINES.length + ' entries, expected 167')
+    // `a1.waiting` notices a player who has not touched anything (ab/deadspot-1); `a1.threads_reach` and
+    // `a1.threads_close` hint at Anastomosis's hidden gate (ab/bounce-2). Each is counted, not excused.
+    ok(LINES.length === 169, 'corpus is ' + LINES.length + ' entries, expected 169')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3300,7 +3324,7 @@
     }
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
-    ok(counts.a1 === 52, 'act I lines: ' + counts.a1)
+    ok(counts.a1 === 54, 'act I lines: ' + counts.a1)
     ok(counts.a2 === 40, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 27, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
