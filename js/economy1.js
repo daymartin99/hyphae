@@ -228,7 +228,9 @@
     SOLICIT_D: 0.25,
     SOLICIT_VOL: 1.95,        // × the current volume — nearly double, for a 2.5% better rate
     SOLICIT_TERM: 4,          // seasons added
-    TREE_MAX: 7,              // simultaneous counterparties
+    // The ladders hand out eight (six patches with a second fir, and the beech by reputation). At 7 the
+    // beech took the last seat and The Oak Rise's oak never came (invested playtest, two players).
+    TREE_MAX: 8,              // simultaneous counterparties
     DEATH_HEALTH: 0.05,       // health at or below which a tree stops being a counterparty
     BEETLE_HIT: 0.40,         // immediate health loss
     BEETLE_PER_SEASON: 0.10,  // continuous, while the infestation is active
