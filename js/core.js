@@ -111,7 +111,9 @@
       SCLEROTIA_ROT_GATE: 500,  // g rotted, lifetime, before Sclerotia triggers
       // hyphae (S4)
       HYPHAE_PER_TIP: 1.75,     // m per tip
-      HYPHAE_PER_PATCH: 30.0,   // m per patch beyond the first
+      // 30 → 60 (fun test 1): with six patches the 500 m gate wanted ~200 tips, and every blind player
+      // stopped buying at 60–120 and stalled with the shop empty. Now six patches and ~114 tips open it.
+      HYPHAE_PER_PATCH: 60.0,   // m per patch beyond the first
       HYPHAE_PER_TAP: 0.020,    // m per EXTEND tap
       HYPHAE_GATE: 500,         // m, the Act I finale gate
       // environment

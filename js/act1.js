@@ -1609,7 +1609,11 @@
       s = S()
       s.a1.tips = 255
       s.a1.patches = 6
-      near(hyphae(), 596.25, 0.5, 'S4: 255 tips and 6 patches must reach the 500 m gate')
+      near(hyphae(), 746.25, 0.5, 'S4: 255 tips and 6 patches must reach the 500 m gate')
+      // Fun test 1: the gate opens about where players stop buying tips once the patches are done.
+      s.a1.tips = 115
+      ok(hyphae() >= T().A1.HYPHAE_GATE, 'S4b: six patches and 115 tips must open the 500 m gate')
+      s.a1.tips = 255
       cold(7)
       s = S()
       s.res.biomass = 1e6
