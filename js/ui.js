@@ -984,7 +984,12 @@
 
   function refuse (node) {
     if (node) node.__refused = 1
-    beat('refused', true)
+    // The voice's refusal is chosen at random, so alone it can say "not the season" when the real
+    // wall is collateral. When the control knows its reason, the voice says its line and then the
+    // reason, plainly, in brackets: the upgrade cards' own form (invested rerun, Sam: three refusals
+    // in a row, "none of them named the missing thing").
+    var why = node && node.dataset && node.dataset.short ? node.dataset.short : ''
+    beat('refused', true, why ? { why: why } : null)
     haptic(U.HAP_ERROR, 'ui.error')
     if (node && node.dataset && node.dataset.short) announce(node.dataset.short)
   }

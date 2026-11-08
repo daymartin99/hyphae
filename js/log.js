@@ -2614,6 +2614,10 @@
     if (!beatsOpen(s)) return false
     var set = PRESS[verb], list = set && (set[s.act] || set[0])
     if (!list || !list.length) return false
+    // A refusal that carries its reason is an answer to a deliberate press, so it is not held back
+    // by the beat cooldown, and the reason rides after the line in brackets.
+    var why = verb === 'refused' && ctx && typeof ctx.why === 'string' ? ctx.why : ''
+    if (why) { force = true; ctx = null }
     if (!force) {
       var cd = PU.CD * Math.min(PU.CD_MAX_MUL, 1 + num(pressN[verb]) / PU.CD_GROW)
       if (pressAt[verb] !== undefined && s.t - pressAt[verb] < cd) return false
@@ -2623,6 +2627,7 @@
     }
     var text = pick(verb + s.act, list, ctx)
     if (!text) return false
+    if (why) text = text + ' (' + why + ')'
     pressAt[verb] = s.t
     pressAt._any = s.t
     pressN[verb] = num(pressN[verb]) + 1
