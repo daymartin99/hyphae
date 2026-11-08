@@ -930,6 +930,8 @@ canvas{ display:block; }
 .row-stock{ margin-inline-start:auto; }
 .row-sub[data-tone="cost"]{ color:var(--attention-dim); }
 .row-sub[data-tone="forecast"]{ color:var(--text-locked); }
+.row-sub[data-tone="warn"]{ color:var(--attention-dim); }
+.row-sub[data-tone="neg"]{ color:var(--negative-text); }
 /* The contract's `collateral buys` reading: right-aligned like a figure, set at the sub size so
    the summary keeps one height whether a stake is posted or not. */
 .row-coll{ margin-inline-start:auto; text-align:end; }

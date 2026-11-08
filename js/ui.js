@@ -55,6 +55,7 @@
     // an affordability line once a second (contract deliveries land each sim-second) from
     // flickering the row's meta text at 1 Hz.
     SHORT_EPS: 0.005, SHORT_HOLD_MS: 1200,
+    PRICE_TICK_MS: 4000,              // the market price on screen moves on its own this often (a slow tick)
     ROW_SEAT_PX: 8,
     FAB_PX: 64,               // the pulse button's diameter (css .fab)
 
@@ -254,6 +255,9 @@
     nextBare: 'the floor is bare. more is for sale, under grow.',
     nextCeiling: '{name}: {n} Σ. you hold at most {cap}. the forest makes room.',
     signNothing: 'at that size it pays nothing',
+    covOk: 'you make {make} {u}; the trees would take {take}. room to spare.',
+    covTight: 'you make {make} {u}; the trees would take {take}. a bad season and it defaults.',
+    covOver: 'you make {make} {u}; the trees would take {take}. this defaults.',
     signNo: 'the tree will not sign these terms',
     nextGatherNo: 'something is gathering.',
     nextShort: '{name}: {n} short.',
@@ -4748,7 +4752,7 @@
     // and it is the same one everywhere.
     bindPress(side, flip, { onUp: true })
 
-    var lastPrice = 0
+    var lastPrice = 0, priceAt = 0
     var shown = null
     return {
       // Before the market opens the layer row is the floor's alone; closing it (a new act) drops
@@ -4767,11 +4771,19 @@
         var mkt = s.a1.mkt[e.TYPES.indexOf(type)]
         var unit = e.unitPrice(type)
         show(side, !!s.proj.flags.two_sided_book)
-        setSlot(price, C().fmt(unit), SUG_G)
-        setText(arrow, unit > lastPrice ? '▲' : unit < lastPrice ? '▼' : '·')
-        setData(arrow, 'dir', unit > lastPrice ? 'up' : unit < lastPrice ? 'down' : 'flat')
-        lastPrice = unit
-        setText(sparkEl, spark(e.priceHistory(type)))
+        // The price ticks slowly (David: a slow tick reads as time passing; every frame read as
+        // noise). It moves on its own every PRICE_TICK_MS, but a jump the player caused (buying
+        // moves it more than 2%) shows at once, so "you did that" lands on the tap.
+        var tNow = nowMs()
+        var jump = lastPrice > 0 && Math.abs(unit - lastPrice) / lastPrice > 0.02
+        if (!lastPrice || jump || tNow - priceAt >= U.PRICE_TICK_MS) {
+          setSlot(price, C().fmt(unit), SUG_G)
+          setText(arrow, unit > lastPrice ? '▲' : unit < lastPrice ? '▼' : '·')
+          setData(arrow, 'dir', unit > lastPrice ? 'up' : unit < lastPrice ? 'down' : 'flat')
+          lastPrice = unit
+          priceAt = tNow
+          setText(sparkEl, spark(e.priceHistory(type)))
+        }
         // The fair line is the whole content of `mycelial_ledger`: without it the player is
         // forecasting, and with it they are reading.
         // Fair value is a PRICE and carries the price's unit. Unqualified it was the one number on
@@ -5140,6 +5152,10 @@
     cov.classList.add('meter--grow')
     covLine.appendChild(cov)
     summary.appendChild(covLine)
+    // The bar in words (fun test: "coverage" was never explained, and deals defaulted with no cause
+    // shown). What you make, what the trees would take, and what that means, before SIGN.
+    var covTxt = el('div', 'row-sub row-cov')
+    summary.appendChild(covTxt)
 
     // Refusal is a counter-offer, never a wall — and the counter-offer is standing on screen while
     // the thumb is still on the slider, not delivered as a reprimand after the tap.
@@ -5212,6 +5228,10 @@
       var coverage = income > 0 ? (book.committed + t.volume) / income : 1
       cov.set(coverage, coverage >= 1 ? 'bad' : coverage > U.COVER_WARN ? 'warn' : '',
         Math.round(coverage * 100) + ' percent of what you make')
+      setText(covTxt, interp(coverage >= 1 ? STR.covOver : coverage > U.COVER_WARN ? STR.covTight : STR.covOk, {
+        make: C().fmt(Math.max(0, income)), take: C().fmt(book.committed + t.volume), u: SUG_S
+      }))
+      setData(covTxt, 'tone', coverage >= 1 ? 'neg' : coverage > U.COVER_WARN ? 'warn' : '')
       var ok = e1.accepts(tree, t.volume, t.term, t.exclusive, t.collateral)
       setData(signBtn, 'state', ok ? 'idle' : 'locked')
       var ct = ok ? null : e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral)
