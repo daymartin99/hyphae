@@ -310,8 +310,11 @@
 /* ══ RESET · 06 §9.2 ═══════════════════════════════════════════════════════ */
 
 *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+/* overscroll-behavior guards the page only on the root: on body it never reached the viewport, so
+   a sideways drag a control did not take (a contract slider, in the invested playtest) was read as
+   swipe-back and left the game for a blank page. */
 html{ font-size:100%; -webkit-text-size-adjust:100%; background:var(--bg);
-      color-scheme:dark light; }
+      color-scheme:dark light; overscroll-behavior:none; }
 body{ font:var(--t-body); color:var(--text-primary); background:var(--bg);
       -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
       overscroll-behavior:none; touch-action:manipulation;
