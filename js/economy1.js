@@ -1277,10 +1277,16 @@
     return null
   }
 
+  // Why the last signContract returned null, so a button that saw it fail can say why (fun test:
+  // SIGN looked live, failed, and the only answer was a random refusal line).
+  var lastRefusal = ''
+  function signRefusal () { return lastRefusal }
+
   function signContract (treeId, volume, termSeasons, collateral, exclusive) {
     var s = S()
     var tree = treeById(treeId)
-    if (!tree) return null
+    lastRefusal = ''
+    if (!tree) { lastRefusal = 'gone'; return null }
     // The Hollow Beech signs one term length and it is not on the slider. Everything else about the
     // position is still tested; only the term escapes the legal range, and nothing can renegotiate
     // out of it afterwards. Reading it twice is the whole cost of the project.
@@ -1291,10 +1297,11 @@
     if (!accepts(tree, volume, trap ? maxTerm(tree) : termSeasons, exclusive, collateral)) {
       // The oak's line is the oak's. Said for every tree, it read as the reason a birch refused.
       if (tree.species === 'oak') say('a1.oak_refuse')
+      lastRefusal = num(tree.refuseUntil) > num(s.t) ? 'refusing' : 'terms'
       return null
     }
     var rate = offer(tree, volume, termSeasons, collateral, exclusive)
-    if (!(rate > 0)) return null
+    if (!(rate > 0)) { lastRefusal = 'nothing'; return null }
 
     C().setStock(s.res, 'biomass', s.res.biomass - collateral)
     var c = {
@@ -1871,7 +1878,7 @@
     // edit that reaches for a draw fails the build rather than the review.
     var priced = [carbonDeficit, canopyLight, deficitAt, mastYearOf, mastActive, mastEligible, offer,
       maxIntake, maxTerm, accepts, counter, signContract, renegotiate, exitContract,
-      deliverContracts, completeContract, defaultContract, syncStand, spawnTree, treeContracts,
+      deliverContracts, completeContract, defaultContract, signRefusal, syncStand, spawnTree, treeContracts,
       committedTo, reserveSugar, nextK, nextType, onSeasonBoundary, driftRep, repFloor]
     var banned = ['Math.random', 'walkGauss', '.gauss(', '.next(', '.int(', '.pick(']
     for (var pi = 0; pi < priced.length; pi++) {
@@ -2635,6 +2642,7 @@
     renegotiate: HY.core.flowed('contracts', renegotiate),
     exitContract: HY.core.flowed('exit fees', exitContract),
     deliverContracts: deliverContracts,
+    signRefusal: signRefusal,
     stepMineralExchange: stepMineralExchange,
 
     // §6's generic module surface

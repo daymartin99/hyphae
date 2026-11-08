@@ -252,6 +252,8 @@
     nextAfford: '{name} is within reach.',
     nextGather: 'something is gathering. {t}.',
     nextBare: 'the floor is bare. more is for sale, under grow.',
+    signNothing: 'at that size it pays nothing',
+    signNo: 'the tree will not sign these terms',
     nextGatherNo: 'something is gathering.',
     nextShort: '{name}: {n} short.',
     nextShortEta: '{name}: {n} short, about {t} at this rate.',
@@ -2931,6 +2933,20 @@
   // A refused press on a hero-shaped button: the buzz, the flash, and its `data-short` shown for
   // the length of a release. Until the contract SIGN used it, only the pinned hero could reach
   // this, and a blocked SIGN only buzzed — the reason went solely to the hidden live region.
+  // A refused verb says why on its own face for a moment, then reads as itself again: the voice's
+  // line scrolls away and the counter line sits under a bar, but the button is where the eye is.
+  function sayOnButton (node, text) {
+    var lab = node && node.querySelector ? node.querySelector('.hero-lab') : null
+    if (!lab || !text) return
+    if (!node.__labWas) node.__labWas = lab.textContent
+    lab.textContent = text
+    if (node.__labT) clearTimeout(node.__labT)
+    node.__labT = setTimeout(function () {
+      lab.textContent = node.__labWas
+      node.__labWas = null
+    }, 3000)
+  }
+
   function refuseFlash (node) {
     if (!node) return
     refuse(node)
@@ -5205,15 +5221,22 @@
         var why = ct
           ? interp(STR.atMost, { v: C().fmt(ct.maxVolume) + ' ' + SUG_S, n: ct.maxTerm })
           : refusalWhy(s, tree)
-        if (why) signBtn.dataset.short = why
+        if (why) { signBtn.dataset.short = why; sayOnButton(signBtn, why) }
         refuseFlash(signBtn)   // the beat, the buzz, and `why` read out — refuse() does all three
         return
       }
       var made = commit(function () { return e1.signContract(id, t.volume, t.term, t.collateral, t.exclusive) })
       if (!made) {
-        // Nothing started, so nothing may look as if it did: no success beat, the card stays open.
-        var why2 = refusalWhy(s, tree)
-        if (why2) signBtn.dataset.short = why2
+        // Nothing started, so nothing may look as if it did: no success beat, the card stays open,
+        // and there is always a plain reason, on the button itself for a moment and in brackets
+        // after the voice's line (fun test, Lee: "put the reason on the button").
+        var code = e1.signRefusal ? e1.signRefusal() : ''
+        var ct2 = e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral)
+        var why2 = refusalWhy(s, tree) ||
+          (ct2 ? interp(STR.atMost, { v: C().fmt(ct2.maxVolume) + ' ' + SUG_S, n: ct2.maxTerm }) : '') ||
+          (code === 'nothing' ? STR.signNothing : STR.signNo)
+        signBtn.dataset.short = why2
+        sayOnButton(signBtn, why2)
         refuseFlash(signBtn)
         return
       }
