@@ -517,7 +517,7 @@
     'Somewhere under the network, slow keys begin. Something is keeping time.')
 
   L(2, 'a2.first_claim', 'world', 'pos', 'claimed == 2',
-    '{region}. Something there is willing to talk.',
+    'Further out, something is willing to talk.',
     { pred: function (s) { return s.stats.claimedCount >= 2 } })
 
   L(2, 'a2.saturation', 'narrative', null, 'flags.saturation',
