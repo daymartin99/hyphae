@@ -2402,13 +2402,17 @@
 
   function setDTab (g) {
     if (!view || !view.dtabs || !view.dtabs[g]) return null
+    // paintDNav re-asserts the current tab on every frame. Only a real change goes back to the
+    // top: re-asserting it pinned the list at scrollTop 0 every frame, so nothing below the first
+    // screenful could be reached (invested playtest; the market and the deal were under it).
+    var changed = view.dtab !== g
     view.dtab = g
     D_GROUPS.forEach(function (k) {
       var on = k === g
       setAttr(view.dtabs[k], 'aria-selected', on ? 'true' : 'false')
       view.dtabs[k].tabIndex = on ? 0 : -1
     })
-    if (view.stack) view.stack.scrollTop = 0
+    if (changed && view.stack) view.stack.scrollTop = 0
     return g
   }
 
