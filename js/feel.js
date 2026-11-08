@@ -2006,6 +2006,7 @@
     if (m === 'off') {
       // A12: every oscillator stopped within 400 ms, then the context suspended, then zero CPU.
       hapticCancel()
+      stopPiece()
       releaseAllVoices(AUD.life.releaseMs)
       if (ctx && G) ramp(G.master.gain, 0, 0.12)
       later(AUD.life.offStopMs, function () {
@@ -2504,6 +2505,16 @@
       G.bedDuck.gain.setTargetAtTime(0.35, t0, 1.5)
       G.bedDuck.gain.setTargetAtTime(1, t0 + PIECE_S - PIECE_OUT, 4)
     } catch (e) { /* the bed keeps its level */ }
+    return true
+  }
+
+  // The stinger, then the piece once the stinger is done. The piece is timed with a plain timer,
+  // not the transition's own, so tapping through the sequence cuts the stinger but keeps the music.
+  var CUE_AFTER = { decide: 4200, escape: 11800 }
+  function cue (which) {
+    score(which)
+    var w = win()
+    if (w && CUE_AFTER[which]) w.setTimeout(function () { startPiece(which) }, CUE_AFTER[which])
     return true
   }
 
@@ -3400,6 +3411,7 @@
     score: score,
     skipScore: skipScore,
     startPiece: startPiece,
+    cue: cue,
     stopPiece: stopPiece,
     renderPiece: renderPiece,
     PIECES: PIECES,
@@ -3423,6 +3435,7 @@
     AUD: AUD,
     get ready () { return ready },
     get voices () { return voices.length },
+    get piecePlaying () { return !!piece && nowMs() < pieceUntil },
     __selftest: __selftest
   }
 })(window.HY = window.HY || {})

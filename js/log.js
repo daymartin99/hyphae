@@ -2915,6 +2915,10 @@
     freeze()
     seqT = null
     if (seq.flush) flushConsole(s)
+    // The two act changes are cued in sound: their stinger now, then a few minutes of music.
+    if ((id === 'decide' || id === 'escape') && HY.feel && HY.feel.cue) {
+      try { HY.feel.cue(id) } catch (e) { void 0 }
+    }
     // ESCAPE's one line states the carbon that is moving, and its caller does not pass tokens;
     // the figure is read here so the sentence never ships with a bare {amt} in it.
     if (id === 'escape' && !opts.tokens && s) opts.tokens = { amt: s.res.carbon }
