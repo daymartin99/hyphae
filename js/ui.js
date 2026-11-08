@@ -3003,13 +3003,15 @@
     return true
   }
 
-  function tipsAffordable () {
+  // `keepHalf`: the bursts (+5, MAX) never spend more than half the minerals held. MAX quietly spent
+  // minerals saved for a patch (Act II run 1, Robin and Morgan); +1 still spends freely.
+  function tipsAffordable (keepHalf) {
     var s = liveState()
     var a = A1()
     if (!s || !a) return 0
     var n = 0
     var g = num(s.res.biomass)
-    var m = num(s.res.minerals)
+    var m = num(s.res.minerals) * (keepHalf ? 0.5 : 1)
     var t = s.a1.tips
     while (n < U.BURST_MAX_STEPS) {
       var cg = a.tipCost(t + n)
@@ -4523,11 +4525,12 @@
 
     bindRepeat(b1, function () { buyTips(1) }, function () { return tipsAffordable() >= 1 })
     bindPress(b5, function () {
-      if (tipsAffordable() < 1) { refuse(b5); return }
-      buyTips(U.BURST_5_AT)
+      var n5 = Math.min(U.BURST_5_AT, tipsAffordable(true))
+      if (n5 < 1) { refuse(b5); return }
+      buyTips(n5)
     }, { onUp: true })
     bindPress(bMax, function () {
-      var n = tipsAffordable()
+      var n = tipsAffordable(true)
       if (n < 1) { refuse(bMax); return }
       buyTips(n)
     }, { onUp: true })
@@ -4603,8 +4606,9 @@
       show(lShort, afford < 1)
       if (afford < 1) setText(shortTxt, shortStr)
       setData(b1, 's', afford >= 1 ? 'afford' : 'want')
-      setData(b5, 's', afford >= U.BURST_5_AT ? 'afford' : 'want')
-      setData(bMax, 's', afford >= 1 ? 'afford' : 'want')
+      var burst = tipsAffordable(true)
+      setData(b5, 's', burst >= 1 ? 'afford' : 'want')
+      setData(bMax, 's', burst >= 1 ? 'afford' : 'want')
       b1.dataset.short = shortStr
       b5.dataset.short = shortStr
       bMax.dataset.short = shortStr
