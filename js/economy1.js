@@ -253,7 +253,7 @@
     FORWARD_FILLS: 12,        // fills fixed by forward_contracts
     FORWARD_MARK: 1.05,       // × fair value, for each of them
     STANDING_PENALTY: 1.08,   // standing_order pays this much more than you would
-    STANDING_CEIL: 1.50,
+    STANDING_CEIL: 1.30,
     STANDING_EMA_S: 60,       // s, the smoothing on what the standing order actually spends      // × fair value: the default most it will pay per gram, penalty included
     STANDING_FLOOR: 0.15,     // × cap: the stock level below which the standing order stops buying
     STANDING_MAX_FRAC: 0.02,  // × cap per second: the automated fill rate
