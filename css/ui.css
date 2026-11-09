@@ -547,7 +547,15 @@ canvas{ display:block; }
              background:var(--positive); transition:transform var(--d-fade) linear; }
 .ledger-cap[data-tone="warn"]{ background:var(--attention); }
 .ledger-sub{ display:flex; justify-content:flex-end; padding:0 var(--gutter) var(--sp-4);
-             font:var(--t-meta); color:var(--negative-text); }
+             font:var(--t-meta); color:var(--negative-text);
+             /* One line, always the same height: a sub-line that changed by 3 px moved every
+                button under it (v2.5-1 jump probe). */
+             white-space:nowrap; overflow:hidden; height:calc(1.45em + var(--sp-4)); }
+/* The strip's rows hold one line on a phone. A row that wrapped when a figure grew moved the
+   whole screen under the thumb (v2.5-1: Lee, Sam, Jay, Robin). The rate gives way first. */
+.shell[data-ui="d"] .ledger-row{ flex-wrap:nowrap; }
+.shell[data-ui="d"] .ledger-rate{ overflow:hidden; text-overflow:ellipsis; flex-shrink:1; }
+.ledger-rate[data-rot="1"]{ color:var(--negative-text); }
 /* LABILE is a value with no rate, so it sits in the value column: the gear's width and an empty
    rate slot (the same class, so the same font and the same 11ch whatever the number font is) hold
    it off the edge, instead of it running out to the gutter under the gear, 44 px right of every
@@ -931,6 +939,8 @@ canvas{ display:block; }
 .row-gauges{ display:flex; align-items:center; gap:var(--sp-8); }
 .row-gauges > .pips{ margin-inline-start:auto; }
 .row-sub{ font:var(--t-meta); color:var(--text-secondary); }
+/* A shortfall note is one line: "56.3 kg short" wrapping beside its button moved the button. */
+.row-sub[data-tone="cost"]{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
 /* The market row's stock/shortfall slot: its own line, pushed to the reading edge. */
 .row-stock{ margin-inline-start:auto; }
 .row-sub[data-tone="cost"]{ color:var(--attention-dim); }
