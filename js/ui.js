@@ -1295,7 +1295,7 @@
   // layout jump bought Perennial Mycelium by accident and took a player's seasons (fun test, Robin).
   function isDecision (entry) {
     return !!entry && (entry.note === 'a decision' ||
-      (entry.tags && entry.tags.indexOf('irreversible') >= 0))
+      (entry.kinds && entry.kinds.indexOf('irreversible') >= 0))   // `kinds`: projects.js's name for them
   }
 
   function card (spec) {
@@ -8276,6 +8276,12 @@
     ok(lk.why.textContent.indexOf('3 tips more') > 0, 'setWhy did not rewrite the why')
     var hd = gHold('decide', function () {})
     ok(hd.querySelector('.hold-fill') && /\bhold\b/.test(hd.className), 'a hold has no fill')
+    // Irreversible means held. This read `tags`, which projects never had, and a tap bought Perennial
+    // Mycelium for two playtesters before anyone noticed.
+    if (PJ() && PJ().byId) {
+      ok(isDecision(PJ().byId('perennial_mycelium')), 'Perennial Mycelium (irreversible) is not a hold')
+      ok(!isDecision(PJ().byId('rhizomorph_cords')), 'an ordinary purchase became a hold')
+    }
     // The switch moves the voice under the body and shows NEXT; switching back restores the A/B.
     var keepUi = recall('hyphae.ui')
     uiMode('d')
