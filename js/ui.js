@@ -55,6 +55,7 @@
     // an affordability line once a second (contract deliveries land each sim-second) from
     // flickering the row's meta text at 1 Hz.
     SHORT_EPS: 0.005, SHORT_HOLD_MS: 1200,
+    RERANK_QUIET_MS: 5000,  // a ranked list holds its order this long after the last touch
     PRICE_TICK_MS: 4000,              // the market price on screen moves on its own this often (a slow tick)
     ROW_SEAT_PX: 8,
     FAB_PX: 64,               // the pulse button's diameter (css .fab)
@@ -2903,6 +2904,8 @@
     appHeight()
     // The return report is the away card's from here on, not the console's (11 §1).
     if (LOG() && LOG().useReportCard) LOG().useReportCard(true)
+    // The last touch anywhere, so a ranked list can hold still while a thumb is working on it.
+    on(view.shell, 'pointerdown', function () { view.touchAt = nowMs() }, { capture: true, passive: true })
     layout()
 
     // loop.js owns the single rAF in the build; when it is present we ride in it and start none of
@@ -3944,12 +3947,23 @@
       // the player a second reading of `593/2.41 k`.
       setFine(r1.val, '')
       setPair(r1.val, C().fmt(held), C().fmt(cap), SUG)
-      setRate(r1.rate, rateOf(v, 'sugar'), SUG)
+      var rot = held > cap ? (held - cap) * T().A1.ROT_RATE : 0
+      // In the redesign the rot is said in the row's own rate slot: at the cap the rate IS the
+      // loss. As a line of its own it arrived the moment sugar touched the cap and moved every
+      // button on the screen 23 px (v2.5-1 jump probe; Lee: "the rot line appears").
+      if (isD() && rot > 0) {
+        setFine(r1.rate, '')
+        setSlot(r1.rate, '\u2212 ' + C().fmt(rot), STR.rot)
+        setData(r1.rate, 'rot', '1')
+      } else {
+        if (r1.rate.dataset.rot) delete r1.rate.dataset.rot
+        setRate(r1.rate, rateOf(v, 'sugar'), SUG)
+      }
       show(r1.cap, true)
       var f = cap > 0 ? held / cap : 0
       r1.cap.style.setProperty('--v', fill(f).toFixed(4))
       setData(r1.cap, 'tone', f > U.SUGAR_WARN_FRAC ? 'warn' : 'ok')
-      rotLine(r1, held > cap ? (held - cap) * T().A1.ROT_RATE : 0)
+      rotLine(r1, isD() ? 0 : rot)
     } else {
       show(r1.el, false)
     }
@@ -3989,7 +4003,9 @@
         // The word "net" is only meaningful next to what was netted off. While the balance is
         // positive the second slot carries the committed outflow rather than an em dash.
         var owed = e && e.bookState ? num(e.bookState().committed) : 0
-        if (owed > 0) setSlot(r3.rate, C().fmt(owed), SUG_S + ' ' + STR.owed)
+        // "286 sug/s owed" is 14ch in an 11ch column: it wrapped the row and the whole screen below
+        // moved 17 px each time it came and went (v2.5-1 jump probe). The unit is the value's.
+        if (owed > 0) setSlot(r3.rate, C().fmt(owed), STR.owed)
         else setSlot(r3.rate, STR.nothing, '')
         setData(r3.rate, 'sign', 'zero')
       }
@@ -4835,8 +4851,11 @@
           ? C().fmt(gapM) + ' ' + GLYPH.minerals
           : C().fmtMass(Math.max(0, gapG))
       })
-      show(lShort, afford < 1)
-      if (afford < 1) setText(shortTxt, shortStr)
+      // The line keeps its place whether or not there is a shortfall to state: shown and hidden
+      // with the balance, it moved DEADHEAD and the order toggle 23 px under the thumb on every
+      // tip bought or earned (v2.5-1 jump probe).
+      show(lShort, true)
+      setText(shortTxt, afford < 1 ? shortStr : '\u00a0')
       setData(b1, 's', afford >= 1 ? 'afford' : 'want')
       var burst = tipsAffordable(true)
       setData(b5, 's', burst >= 1 ? 'afford' : 'want')
@@ -4856,7 +4875,11 @@
       // much tissue goes with it, and what the rest is worth afterwards. Nothing here is a
       // recommendation — three numbers and the trade is the player's to read (09 §1.0 rule 2).
       var cut = !!(a && a.canDeadhead && a.canDeadhead(s))
-      show(lCut, cut)
+      // Once the cut has been on offer its line keeps its place; it fades rather than leaves, so
+      // the order toggle under it stays where the thumb learned it (v2.5-1 jump probe).
+      if (cut) lCut.dataset.seen = '1'
+      show(lCut, cut || lCut.dataset.seen === '1')
+      lCut.style.visibility = cut ? '' : 'hidden'
       if (cut) {
         var tissue = a.pruneTissue(s)
         var cutStr = interp(STR.deadheadNote, {
@@ -5795,7 +5818,8 @@
         : minShort > U.SHORT_EPS ? interp(STR.short, { n: C().fmt(minShort) + ' ' + GLYPH.minerals })
           : repShort > U.SHORT_EPS ? interp(STR.short, { n: C().fmt(repShort) + ' rep' }) : ''
       claimBtn.dataset.short = shortStr
-      setText(shortTxt, canPay ? '' : shortStr)
+      // A non-breaking space, not empty: an empty note collapsed its line and CLAIM rose 19 px.
+      setText(shortTxt, canPay || !shortStr ? '\u00a0' : shortStr)
     }
     p.view = pv
     return pv
@@ -6131,8 +6155,11 @@
       reconcile(rows, bag, list, function (c) { return c.id }, function () {
         return standRow()
       }, s)
-      // reconcile keeps rows where they were born; the list is a ranking, so put them in its order.
-      for (var i = 0; i < list.length; i++) {
+      // reconcile keeps rows where they were born; the list is a ranking, so put them in its order,
+      // but never under a working thumb: a re-rank is held until 5 s after the last touch, so the
+      // stand you reached for is the stand you get (11 §4; v2.5-1 testers: "lists reorder").
+      var still = v.touchAt && nowMs() - v.touchAt < U.RERANK_QUIET_MS
+      for (var i = 0; !still && i < list.length; i++) {
         var r = bag[String(list[i].id)]
         if (r && rows.children[i] !== r.el) rows.insertBefore(r.el, rows.children[i] || null)
       }
