@@ -537,7 +537,7 @@
       STEPS: 240,               // macro-steps through the real simTick
       RETURN_PRICE_MOVE: 0.25,  // fractional leaf-price move that earns a line in the return report
       RETURN_BOND_MOVE: 0.05,   // mean-bond rise across an absence that earns bond_deepened
-      RETURN_BARE_FRAC: 0.20,   // share of an absence the floor must spend bare to earn a line
+      RETURN_PACE_FRAC: 0.35,   // an absence that grew at less than this × the pace left at is said
       INSIGHT_CAP_S: 5400,      // s of saturated production, against the time-average Sr (K27)
       PRED_CAP: 0.25,           // fraction of the fleet predation may take, whole period
       STRAIN_MULT: 0.35,        // × pact strain accrual
@@ -891,16 +891,23 @@
   var flows = {}
   var flowTag = 'other'
 
-  function flowAs (tag, fn, a, b, c) {
+  function flowAs (tag, fn, a, b, c, d, e) {
     var was = flowTag
     flowTag = tag
-    try { return fn(a, b, c) } finally { flowTag = was }
+    try { return fn(a, b, c, d, e) } finally { flowTag = was }
   }
 
   // The same, as a function that can stand in for `fn` in an export table: a player's own verb is
-  // filed under the verb, wherever it is called from.
+  // filed under the verb, wherever it is called from. It passes EVERY argument through. It used to
+  // pass three, and signContract takes five: collateral and exclusive were dropped on every term
+  // signed from the screen, so the tree judged a staked offer as unstaked and refused it under the
+  // limit the card showed (v2.5-1: Lee, Sam and Robin; the repro found collateral 0 at accepts()).
   function flowed (tag, fn) {
-    return function (a, b, c) { return flowAs(tag, fn, a, b, c) }
+    return function () {
+      var was = flowTag
+      flowTag = tag
+      try { return fn.apply(this, arguments) } finally { flowTag = was }
+    }
   }
 
   function smoothstep (a, b, x) {
@@ -919,6 +926,10 @@
       if (got !== want) f.push(label + ': got "' + got + '" want "' + want + '"')
     }
     function ok (cond, label) { if (!cond) f.push(label) }
+
+    // flowed() must pass every argument: signContract takes five, and three were passed for months.
+    var five = flowed('t', function (a, b, c, d, e) { return [a, b, c, d, e].join(',') })
+    eq(five(1, 2, 3, 4, 5), '1,2,3,4,5', 'flowed dropped arguments')
 
     // FLOWS: a write to the live stocks inside flowAs is filed under its tag, the tag is restored
     // after (even past a throw), and a write to any other object is not counted at all.

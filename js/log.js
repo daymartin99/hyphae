@@ -1039,7 +1039,7 @@
   // Priority order is 09 §6.6's: dry > rival > starvation > expired terms > completions > market.
   // Act I has no stands and no rivals, so its ladder is the same ladder against its own nouns.
   var NEEDS = [
-    { kind: 'substrate_dry', act: 1, rank: 90, text: 'the floor was bare for {pct}% of it. nothing grew while it was.' },
+    { kind: 'substrate_dry', act: 1, rank: 90, text: 'the floor ran short. you grew at {pct}% of the pace you left at.' },
     { kind: 'term_short', act: 1, rank: 80, text: 'a term is short by {n} sugar. it has not ended.' },
     { kind: 'term_default', act: 1, rank: 75, text: 'a term went unpaid. {k} reputation is gone.' },
     { kind: 'season_autumn', act: 1, rank: 70,
@@ -3811,7 +3811,7 @@
         ok(seen.length === 5, 'return burst rendered ' + seen.length + ' lines')
         ok(seen[0].text === 'you were gone 6 h 41 m.', 'return line 1: ' + seen[0].text)
         ok(seen[1].text.indexOf('38% dormant') > 0, 'return line 2: ' + seen[1].text)
-        ok(seen[2].text.indexOf('was bare for 60%') > 0, 'return line 3 is not the highest-ranked need')
+        ok(seen[2].text.indexOf('at 60% of the pace') > 0, 'return line 3 is not the highest-ranked need')
         var lowered = true
         for (i = 0; i < 5; i++) if (/[A-Z]/.test(seen[i].text)) lowered = false
         ok(lowered, 'the Act I return burst carries a capital letter')
