@@ -255,6 +255,7 @@
     nextBare: 'the floor is bare. more is for sale, under grow.',
     nextCeiling: '{name}: {n} Σ. you hold at most {cap}. the forest makes room.',
     forestYou: 'the forest is {p}% you.',
+    nextShortMin2: '{name}: {n} short. here, minerals come from root pacts, and from every stand you hold.',
     signNothing: 'at that size it pays nothing',
     covOk: 'you make {make} {u}; the trees would take {take}. room to spare.',
     covTight: 'you make {make} {u}; the trees would take {take}. a bad season and it defaults.',
@@ -2337,6 +2338,13 @@
     // An ETA is only worth saying while it means something. A trickle in the first minute gave
     // "about 80029685746229280d", which is a number, not a time; past a day the shortfall stands alone.
     if (rate > 0 && short / rate < 86400 && C().fmtTime) return interp(STR.nextShortEta, { name: best.name, n: unit, t: C().fmtTime(short / rate) })
+    // Act II's minerals come from root pacts, the exchange and a slow floor that grows with the
+    // stands held; nothing said so, and two players read the stall as minerals having stopped
+    // ("costs minerals, which no longer regenerate?", act3 run notes, Sam; Lee likewise).
+    if (worst === 'min' && s.act === 2) {
+      nextGroup = 'pact'
+      return interp(STR.nextShortMin2, { name: best.name, n: unit })
+    }
     if (worst === 'min' && s.act === 1) {
       var e1 = HY.economy1, open = !!(e1 && e1.treesOpen && e1.treesOpen())
       if (open) nextGroup = 'bargain'
