@@ -256,7 +256,7 @@
     nextCeiling: '{name}: {n} Σ. you hold at most {cap}. the forest makes room.',
     forestYou: 'the forest is {p}% you.',
     standingOn: 'standing order', standingRunning: 'buying for you', standingPaused: 'paused. the floor is yours to keep',
-    nextShortMin2: '{name}: {n} short. here, minerals come from root pacts, and from every stand you hold.',
+    nextShortMin2: '{name}: {n} short. the roots are yours; every stand you hold draws more.',
     signNothing: 'at that size it pays nothing',
     covOk: 'you make {make} {u}; the trees would take {take}. room to spare.',
     covTight: 'you make {make} {u}; the trees would take {take}. a bad season and it defaults.',
