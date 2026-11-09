@@ -55,7 +55,8 @@
     // an affordability line once a second (contract deliveries land each sim-second) from
     // flickering the row's meta text at 1 Hz.
     SHORT_EPS: 0.005, SHORT_HOLD_MS: 1200,
-    RERANK_QUIET_MS: 5000,  // a ranked list holds its order this long after the last touch
+    RERANK_QUIET_MS: 5000,
+    CARD_LEAVE_MS: 1500,    // a bought card holds its place this long, and until the thumb is still  // a ranked list holds its order this long after the last touch
     PRICE_TICK_MS: 4000,              // the market price on screen moves on its own this often (a slow tick)
     ROW_SEAT_PX: 8,
     FAB_PX: 64,               // the pulse button's diameter (css .fab)
@@ -135,6 +136,7 @@
   // ───────────────────────────────────────────────────────────────────────────
 
   var STR = {
+    openVoice: 'open the voice',
     // The away card (11 §1). The kicker names what this is; the duration is the headline.
     awayKicker: 'while you were away',
     awayGone: 'gone {t}',
@@ -2019,10 +2021,20 @@
     v.consoleInner = inner
     // Seven rows are a window, not the record. From Act II a tap on the console opens the log,
     // once the log tab has been earned.
+    // In the redesign the whole record is one touch away in every act (10 D9), on a handle of its
+    // own in the console's corner. The whole console used to be the target: it sits between the
+    // ledger and the controls, and a tap that missed anything opened the full log (v2.5-1 and -2:
+    // Lee five times, Sam "the log sheet instead" of the order toggle).
+    var voiceBtn = btn('voice-open')
+    voiceBtn.appendChild(glyphSvg(CHEVRON_D, 18))
+    setAttr(voiceBtn, 'aria-label', STR.openVoice)
+    bindPress(voiceBtn, function () { openVoice() }, { onUp: true })
+    voiceBtn.hidden = true
+    con.appendChild(voiceBtn)
+    v.voiceBtn = voiceBtn
     bindPress(con, function () {
       var s = liveState()
-      // In the redesign the whole record is one touch away in every act (10 D9).
-      if (isD()) { openVoice(); return }
+      if (isD()) return
       if (!s || s.act < 2 || !view || view.tab === 'log') return
       var lt = null
       view.tabs.forEach(function (x) { if (x.key === 'log') lt = x })
@@ -3645,6 +3657,8 @@
         if (recall('hyphae.plate') === 'min') setPlate(true)
       }
     }
+    // The voice's handle arrives with the strip's second stage: the first screen has one button (D02).
+    if (v.voiceBtn) show(v.voiceBtn, want >= 1)
     if (want === v.stage) return
     v.stage = want
     setData(v.shell, 'stage', String(want))
@@ -5738,10 +5752,17 @@
         c.setShort(far ? entry.priceTag + ' · ' + STR.beyond : entry.priceTag)
         c.setLabel(entry.title + '. ' + entry.priceTag + (far ? ', ' + STR.beyond : '') + '.')
       })
-      // A bought project is removed from the DOM. There is no completed tab.
+      // A bought project is removed from the DOM. There is no completed tab. It keeps its place,
+      // faded and untouchable, until the thumb has been still for a moment: removed at once, the
+      // cards below slid up under a second tap and bought the next one (v2.5-2, Lee: Hemicellulase
+      // and EAT LATER "by accident when the list jumped").
+      var quiet = !v.touchAt || nowMs() - v.touchAt > U.CARD_LEAVE_MS
       Object.keys(v.cards).forEach(function (k) {
         if (live[k]) return
-        if (v.cards[k].el.parentNode) v.cards[k].el.parentNode.removeChild(v.cards[k].el)
+        var c = v.cards[k]
+        if (!c.el.dataset.leaving) { c.el.dataset.leaving = '1'; c.leftAt = nowMs() }
+        if (!quiet || nowMs() - c.leftAt < U.CARD_LEAVE_MS) return
+        if (c.el.parentNode) c.el.parentNode.removeChild(c.el)
         delete v.cards[k]
       })
       pv.setCount(list.length)

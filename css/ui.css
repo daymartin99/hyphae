@@ -1849,7 +1849,15 @@ canvas{ display:block; }
 .shell[data-ui="d"] .ledger-row:not([data-acct=""]){ cursor:pointer; }
 .shell[data-ui="d"] .ledger-row:not([data-acct=""]) .ledger-val{
   text-decoration:underline dotted var(--ink-3); text-underline-offset:.28em; }
-.shell[data-ui="d"] .console{ cursor:pointer; }
+/* The voice opens from its own handle, not the whole console (v2.5: stray taps opened it). */
+.voice-open{ display:none; }
+.shell[data-ui="d"] .voice-open{ display:flex; position:absolute; inset-inline-end:var(--sp-4);
+  bottom:var(--sp-4); width:var(--tap); height:var(--tap); align-items:center; justify-content:center;
+  color:var(--text-tertiary); background:none; border:0; border-radius:var(--r-sm); z-index:2; }
+.shell[data-ui="d"] .voice-open svg{ transform:rotate(180deg); }
+/* The first screen has one button (D02): the handle arrives with the strip's second stage. */
+.shell[data-ui="d"] .voice-open[hidden]{ display:none; }
+.shell[data-ui="d"] .voice-open[data-press="1"]{ background:var(--surface-press); color:var(--text-max); }
 .acct-head{ margin-top:var(--sp-16); padding-bottom:var(--sp-4); border-bottom:1px solid var(--line-soft);
   font-family:var(--f-serif, Georgia, serif); font-style:italic; color:var(--text-tertiary); }
 .acct-row{ display:flex; justify-content:space-between; gap:var(--sp-12); min-height:2rem;
@@ -1997,3 +2005,7 @@ canvas{ display:block; }
 @media (display-mode: standalone){
   .shell{ padding-top:calc(env(safe-area-inset-top) + var(--sp-8)); }
 }
+
+/* A bought card holds its place for a moment, faded and untouchable (v2.5-2: the list slid up
+   under a second tap). */
+[data-leaving="1"]{ opacity:.35; pointer-events:none; transition:opacity var(--d-state) linear; }
