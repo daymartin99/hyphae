@@ -2860,7 +2860,52 @@
       text: interpolate(text, tokens, s, null), tone: tone || null, channel: 'world' })
   }
 
+  // THE AWAY CARD (11 §1, v2.5). The report used to arrive only as console lines, which scroll
+  // past behind whatever the player opened the app to do; nobody read it (David: "make it pop —
+  // we respect your time, this is what happened"). With the card on, the same report is handed to
+  // ui.js as data and the console does not repeat it. Off (headless, the self-tests), nothing
+  // changes: the burst plays in the console as it always has.
+  var reportCard = false
+  var lastReport = null
+  var gainsAt = -1
+
+  function useReportCard (on) { reportCard = !!on }
+
+  function takeReport () {
+    var r = lastReport
+    lastReport = null
+    return r
+  }
+
   function returnBurst (summary) {
+    lastReport = null
+    var n = returnBurstLines(summary)
+    if (n > 0 && reportCard) {
+      var s = S()
+      var lines = []
+      for (var i = 0; i < pendingReturn.length; i++) {
+        var r = pendingReturn[i]
+        if (i === gainsAt) continue          // the card states the gains as numbers
+        var text = r.raw ? r.text : (r.entry ? interpolate(r.entry.text, r.tokens, s, null) : '')
+        if (!text) continue
+        if (/^\[/.test(text)) continue       // a console hint; the card is not the console
+        lines.push({ text: text, tone: r.raw ? r.tone : (r.entry && r.entry.tone) || null })
+      }
+      var away = Number(summary.away)
+      lastReport = {
+        away: away, act: summary.act || (s && s.act) || 1,
+        awayText: away >= 0 ? duration(away) : '',
+        gains: summary.gains || {},
+        dormant: isFinite(summary.efficiency) && summary.efficiency < 1
+          ? Math.round((1 - summary.efficiency) * 100) : 0,
+        lines: lines
+      }
+      pendingReturn.length = 0
+    }
+    return n
+  }
+
+  function returnBurstLines (summary) {
     var s = S()
     if (!s || !summary) return 0
     var away = Number(summary.away)
@@ -2868,6 +2913,7 @@
 
     pendingReturn.length = 0
     returnShown = 0
+    gainsAt = -1
 
     // Do not tell someone who switched apps that they were away.
     if (away >= 0 && away < CONS.RETURN_MIN_AWAY) return 0
@@ -2906,6 +2952,7 @@
       psi: g.insight || 0, car: g.carbon || 0, b: g.band || 0,
       pct: isFinite(eff) ? (1 - eff) * 100 : 0
     }, s)
+    gainsAt = pendingReturn.length - 1
     lines++
 
     // Below fifteen minutes the report is lines one and two and stops. It is never padded.
@@ -3744,7 +3791,10 @@
         ok(seen.length === 0, 'a line spoke while the log was frozen')
         thaw()
 
-        // The offline return: five lines, no more, in the console, never padded.
+        // The offline return: five lines, no more, in the console, never padded. These test the
+        // console burst, so the away card (which takes the report instead) is off for them.
+        var cardWas = reportCard
+        reportCard = false
         init(live)
         live.log.lastLineAt = -1e9
         seen.length = 0
@@ -3797,6 +3847,19 @@
         notifyInput()
         for (i = 0; i < 20; i++) { live.t += 1.3; drain(live) }
         ok(seen.length === 1, 'a tap did not dismiss the rest of the return burst')
+
+        reportCard = cardWas
+        // The away card takes the same report as data and leaves the console quiet.
+        reportCard = true
+        init(live)
+        ok(returnBurst({ away: 24060, act: 1, efficiency: 0.6, gains: { biomass: 5 },
+          needs: [{ kind: 'substrate_dry', tokens: { t: 120 }, tone: 'warn' }] }) > 0, 'card: no report')
+        var card = takeReport()
+        ok(card && card.lines.length >= 2 && card.dormant === 40, 'card: report shape')
+        ok(card && card.lines[card.lines.length - 1].tone === 'warn', 'card: a loss lost its tone')
+        ok(pendingReturn.length === 0, 'card: the console repeated the report')
+        ok(takeReport() === null, 'card: taken twice')
+        reportCard = cardWas
 
         // The sequence player: the words land, the skip rule holds, the queue is frozen.
         init(live)
@@ -3904,6 +3967,8 @@
     logLater: logLater,
     bought: bought,
     returnBurst: returnBurst,
+    useReportCard: useReportCard,
+    takeReport: takeReport,
     ringBuffer: ringBuffer,
     freeze: freeze,
     thaw: thaw,

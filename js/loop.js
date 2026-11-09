@@ -229,7 +229,7 @@
   function offlineNeeds (s, b, dryAtS) {
     var needs = []
     if (b.act === 1 && s.act === 1 && s.a1) {
-      if (dryAtS >= 0) needs.push({ kind: 'substrate_dry', tokens: { t: dryAtS } })
+      if (dryAtS >= 0) needs.push({ kind: 'substrate_dry', tokens: { t: dryAtS }, tone: 'warn' })
       // economy1's D32 note promises this line: offline shortfall accrues, never defaults, and
       // is "reported on return". The report states only what the absence added.
       var shortGrew = sumShortfall(s) - (b.shortfall || 0)

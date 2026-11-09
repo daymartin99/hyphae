@@ -1943,6 +1943,35 @@ canvas{ display:block; }
 .shell[data-ui="d"] .stepper > button[data-s="want"]{
   border-style:dashed; background:transparent; }
 
+/* ── the away card (11 §1, v2.5): what happened while you were gone, as the first thing on screen.
+   It is the one sheet that opens without being asked, so it is dressed to be noticed: an accent
+   edge, the duration as a headline, the gains in the ledger's own numerals. ── */
+.sheet-away{ border-top:2px solid var(--attention); }
+/* The title takes focus for the screen reader, not for a ring: it is not a control. */
+.sheet-title:focus{ outline:none; }
+.sheet-away .sheet-title{ font:var(--t-label); letter-spacing:.14em;
+  text-transform:uppercase; color:var(--text-tertiary); padding-bottom:0; }
+.away-when{ font-family:var(--f-serif); font-size:2rem; line-height:1.15; color:var(--text-max);
+  margin:var(--sp-4) 0 var(--sp-16); }
+.away-gains{ display:flex; flex-direction:column; gap:var(--sp-8);
+  padding:var(--sp-12) 0; border-top:1px solid var(--line-soft); border-bottom:1px solid var(--line-soft); }
+.away-gain{ display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-12); }
+.away-lab{ font:var(--t-label); letter-spacing:.12em; text-transform:uppercase;
+  color:var(--text-secondary); }
+.away-val{ font-family:var(--font-mono); font-size:1.375rem; color:var(--positive-text);
+  font-variant-numeric:tabular-nums; }
+.away-note{ color:var(--text-tertiary); margin:var(--sp-12) 0 0; }
+.away-lines{ list-style:none; margin:var(--sp-12) 0 0; padding:0; }
+.away-line{ padding:var(--sp-6) 0; color:var(--text-primary); }
+.away-line[data-tone="warn"]{ color:var(--attention-text); }
+.away-line[data-tone="neg"]{ color:var(--negative-text); }
+.sheet-away .sheet-btn{ background:var(--text-max); color:var(--bg); border-color:var(--text-max); }
+/* Taking it: the ledger lights once as the gains land on it. */
+@keyframes away-take{ 0%{ background-color:transparent } 25%{ background-color:var(--surface-press) }
+  100%{ background-color:transparent } }
+.shell[data-taken="1"] .ledger{ animation:away-take 1.4s var(--ease-out, ease-out); }
+@media (prefers-reduced-motion: reduce){ .shell[data-taken="1"] .ledger{ animation:none; } }
+
 /* iOS 26 softens the band under the status bar in the home-screen app; the top row stands a step
    clear of it rather than sitting in the blur. */
 @media (display-mode: standalone){
