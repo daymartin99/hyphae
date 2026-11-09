@@ -591,6 +591,7 @@ if(signalT0===null)signalT0=s.t
 return s.t-signalT0>an}})
 L(2,'a2.open','narrative',null,'act == 2','Something in the network is repeating itself.',{pred:function(s){return s.act===2}})
 L(2,'a2.music','world',null,'@piece && act == 2','Somewhere under the network, slow keys begin. Something is keeping time.')
+L(2,'a2.roots','world','pos','act == 2 && claimed >= 1','The roots are yours now. What they pull from the stone comes to you.',{pred:function(s){return s.act===2&&num(s.stats.claimedCount)>=1}})
 L(2,'a2.forest_half','world',null,'fc >= 0.5','Half the forest answers to you now. The rest stands between you and after.',{pred:function(s){return aj(s,.5,.85)}})
 L(2,'a2.forest_most','world',null,'fc >= 0.85','Almost all of it is you. When the last of it is, something will want to leave.',{pred:function(s){return aj(s,.85,1)}})
 L(2,'a2.first_claim','world','pos','claimed == 2','Further out, something is willing to talk.',{pred:function(s){return s.stats.claimedCount>=2}})
@@ -5162,7 +5163,7 @@ function A(){return HY.core.TUNE.A2}
 function S(){return HY.state.state}
 function num(v){return typeof v==='number'&&isFinite(v)?v:0}
 function bX(s,id){return!!(s&&s.proj&&s.proj.flags&&s.proj.flags[id])}
-function bb(s,k,n){if(s&&s.stats&&typeof s.stats[k]==='number')s.stats[k]+=n}
+function aT(s,k,n){if(s&&s.stats&&typeof s.stats[k]==='number')s.stats[k]+=n}
 function bM(id,bw){if(HY.log&&HY.log.logFire)HY.log.logFire(id,bw)}
 function feel(ev,cc){if(HY.feel&&HY.feel.feel)HY.feel.feel(ev,cc)}
 function notice(kind,bw){if(HY.log&&HY.log.notice)HY.log.notice(kind,bw)}
@@ -5241,15 +5242,15 @@ function bd(s){if(HY.world&&HY.world.claimedCount)return HY.world.claimedCount(s
 var f=s.a2.regions.flags,i,n=0
 for(i=0;i<f.length;i++)if(f[i]&4)n++
 return n}
-function aV(s){return HY.forest&&HY.forest.biomassRate?num(HY.forest.biomassRate(s)):0}
+function aW(s){return HY.forest&&HY.forest.biomassRate?num(HY.forest.biomassRate(s)):0}
 function fc(s){if(HY.forest&&HY.forest.forestConsumed)return num(HY.forest.forestConsumed(s))
 return C().clamp(num(s.res.extracted)/A().EXTRACT_TARGET,0,1)}
 function weather(s){if(HY.flush&&HY.flush.W)return num(HY.flush.W())
 return num(s.a2.W)}
-function ab(i){return HY.world&&HY.world.neighbours?HY.world.neighbours(i):[]}
+function ac(i){return HY.world&&HY.world.neighbours?HY.world.neighbours(i):[]}
 function regionName(i){if(HY.world&&HY.world.regionName)return HY.world.regionName(i)
 return'stand '+i}
-function aW(s,i){var sp=HY.forest&&HY.forest.SPECIES?HY.forest.SPECIES:null
+function aX(s,i){var sp=HY.forest&&HY.forest.SPECIES?HY.forest.SPECIES:null
 if(!sp)return{name:'stand',kappa:1,canopy:1}
 return sp[num(s.a2.regions.sp0[i])%sp.length]}
 function bB(s,i){var tr=HY.forest&&HY.forest.TERRAIN?HY.forest.TERRAIN:null
@@ -5263,7 +5264,7 @@ function bV(s){return HY.cognition&&HY.cognition.Sr?num(HY.cognition.Sr(s)):0}
 function be(s){if(HY.forest&&HY.forest.legacyLife)return C().clamp(num(HY.forest.legacyLife(s)),0,1)
 var r=s.a2.regions,i,t=0,t0=0
 for(i=0;i<r.T.length;i++){t+=num(r.T[i]);t0+=num(r.T0[i])}return t0>0?C().clamp(t/t0,0,1):0}
-function aX(s){var r=s.a2.regions,i,t=0,n=0
+function aY(s){var r=s.a2.regions,i,t=0,n=0
 for(i=0;i<r.h.length;i++){if(!(r.flags[i]&4))continue
 t+=num(r.h[i]);n++}return n>0?t/n:.5}
 function bf(s){var r=s.a2.regions,i,t=0
@@ -5279,7 +5280,7 @@ var cg=be(s)
 F[1]=C().clamp((cg-.5)*2-(b.turnUntil>s.t?b.turnOffset*C().clamp((s.t-(b.turnUntil-PB.TURN_LEN))/PB.TURN_LEN,0,1)*2:0),-1,1)
 if(b.turnUntil>0&&b.turnUntil<=s.t)F[1]=C().clamp((cg-.5)*2-b.turnOffset*2,-1,1)
 F[2]=Math.sin(2*Math.PI*num(s.t)/T().CLOCK.WEATHER_PERIOD)
-F[3]=C().clamp((aX(s)-.5)*2,-1,1)
+F[3]=C().clamp((aY(s)-.5)*2,-1,1)
 F[4]=C().clamp((bf(s)-.2)*2.5,-1,1)
 return F}
 function G(p){return GUILDS[p.guild]||GUILDS[0]}
@@ -5295,7 +5296,7 @@ var k=PB.BOND_K*(d&&d.bondKMult?d.bondKMult:1)
 if(bt(p,'shallow'))k*=TRAIT_SHALLOW_K
 return k}
 function J(p){return 1-Math.exp(-Math.max(0,num(p.tenure))/ci(p))}
-function ac(p){return Math.min(A().BOND_MAX,1+bP(p)*Math.pow(J(p),PB.BOND_EXP))}
+function ad(p){return Math.min(A().BOND_MAX,1+bP(p)*Math.pow(J(p),PB.BOND_EXP))}
 function bQ(p){var a=G(p).alpha
 if(bt(p,'prolific'))a+=aK
 if(bt(p,'sated'))a+=TRAIT_SATED
@@ -5306,7 +5307,7 @@ var t=g.tol+(d&&d.tolDelta?d.tolDelta:0)
 if(bt(p,'jealous'))t-=1
 if(bt(p,'gregarious'))t+=2
 return Math.max(1,t)}
-function aY(p){var d=y(p.partnerId)
+function aZ(p){var d=y(p.partnerId)
 if(d&&d.costModOverride)return d.costModOverride
 return G(p).costMod}
 function bY(p){var g=G(p)
@@ -5323,7 +5324,7 @@ function by(p){return C().clamp(1+PB.SHOCK_GAIN*cF(p.beta),PB.SHOCK_LO,PB.SHOCK_
 function bR(s,p){var i=p.regionId
 var r=s.a2.regions
 if(p.guild===ROOT){if(!(i>=0))return 0
-return aW(s,i).kappa*Math.pow(Math.max(0,num(r.T[i]))/PB.ROOT_T_REF,PB.ROOT_T_EXP)*bB(s,i).mineralMod}if(p.guild===NODULE){return 1+PB.NODULE_HUMUS*(i>=0?C().clamp(num(r.h[i]),0,1):aX(s))}if(p.guild===GHOST)return 1+PB.GHOST_RIPE*bm(s)
+return aX(s,i).kappa*Math.pow(Math.max(0,num(r.T[i]))/PB.ROOT_T_REF,PB.ROOT_T_EXP)*bB(s,i).mineralMod}if(p.guild===NODULE){return 1+PB.NODULE_HUMUS*(i>=0?C().clamp(num(r.h[i]),0,1):aY(s))}if(p.guild===GHOST)return 1+PB.GHOST_RIPE*bm(s)
 if(p.guild===CROWN){if(!(i>=0))return 0
 var t0=num(r.T0[i])
 var bZ=t0>0?C().clamp(num(r.T[i])/t0,0,1):0
@@ -5332,7 +5333,7 @@ function as(b,self){var i,n=1
 for(i=0;i<b.pacts.length;i++){var q=b.pacts[i]
 if(q===self||!U(q))continue
 if(bt(q,'keystone')&&num(q.strain)<PB.KEYSTONE_GATE)n*=PB.KEYSTONE_MULT}return n}
-function aZ(b,p){if(!p.boundTo)return 1
+function ba(b,p){if(!p.boundTo)return 1
 var q=R(b,p.boundTo)
 if(!q||!U(q))return PB.CROSS_A
 return PB.CROSS_A+PB.CROSS_B*(1-C().clamp(num(q.strain),0,1))}
@@ -5340,10 +5341,10 @@ function au(b,p){var i,j
 for(i=0;i<b.triangles.length;i++){for(j=0;j<b.triangles[i].length;j++){if(b.triangles[i][j]===p.id)return PB.TRIANGLE_SHOCK}}return 1}
 function bz(s,b,p){if(!U(p)||!(p.ch>0))return 0
 if(p.mutedUntil>s.t)return 0
-return bY(p)*Math.pow(p.ch,bQ(p))*ac(p)*by(p)*au(b,p)*as(b,p)*aZ(b,p)*(1-PB.STRAIN_YIELD*C().clamp(num(p.strain),0,1))*bR(s,p)}
+return bY(p)*Math.pow(p.ch,bQ(p))*ad(p)*by(p)*au(b,p)*as(b,p)*ba(b,p)*(1-PB.STRAIN_YIELD*C().clamp(num(p.strain),0,1))*bR(s,p)}
 function R(b,id){for(var i=0;i<b.pacts.length;i++)if(b.pacts[i].id===id)return b.pacts[i]
 return null}
-function Z(b,id){for(var i=0;i<b.offers.length;i++)if(b.offers[i].id===id)return b.offers[i]
+function aa(b,id){for(var i=0;i<b.offers.length;i++)if(b.offers[i].id===id)return b.offers[i]
 return null}
 function U(p){return p.state==='active'||p.state==='notice'}
 function ao(b,g){var i,n=0
@@ -5378,13 +5379,13 @@ return Math.ceil(A().CHANNEL_A*Math.pow(n+1,A().CHANNEL_E))}
 function passiveMineral(st){var s=st||S()
 if(!s||s.act!==2)return 0
 return A().PASSIVE_MIN_K*Math.pow(Math.max(0,bd(s)),A().PASSIVE_MIN_EXP)}
-function aM(s,b){gross=aV(s)
+function aM(s,b){gross=aW(s)
 var act=l(b)
 congestion=av(act.length)
 var i,weight=0
-for(i=0;i<act.length;i++)weight+=act[i].ch*aY(act[i])
+for(i=0;i<act.length;i++)weight+=act[i].ch*aZ(act[i])
 bookCost=PB.CH_COST_FRAC*gross*weight*congestion
-for(i=0;i<act.length;i++){var w=act[i].ch*aY(act[i])
+for(i=0;i<act.length;i++){var w=act[i].ch*aZ(act[i])
 act[i].cost=weight>0?bookCost*(w/weight):0}b.channels=H(b)
 b.channelCap=channelCap(s)
 return bookCost}
@@ -5407,10 +5408,10 @@ var d=y(p.partnerId)
 var cz=d&&d.ripeCoef?d.ripeCoef:PB.GHOST_FLOOR_K
 if(p.ch>0&&p.mutedUntil<=s.t)ripeFloor+=cz*Math.pow(p.ch,PB.GHOST_FLOOR_EXP)}else if(p.guild===CROWN){crownSig+=p.yield
 var cd=y(p.partnerId)
-if(cd&&cd.fh)crownFH+=cd.fh*Math.pow(Math.max(0,p.ch),PB.CROWN_FH_EXP)*ac(p)}else if(p.guild===RIVAL){rivalFactor*=(1-PB.RIVAL_ADV*Math.pow(Math.max(0,p.ch),PB.RIVAL_ADV_EXP))}}var passive=passiveMineral(s)
+if(cd&&cd.fh)crownFH+=cd.fh*Math.pow(Math.max(0,p.ch),PB.CROWN_FH_EXP)*ad(p)}else if(p.guild===RIVAL){rivalFactor*=(1-PB.RIVAL_ADV*Math.pow(Math.max(0,p.ch),PB.RIVAL_ADV_EXP))}}var passive=passiveMineral(s)
 var minerals=(rootMin+passive)*dt
 if(minerals>0){C().setStock(s.res,'minerals',num(s.res.minerals)+minerals)
-bb(s,'mineralEarned',minerals)}if(noduleFrac>0&&gross>0){var ck=noduleFrac*gross*dt
+aT(s,'mineralEarned',minerals)}if(noduleFrac>0&&gross>0){var ck=noduleFrac*gross*dt
 C().setStock(s.res,'biomass',num(s.res.biomass)+ck)
 C().setStock(s.res,'cumBiomass',num(s.res.cumBiomass)+ck)}if(ghostPsi>0)C().setStock(s.res,'insight',num(s.res.insight)+ghostPsi*dt)
 s.mult.ripenessFloor=C().clamp(ripeFloor,0,A().RIPE_FLOOR_CAP)
@@ -5434,7 +5435,7 @@ var d=y(p.partnerId)
 var ally=d&&d.ally!==undefined?d.ally:0
 var X=[]
 for(k=0;k<r.rival.length;k++){if(num(r.rivalStr[k])<=0)continue
-if(r.rival[k]===ally){X.push(k);continue}var nb=ab(k)
+if(r.rival[k]===ally){X.push(k);continue}var nb=ac(k)
 for(j=0;j<nb.length;j++)if(r.rival[nb[j]]===ally){X.push(k);break}}if(!X.length)continue
 var cu=p.yield*dt/X.length
 for(k=0;k<X.length;k++){var cv=num(r.rivalStr[X[k]])
@@ -5448,10 +5449,10 @@ if(!d)continue
 if(d.convertsTL){var bF=num(r.T[p.regionId])*d.convertsTL*dt
 if(bF>0){r.T[p.regionId]=Math.max(0,num(r.T[p.regionId])-bF)
 r.L[p.regionId]=num(r.L[p.regionId])+bF}}if(d.killsTrees){var cl=(d.killsTrees-1)*4e-4*dt
-var cB=[p.regionId].concat(ab(p.regionId).slice(0,2))
+var cB=[p.regionId].concat(ac(p.regionId).slice(0,2))
 for(k=0;k<cB.length;k++){r.T[cB[k]]=Math.max(0,num(r.T[cB[k]])*(1-cl))}}}void o}
-function bC(s,b,p){return PB.BROOD_BASE_S*gross*Math.pow(Math.max(0,p.ch),PB.BROOD_CH_EXP)*ac(p)*by(p)*au(b,p)*as(b,p)*aZ(b,p)*(1-PB.STRAIN_YIELD*C().clamp(num(p.strain),0,1))*(y(p.partnerId)?y(p.partnerId).baseMult:1)*(bt(p,'generous')?TRAIT_GENEROUS:1)*(bt(p,'thin')?TRAIT_THIN:1)*num(p.quality||1)}
-function aT(p){var d=y(p.partnerId)
+function bC(s,b,p){return PB.BROOD_BASE_S*gross*Math.pow(Math.max(0,p.ch),PB.BROOD_CH_EXP)*ad(p)*by(p)*au(b,p)*as(b,p)*ba(b,p)*(1-PB.STRAIN_YIELD*C().clamp(num(p.strain),0,1))*(y(p.partnerId)?y(p.partnerId).baseMult:1)*(bt(p,'generous')?TRAIT_GENEROUS:1)*(bt(p,'thin')?TRAIT_THIN:1)*num(p.quality||1)}
+function aU(p){var d=y(p.partnerId)
 var im=d&&d.intervalMod?d.intervalMod:1
 var den=Math.pow(Math.max(1e-6,p.ch),PB.BROOD_INT_EXP)*(1+PB.BROOD_INT_BOND*J(p))*im
 return PB.BROOD_INTERVAL/Math.max(1e-6,den)}
@@ -5459,7 +5460,7 @@ function ak(s,b,dt,o){var act=l(b),i,delivered=0,rate=0
 for(i=0;i<act.length;i++){var p=act[i]
 if(p.guild!==BROOD||!(p.ch>0)||p.mutedUntil>s.t)continue
 var Sz=bC(s,b,p)
-var I=aT(p)
+var I=aU(p)
 if(!(Sz>0&&I>0))continue
 rate+=Sz/I
 p.rate=Sz/I
@@ -5519,7 +5520,7 @@ z(b,p.partnerId).grudge=1
 z(b,p.partnerId).refuseUntil=num(s.t)+900
 b.guildRep[p.guild]=C().clamp(b.guildRep[p.guild]-PB.REP_BREACH_GUILD*aD,0,PB.REP_MAX)
 b.bookRep=C().clamp(b.bookRep-PB.REP_BREACH_BOOK*aD,0,PB.REP_MAX)
-bb(s,'pactsBreached',1)
+aT(s,'pactsBreached',1)
 if(K(s)>=6)b.breachedP6=num(b.breachedP6)+1
 if(p.guild===ROOT){b.rootScar={region:p.regionId,until:num(s.t)+PB.ROOT_SCAR_S*aD}}else if(p.guild===NODULE){s.mult.E=num(s.mult.E)*Math.pow(PB.NODULE_SCAR,aD)
 b.noduleScars=num(b.noduleScars)+1}else if(p.guild===BROOD){C().setStock(s.res,'biomass',num(s.res.biomass)*(1-PB.BROOD_RAID*aD))
@@ -5531,7 +5532,7 @@ b.chLocked=Math.max(0,num(b.chLocked)-p.ch)}else if(p.guild===CROWN){b.blindUnti
 var ally=d&&d.ally!==undefined?d.ally:0
 var k,j
 for(k=0;k<r.rival.length;k++){var ca=r.rival[k]===ally
-if(!ca){var nb=ab(k)
+if(!ca){var nb=ac(k)
 for(j=0;j<nb.length;j++)if(r.rival[nb[j]]===ally){ca=!0;break}}if(ca)r.rivalStr[k]=C().clamp(num(r.rivalStr[k])+PB.RIVAL_BREACH_STR*aD,0,1)}b.rivalSpreadUntil=num(s.t)+PB.RIVAL_BREACH_S}var m
 for(m=0;m<b.pacts.length;m++){if(b.pacts[m].boundTo===p.id&&U(b.pacts[m])){b.pacts[m].strain=C().clamp(num(b.pacts[m].strain)+PB.CROSS_BREACH_STRAIN,0,1)}}aN(b,p,s)
 bM('a2.first_breach',{partner:p.name,guild:g.label})
@@ -5555,19 +5556,19 @@ var cw=num(p.adverse)
 if(b.quietUntil>s.t)cw=Math.max(cw,PB.QUIET_FLOOR)
 if(!(cw>0)||!(p.ch>0))continue
 total+=B(s,b,p,PB.ACC_K*Math.pow(p.ch,.5)*J(p)*cw*dt*cI)}ah.accord=dt>0?total/dt:0}
-function aa(b){var m=num(b.traitThresholdMult)||1
+function ab(b){var m=num(b.traitThresholdMult)||1
 return[PB.REVEAL_AT[0]*m,PB.REVEAL_AT[1]*m,PB.REVEAL_AT[2]*m]}
-function aU(s,b,dt){var act=l(b),i,k
-var th=aa(b)
+function aV(s,b,dt){var act=l(b),i,k
+var th=ab(b)
 for(i=0;i<act.length;i++){var p=act[i]
 p.tenure=num(p.tenure)+dt
 p.cumTenure=num(p.cumTenure)+dt
 p.bond=J(p)
 for(k=0;k<3;k++){if(p.cumTenure>=th[k]&&!(p.known&(1<<k))){p.known|=(1<<k)
-bb(s,'traitsRevealed',1)}}if(!p.bondGrant&&p.bond>=PB.ACC_BOND_GATE){p.bondGrant=1
+aT(s,'traitsRevealed',1)}}if(!p.bondGrant&&p.bond>=PB.ACC_BOND_GATE){p.bondGrant=1
 B(s,b,p,PB.ACC_BOND_GRANT)}if(!p.exactGrant&&p.cumTenure>=PB.EXACT_TENURE){p.exactGrant=1
 B(s,b,p,PB.ACC_EXACT_GRANT)}}}
-function ba(s,b,p){if(!bX(s,'pact_chemotaxis'))return'opaque'
+function bb(s,b,p){if(!bX(s,'pact_chemotaxis'))return'opaque'
 var i
 for(i=0;i<b.pacts.length;i++){var q=b.pacts[i]
 if(!U(q))continue
@@ -5586,7 +5587,7 @@ if(!U(p))continue
 if(num(s.t)<num(p.endsAt))continue
 var phase=K(s)
 if(num(b.autoRenew)>0){B(s,b,p,honourAccord(p,phase))
-bb(s,'pactsHonoured',1)
+aT(s,'pactsHonoured',1)
 if(phase>=6)b.honouredP6=num(b.honouredP6)+1
 p.termPeriods=num(b.autoRenew)
 p.signedAt=num(s.t)
@@ -5594,7 +5595,7 @@ p.endsAt=num(s.t)+p.termPeriods*A().TERM_PERIOD_S
 continue
 }if(p.renewUntil===undefined){p.renewUntil=num(s.t)+PB.RENEW_WINDOW;continue}if(num(s.t)<p.renewUntil)continue
 B(s,b,p,honourAccord(p,phase))
-bb(s,'pactsHonoured',1)
+aT(s,'pactsHonoured',1)
 if(phase>=6)b.honouredP6=num(b.honouredP6)+1
 b.guildRep[p.guild]=C().clamp(b.guildRep[p.guild]+PB.REP_HONOUR_GUILD,0,PB.REP_MAX)
 b.bookRep=C().clamp(b.bookRep+PB.REP_HONOUR_BOOK,0,PB.REP_MAX)
@@ -5689,7 +5690,7 @@ var traits=aO(r,phase)
 if(aq&&aq.traits)traits=aq.traits.slice()
 var beta=bI(am.guild,am.def,traits,r)
 var q=aj(b,am.guild)*((aq&&aq.premium)||1)
-var name=am.def?am.def.name:'the '+aW(s,am.region).name.toLowerCase()+' at '+regionName(am.region)
+var name=am.def?am.def.name:'the '+aX(s,am.region).name.toLowerCase()+' at '+regionName(am.region)
 var dislikes=[]
 if(phase>=5){var k=r.int(PARTNERS.length)
 if(PARTNERS[k].id!==cb)dislikes.push(PARTNERS[k].id)}z(b,cb).dislikes=dislikes
@@ -5727,11 +5728,11 @@ var M=N(s,b,phase)
 var cp=aw(M,rng())
 if(!cp)return null
 return O(s,b,cp,{})}
-var ad={}
+var ae={}
 function bi(s,b){var act=l(b),i
 var cC=Math.floor(num(s.t))%PB.LEDGER_N
 for(i=0;i<act.length;i++){var p=act[i]
-if(!ad[p.id]||ad[p.id].length!==PB.LEDGER_N){ad[p.id]=new Float32Array(PB.LEDGER_N)}ad[p.id][cC]=p.guild===BROOD?num(p.rate):num(p.yield)}}
+if(!ae[p.id]||ae[p.id].length!==PB.LEDGER_N){ae[p.id]=new Float32Array(PB.LEDGER_N)}ae[p.id][cC]=p.guild===BROOD?num(p.rate):num(p.yield)}}
 function bs(s,b){var c=fc(s),i
 if(!(b.shocksFired&1)&&c>=PB.SHOCK_DRY_FC){for(i=0;i<b.pacts.length;i++){if(U(b.pacts[i])&&J(b.pacts[i])>=PB.SHOCK_DRY_BOND){b.shocksFired|=1
 b.dryFrom=num(s.t)
@@ -5765,11 +5766,13 @@ function aP(s,b,dt){var e=bookExposure(s)
 if(Math.abs(e.beta[0])>PB.HEDGE_TRIGGER){if(!b.betaHighSince)b.betaHighSince=num(s.t)}else b.betaHighSince=0
 if(!b.stableSince)b.stableSince=num(s.t)
 void dt}
-function stepPacts(ae,aq){var s=S()
-if(!s||s.act!==2||!(ae>0))return
+function stepPacts(Z,aq){var s=S()
+if(!s||s.act!==2||!(Z>0))return
 var b=u(s)
-if(!b||!b.slots)return
-var o=aq||{stochastic:!0,offline:!1}
+if(!b||!b.slots){var pm=passiveMineral(s)*Z
+if(pm>0){C().setStock(s.res,'minerals',num(s.res.minerals)+pm)
+aT(s,'mineralEarned',pm)}return
+}var o=aq||{stochastic:!0,offline:!1}
 var act,i
 D(s)
 b.phase=K(s)
@@ -5779,17 +5782,17 @@ for(i=0;i<act.length;i++){var d=cF(act[i].beta)
 act[i].shock=C().clamp(1+PB.SHOCK_GAIN*d,PB.SHOCK_LO,PB.SHOCK_HI)
 act[i].envStress=Math.max(0,-d)*PB.ENV_STRESS_K
 act[i].adverse=Math.max(0,-d)}aM(s,b)
-bn(s,b,ae)
-bp(s,b,ae,o)
-ak(s,b,ae,o)
-bg(s,b,ae,o)
+bn(s,b,Z)
+bp(s,b,Z,o)
+ak(s,b,Z,o)
+bg(s,b,Z,o)
 al(s,b)
-bq(s,b,ae,o)
-bh(s,b,ae,o)
-aU(s,b,ae)
+bq(s,b,Z,o)
+bh(s,b,Z,o)
+aV(s,b,Z)
 br(s,b)
 aA(s,b)
-if(!(o&&o.offline))aP(s,b,ae)
+if(!(o&&o.offline))aP(s,b,Z)
 ap(s,b,o)
 bi(s,b)}
 function step(dt,aq){var s=S()
@@ -5799,26 +5802,26 @@ var n=0
 while(acc>=PB.SLOW_DT&&n<PB.MAX_SUB){stepPacts(PB.SLOW_DT,aq)
 acc-=PB.SLOW_DT
 n++}if(acc>=PB.SLOW_DT){stepPacts(acc,aq);acc=0}}
-function stakeRequired(s,ch,termPeriods){return PB.STAKE_K*aV(s)*PB.STAKE_S*ch*(1+PB.STAKE_TERM*termPeriods)}
+function stakeRequired(s,ch,termPeriods){return PB.STAKE_K*aW(s)*PB.STAKE_S*ch*(1+PB.STAKE_TERM*termPeriods)}
 function setOfferChannels(Q,n){var s=S(),b=u(s)
-var o=Z(b,Q)
+var o=aa(b,Q)
 if(!o)return!1
 o.ch=C().clamp(Math.round(n),1,Math.min(PB.CH_MAX_PER_PACT,Math.max(1,channelsFree(s))))
 return o.ch}
 function setOfferTerm(Q,n){var s=S(),b=u(s)
-var o=Z(b,Q)
+var o=aa(b,Q)
 if(!o)return!1
 o.termPeriods=C().clamp(Math.round(n),PB.TERM_MIN,o.maxTerm)
 return o.termPeriods}
 function setOfferType(Q,bU){var s=S(),b=u(s)
-var o=Z(b,Q)
+var o=aa(b,Q)
 if(!o||o.guild!==ROOT)return!1
 var i
 for(i=0;i<ROOT_TYPES.length;i++)if(ROOT_TYPES[i].key===bU){o.rootType=i;return i}return!1}
 function sign(Q,ch,termPeriods){var s=S()
 if(!s||s.act!==2)return null
 var b=u(s)
-var o=Z(b,Q)
+var o=aa(b,Q)
 if(!o)return null
 if(l(b).length>=slots(s))return null
 var aI=C().clamp(Math.round(ch===undefined?o.ch:ch),1,PB.CH_MAX_PER_PACT)
@@ -5832,13 +5835,13 @@ b.pacts.push(p)
 b.offers.splice(b.offers.indexOf(o),1)
 z(b,p.partnerId).everSigned=1
 b.stableSince=num(s.t)
-bb(s,'contractsSigned',1)
+aT(s,'contractsSigned',1)
 bM('a2.first_pact',{partner:p.name})
 if(p.guild===GHOST)bM('a2.ghost',{partner:p.name,guild:'ghost'})
 feel('pact_sign',{guild:G(p).key})
 return p}
 function declineOffer(Q){var s=S(),b=u(s)
-var o=Z(b,Q)
+var o=aa(b,Q)
 if(!o)return!1
 z(b,o.partnerId).refuseUntil=num(s.t)+PB.OFFER_DECLINE_REFUSE
 b.declines=num(b.declines)+1
@@ -5858,7 +5861,7 @@ bk[aQ.id]=aQ
 var cq=Math.abs(aI-old)
 p.ch=aI
 if(aI>0){p.tenure=num(p.tenure)*Math.exp(-num(b.plasticity)*cq/Math.max(1,old))}p.bond=J(p)
-bb(s,'reallocations',1)
+aT(s,'reallocations',1)
 b.stableSince=num(s.t)
 feel('pact_scrub',{ch:aI})
 return aQ}
@@ -5870,7 +5873,7 @@ if(!p)return!1
 p.ch=t.ch
 p.tenure=t.tenure
 p.bond=J(p)
-bb(s,'reallocations',-1)
+aT(s,'reallocations',-1)
 delete bk[t.id]
 return!0}
 function sever(pactId){var s=S()
@@ -5921,7 +5924,7 @@ if(!p||!U(p))return!1
 if(num(s.t)<num(p.endsAt))return!1
 var phase=K(s)
 B(s,b,p,honourAccord(p,phase))
-bb(s,'pactsHonoured',1)
+aT(s,'pactsHonoured',1)
 if(phase>=6)b.honouredP6=num(b.honouredP6)+1
 b.guildRep[p.guild]=C().clamp(b.guildRep[p.guild]+PB.REP_HONOUR_GUILD,0,PB.REP_MAX)
 b.bookRep=C().clamp(b.bookRep+PB.REP_HONOUR_BOOK,0,PB.REP_MAX)
@@ -6006,7 +6009,7 @@ var gone=P(b,{1:-.9}).mult
 var trough=P(b,{2:-1}).mult
 var act=l(b),i,k,cu=[]
 for(i=0;i<act.length;i++){var row={id:act[i].id,name:act[i].name,glyph:G(act[i]).glyph,beta:[]}
-var bW=ba(s,b,act[i])
+var bW=bb(s,b,act[i])
 for(k=0;k<NFACTOR;k++){row.beta.push(bW==='opaque'?null:bW==='prior'?GUILDS[act[i].guild].beta[k]:num(act[i].beta[k]))}row.state=bW
 cu.push(row)}return{beta:base.beta,mult:base.mult,factors:F.slice(),names:FACTOR_NAME,shorts:ar,tests:[{label:'if it dries out',mult:cK},{label:'if the canopy goes',mult:gone},{label:'at the trough',mult:trough}],perPact:cu,forecast:HY.flush&&HY.flush.forecast?HY.flush.forecast(300):null}}
 function pips(n,max){var out='',i
@@ -6031,7 +6034,7 @@ return fmt(num(p.yield))}
 function rateUnit(p){return G(p).unit}
 function bv(s,b,p){var out=[],i
 for(i=0;i<3;i++){if(p.known&(1<<i)){var t=aB[p.traits[i]]
-out.push({known:!0,id:p.traits[i],label:t?t.label:p.traits[i],line:t?t.line:''})}else{out.push({known:!1,at:Math.round(aa(b)[i])})}}void s
+out.push({known:!0,id:p.traits[i],label:t?t.label:p.traits[i],line:t?t.line:''})}else{out.push({known:!1,at:Math.round(ab(b)[i])})}}void s
 return out}
 function termLeft(s,p){return Math.max(0,num(p.endsAt)-num(s.t))}
 function card(id){var s=S()
@@ -6041,11 +6044,11 @@ var p=R(b,id)
 if(!p)return null
 var g=G(p)
 var st=C().clamp(num(p.strain),0,1)
-var bL=ad[p.id]
+var bL=ae[p.id]
 var spark=[],i
 if(bL)for(i=0;i<PB.LEDGER_N;i++)spark.push(bL[i])
 var chMax=Math.min(PB.CH_MAX_PER_PACT,channelCap(s))
-var m={id:p.id,guild:g.key,glyph:g.glyph,name:p.name,note:p.state,state:p.state,ch:num(p.ch),chMax:chMax,pips:pips(num(p.ch),chMax),rate:p.guild===BROOD?num(p.rate):num(p.yield),rateText:rateText(s,p),rateUnit:rateUnit(p),spark:spark,bond:J(p),bondMult:ac(p),bondBar:bar(J(p)),strain:st,strainBar:bar(st),strainTicks:[PB.WARN_AT,PB.NOTICE_AT,1],caret:bK(num(p.dStrain)),warn:st>=PB.WARN_AT,traits:bv(s,b,p),termLeft:termLeft(s,p),termPeriods:num(p.termPeriods),notice:p.state==='notice'?{left:Math.max(0,PB.NOTICE_WINDOW-(num(s.t)-num(p.noticeAt))),demand:bc[p.guild].text,can:bc[p.guild].kind!=='none'}:null,demandAbout:p.demandAbout?{name:p.demandAbout.name,left:Math.max(0,PB.DEMAND_WINDOW-(num(s.t)-p.demandAbout.at))}:null,boundTo:p.boundTo?(R(b,p.boundTo)||{name:'a pact that is gone'}).name:null,severCost:severCost(p),renewable:num(s.t)>=num(p.endsAt),cost:num(p.cost)}
+var m={id:p.id,guild:g.key,glyph:g.glyph,name:p.name,note:p.state,state:p.state,ch:num(p.ch),chMax:chMax,pips:pips(num(p.ch),chMax),rate:p.guild===BROOD?num(p.rate):num(p.yield),rateText:rateText(s,p),rateUnit:rateUnit(p),spark:spark,bond:J(p),bondMult:ad(p),bondBar:bar(J(p)),strain:st,strainBar:bar(st),strainTicks:[PB.WARN_AT,PB.NOTICE_AT,1],caret:bK(num(p.dStrain)),warn:st>=PB.WARN_AT,traits:bv(s,b,p),termLeft:termLeft(s,p),termPeriods:num(p.termPeriods),notice:p.state==='notice'?{left:Math.max(0,PB.NOTICE_WINDOW-(num(s.t)-num(p.noticeAt))),demand:bc[p.guild].text,can:bc[p.guild].kind!=='none'}:null,demandAbout:p.demandAbout?{name:p.demandAbout.name,left:Math.max(0,PB.DEMAND_WINDOW-(num(s.t)-p.demandAbout.at))}:null,boundTo:p.boundTo?(R(b,p.boundTo)||{name:'a pact that is gone'}).name:null,severCost:severCost(p),renewable:num(s.t)>=num(p.endsAt),cost:num(p.cost)}
 m.aria=m.name+', '+g.label+' guild, '+m.ch+' of '+chMax+' channels, '+(m.rateText+' '+m.rateUnit).replace('×',' times ')+', bond '+m.bondMult.toFixed(2)+' times, strain '+st.toFixed(2)+' '+(num(p.dStrain)>0?'rising':'falling')+', '+Math.round(m.termLeft/60)+' minutes remaining'
 return m}
 function list(){var s=S()
@@ -6067,7 +6070,7 @@ var p=R(b,id)
 if(!p)return null
 var c=card(id)
 var tm=p.strainTerms||strainTerms(s,b,p)
-var bW=ba(s,b,p)
+var bW=bb(s,b,p)
 var ct=[],k
 for(k=0;k<NFACTOR;k++){ct.push({name:FACTOR_NAME[k],value:bW==='opaque'?null:bW==='prior'?GUILDS[p.guild].beta[k]:num(p.beta[k]),band:bW==='banded'?PB.BETA_SD:0,state:bW})}c.strainBreakdown=[{label:'unpaid',v:tm.unpaid},{label:'exposure',v:tm.exposure},{label:'crowding',v:tm.crowding},{label:'neglect',v:tm.neglect},{label:'bond relief',v:tm.relief},{label:'baseline',v:tm.baseline},{label:'net',v:tm.net*PB.STRAIN_RATE*100}]
 c.exposure=ct
@@ -6145,7 +6148,7 @@ function init(st){var s=st||S()
 if(!s)return
 u(s)
 acc=0
-ad={}
+ae={}
 bk={}
 bN=C().rng(C().hash32(num(s.seed),'pactbook'))
 if(s.a2)D(s)}
@@ -6157,7 +6160,7 @@ void ce
 return bx}
 function reboot(){var s=S()
 acc=0
-ad={}
+ae={}
 bk={}
 if(s&&s.a2){s.a2.pact={};u(s)}if(s&&s.mult){s.mult.ripenessFloor=0}F=[0,0,0,0,0]
 gross=0;congestion=1;bookCost=0}
@@ -10848,7 +10851,7 @@ function bC(){return HY.log}
 function M(){return HY.canvas}
 function iM(){return HY.feel}
 var U={PLATE_FRAC:[.38,.22,.18],PLATE_MIN_PX:40,PLATE_AUTO_PX:40,D_BODY_FRAC:212/844,CONSOLE_ROWS:7,LEDGER_MAX_ROWS:4,D_PRESS:70,D_STATE:120,D_FADE:180,D_RELEASE:220,D_MOVE:240,D_REVEAL:320,D_ACT:2600,SEQ_DIM_MS:280,SEQ_END_MS:600,SHORT_EPS:.005,SHORT_HOLD_MS:1200,PRICE_TICK_MS:4e3,ROW_SEAT_PX:8,FAB_PX:64,LONGPRESS_MS:420,LONGPRESS_SLOP_PX:10,PRESS_SLOP_PX:10,CHARGE_SLOP_PX:28,HAP_RIPE:5,DESTRUCT_MS:400,REPEAT_DELAY_MS:500,REPEAT_MS_1:167,REPEAT_MS_2:83,REPEAT_ACCEL_MS:1500,REPEAT_HAPTIC_EVERY:3,COST_SETTLE_MS:220,SWIPE_DISMISS_PX:96,TOAST_MS:2600,DOT_SEEN_MS:1200,DOT_SEEN_FRAC:.5,FLASH_GAIN_MS:150,FLASH_LOSS_MS:90,HAP_PRESS:8,HAP_REPEAT:4,HAP_HOLD:18,HAP_DESTRUCT:22,HAP_REVEAL:8,HAP_ERROR:4,HAP_ACT:[12,12,30],DISPLAY_MS:100,RATE_TAU_S:1.6,RATE_ZERO:1e-6,FINE:5,ARIA_STRIP_MS:3e3,ARIA_CANVAS_MS:5e3,ARIA_STATUS_MS:5e3,SCROLL_QUIET_MS:120,DPR_MAX:2,PIPS:5,ASCII_N:20,ASCII_FULL:'▓',ASCII_HEAD:'▒',ASCII_EMPTY:'░',SPARK:'▁▂▃▄▅▆▇█',SPARK_N:8,BURST_5_AT:5,BURST_MAX_AT:20,BURST_MAX_STEPS:64,MARKET_BUY_G:[1e3,1e4],MARKET_FRAC:.25,SUGAR_WARN_FRAC:.85,COVER_WARN:.75,SIGNAL_METER_AT:.5,SLIDER_STEPS:100,SOONER:-1,LATER:1,STANDS_SHOWN:10,STANDS_FRONTIER:4,FLUSH_BET_MAX:.25,FLUSH_BET_DEFAULT:.4,BANK_FRACS:[.1,.25],BANDS_SHOWN:13,COMMIT_DEFAULT:60,ALLOC_STEPS:20,ENGAGE_WARN:.9,STELLAR_WARN_S:40}
-var z={floorCover:'cover',floorWater:'held water',floorMix:'variety',beyond:'more than you can hold',reabsorb:'reabsorb',holds:'would hold',extend:'extend',biomass:'biomass',labile:'labile',sugar:'sugar',minerals:'minerals',netSugar:'after food',rot:'rot',settings:'settings',p_floor:'the floor',p_tips:'hyphal tips',p_market:'the litter market',p_seasons:'the year',p_understory:'the understory',p_adaptations:'adaptations',notNow:'not now',p_patches:'patches',p_signal:'signal',growTip:'grow tip',nextTip:'next tip',deadhead:'deadhead',deadheadNote:'−{n} tips · −{g} · +{b} labile',litterEaten:'litter eaten',utilisation:'utilisation',ofWhatFalls:'of what falls here',conduction:'conduction',onFloor:'on the floor',forSale:'for sale',roomFor:'of {v} it holds',fair:'fair',sell:'sell',buy:'buy',all:'all',max:'max',sooner:'eat sooner',later:'eat later',eaten:'eaten {n}',moisture:'moisture',left:'left',warmth:'warmth',year:'year {n}',volume:'volume',term:'term',collateral:'collateral',exclusive:'exclusive',youPay:'you pay',youGet:'you get',overTerm:'over term',coverage:'coverage',collBuys:'collateral buys',collEffect:'rate +{r}% · book +{b}%',collNone:'nothing yet',collHeld:'it raises the rate and what the tree will take. held, not spent — back when the '+'term ends; the tree keeps it if you default.',sign:'sign',renegotiate:'renegotiate',exit:'exit',accept:'accept',decline:'decline',deficit:'deficit',standing:'standing',delivered:'delivered',shortfall:'shortfall',suspended:'suspended',contractsN:'{n} contracts',atMost:'{v} at most, {n} seasons',claim:'claim',claiming:'claiming',places:'{n} / {k}',needsStanding:'needs {n} rep',notTalking:'will not talk for {t}',short:'{n} short',skip:'tap to continue',floorBare:'the floor is bare',toEmpty:'left',owed:'owed',nothing:'—',decide:'decide',minNone:'nothing pays you this yet',minIdle:'no tree is paying',seasons:'{n} seasons',theme:'theme',haptics:'haptics',motion:'motion',slow:'slow',verbose:'spoken status',tier:'detail',textSize:'text size',uiPick:'interface',uiOld:'old (going away)',uiNew:'current',acctFrom:'comes from',acctTo:'goes to',acctNet:'net',acctNone:'nothing has moved it in the last minute.',acctWhyDown:'{a} takes more than {b} brings.',acctWhyUp:'{b} carries it.',acctWhyOnly:'only {a} moves it.',acctPerS:'{n}/s',nextDecide:'decide is held below. it does not undo.',nextAfford:'{name} is within reach.',nextGather:'something is gathering. {t}.',nextBare:'the floor is bare. more is for sale, under grow.',nextCeiling:'{name}: {n} Σ. you hold at most {cap}. the forest makes room.',forestYou:'the forest is {p}% you.',standingOn:'standing order',standingRunning:'buying for you',standingPaused:'paused. the floor is yours to keep',nextShortMin2:'{name}: {n} short. here, minerals come from root pacts, and from every stand you hold.',signNothing:'at that size it pays nothing',covOk:'you make {make} {u}; the trees would take {take}. room to spare.',covTight:'you make {make} {u}; the trees would take {take}. a bad season and it defaults.',covOver:'you make {make} {u}; the trees would take {take}. this defaults.',signNo:'the tree will not sign these terms',nextGatherNo:'something is gathering.',nextShort:'{name}: {n} short.',nextShortEta:'{name}: {n} short, about {t} at this rate.',nextShortMin:'{name}: {n} short. minerals come from the trees, under bargain.',nextShortMinNone:'{name}: {n} short. nothing pays minerals yet.',nextTipName:'a tip',dGrow:'grow',dLearn:'learn',dBargain:'bargain',nextRipe:'{name} is ripe. it is losing spores while it waits.',nextOffer:'an offer is waiting in the pact book.',nextOffers:'{n} offers are waiting in the pact book.',nextDFree:'{n} {u} of differentiation unspent.',nextEnding:'{name} is open. it does not undo.',nextCond:'{name}: {cond} {have} of {want}.',readRipe:'{n} ripe',readOffers:'{n} offers',readFull:'full',readPct:'{n}%',readD:'{n} {u}',readBands:'{n}/{m}',save:'save',reset:'reset',auto:'auto',dark:'dark',light:'light',on:'on',off:'off',high:'high',med:'med',low:'low',textSizeNote:'text follows the size the phone is set to.',copy:'copy',load:'load',done:'done',resetNote:'this ends the run. everything but the sclerotia goes.',toastCopied:'save copied',toastImportBad:'import failed — checksum',toastReset:'settings reset',p_forest:'the forest',p_stands:'stands',p_mind:'the mind',p_diff:'differentiation',p_flush:'the flush',p_weather:'weather',p_pact:'the pact book',p_offers:'offers',p_log:'the log',consumed:'consumed',interface_:'live interface',area:'m²',connectivity:'connectivity',retention:'retention',stands:'{n} / 61',advance:'advance',denser:'denser',survey:'survey',showAll:'show all {n}',showFewer:'show fewer',seed:'seed',kill:'kill stand',colonising:'colonising',density:'density',litter:'litter',humus:'humus',unknown:'unsurveyed',fog:'nothing there yet',dead:'dead',capacity:'capacity',saturated:'saturated',filling:'filling',saturation:'saturation',gain:'gain',slots:'slots',toFull:'to full',ripeness:'ripeness',insight:'insight',vesicles:'vesicles',lagAxis:'distance',unspent:'unspent',allocate:'spend',pulse:'pulse',ready:'ready',pulseSpends:'spends {v} of the pool',pulseNote:'a pulse spends over half the pool. insight stops until it is full again.',cooling:'{v}',wind:'wind',graze:'grazing',mast:'mast year',maturity:'maturity',release:'release',ripeNow:'ripe — release now',hold:'hold',resume:'resume',riskNow:'risk',bestIn:'best in {v}',slotsUsed:'{n} / {k}',spores:'spores',noPrimordia:'nothing is fruiting. knot one, and the weather decides the rest.',fruit:'fruit',slotsFull:'every slot is knotted',seedBank:'seed bank',spare:'spare',nothingSpare:'nothing spare',bankNote:'labile carbon banked as spores, {g} each. banked spores do not decay, and '+'the grams the discharge asks for are never touched.',channels:'channels',accord:'accord',bookCost:'book cost',strain:'strain',bond:'bond',comply:'comply',sever:'sever',renew:'renew',stake:'stake',noPacts:'nobody has offered you anything yet.',noPactsYet:'nothing signed. something below is waiting for an answer.',noOffers:'no offers on the table.',termLeft:'{v} left',channelsOf:'{n} / {k}',offerTerm:'term',rootType:'root type',forecast:'forecast',forecastNone:'nothing is knotted, so there is nothing to forecast.',keyNow:'now',keyPast:'measured',keySoon:'forecast',keyDry:'too dry',keyWet:'too wet',keyGraze:'grazing',mapKey:'held stands are filled; the frontier is outlined; a dotted edge is a barrier.',collapseMap:'collapse the map',expandMap:'expand the map',openBody:'open the body',closeBody:'close the body',p_canopy:'the canopy',p_void:'the void',p_bands:'bands',p_genome:'the genome',p_loci:'loci',p_fleet:'the fleet',p_mortality:'what kills you',p_hazards:'the six hazards',p_lineages:'lineages',p_engage:'engagements',p_successor:'the successor',p_synchrony:'synchrony',p_endings:'endings',t_void:'void',t_genome:'genome',t_fleet:'fleet',t_lineages:'lineages',carbon:'carbon',craft:'craft',alleles:'alleles',biome:'biome',settle:'settle',reach:'reach',escape:'escape',reached:'reached',unreached:'not reached',needsFirst:'needs another adaptation',tierShort:'{n} biomes first',canopyNote:'spores land where you put them. every one you settle is carbon the void will '+'need, and the canopy does not refill.',escapeNote:'nothing here comes with you but the craft, the carbon and what you have learned.',band:'band {n}',explored:'explored',occupancy:'occupancy',surplus:'surplus',richness:'richness',resource:'resource',harvest:'harvest',subsist:'subsistence',nStar:'best count',yours:'yours',wild:'wild',stellar:'stellar event in {v}',noBands:'the void is dark. nothing has been looked at yet.',voidKey:'a solid arc is yours; a dashed arc is wild; the ring is the part you have looked at.',allocation:'allocation',replicate:'replicate',disperse:'disperse',disperseLocked:'nowhere to disperse to yet. thrust, past the canopy, opens it.',bank:'bank',allocNote:'every gram of surplus goes to one of three places, and the split is the act.',craftMass:'craft mass',fidelity:'fidelity',genomeLen:'length',lociFree:'{n} unplaced',lociCost:'next locus',raiseCap:'raise cap',regenome:'regenome',rewriting:'rewriting · {v}',regenomeNote:'a regenome empties every locus and gives you the window to place them again.',genomeNote:'longer genomes cost mass, and mass is subsistence. eight axes, and no build '+'takes more than four of them.',deaths:'dead, last {v}',noDeaths:'nothing has died yet.',strainName:'strain',sequenced:'sequenced',unsequenced:'unsequenced',sequence:'sequence',engage:'engage',predictLine:'you win with {v} left',predictLose:'you lose · {v} of theirs left',predictWide:'unsequenced: anywhere from {lo} to {hi}',resolveIn:'resolves in {v}',commit:'commit',reinforce:'reinforce',withdraw:'withdraw',purge:'purge',absorb:'absorb',quarantine:'quarantine',drifted:'drift {v}',theirMass:'theirs',distance:'distance {n}',noStrains:'nothing has diverged from you yet.',successorAge:'age {v}',inEngagement:'engaged',engageFull:'you can only fight {n} at a time',upsilon:'synchrony',phase:'phase',period:'period',entrainNote:'a pulse drags the band it lands on toward the phase it arrived carrying.',endTake:'hold to take',endTaken:'taken',endShort:'{n} to go',wheelKey:'each dot is a band; the line is where the fleet as a whole is pointing.',newGrowth:'new growth',sclerotium:'sclerotia',dismantling:'dismantling'}
+var z={floorCover:'cover',floorWater:'held water',floorMix:'variety',beyond:'more than you can hold',reabsorb:'reabsorb',holds:'would hold',extend:'extend',biomass:'biomass',labile:'labile',sugar:'sugar',minerals:'minerals',netSugar:'after food',rot:'rot',settings:'settings',p_floor:'the floor',p_tips:'hyphal tips',p_market:'the litter market',p_seasons:'the year',p_understory:'the understory',p_adaptations:'adaptations',notNow:'not now',p_patches:'patches',p_signal:'signal',growTip:'grow tip',nextTip:'next tip',deadhead:'deadhead',deadheadNote:'−{n} tips · −{g} · +{b} labile',litterEaten:'litter eaten',utilisation:'utilisation',ofWhatFalls:'of what falls here',conduction:'conduction',onFloor:'on the floor',forSale:'for sale',roomFor:'of {v} it holds',fair:'fair',sell:'sell',buy:'buy',all:'all',max:'max',sooner:'eat sooner',later:'eat later',eaten:'eaten {n}',moisture:'moisture',left:'left',warmth:'warmth',year:'year {n}',volume:'volume',term:'term',collateral:'collateral',exclusive:'exclusive',youPay:'you pay',youGet:'you get',overTerm:'over term',coverage:'coverage',collBuys:'collateral buys',collEffect:'rate +{r}% · book +{b}%',collNone:'nothing yet',collHeld:'it raises the rate and what the tree will take. held, not spent — back when the '+'term ends; the tree keeps it if you default.',sign:'sign',renegotiate:'renegotiate',exit:'exit',accept:'accept',decline:'decline',deficit:'deficit',standing:'standing',delivered:'delivered',shortfall:'shortfall',suspended:'suspended',contractsN:'{n} contracts',atMost:'{v} at most, {n} seasons',claim:'claim',claiming:'claiming',places:'{n} / {k}',needsStanding:'needs {n} rep',notTalking:'will not talk for {t}',short:'{n} short',skip:'tap to continue',floorBare:'the floor is bare',toEmpty:'left',owed:'owed',nothing:'—',decide:'decide',minNone:'nothing pays you this yet',minIdle:'no tree is paying',seasons:'{n} seasons',theme:'theme',haptics:'haptics',motion:'motion',slow:'slow',verbose:'spoken status',tier:'detail',textSize:'text size',uiPick:'interface',uiOld:'old (going away)',uiNew:'current',acctFrom:'comes from',acctTo:'goes to',acctNet:'net',acctNone:'nothing has moved it in the last minute.',acctWhyDown:'{a} takes more than {b} brings.',acctWhyUp:'{b} carries it.',acctWhyOnly:'only {a} moves it.',acctPerS:'{n}/s',nextDecide:'decide is held below. it does not undo.',nextAfford:'{name} is within reach.',nextGather:'something is gathering. {t}.',nextBare:'the floor is bare. more is for sale, under grow.',nextCeiling:'{name}: {n} Σ. you hold at most {cap}. the forest makes room.',forestYou:'the forest is {p}% you.',standingOn:'standing order',standingRunning:'buying for you',standingPaused:'paused. the floor is yours to keep',nextShortMin2:'{name}: {n} short. the roots are yours; every stand you hold draws more.',signNothing:'at that size it pays nothing',covOk:'you make {make} {u}; the trees would take {take}. room to spare.',covTight:'you make {make} {u}; the trees would take {take}. a bad season and it defaults.',covOver:'you make {make} {u}; the trees would take {take}. this defaults.',signNo:'the tree will not sign these terms',nextGatherNo:'something is gathering.',nextShort:'{name}: {n} short.',nextShortEta:'{name}: {n} short, about {t} at this rate.',nextShortMin:'{name}: {n} short. minerals come from the trees, under bargain.',nextShortMinNone:'{name}: {n} short. nothing pays minerals yet.',nextTipName:'a tip',dGrow:'grow',dLearn:'learn',dBargain:'bargain',nextRipe:'{name} is ripe. it is losing spores while it waits.',nextOffer:'an offer is waiting in the pact book.',nextOffers:'{n} offers are waiting in the pact book.',nextDFree:'{n} {u} of differentiation unspent.',nextEnding:'{name} is open. it does not undo.',nextCond:'{name}: {cond} {have} of {want}.',readRipe:'{n} ripe',readOffers:'{n} offers',readFull:'full',readPct:'{n}%',readD:'{n} {u}',readBands:'{n}/{m}',save:'save',reset:'reset',auto:'auto',dark:'dark',light:'light',on:'on',off:'off',high:'high',med:'med',low:'low',textSizeNote:'text follows the size the phone is set to.',copy:'copy',load:'load',done:'done',resetNote:'this ends the run. everything but the sclerotia goes.',toastCopied:'save copied',toastImportBad:'import failed — checksum',toastReset:'settings reset',p_forest:'the forest',p_stands:'stands',p_mind:'the mind',p_diff:'differentiation',p_flush:'the flush',p_weather:'weather',p_pact:'the pact book',p_offers:'offers',p_log:'the log',consumed:'consumed',interface_:'live interface',area:'m²',connectivity:'connectivity',retention:'retention',stands:'{n} / 61',advance:'advance',denser:'denser',survey:'survey',showAll:'show all {n}',showFewer:'show fewer',seed:'seed',kill:'kill stand',colonising:'colonising',density:'density',litter:'litter',humus:'humus',unknown:'unsurveyed',fog:'nothing there yet',dead:'dead',capacity:'capacity',saturated:'saturated',filling:'filling',saturation:'saturation',gain:'gain',slots:'slots',toFull:'to full',ripeness:'ripeness',insight:'insight',vesicles:'vesicles',lagAxis:'distance',unspent:'unspent',allocate:'spend',pulse:'pulse',ready:'ready',pulseSpends:'spends {v} of the pool',pulseNote:'a pulse spends over half the pool. insight stops until it is full again.',cooling:'{v}',wind:'wind',graze:'grazing',mast:'mast year',maturity:'maturity',release:'release',ripeNow:'ripe — release now',hold:'hold',resume:'resume',riskNow:'risk',bestIn:'best in {v}',slotsUsed:'{n} / {k}',spores:'spores',noPrimordia:'nothing is fruiting. knot one, and the weather decides the rest.',fruit:'fruit',slotsFull:'every slot is knotted',seedBank:'seed bank',spare:'spare',nothingSpare:'nothing spare',bankNote:'labile carbon banked as spores, {g} each. banked spores do not decay, and '+'the grams the discharge asks for are never touched.',channels:'channels',accord:'accord',bookCost:'book cost',strain:'strain',bond:'bond',comply:'comply',sever:'sever',renew:'renew',stake:'stake',noPacts:'nobody has offered you anything yet.',noPactsYet:'nothing signed. something below is waiting for an answer.',noOffers:'no offers on the table.',termLeft:'{v} left',channelsOf:'{n} / {k}',offerTerm:'term',rootType:'root type',forecast:'forecast',forecastNone:'nothing is knotted, so there is nothing to forecast.',keyNow:'now',keyPast:'measured',keySoon:'forecast',keyDry:'too dry',keyWet:'too wet',keyGraze:'grazing',mapKey:'held stands are filled; the frontier is outlined; a dotted edge is a barrier.',collapseMap:'collapse the map',expandMap:'expand the map',openBody:'open the body',closeBody:'close the body',p_canopy:'the canopy',p_void:'the void',p_bands:'bands',p_genome:'the genome',p_loci:'loci',p_fleet:'the fleet',p_mortality:'what kills you',p_hazards:'the six hazards',p_lineages:'lineages',p_engage:'engagements',p_successor:'the successor',p_synchrony:'synchrony',p_endings:'endings',t_void:'void',t_genome:'genome',t_fleet:'fleet',t_lineages:'lineages',carbon:'carbon',craft:'craft',alleles:'alleles',biome:'biome',settle:'settle',reach:'reach',escape:'escape',reached:'reached',unreached:'not reached',needsFirst:'needs another adaptation',tierShort:'{n} biomes first',canopyNote:'spores land where you put them. every one you settle is carbon the void will '+'need, and the canopy does not refill.',escapeNote:'nothing here comes with you but the craft, the carbon and what you have learned.',band:'band {n}',explored:'explored',occupancy:'occupancy',surplus:'surplus',richness:'richness',resource:'resource',harvest:'harvest',subsist:'subsistence',nStar:'best count',yours:'yours',wild:'wild',stellar:'stellar event in {v}',noBands:'the void is dark. nothing has been looked at yet.',voidKey:'a solid arc is yours; a dashed arc is wild; the ring is the part you have looked at.',allocation:'allocation',replicate:'replicate',disperse:'disperse',disperseLocked:'nowhere to disperse to yet. thrust, past the canopy, opens it.',bank:'bank',allocNote:'every gram of surplus goes to one of three places, and the split is the act.',craftMass:'craft mass',fidelity:'fidelity',genomeLen:'length',lociFree:'{n} unplaced',lociCost:'next locus',raiseCap:'raise cap',regenome:'regenome',rewriting:'rewriting · {v}',regenomeNote:'a regenome empties every locus and gives you the window to place them again.',genomeNote:'longer genomes cost mass, and mass is subsistence. eight axes, and no build '+'takes more than four of them.',deaths:'dead, last {v}',noDeaths:'nothing has died yet.',strainName:'strain',sequenced:'sequenced',unsequenced:'unsequenced',sequence:'sequence',engage:'engage',predictLine:'you win with {v} left',predictLose:'you lose · {v} of theirs left',predictWide:'unsequenced: anywhere from {lo} to {hi}',resolveIn:'resolves in {v}',commit:'commit',reinforce:'reinforce',withdraw:'withdraw',purge:'purge',absorb:'absorb',quarantine:'quarantine',drifted:'drift {v}',theirMass:'theirs',distance:'distance {n}',noStrains:'nothing has diverged from you yet.',successorAge:'age {v}',inEngagement:'engaged',engageFull:'you can only fight {n} at a time',upsilon:'synchrony',phase:'phase',period:'period',entrainNote:'a pulse drags the band it lands on toward the phase it arrived carrying.',endTake:'hold to take',endTaken:'taken',endShort:'{n} to go',wheelKey:'each dot is a band; the line is where the fleet as a whole is pointing.',newGrowth:'new growth',sclerotium:'sclerotia',dismantling:'dismantling'}
 var db={leaf:'quick and thin. while it lies here, the floor stays damp.',needle:'slow and sour. it keeps the ground from drying too.',twig:'a middling meal. more sugar than leaf, less water held.',bark:'tough going. there is a little mineral in it.',log:'slow and rich. it holds water through a dry season.',stump:'the longest meal on the floor. it holds water too.',carrion:'minerals, fast. it does not last.'}
 var de={leaf:'leaf litter',needle:'needle mat',twig:'fine deadfall',bark:'bark slough',log:'fallen log',stump:'heartwood stump',carrion:'carrion'}
 var ax={birch:'birch',aspen:'aspen',fir:'douglas fir',hemlock:'hemlock',oak:'oak',elm:'dying elm',beech:'hollow beech'}
@@ -11192,7 +11195,7 @@ body.appendChild(R.__empty)}setText(R.__empty,text||'')
 show(R.__empty,!0)},unempty:function(){if(R.__empty)show(R.__empty,!1)}}
 if(spec.count!==undefined)R.setCount(spec.count)
 return R}
-function co(entry){return!!entry&&(entry.note==='a decision'||(entry.tags&&entry.tags.indexOf('irreversible')>=0))}
+function co(entry){return!!entry&&(entry.note==='a decision'||(entry.kinds&&entry.kinds.indexOf('irreversible')>=0))}
 function card(spec){spec=spec||{}
 var n=btn('card')
 n.dataset.id=spec.id||''
