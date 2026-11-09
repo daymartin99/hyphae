@@ -257,6 +257,18 @@
     STANDING_EMA_S: 60,       // s, the smoothing on what the standing order actually spends      // × fair value: the default most it will pay per gram, penalty included
     STANDING_FLOOR: 0.15,     // × cap: the stock level below which the standing order stops buying
     STANDING_MAX_FRAC: 0.02,  // × cap per second: the automated fill rate
+    // THE AWAY KEEPER (11 §1, v2.5). Before Standing Order, closing the app cut income to about an
+    // eighth (measured: 25 min in, one hour away banked 12% of the playing rate), because food is
+    // bought by hand. While the player is away, and only then, the colony buys for itself: a slower
+    // fill, a tighter ceiling, the same markup, and only from a share of the savings plus half of
+    // what comes in. Active play is untouched — an earlier Standing Order collapsed the floor in the bots.
+    AWAY_RATE: 0.05,           // × STANDING_MAX_FRAC
+    AWAY_CEIL: 1.10,          // × fair value, markup included
+    AWAY_SHARE: 0.3,          // × sugar earned while away: what it may spend of the income
+    AWAY_SEED: 0.25,          // × the sugar left behind: the most of the savings it may spend
+                              // (sugar comes from digesting food, so with none of the bank it never starts)
+    AWAY_FLOOR: 0.15,         // × cap: it keeps the floor from going bare, it does not stock it
+    AWAY_AFTER_BUYS: 25,      // it only keeps a market the player has learned by hand
     // THE PRICE-IMPACT CEILING, in units of `fair`, per second of market time.
     //
     // `08` §3.4 publishes the walk in four lines and there is no trade-impact term in it; the
@@ -713,10 +725,14 @@
     // Feeding it ten-second offline steps would draw two hours of absence as two minutes of history.
     var record = (h === MK.STEP_S)
     var auto = flag(s, 'standing_order') && !flag(s, 'standing_paused')
+    // A paused order is the player's choice and is respected while away too.
+    var keeper = !auto && p.offline && !flag(s, 'standing_order') &&
+      num(s.stats.purchases) >= MK.AWAY_AFTER_BUYS
     for (i = 0; i < n; i++) {
       walkStep(c, p.stochastic)
       if (record) sample()
       if (auto) standingOrder(h)
+      else if (keeper) standingOrder(h, true)
     }
   }
 
@@ -783,8 +799,17 @@
     standing[type] = { ceil: priceCeil, floor: stockFloor }
   }
 
-  function standingOrder (h) {
+  function standingOrder (h, keeper) {
     var s = S(), i, k, cfg, cap, ceil, floor, want, unit, got, spent = 0
+    var budget = Infinity
+    if (keeper) {
+      // No reserve for the signed terms: digestion is where their sugar comes from, so a keeper
+      // that guarded it left the floor bare and the terms short anyway (measured, 25 min in: 8.75
+      // sug/s owed against 1,030 held, and the keeper never bought a gram).
+      // A share of the sugar on hand, whenever it looks: food and the terms split what flows in.
+      budget = MK.AWAY_SHARE * s.res.sugar
+      if (!(budget > 0)) return
+    }
     for (i = 0; i < TYPES.length; i++) {
       k = TYPES[i]
       if (!unlocked(k)) continue
@@ -794,12 +819,15 @@
       // included, fair value meant a market anywhere near fair was "too dear", so the order sat
       // idle and the floor went bare under it (invested rerun: "the automation doesn't seem to
       // run"; measured, 45 of 120 away-minutes bare with or without it). It buys badly, as sold.
-      ceil = isFinite(cfg.ceil) ? cfg.ceil : fairValue(k) * MK.STANDING_CEIL
-      floor = isFinite(cfg.floor) ? cfg.floor : MK.STANDING_FLOOR * cap
+      ceil = keeper ? fairValue(k) * MK.AWAY_CEIL
+        : isFinite(cfg.ceil) ? cfg.ceil : fairValue(k) * MK.STANDING_CEIL
+      floor = keeper ? MK.AWAY_FLOOR * cap
+        : isFinite(cfg.floor) ? cfg.floor : MK.STANDING_FLOOR * cap
       unit = unitPrice(k) * MK.STANDING_PENALTY
       if (!(unit > 0) || unit > ceil) continue
       if (num(s.a1.sub[k]) >= floor) continue
-      want = Math.min(MK.STANDING_MAX_FRAC * cap * h, s.res.sugar / unit)
+      want = Math.min(MK.STANDING_MAX_FRAC * (keeper ? MK.AWAY_RATE : 1) * cap * h,
+        Math.min(s.res.sugar, budget) / unit)
       if (want < MK.MIN_TRADE_G) continue
       // The 8% is charged on what was actually filled, after the fill, so `buy` stays the one path
       // through which a gram of substrate can ever be acquired.
@@ -808,8 +836,11 @@
         C().setStock(s.res, 'sugar',
           s.res.sugar - got * unitPrice(k) * (MK.STANDING_PENALTY - 1))
         spent += got * unitPrice(k) * MK.STANDING_PENALTY
+        budget -= got * unitPrice(k) * MK.STANDING_PENALTY
+        if (keeper) awaySpent += got * unitPrice(k) * MK.STANDING_PENALTY
       }
     }
+    if (keeper) return              // the keeper is not the order: it leaves the order's rate alone
     // What the order really spends, smoothed over about a minute: the feedstock estimate prices the
     // floor at the cheapest litter, and the order pays the market plus its markup, so coverage read
     // "room to spare" over books it was starving (act3b run, Robin: three defaults on that line).
@@ -817,6 +848,13 @@
     standingRate = standingRate * (1 - a) + (h > 0 ? spent / h : 0) * a
   }
   var standingRate = 0
+
+  // The sugar on hand when the player left, set by loop.reconcileOffline around the offline sim and
+  // cleared after it. awaySpent is what the keeper has spent since, so "half of what came in" is
+  // measured against everything that came in, including what it already spent.
+  var awayBank = null
+  var awaySpent = 0
+  function setAwayBank (v) { awayBank = v === null || v === undefined ? null : num(v); awaySpent = 0 }
 
   // ───────────────────────────────────────────────────────────────────────────
   // THE ACT II MINERAL EXCHANGE (02 §10.4) — the same walk, demoted to one pair
@@ -2637,6 +2675,7 @@
   // ───────────────────────────────────────────────────────────────────────────
 
   HY.economy1 = {
+    setAwayBank: setAwayBank,
     // BIBLE §6 M7's surface
     stepMarket: stepMarket,
     // The player's own verbs are filed under the verb (core flowed): the ledger's accounts.

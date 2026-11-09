@@ -1966,6 +1966,16 @@ canvas{ display:block; }
 .away-line[data-tone="warn"]{ color:var(--attention-text); }
 .away-line[data-tone="neg"]{ color:var(--negative-text); }
 .sheet-away .sheet-btn{ background:var(--text-max); color:var(--bg); border-color:var(--text-max); }
+/* Each act dresses it in its own light. Act I is soil and amber (above). Act II is the network:
+   the signal's colour on the edge, the kicker and the gains. Act III is already the void (the
+   root palette changes there); the card keeps only a thin pale edge and an italic headline. */
+.sheet-away[data-act="2"]{ border-top-color:var(--signal); }
+.sheet-away[data-act="2"] .sheet-title{ color:var(--signal-text); }
+.sheet-away[data-act="2"] .away-val{ color:var(--signal-text); }
+.sheet-away[data-act="2"] .away-gains{ border-color:var(--signal-wash); }
+.sheet-away[data-act="3"]{ border-top:1px solid var(--text-max); }
+.sheet-away[data-act="3"] .away-when{ font-style:italic; }
+.sheet-away[data-act="3"] .away-val{ color:var(--text-max); }
 /* Taking it: the ledger lights once as the gains land on it. */
 @keyframes away-take{ 0%{ background-color:transparent } 25%{ background-color:var(--surface-press) }
   100%{ background-color:transparent } }

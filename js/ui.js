@@ -2962,9 +2962,18 @@
       add(STR.awayPsi, g.insight, c.fmt(g.insight) + ' \u03a8')
     }
     var taken = false
+    var helloed = false
+    function hello () {
+      var f = FEEL()
+      if (helloed || !f || !f.feel) return
+      // Only counted as said when the audio could actually say it: locked audio defers it to the tap.
+      var audible = f.ready && f.mode !== 'off'
+      if (f.feel('away.hello') && audible) helloed = true
+    }
     function take () {
       if (taken) return
       taken = true
+      hello()                           // a cold start's audio unlocks on this touch
       setData(view.shell, 'taken', '1')
       setTimeout(function () { if (view) delete view.shell.dataset.taken }, 1600)
       presenceBeat()
@@ -2976,7 +2985,11 @@
       title: STR.awayKicker,
       buttons: [{ label: STR.awayTake, onPick: function (api) { take(); api.close() } }],
       build: function (body) {
-        if (r.awayText) body.appendChild(el('p', 'away-when', interp(STR.awayGone, { t: r.awayText })))
+        if (r.awayText) {
+          var gone = interp(STR.awayGone, { t: r.awayText })
+          if (r.act >= 2) gone = gone.charAt(0).toUpperCase() + gone.slice(1)
+          body.appendChild(el('p', 'away-when', gone))
+        }
         if (rows.length) {
           var grid = el('div', 'away-gains')
           rows.forEach(function (row) {
@@ -3006,10 +3019,14 @@
       }
     })
     sh.el.classList.add('sheet-away')
+    // Dressed for the act it opens on: soil and amber, then the network's light, then the void.
+    setData(sh.el, 'act', String(r.act || 1))
     // A scrim tap or a swipe is also taking it: the gains are already yours either way.
     var close0 = sh.close
     sh.close = function () { take(); close0() }
     sh.open()
+    // Past the audio gate that follows a return to the foreground, so the hello is not swallowed.
+    setTimeout(hello, 650)
   }
 
   function presenceBeat () {

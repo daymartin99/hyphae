@@ -537,6 +537,7 @@
       STEPS: 240,               // macro-steps through the real simTick
       RETURN_PRICE_MOVE: 0.25,  // fractional leaf-price move that earns a line in the return report
       RETURN_BOND_MOVE: 0.05,   // mean-bond rise across an absence that earns bond_deepened
+      RETURN_BARE_FRAC: 0.20,   // share of an absence the floor must spend bare to earn a line
       INSIGHT_CAP_S: 5400,      // s of saturated production, against the time-average Sr (K27)
       PRED_CAP: 0.25,           // fraction of the fleet predation may take, whole period
       STRAIN_MULT: 0.35,        // × pact strain accrual

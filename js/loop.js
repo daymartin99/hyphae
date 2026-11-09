@@ -226,10 +226,16 @@
     'bond_deepened', 'bands_starving', 'strain_born', 'strain_band', 'band_open', 'phase_drift',
     'held_floor', 'held_fleet', 'held_fed', 'held_grew', 'held_deep']
 
-  function offlineNeeds (s, b, dryAtS) {
+  function offlineNeeds (s, b, dryAtS, bareFrac) {
     var needs = []
     if (b.act === 1 && s.act === 1 && s.a1) {
-      if (dryAtS >= 0) needs.push({ kind: 'substrate_dry', tokens: { t: dryAtS }, tone: 'warn' })
+      // How long the floor was actually bare, not the first moment it touched zero: litter falls
+      // and refills it, and "ran dry after 1 m" over an absence that banked 80% read as a disaster
+      // that had not happened. Said only when a real share of the absence went hungry.
+      var bare = isFinite(bareFrac) ? bareFrac : (dryAtS >= 0 ? 1 : 0)
+      if (bare >= T().OFFLINE.RETURN_BARE_FRAC) {
+        needs.push({ kind: 'substrate_dry', tokens: { t: dryAtS, pct: bare * 100 }, tone: 'warn' })
+      }
       // economy1's D32 note promises this line: offline shortfall accrues, never defaults, and
       // is "reported on return". The report states only what the absence added.
       var shortGrew = sumShortfall(s) - (b.shortfall || 0)
@@ -261,7 +267,11 @@
       }
       if (num(s.a1.patches) > b.patches) needs.push({ kind: 'claim_done', tokens: null })
       var p1 = snapPrice()
-      if (b.leafPrice > 0 && Math.abs(p1 - b.leafPrice) / b.leafPrice >= T().OFFLINE.RETURN_PRICE_MOVE) {
+      // The autumn line already names the leaf price; the market line saying it again was the
+      // card's one repetition ("autumn passed. leaf litter is on the floor at 0.15" twice).
+      var autumnSaid = false
+      for (var ni = 0; ni < needs.length; ni++) if (needs[ni].kind === 'season_autumn') autumnSaid = true
+      if (!autumnSaid && b.leafPrice > 0 && Math.abs(p1 - b.leafPrice) / b.leafPrice >= T().OFFLINE.RETURN_PRICE_MOVE) {
         needs.push({ kind: 'market_move', tokens: { price: p1 } })
       }
     }
@@ -368,16 +378,21 @@
     var dt = eff / STEPS
     var opts = { stochastic: false, offline: true }
     var dryAt = -1
+    var bareSteps = 0
     if (HY.log && HY.log.freeze) HY.log.freeze()
+    // The away keeper spends from what comes in, never from what the player left behind (11 §1).
+    var E1 = HY.economy1
+    if (E1 && E1.setAwayBank && s.res) E1.setAwayBank(s.res.sugar)
     for (var i = 0; i < STEPS; i++) {
       simTick(dt, opts)
       // The moment the floor ran out, in sim seconds — the one fact in the report that is about
       // a point in time rather than a total, and unrecoverable from a diff after the fact.
-      if (dryAt < 0 && s.act === 1 && HY.act1 && HY.act1.totalSubstrate &&
-          !(HY.act1.totalSubstrate() > 0)) {
-        dryAt = (i + 1) * dt
+      if (s.act === 1 && HY.act1 && HY.act1.totalSubstrate && !(HY.act1.totalSubstrate() > 0)) {
+        if (dryAt < 0) dryAt = (i + 1) * dt
+        bareSteps++
       }
     }
+    if (E1 && E1.setAwayBank) E1.setAwayBank(null)
     if (HY.log && HY.log.thaw) HY.log.thaw()
 
     if (HY.log && HY.log.returnBurst) {
@@ -393,7 +408,7 @@
         act: s.act,
         efficiency: eff / elapsed,
         gains: gains,
-        needs: offlineNeeds(s, before, dryAt)
+        needs: offlineNeeds(s, before, dryAt, bareSteps / STEPS)
       })
     }
     return eff
