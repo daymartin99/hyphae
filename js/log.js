@@ -535,6 +535,41 @@
     'Almost all of it is you. When the last of it is, something will want to leave.',
     { pred: function (s) { return forestNear(s, 0.85, 1) } })
 
+  // The trees talk to the voice, never to the player; the voice relays them in its own words and
+  // with its own opinion of them (David, v2.5 §5: "they can speak to the voice more and he speaks
+  // to us"). One each, laddered on stands held so they arrive across the act and never in a pile.
+  L(2, 'a2.relay_oak_stay', 'world', null, 'claimed >= 3',
+    'The oak asks how long you mean to stay. It was told: longer than it.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 3 } })
+
+  L(2, 'a2.relay_birch_liar', 'world', null, 'claimed >= 5',
+    'The birch wants more than it gives, and got a yes. You can afford a liar.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 5 } })
+
+  L(2, 'a2.relay_elm_quiet', 'world', null, 'claimed >= 8',
+    'The elm has stopped asking for anything. That is how you know.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 8 } })
+
+  L(2, 'a2.relay_beech_last', 'world', null, 'claimed >= 12',
+    'The beech says the last thing like you took everything. You keep it.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 12 } })
+
+  L(2, 'a2.relay_pines', 'world', null, 'claimed >= 17',
+    "The pines talk among themselves now. They don't lower their voices for you.",
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 17 } })
+
+  L(2, 'a2.relay_sapling', 'world', null, 'claimed >= 23',
+    'A sapling asked what you are. It was told the ground, and believed it.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 23 } })
+
+  L(2, 'a2.relay_oak_fire', 'world', null, 'claimed >= 30',
+    'The old oak remembers a fire. It wants to know if you are the next one.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 30 } })
+
+  L(2, 'a2.relay_staying', 'world', null, 'claimed >= 38',
+    "The forest asks whether you're staying. Nobody has ever said no.",
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 38 } })
+
   L(2, 'a2.first_claim', 'world', 'pos', 'claimed == 2',
     'Further out, something is willing to talk.',
     { pred: function (s) { return s.stats.claimedCount >= 2 } })
@@ -3378,7 +3413,7 @@
     // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends, and
     // `a1.waiting` notices a player who has not touched anything (ab/deadspot-1); `a1.threads_reach` and
     // `a1.threads_close` hint at Anastomosis's hidden gate (ab/bounce-2). Each is counted, not excused.
-    ok(LINES.length === 174, 'corpus is ' + LINES.length + ' entries, expected 174')
+    ok(LINES.length === 182, 'corpus is ' + LINES.length + ' entries, expected 182')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3387,7 +3422,7 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 54, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 44, 'act II lines: ' + counts.a2)
+    ok(counts.a2 === 52, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 28, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
