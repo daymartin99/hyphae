@@ -1720,7 +1720,18 @@
     var s = S()
     if (!s || s.act !== 2 || !(dtSlow > 0)) return
     var b = ensure(s)
-    if (!b || !b.slots) return
+    if (!b || !b.slots) {
+      // The always-on floor is "the guarantee that there is no dead end", and it was paid inside
+      // applyYields, below this return: a player who had not opened the pact book earned no
+      // minerals in Act II at all. Measured: 0.9 ⛬/s reported, an idle hour, minerals unmoved.
+      // Three playtesters stalled on it ("minerals had no income") and David's own run soft-locked.
+      var pm = passiveMineral(s) * dtSlow
+      if (pm > 0) {
+        C().setStock(s.res, 'minerals', num(s.res.minerals) + pm)
+        stat(s, 'mineralEarned', pm)
+      }
+      return
+    }
     var o = opts || { stochastic: true, offline: false }
     var act, i
 

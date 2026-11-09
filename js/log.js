@@ -520,6 +520,13 @@
   // and stalled there; David never reached Act III). Ascospore Discharge opens when 97% of the forest
   // is consumed, and nothing said consuming it was the way. The second line calls back Act I's
   // "a mushroom is not the organism. it is the part that is leaving."
+  // Where Act II's minerals come from, said in the world rather than a menu (David: "make it clear
+  // with the voice that we have taken over the roots"). The always-on floor pays from the first
+  // stand; this line is its reason, once, as the network wakes.
+  L(2, 'a2.roots', 'world', 'pos', 'act == 2 && claimed >= 1',
+    'The roots are yours now. What they pull from the stone comes to you.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 1 } })
+
   L(2, 'a2.forest_half', 'world', null, 'fc >= 0.5',
     'Half the forest answers to you now. The rest stands between you and after.',
     { pred: function (s) { return forestNear(s, 0.5, 0.85) } })
@@ -3371,7 +3378,7 @@
     // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends, and
     // `a1.waiting` notices a player who has not touched anything (ab/deadspot-1); `a1.threads_reach` and
     // `a1.threads_close` hint at Anastomosis's hidden gate (ab/bounce-2). Each is counted, not excused.
-    ok(LINES.length === 173, 'corpus is ' + LINES.length + ' entries, expected 173')
+    ok(LINES.length === 174, 'corpus is ' + LINES.length + ' entries, expected 174')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3380,7 +3387,7 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 54, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 43, 'act II lines: ' + counts.a2)
+    ok(counts.a2 === 44, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 28, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
