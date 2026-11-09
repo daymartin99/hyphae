@@ -3991,7 +3991,7 @@
       show(r3.el, true)
       setText(r3.lab, STR.netSugar)
       var e = E1()
-      var ns = e && e.netSugar ? e.netSugar() : 0
+      var ns = e && e.needNetSugar ? e.needNetSugar() : e && e.netSugar ? e.netSugar() : 0
       setRate(r3.val, ns, SUG)
       // When the net goes negative the line gains a countdown. That single row is Act I's
       // unsold-inventory sawtooth (01 §5A.6).
@@ -4276,7 +4276,7 @@
     ariaRow(v, 2, STR.minerals, C().fmt(num(s.res.minerals)))
     var e = E1()
     ariaRow(v, 3, STR.netSugar,
-      C().fmt(e && e.netSugar ? e.netSugar() : 0) + ' per second')
+      C().fmt(e && e.needNetSugar ? e.needNetSugar() : e && e.netSugar ? e.netSugar() : 0) + ' per second')
   }
 
   // No canvas ever carries information that is not also available as text on the same screen; this
@@ -5499,7 +5499,7 @@
         setData(collTxt, 'tone', '')
       }
       var book = e1.bookState()
-      var income = e1.netSugar() + book.committed
+      var income = (e1.needNetSugar ? e1.needNetSugar() : e1.netSugar()) + book.committed
       var coverage = income > 0 ? (book.committed + t.volume) / income : 1
       cov.set(coverage, coverage >= 1 ? 'bad' : coverage > U.COVER_WARN ? 'warn' : '',
         Math.round(coverage * 100) + ' percent of what you make')

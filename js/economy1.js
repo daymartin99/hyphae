@@ -257,6 +257,7 @@
     STANDING_EMA_S: 60,       // s, the smoothing on what the standing order actually spends      // × fair value: the default most it will pay per gram, penalty included
     STANDING_FLOOR: 0.15,     // × cap: the stock level below which the standing order stops buying
     STANDING_MAX_FRAC: 0.02,  // × cap per second: the automated fill rate
+    TERM_GUARD_S: 30,         // s of signed-term delivery the order leaves untouched
     // THE AWAY KEEPER (11 §1, v2.5). Before Standing Order, closing the app cut income to about an
     // eighth (measured: 25 min in, one hour away banked 12% of the playing rate), because food is
     // bought by hand. While the player is away, and only then, the colony buys for itself: a slower
@@ -804,9 +805,29 @@
     standing[type] = { ceil: priceCeil, floor: stockFloor }
   }
 
+  function termsBehind (s) {
+    var c = s.a1.contracts
+    for (var i = 0; i < c.length; i++) if (c[i].state === 'active' && num(c[i].shortfall) > 0) return true
+    return false
+  }
+
   function standingOrder (h, keeper) {
     var s = S(), i, k, cfg, cap, ceil, floor, want, unit, got, spent = 0
     var budget = Infinity
+    if (!keeper) {
+      // The order gives way to the signed terms: it keeps back TERM_GUARD_S of what they are owed,
+      // but may always spend the food reserve, so the floor cannot be starved by it (the earlier
+      // term reserve, without that floor, collapsed the floor in the bots). Four of five v2.5-2
+      // testers defaulted on a term the card called safe because the order had spent its sugar,
+      // or paused the order to sign and forgot it.
+      // Only while a term is actually behind: a standing guard of term sugar collapsed the floor
+      // in the bots exactly as the earlier reserve did (bare 0 -> 45 of 120 away-minutes). So the
+      // order buys freely, and gives way down to the food reserve the moment a delivery falls short.
+      if (termsBehind(s)) {
+        budget = Math.max(reserveSugar(true), s.res.sugar - committedSugarPerSec() * MK.TERM_GUARD_S)
+        if (!(budget > 0)) return
+      }
+    }
     if (keeper) {
       // No reserve for the signed terms: digestion is where their sugar comes from, so a keeper
       // that guarded it left the floor bare and the terms short anyway (measured, 25 min in: 8.75
@@ -1718,8 +1739,11 @@
     var mp = minPrice()
     if (!isFinite(mp)) return 0
     var est = throughput() * nextK() * mp
-    // With the Standing Order buying, the floor costs what the order actually pays.
-    return flag(S(), 'standing_order') && !flag(S(), 'standing_paused') ? Math.max(est, standingRate) : est
+    // The order now gives way to the terms (TERM_GUARD_S), so what it spends beyond the floor's own
+    // need is spare sugar, not the terms' sugar: the coverage reads the need. Read with what the
+    // order really spent, every term with an order running said "this defaults" (v2.5-2). The
+    // need is priced at the order's markup, since the order is what buys it.
+    return flag(S(), 'standing_order') && !flag(S(), 'standing_paused') ? Math.max(est * MK.STANDING_PENALTY, standingRate) : est
   }
 
   // The HUD's one derived number, and the reason the coverage bar is the whole game. When it goes
@@ -1734,6 +1758,17 @@
   // mean sixty percent of what is actually free to sell.
   function netSugar () {
     return grossSugarPerSec() - feedstockCostPerSec() - committedSugarPerSec()
+  }
+
+  // What the player reads: the net after what the floor NEEDS, not after everything a running order
+  // happens to buy. The order gives way to the terms when one falls behind (termsBehind), so what it
+  // spends past the need is spare. Read with the order's spend, every term showed "this defaults"
+  // and AFTER FOOD sat amber at "0:00 left" (v2.5-2, Robin, Sam, Lee). The bot keeps netSugar.
+  function needNetSugar () {
+    var mp = minPrice()
+    var need = isFinite(mp) ? throughput() * nextK() * mp : 0
+    if (flag(S(), 'standing_order') && !flag(S(), 'standing_paused')) need *= MK.STANDING_PENALTY
+    return grossSugarPerSec() - need - committedSugarPerSec()
   }
 
   function bookState () {
@@ -2733,6 +2768,7 @@
 
   HY.economy1 = {
     setAwayBank: setAwayBank,
+    needNetSugar: needNetSugar,
     afterAway: afterAway,
     committedTo: committedTo,
     awayFed: awayFed,
