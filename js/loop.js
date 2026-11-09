@@ -420,6 +420,7 @@
       }
     }
     if (E1 && E1.setAwayBank) E1.setAwayBank(null)
+    if (E1 && E1.afterAway) E1.afterAway()
     if (HY.log && HY.log.thaw) HY.log.thaw()
 
     if (HY.log && HY.log.returnBurst) {

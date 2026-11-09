@@ -1357,6 +1357,21 @@
   var lastRefusal = ''
   function signRefusal () { return lastRefusal }
 
+  // After an absence: D32 says nothing defaults in the dark, and the shortfall it accrued must not
+  // then execute the default on the first tick back. Each term is left at most half-way to its
+  // line, so the return report says it and the player has time to answer (v2.5-2, Jay).
+  function afterAway () {
+    var s = S()
+    if (!s || s.act !== 1 || !s.a1) return
+    var A = T().A1, SEASON = T().CLOCK.SEASON_S
+    for (var i = 0; i < s.a1.contracts.length; i++) {
+      var c = s.a1.contracts[i]
+      if (c.state !== 'active') continue
+      var cap = num(A.SHORTFALL_RETURN) * A.SHORTFALL_FRAC * c.sugarRate * SEASON
+      if (c.shortfall > cap) c.shortfall = cap
+    }
+  }
+
   function signContract (treeId, volume, termSeasons, collateral, exclusive) {
     var s = S()
     var tree = treeById(treeId)
@@ -1572,12 +1587,17 @@
   //
   // The collapse-to-zero on a bare floor (G1c) stays exactly as it was: with nothing to eat there is
   // no next minute to reserve for, and holding sugar back there is the deadlock, not the guard.
-  function reserveSugar () {
+  // v2.5: the collapse holds only when nobody will buy. With Standing Order running, or away with
+  // the keeper on duty, a bare floor is exactly when food must be bought, and handing every gram to
+  // the terms there was the commuter's death spiral: no sugar, so no food, so no sugar (v2.5-2, Jay:
+  // "grew at 1% of the pace", "0 sugar", stuck for three hours).
+  function reserveSugar (feeding) {
     var A = T().A1
-    if (totalSubstrate() < 1) return 0
+    if (totalSubstrate() < 1 && !feeding) return 0
     var mp = minPrice()
     if (!isFinite(mp)) return 0
-    var owed = A.RESERVE_S - runwaySeconds()
+    var run = totalSubstrate() < 1 ? 0 : runwaySeconds()
+    var owed = A.RESERVE_S - run
     if (!(owed > 0)) return 0
     return capReserve(owed * throughput() * nextK() * mp)
   }
@@ -1600,7 +1620,10 @@
     var p = opt(o), A = T().A1, SEASON = T().CLOCK.SEASON_S
     var i, c, tree, want, hardPay, pay, avail, dormant
 
-    book.reserve = reserveSugar()
+    var s0 = S()
+    var feeding = (flag(s0, 'standing_order') && !flag(s0, 'standing_paused')) ||
+      (!!(o && o.offline) && num(s0.stats.sugarSpentOnMarket) >= MK.AWAY_AFTER_SPENT)
+    book.reserve = reserveSugar(feeding)
     book.deferred = 0
     avail = Math.max(0, s.res.sugar - book.reserve)
     dormant = p.offline && flag(s, 'dormancy_clause')
@@ -1638,6 +1661,11 @@
       }
       c.delivered += pay
       c.shortfall += (want - hardPay)
+      // Paid in full, a term works its shortfall down: the count is of a delivery falling behind,
+      // not a ledger of every slow second since signing.
+      if (pay >= want * 0.999 && c.shortfall > 0) {
+        c.shortfall = Math.max(0, c.shortfall - num(A.SHORTFALL_RECOVER) * c.sugarRate * dt)
+      }
 
       // D32 is HARD: nothing is lost while away. Offline shortfall accrues and is reported on
       // return ("a term is short by n sugar. it has not ended.") but never executes the default.
@@ -2705,6 +2733,7 @@
 
   HY.economy1 = {
     setAwayBank: setAwayBank,
+    afterAway: afterAway,
     committedTo: committedTo,
     awayFed: awayFed,
     // BIBLE §6 M7's surface

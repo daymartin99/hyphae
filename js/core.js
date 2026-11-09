@@ -170,7 +170,13 @@
       REP_MAX: 100,             // reputation units, per tree and net
       RESERVE_S: 60,            // s of feedstock held back from delivery (G1b)
       RESERVE_CAP_FRAC: 0.5,    // × sugar cap: the most the G1b reserve may ever hold back
-      SHORTFALL_FRAC: 0.05,     // fraction of one season's delivery ≈ 18 s of non-payment
+      // fraction of one season's delivery ≈ 72 s of non-payment, and a rolling count (economy1,
+      // SHORTFALL_RECOVER). It was 18 s, summed over the whole term: one slow minute anywhere in a
+      // six-season term was a default, and a commuter lost a 515 kg stake two minutes after signing
+      // a term the card said had room to spare (v2.5-2, Jay).
+      SHORTFALL_FRAC: 0.20,
+      SHORTFALL_RECOVER: 0.5,   // s of past shortfall forgiven per s of full delivery
+      SHORTFALL_RETURN: 0.5,    // x the default line: the most an absence can leave a term short
       // failsafes (BIBLE §5.5; 08 §5.3, §11.3)
       WINDFALL_SUB: 50,         // g, totalSubstrate below which WINDFALL arms
       WINDFALL_BIOMASS: 200,    // g, biomass below which WINDFALL arms
