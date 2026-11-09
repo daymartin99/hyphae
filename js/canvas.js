@@ -819,6 +819,7 @@
     foreEl: null, foreCtx: null,
     W: 360, H: 296,          // logical px of the plate
     dpr: 1,
+    zoom: 1,                 // the slide's magnification: backing pixels follow it, geometry does not
     attached: false
   }
 
@@ -1034,7 +1035,11 @@
     if (!surf.attached) return
     var dprMax = T().dpr
     var dev = (typeof window !== 'undefined' && window.devicePixelRatio) || 1
+    // The slide shows this same network magnified (ui.js fitSlide): the logical box is unchanged, so
+    // nothing re-derives, and only the backing store grows so the hairlines stay hairlines. Capped
+    // at 3 device px per logical px, which keeps four full-screen layers inside a phone's memory.
     surf.dpr = Math.min(dev, dprMax)
+    if (surf.zoom > 1) surf.dpr = Math.min(3, surf.dpr * surf.zoom)
     var s = backingSize(surf.netEl, surf.dpr)
     if (!s) return
     var geomChanged = (s.w !== surf.W || s.h !== surf.H)
@@ -3475,9 +3480,46 @@
     return f
   }
 
+  // What the slide should frame, in logical px of the plate. In Act I the network grows from a root in
+  // fixed pixel steps, so a bigger box is only more empty sky: the slide frames the tissue itself
+  // (with air around it, and never smaller than a third of the box, so a seedling is not blown up
+  // into a blur). Everywhere else the drawing is the whole box.
+  function extent () {
+    var W = surf.W, H = surf.H, all = { x0: 0, y0: 0, x1: W, y1: H, W: W, H: H }
+    var st = S()
+    if (!net || (st && st.act >= 2) || net.n < 2) return all
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+    for (var i = 0; i < net.n; i++) {
+      if (net.lost[i]) continue
+      var x = net.x[i], y = net.y[i]
+      if (x < x0) x0 = x
+      if (x > x1) x1 = x
+      if (y < y0) y0 = y
+      if (y > y1) y1 = y
+    }
+    if (!(x1 > x0)) return all
+    var pad = 0.08 * Math.max(x1 - x0, y1 - y0) + 12
+    x0 -= pad; x1 += pad; y0 -= pad; y1 += pad
+    var minW = W / 3, minH = H / 3, c
+    if (x1 - x0 < minW) { c = (x0 + x1) / 2; x0 = c - minW / 2; x1 = c + minW / 2 }
+    if (y1 - y0 < minH) { c = (y0 + y1) / 2; y0 = c - minH / 2; y1 = c + minH / 2 }
+    // The colony stands on the floor of the plate, so the frame always keeps the floor: the slide
+    // sets it on the bottom of the screen rather than cutting the ground off in mid-air.
+    return { x0: Math.max(0, x0), y0: Math.max(0, y0), x1: Math.min(W, x1), y1: H, W: W, H: H, root: true }
+  }
+
+  function setZoom (k) {
+    k = k > 1 ? k : 1
+    if (Math.abs(k - surf.zoom) < 0.01) return
+    surf.zoom = k
+    resize()
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
 
   HY.canvas = {
+    extent: extent,
+    setZoom: setZoom,
     // BIBLE §6 M17
     growNetwork: growNetwork,
     drawNet: drawNet,
