@@ -2240,7 +2240,10 @@
       // D is only news once it can be spent: before Differentiation it cannot, and saying "unspent"
       // pointed Act II's first hour at a door that was locked (fun test, Sam: "8 unspent D points I
       // couldn't use yet").
-      var dFree = cg && cg.unallocated && (!cg.canAllocate || cg.canAllocate(s)) ? num(cg.unallocated(s)) : 0
+      // Once the way out is on screen it is the road, ahead of D (act2-1).
+      var exitOpen = pj.visible && pj.visible().some(function (q) { return q.id === 'ascospore_discharge' }) &&
+        !pj.isBought('ascospore_discharge')
+      var dFree = !exitOpen && cg && cg.unallocated && (!cg.canAllocate || cg.canAllocate(s)) ? num(cg.unallocated(s)) : 0
       if (dFree >= 1) { nextGroup = 'mind'; return interp(STR.nextDFree, { n: Math.floor(dFree), u: GLYPH.diff }) }
     }
     if (s.act >= 3 && FIN() && FIN().endings) {
@@ -2274,7 +2277,8 @@
       var p = list[i]
       if (!p.buyable || p.id === 'decide' || pj.isBought(p.id)) continue
       cands.push({ name: p.title.toLowerCase(), price: pj.priceOf(p.id) || {}, ok: pj.refusal(p.id) === null,
-        group: s.act === 1 ? 'learn' : 'mind', road: s.act === 1 && ROAD1.test(p.id) })
+        group: s.act === 1 ? 'learn' : 'mind',
+        road: (s.act === 1 && ROAD1.test(p.id)) || (s.act === 2 && p.id === 'ascospore_discharge') })
     }
     if (s.act === 1 && A1() && A1().tipCost) {
       var tp = { g: num(A1().tipCost()) }

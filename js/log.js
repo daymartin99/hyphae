@@ -516,6 +516,18 @@
   L(2, 'a2.music', 'world', null, '@piece && act == 2',
     'Somewhere under the network, slow keys begin. Something is keeping time.')
 
+  // Act II's hidden door, said the way Act I's was (act2-1: three of five blind players reached Act II
+  // and stalled there; David never reached Act III). Ascospore Discharge opens when 97% of the forest
+  // is consumed, and nothing said consuming it was the way. The second line calls back Act I's
+  // "a mushroom is not the organism. it is the part that is leaving."
+  L(2, 'a2.forest_half', 'world', null, 'fc >= 0.5',
+    'Half the forest answers to you now. The rest stands between you and after.',
+    { pred: function (s) { return forestNear(s, 0.5, 0.85) } })
+
+  L(2, 'a2.forest_most', 'world', null, 'fc >= 0.85',
+    'Almost all of it is you. When the last of it is, something will want to leave.',
+    { pred: function (s) { return forestNear(s, 0.85, 1) } })
+
   L(2, 'a2.first_claim', 'world', 'pos', 'claimed == 2',
     'Further out, something is willing to talk.',
     { pred: function (s) { return s.stats.claimedCount >= 2 } })
@@ -2576,6 +2588,13 @@
 
   function num (v) { return typeof v === 'number' && isFinite(v) ? v : 0 }
 
+  // How much of the forest is consumed, toward Ascospore Discharge's 97% gate.
+  function forestNear (s, lo, hi) {
+    if (!s || s.act !== 2 || !HY.forest || !HY.forest.forestConsumed) return false
+    var f = num(HY.forest.forestConsumed(s))
+    return f >= lo && f < hi
+  }
+
   // How far the thread is toward Anastomosis's gate, for the two lines that hint at it without
   // naming it: true while the fraction sits in [lo, hi) with the places already claimed.
   function threadNear (s, lo, hi) {
@@ -3352,7 +3371,7 @@
     // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends, and
     // `a1.waiting` notices a player who has not touched anything (ab/deadspot-1); `a1.threads_reach` and
     // `a1.threads_close` hint at Anastomosis's hidden gate (ab/bounce-2). Each is counted, not excused.
-    ok(LINES.length === 171, 'corpus is ' + LINES.length + ' entries, expected 171')
+    ok(LINES.length === 173, 'corpus is ' + LINES.length + ' entries, expected 173')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3361,7 +3380,7 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 54, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 41, 'act II lines: ' + counts.a2)
+    ok(counts.a2 === 43, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 28, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
