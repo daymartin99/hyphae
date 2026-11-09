@@ -283,7 +283,10 @@
       }
       // Boot season is autumn, so the boundary index is where (seasons % 4) returns to it.
       var A1 = T().A1
-      for (var sn = b.seasons + 1; sn <= s.a1.year * 4 + s.a1.season; sn++) {
+      // Only when it is news: an absence of a year or more always crosses an autumn, and the line
+      // arrived on every return (v2.5-1, Robin: "every single time, 35 minutes or 4.5 hours").
+      var spanned = s.a1.year * 4 + s.a1.season - b.seasons
+      for (var sn = b.seasons + 1; spanned < 4 && sn <= s.a1.year * 4 + s.a1.season; sn++) {
         if (sn % 4 === A1.SEASON_AUTUMN) {
           needs.push({ kind: 'season_autumn', tokens: { price: snapPrice() } })
           break

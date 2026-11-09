@@ -221,6 +221,10 @@
     suspended: 'suspended',
     contractsN: '{n} contracts',
     atMost: '{v} at most, {n} seasons',
+    // What to change, not only the limit (v2.5-1, Robin: "room to spare", then a refusal with no
+    // idea which slider was wrong).
+    signTooMuch: 'too much. it takes {v} at most: lower the volume',
+    signTooLong: 'too long. {n} seasons at most: shorten the term',
 
     claim: 'claim',
     claiming: 'claiming',
@@ -5433,7 +5437,13 @@
       volume.setReadout(C().fmt(t.volume), SUG_S, C().fmt(t.volume) + ' sugar per second')
       term.setReadout(String(t.term), '', interp(STR.seasons, { n: t.term }))  // no suffix
       coll.setMassReadout(t.collateral, C().fmtMass(t.collateral))
-      volume.setNote(C().fmt(e1.maxIntake(tree, t.collateral)) + ' ' + SUG_S + ' ' + STR.max)
+      // Over what the tree will take, the note says so before SIGN is ever pressed.
+      var ctv = e1.counter ? e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral) : null
+      if (ctv && t.volume > ctv.maxVolume) {
+        volume.setNote(interp(STR.signTooMuch, { v: C().fmt(ctv.maxVolume) + ' ' + SUG_S }))
+      } else {
+        volume.setNote(C().fmt(e1.maxIntake(tree, t.collateral)) + ' ' + SUG_S + ' ' + STR.max)
+      }
       term.setNote(STR.max + ' ' + e1.maxTerm(tree))
       setSlot(payNum, C().fmt(t.volume), SUG_S)
       setSlot(getNum, C().fmt(mineralRate), GLYPH.minerals + '/s')
@@ -5506,6 +5516,8 @@
         var code = e1.signRefusal ? e1.signRefusal() : ''
         var ct2 = e1.counter(tree, t.volume, t.term, t.exclusive, t.collateral)
         var why2 = refusalWhy(s, tree) ||
+          (ct2 && t.volume > ct2.maxVolume ? interp(STR.signTooMuch, { v: C().fmt(ct2.maxVolume) + ' ' + SUG_S }) : '') ||
+          (ct2 && t.term > ct2.maxTerm ? interp(STR.signTooLong, { n: ct2.maxTerm }) : '') ||
           (ct2 ? interp(STR.atMost, { v: C().fmt(ct2.maxVolume) + ' ' + SUG_S, n: ct2.maxTerm }) : '') ||
           (code === 'nothing' ? STR.signNothing : STR.signNo)
         signBtn.dataset.short = why2

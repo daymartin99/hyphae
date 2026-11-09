@@ -729,13 +729,14 @@
     // Feeding it ten-second offline steps would draw two hours of absence as two minutes of history.
     var record = (h === MK.STEP_S)
     var auto = flag(s, 'standing_order') && !flag(s, 'standing_paused')
-    // A paused order is the player's choice and is respected while away too.
+    // A paused order is the player's choice and is respected while away too. While away, a running
+    // order also takes what would rot above the cap (rotSpend), the same rule as the keeper.
     var keeper = !auto && p.offline && !flag(s, 'standing_order') &&
       num(s.stats.sugarSpentOnMarket) >= MK.AWAY_AFTER_SPENT
     for (i = 0; i < n; i++) {
       walkStep(c, p.stochastic)
       if (record) sample()
-      if (auto) standingOrder(h)
+      if (auto) { standingOrder(h); if (p.offline) rotSpend(h) }
       else if (keeper) standingOrder(h, true)
     }
   }
@@ -862,6 +863,15 @@
   // measured against everything that came in, including what it already spent.
   var awayBank = null
   var awaySpent = 0
+  // Away with the order running: sugar above most of the cap would rot, so it is food instead,
+  // through the keeper's own path (its ceiling and markup), up to the full floor. Robin and Jay both
+  // came back to "capped and rotting" with the order bought (v2.5-1).
+  function rotSpend (h) {
+    var s = S()
+    var scap = HY.act1 && HY.act1.sugarCap ? num(HY.act1.sugarCap()) : Infinity
+    if (!(isFinite(scap) && scap > 0) || s.res.sugar <= MK.AWAY_CAP_FRAC * scap) return
+    standingOrder(h, true)
+  }
   var awayGrams = 0
   function setAwayBank (v) {
     awayBank = v === null || v === undefined ? null : num(v)
