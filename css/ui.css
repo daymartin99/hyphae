@@ -1727,8 +1727,15 @@ canvas{ display:block; }
    list was left 162 px for 889 px of birch card. Two of three blind players on this skeleton quit
    with the deal's controls hidden under EXTEND. The list keeps a working height; the body window
    gives way to it, down to a strip that still shows the body breathing. */
-.shell[data-ui="d"]{ --panels-min:min(300px, 36dvh); }
+.shell[data-ui="d"]{ --panels-min:min(260px, 31dvh); }
 .shell[data-ui="d"] .plate{ min-height:112px; }
+/* Short phones (an SE is 667 px tall): the minimums above summed past the screen, and EXTEND fell
+   below the tab bar (Act II run 1, Robin: "SIGN/EXTEND were hidden under the tab bar"). The body
+   keeps a thinner strip, the voice four rows, the list a smaller floor; the verb always shows. */
+@media (max-height:760px){
+  .shell[data-ui="d"]{ --panels-min:min(170px, 26dvh); --con-rows:4; }
+  .shell[data-ui="d"] .plate{ min-height:72px; }
+}
 /* The rot line comes and goes as sugar crosses its cap. Collapsing it moved every button below the
    header between a look and a tap; once it has appeared it keeps its row, blank when nothing rots. */
 .shell[data-ui="d"] .ledger-sub[data-kind="rot"][hidden]{ display:flex; visibility:hidden; }

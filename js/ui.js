@@ -2240,7 +2240,10 @@
       // D is only news once it can be spent: before Differentiation it cannot, and saying "unspent"
       // pointed Act II's first hour at a door that was locked (fun test, Sam: "8 unspent D points I
       // couldn't use yet").
-      var dFree = cg && cg.unallocated && (!cg.canAllocate || cg.canAllocate(s)) ? num(cg.unallocated(s)) : 0
+      // Once the way out is on screen it is the road, ahead of D (act2-1).
+      var exitOpen = pj.visible && pj.visible().some(function (q) { return q.id === 'ascospore_discharge' }) &&
+        !pj.isBought('ascospore_discharge')
+      var dFree = !exitOpen && cg && cg.unallocated && (!cg.canAllocate || cg.canAllocate(s)) ? num(cg.unallocated(s)) : 0
       if (dFree >= 1) { nextGroup = 'mind'; return interp(STR.nextDFree, { n: Math.floor(dFree), u: GLYPH.diff }) }
     }
     if (s.act >= 3 && FIN() && FIN().endings) {
@@ -2274,7 +2277,8 @@
       var p = list[i]
       if (!p.buyable || p.id === 'decide' || pj.isBought(p.id)) continue
       cands.push({ name: p.title.toLowerCase(), price: pj.priceOf(p.id) || {}, ok: pj.refusal(p.id) === null,
-        group: s.act === 1 ? 'learn' : 'mind', road: s.act === 1 && ROAD1.test(p.id) })
+        group: s.act === 1 ? 'learn' : 'mind',
+        road: (s.act === 1 && ROAD1.test(p.id)) || (s.act === 2 && p.id === 'ascospore_discharge') })
     }
     if (s.act === 1 && A1() && A1().tipCost) {
       var tp = { g: num(A1().tipCost()) }
@@ -3003,13 +3007,15 @@
     return true
   }
 
-  function tipsAffordable () {
+  // `keepHalf`: the bursts (+5, MAX) never spend more than half the minerals held. MAX quietly spent
+  // minerals saved for a patch (Act II run 1, Robin and Morgan); +1 still spends freely.
+  function tipsAffordable (keepHalf) {
     var s = liveState()
     var a = A1()
     if (!s || !a) return 0
     var n = 0
     var g = num(s.res.biomass)
-    var m = num(s.res.minerals)
+    var m = num(s.res.minerals) * (keepHalf ? 0.5 : 1)
     var t = s.a1.tips
     while (n < U.BURST_MAX_STEPS) {
       var cg = a.tipCost(t + n)
@@ -4523,11 +4529,12 @@
 
     bindRepeat(b1, function () { buyTips(1) }, function () { return tipsAffordable() >= 1 })
     bindPress(b5, function () {
-      if (tipsAffordable() < 1) { refuse(b5); return }
-      buyTips(U.BURST_5_AT)
+      var n5 = Math.min(U.BURST_5_AT, tipsAffordable(true))
+      if (n5 < 1) { refuse(b5); return }
+      buyTips(n5)
     }, { onUp: true })
     bindPress(bMax, function () {
-      var n = tipsAffordable()
+      var n = tipsAffordable(true)
       if (n < 1) { refuse(bMax); return }
       buyTips(n)
     }, { onUp: true })
@@ -4603,8 +4610,9 @@
       show(lShort, afford < 1)
       if (afford < 1) setText(shortTxt, shortStr)
       setData(b1, 's', afford >= 1 ? 'afford' : 'want')
-      setData(b5, 's', afford >= U.BURST_5_AT ? 'afford' : 'want')
-      setData(bMax, 's', afford >= 1 ? 'afford' : 'want')
+      var burst = tipsAffordable(true)
+      setData(b5, 's', burst >= 1 ? 'afford' : 'want')
+      setData(bMax, 's', burst >= 1 ? 'afford' : 'want')
       b1.dataset.short = shortStr
       b5.dataset.short = shortStr
       bMax.dataset.short = shortStr
