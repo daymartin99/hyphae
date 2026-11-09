@@ -480,7 +480,7 @@
   // nothing should; the watcher says only that the threads are going somewhere.
   L(1, 'a1.threads_reach', 'world', null, 'patches >= 4 && hyphae >= 0.5 gate',
     'at the edges, your threads are reaching for each other. they have not met.',
-    { once: false, cooldown: 1200, pred: function (s) { return threadNear(s, 0.5, 0.85) } })
+    { pred: function (s) { return threadNear(s, 0.5, 0.85) } })   // once: Robin heard it four times
 
   L(1, 'a1.threads_close', 'world', null, 'patches >= 4 && hyphae >= 0.85 gate',
     'they are close now. the gap between them is the length of a few more tips.',

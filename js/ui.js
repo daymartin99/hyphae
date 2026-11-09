@@ -254,6 +254,8 @@
     nextGather: 'something is gathering. {t}.',
     nextBare: 'the floor is bare. more is for sale, under grow.',
     nextCeiling: '{name}: {n} Σ. you hold at most {cap}. the forest makes room.',
+    forestYou: 'the forest is {p}% you.',
+    nextShortMin2: '{name}: {n} short. here, minerals come from root pacts, and from every stand you hold.',
     signNothing: 'at that size it pays nothing',
     covOk: 'you make {make} {u}; the trees would take {take}. room to spare.',
     covTight: 'you make {make} {u}; the trees would take {take}. a bad season and it defaults.',
@@ -2336,6 +2338,13 @@
     // An ETA is only worth saying while it means something. A trickle in the first minute gave
     // "about 80029685746229280d", which is a number, not a time; past a day the shortfall stands alone.
     if (rate > 0 && short / rate < 86400 && C().fmtTime) return interp(STR.nextShortEta, { name: best.name, n: unit, t: C().fmtTime(short / rate) })
+    // Act II's minerals come from root pacts, the exchange and a slow floor that grows with the
+    // stands held; nothing said so, and two players read the stall as minerals having stopped
+    // ("costs minerals, which no longer regenerate?", act3 run notes, Sam; Lee likewise).
+    if (worst === 'min' && s.act === 2) {
+      nextGroup = 'pact'
+      return interp(STR.nextShortMin2, { name: best.name, n: unit })
+    }
     if (worst === 'min' && s.act === 1) {
       var e1 = HY.economy1, open = !!(e1 && e1.treesOpen && e1.treesOpen())
       if (open) nextGroup = 'bargain'
@@ -3697,9 +3706,27 @@
     return 4
   }
 
+  // Act II's door, shown (act3 run, Lee: "the forest at 2% with 61 stands to go" after two hours, and
+  // the exit waits on 97% of it). One quiet line under the strip: how much of the forest is you. The
+  // slow early climb reads as progress instead of nothing, and the number the exit waits on is no
+  // longer hidden. Act II only.
+  function forestLine (v, s) {
+    var on = s.act === 2 && HY.forest && HY.forest.forestConsumed
+    if (!on) { if (v.forestLine) show(v.forestLine, false); return }
+    if (!v.forestLine) {
+      v.forestLine = el('div', 'ledger-sub')
+      v.forestLine.dataset.kind = 'forest'
+      v.ledger.appendChild(v.forestLine)
+    }
+    var pct = Math.floor(100 * num(HY.forest.forestConsumed(s)))
+    setText(v.forestLine, interp(STR.forestYou, { p: pct }))
+    show(v.forestLine, true)
+  }
+
   function paintLedger (v, s, rev) {
     var acc = ACCT_BY_ACT[s.act >= 3 ? 3 : s.act >= 2 ? 2 : 1]
     for (var ai = 0; ai < v.ledgerRows.length; ai++) setData(v.ledgerRows[ai].el, 'acct', acc[ai] || '')
+    forestLine(v, s)
     if (s.act >= 3) return paintLedgerA3(v, s, rev)
     if (s.act >= 2) return paintLedgerA2(v, s, rev)
     var shown = 1
