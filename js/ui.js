@@ -5576,6 +5576,11 @@
         return
       }
       beat('sign', true)
+      // The stake is a share of whatever labile is held at the moment of signing, so a slider left
+      // at 100% would stake the whole of a much larger pile next time, unasked. It goes back to
+      // nothing after every term (v2.5-2, Morgan: "defaulted to all my labile with no warning").
+      coll.setValue(0)
+      lastColl = 0
       r.setExpanded(false)
     }, { onUp: true })
 
