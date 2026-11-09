@@ -255,6 +255,7 @@
     nextBare: 'the floor is bare. more is for sale, under grow.',
     nextCeiling: '{name}: {n} Σ. you hold at most {cap}. the forest makes room.',
     forestYou: 'the forest is {p}% you.',
+    standingOn: 'standing order', standingRunning: 'buying for you', standingPaused: 'paused. the floor is yours to keep',
     nextShortMin2: '{name}: {n} short. here, minerals come from root pacts, and from every stand you hold.',
     signNothing: 'at that size it pays nothing',
     covOk: 'you make {make} {u}; the trees would take {take}. room to spare.',
@@ -4441,6 +4442,13 @@
   function buildFloor (v, p) {
     var pv = panel('floor', { title: STR.p_floor })
     var pools = el('div', 'pool-list')
+    // The Standing Order's off switch (act3b run, Robin: "no way to switch off the Standing Order
+    // that was draining my sugar"). Shown once it is owned; paused, it buys nothing.
+    var soBtn = checkbox(STR.standingOn, '', function (on) {
+      var st = liveState()
+      if (st && st.proj && st.proj.flags) st.proj.flags.standing_paused = on ? 0 : 1
+    })
+    pv.body.appendChild(soBtn)
     pv.body.appendChild(pools)
     var rows = {}
 
@@ -4520,6 +4528,13 @@
 
       show(cond.el, !!s.proj.flags.anastomosis)
       if (s.proj.flags.anastomosis) setText(condNum, STR.nothing)
+      var owned = !!s.proj.flags.standing_order
+      show(soBtn, owned)
+      if (owned) {
+        var running = !s.proj.flags.standing_paused
+        if (soBtn.isOn() !== running) setAttr(soBtn, 'aria-pressed', running ? 'true' : 'false')
+        soBtn.setNote(running ? STR.standingRunning : STR.standingPaused)
+      }
     }
     p.view = pv
     return pv

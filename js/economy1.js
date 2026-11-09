@@ -253,7 +253,8 @@
     FORWARD_FILLS: 12,        // fills fixed by forward_contracts
     FORWARD_MARK: 1.05,       // × fair value, for each of them
     STANDING_PENALTY: 1.08,   // standing_order pays this much more than you would
-    STANDING_CEIL: 1.50,      // × fair value: the default most it will pay per gram, penalty included
+    STANDING_CEIL: 1.50,
+    STANDING_EMA_S: 60,       // s, the smoothing on what the standing order actually spends      // × fair value: the default most it will pay per gram, penalty included
     STANDING_FLOOR: 0.15,     // × cap: the stock level below which the standing order stops buying
     STANDING_MAX_FRAC: 0.02,  // × cap per second: the automated fill rate
     // THE PRICE-IMPACT CEILING, in units of `fair`, per second of market time.
@@ -711,7 +712,7 @@
     // The sparkline is a 1 Hz record and 5A.1 already says it is not saved and refills in 120 s.
     // Feeding it ten-second offline steps would draw two hours of absence as two minutes of history.
     var record = (h === MK.STEP_S)
-    var auto = flag(s, 'standing_order')
+    var auto = flag(s, 'standing_order') && !flag(s, 'standing_paused')
     for (i = 0; i < n; i++) {
       walkStep(c, p.stochastic)
       if (record) sample()
@@ -783,7 +784,7 @@
   }
 
   function standingOrder (h) {
-    var s = S(), i, k, cfg, cap, ceil, floor, want, unit, got
+    var s = S(), i, k, cfg, cap, ceil, floor, want, unit, got, spent = 0
     for (i = 0; i < TYPES.length; i++) {
       k = TYPES[i]
       if (!unlocked(k)) continue
@@ -806,9 +807,16 @@
       if (got > 0) {
         C().setStock(s.res, 'sugar',
           s.res.sugar - got * unitPrice(k) * (MK.STANDING_PENALTY - 1))
+        spent += got * unitPrice(k) * MK.STANDING_PENALTY
       }
     }
+    // What the order really spends, smoothed over about a minute: the feedstock estimate prices the
+    // floor at the cheapest litter, and the order pays the market plus its markup, so coverage read
+    // "room to spare" over books it was starving (act3b run, Robin: three defaults on that line).
+    var a = Math.min(1, h / MK.STANDING_EMA_S)
+    standingRate = standingRate * (1 - a) + (h > 0 ? spent / h : 0) * a
   }
+  var standingRate = 0
 
   // ───────────────────────────────────────────────────────────────────────────
   // THE ACT II MINERAL EXCHANGE (02 §10.4) — the same walk, demoted to one pair
@@ -1614,7 +1622,9 @@
   function feedstockCostPerSec () {
     var mp = minPrice()
     if (!isFinite(mp)) return 0
-    return throughput() * nextK() * mp
+    var est = throughput() * nextK() * mp
+    // With the Standing Order buying, the floor costs what the order actually pays.
+    return flag(S(), 'standing_order') && !flag(S(), 'standing_paused') ? Math.max(est, standingRate) : est
   }
 
   // The HUD's one derived number, and the reason the coverage bar is the whole game. When it goes
