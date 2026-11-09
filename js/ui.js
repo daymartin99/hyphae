@@ -1821,7 +1821,9 @@
         presenceBeat()
       }
       var b = net.getBoundingClientRect()
-      var hx = e.clientX - b.left, hy = e.clientY - b.top
+      // The slide scales the canvas, so the touch is mapped back into the canvas's own box.
+      var sx = b.width > 0 ? net.clientWidth / b.width : 1, sy = b.height > 0 ? net.clientHeight / b.height : 1
+      var hx = (e.clientX - b.left) * sx, hy = (e.clientY - b.top) * sy
       // A/B round 1: the ending lights read as pickups. They are the endings, so a touch opens them.
       if (isD() && CANVAS() && CANVAS().lightAt && CANVAS().lightAt(hx, hy) >= 0) {
         if (view.shell.dataset.slide === '1') slide(false)
@@ -2879,9 +2881,13 @@
     }, { capture: true, passive: true })
     var w = win()
     if (w) {
+      on(w, 'resize', appHeight)
       on(w, 'resize', layout)
+      on(w, 'resize', fitSlide)
+      on(w, 'orientationchange', appHeight)
       on(w, 'orientationchange', layout)
     }
+    appHeight()
     layout()
 
     // loop.js owns the single rAF in the build; when it is present we ride in it and start none of
@@ -3112,12 +3118,80 @@
   // new is drawn; the network re-derives into the larger box the way it does on any resize.
   function slide (open) {
     if (!view) return false
-    if (open) setData(view.shell, 'slide', '1')
-    else delete view.shell.dataset.slide
+    if (open) {
+      var c0 = view.plate.querySelector('canvas')
+      view.slideBox = c0 ? { w: c0.clientWidth, h: c0.clientHeight } : null
+      setData(view.shell, 'slide', '1')
+      fitSlide()
+    } else {
+      delete view.shell.dataset.slide
+      view.slideBox = null
+      var st = view.shell.style
+      st.removeProperty('--sl-w'); st.removeProperty('--sl-h')
+      st.removeProperty('--sl-x'); st.removeProperty('--sl-y'); st.removeProperty('--sl-k')
+      if (CANVAS() && CANVAS().setZoom) CANVAS().setZoom(1)
+    }
     setAttr(view.plateToggle, 'aria-label', open ? STR.closeBody : STR.openBody)
     setAttr(view.plateToggle, 'aria-expanded', open ? 'true' : 'false')
     layout()
     return open
+  }
+
+  // The home-screen app on iPhone (standalone, black-translucent status bar) reports a viewport one
+  // status bar short of the screen it actually owns, in vh, dvh and innerHeight alike, so the shell
+  // stopped that far above the bottom and left a band of dead screen under the tab bar (owner, iPhone
+  // 17 Pro Max, from the home screen, Nov 2026). In standalone the app IS the whole screen, so the
+  // screen's own height is the right one; it is used only when it is the larger by no more than a
+  // status bar, so a split view or a desktop window is never stretched past what it is given.
+  function appHeight () {
+    var w = win()
+    if (!view || !w || !w.navigator || !w.screen) return
+    var st = view.shell.style
+    var standalone = w.navigator.standalone === true ||
+      (w.matchMedia && w.matchMedia('(display-mode: standalone)').matches)
+    var have = Math.max(w.innerHeight || 0, (w.document.documentElement || {}).clientHeight || 0)
+    var portrait = (w.innerHeight || 0) >= (w.innerWidth || 0)
+    var scr = portrait ? Math.max(w.screen.width, w.screen.height) : Math.min(w.screen.width, w.screen.height)
+    var root = w.document.documentElement
+    if (standalone && have > 0 && scr > have && scr - have <= 80) {
+      st.setProperty('--app-h', scr + 'px')
+      if (root) root.setAttribute('data-apph', '1')
+    } else {
+      st.removeProperty('--app-h')
+      if (root) root.removeAttribute('data-apph')
+    }
+  }
+
+  // The slide magnifies the same drawing rather than re-deriving it into the bigger box: the network
+  // grows in fixed pixel steps, so a full-screen box re-derived the same small colony at the bottom
+  // of a screen of empty sky (owner, iPhone, Nov 2026). The canvases keep the box they had in the
+  // plate and are scaled so what is actually drawn fills the screen, centred.
+  function fitSlide () {
+    if (!view || view.shell.dataset.slide !== '1' || !view.slideBox) return
+    var cv = CANVAS()
+    var box = view.slideBox
+    if (!(box.w > 0 && box.h > 0) || !cv || !cv.extent) return
+    var e = cv.extent()
+    var cs = getComputedStyle(view.plate)
+    var pt = parseFloat(cs.paddingTop) || 0, pb = parseFloat(cs.paddingBottom) || 0
+    var gut = 16
+    var aw = view.plate.clientWidth - 2 * gut
+    var ah = view.plate.clientHeight - pt - pb - 2 * gut - 40
+    var bw = (e.x1 - e.x0) * box.w / e.W, bh = (e.y1 - e.y0) * box.h / e.H
+    if (!(aw > 0 && ah > 0 && bw > 0 && bh > 0)) return
+    var k = Math.max(1, Math.min(aw / bw, ah / bh, 6))
+    var cx = view.plate.clientWidth / 2, cy = pt + 40 + gut + ah / 2
+    var mx = (e.x0 + e.x1) / 2 * box.w / e.W, my = (e.y0 + e.y1) / 2 * box.h / e.H
+    // A rooted drawing sits on the bottom edge (past the gutter, where the ground can run off the
+    // screen) instead of floating in the middle of it.
+    if (e.root) { cy = view.plate.clientHeight - pb - bh * k / 2; my = (e.y0 + e.y1) / 2 * box.h / e.H }
+    var st = view.shell.style
+    st.setProperty('--sl-w', box.w + 'px')
+    st.setProperty('--sl-h', box.h + 'px')
+    st.setProperty('--sl-x', Math.round(cx - mx * k) + 'px')
+    st.setProperty('--sl-y', Math.round(cy - my * k) + 'px')
+    st.setProperty('--sl-k', k.toFixed(3))
+    if (cv.setZoom) cv.setZoom(k)
   }
 
   function setPlate (min) {

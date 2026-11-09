@@ -313,6 +313,9 @@
 /* overscroll-behavior guards the page only on the root: on body it never reached the viewport, so
    a sideways drag a control did not take (a contract slider, in the invested playtest) was read as
    swipe-back and left the game for a blank page. */
+/* The shell is stretched to the true screen in the iPhone home-screen app (ui.js appHeight); the
+   document under it must not then scroll by the difference. */
+html[data-apph="1"], html[data-apph="1"] body{ overflow:hidden; }
 html{ font-size:100%; -webkit-text-size-adjust:100%; background:var(--bg);
       color-scheme:dark light; overscroll-behavior:none; }
 body{ font:var(--t-body); color:var(--text-primary); background:var(--bg);
@@ -358,7 +361,7 @@ canvas{ display:block; }
      collapsed or absent a band of dead screen at the bottom exactly as tall as that chrome:
      measured at 65 pt of 956 on the owner's iPhone 17 Pro Max, 7% of his display, below EXTEND.
      The dynamic unit fills what is there. The guess cost more than the bug. */
-  height:100vh; height:100dvh;
+  height:100vh; height:100dvh; height:var(--app-h, 100dvh);
   max-width:1680px; margin:0 auto;
   padding-top:env(safe-area-inset-top);
   padding-left:env(safe-area-inset-left);
@@ -1808,6 +1811,14 @@ canvas{ display:block; }
   padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);
 }
 .shell[data-ui="d"][data-slide="1"] .plate-toggle{ top:calc(var(--sp-8) + env(safe-area-inset-top)); }
+/* The canvases keep the box they had in the plate and are magnified to frame what is drawn
+   (ui.js fitSlide); without the variables, before the first fit, they simply fill the screen. */
+.shell[data-ui="d"][data-slide="1"] .plate > canvas{
+  inset:auto; left:0; top:0; width:var(--sl-w, 100%); height:var(--sl-h, 100%);
+  transform-origin:0 0;
+  transform:translate(var(--sl-x, 0px), var(--sl-y, 0px)) scale(var(--sl-k, 1));
+  animation:none;
+}
 .shell[data-ui="d"][data-slide="1"] .plate-toggle svg{ transform:none; }
 
 /* ── Phase 2 · NEXT, the accounts, the voice in full ── */
@@ -1931,3 +1942,9 @@ canvas{ display:block; }
 .shell[data-ui="d"] .burst > button[data-s="want"],
 .shell[data-ui="d"] .stepper > button[data-s="want"]{
   border-style:dashed; background:transparent; }
+
+/* iOS 26 softens the band under the status bar in the home-screen app; the top row stands a step
+   clear of it rather than sitting in the blur. */
+@media (display-mode: standalone){
+  .shell{ padding-top:calc(env(safe-area-inset-top) + var(--sp-8)); }
+}
