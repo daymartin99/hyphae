@@ -254,6 +254,7 @@
     nextGather: 'something is gathering. {t}.',
     nextBare: 'the floor is bare. more is for sale, under grow.',
     nextCeiling: '{name}: {n} Σ. you hold at most {cap}. the forest makes room.',
+    forestYou: 'the forest is {p}% you.',
     signNothing: 'at that size it pays nothing',
     covOk: 'you make {make} {u}; the trees would take {take}. room to spare.',
     covTight: 'you make {make} {u}; the trees would take {take}. a bad season and it defaults.',
@@ -3697,9 +3698,27 @@
     return 4
   }
 
+  // Act II's door, shown (act3 run, Lee: "the forest at 2% with 61 stands to go" after two hours, and
+  // the exit waits on 97% of it). One quiet line under the strip: how much of the forest is you. The
+  // slow early climb reads as progress instead of nothing, and the number the exit waits on is no
+  // longer hidden. Act II only.
+  function forestLine (v, s) {
+    var on = s.act === 2 && HY.forest && HY.forest.forestConsumed
+    if (!on) { if (v.forestLine) show(v.forestLine, false); return }
+    if (!v.forestLine) {
+      v.forestLine = el('div', 'ledger-sub')
+      v.forestLine.dataset.kind = 'forest'
+      v.ledger.appendChild(v.forestLine)
+    }
+    var pct = Math.floor(100 * num(HY.forest.forestConsumed(s)))
+    setText(v.forestLine, interp(STR.forestYou, { p: pct }))
+    show(v.forestLine, true)
+  }
+
   function paintLedger (v, s, rev) {
     var acc = ACCT_BY_ACT[s.act >= 3 ? 3 : s.act >= 2 ? 2 : 1]
     for (var ai = 0; ai < v.ledgerRows.length; ai++) setData(v.ledgerRows[ai].el, 'acct', acc[ai] || '')
+    forestLine(v, s)
     if (s.act >= 3) return paintLedgerA3(v, s, rev)
     if (s.act >= 2) return paintLedgerA2(v, s, rev)
     var shown = 1

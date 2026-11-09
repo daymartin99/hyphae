@@ -550,6 +550,8 @@ canvas{ display:block; }
    it off the edge, instead of it running out to the gutter under the gear, 44 px right of every
    number around it. */
 .ledger-sub[data-kind="pool"]{ gap:var(--sp-8); }
+/* Act II: how much of the forest is you. A reading, not a warning: quiet, in the body's colour. */
+.ledger-sub[data-kind="forest"]{ color:var(--text-tertiary); }
 .ledger-sub[data-kind="pool"] .row-num{ flex:1 0 auto; text-align:end; padding-inline-end:var(--sp-8); }
 .ledger[data-gear="1"] .ledger-sub[data-kind="pool"]{ padding-inline-end:calc(var(--gutter) + var(--tap)); }
 
