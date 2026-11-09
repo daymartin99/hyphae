@@ -1317,7 +1317,11 @@
     if (!tree) return false
     if (num(tree.refuseUntil) > num(s.t)) return false
     if (!(num(volume) > 0)) return false
-    if (num(volume) + committedTo(tree.id) > maxIntake(tree, collateral)) return false
+    // A hair of tolerance: the sign card asks for exactly the room left at the top of its slider,
+    // and the same sum read back a rounding error over refused it (v2.5-1 repro: fir, full slider,
+    // half collateral, nothing committed, refused).
+    var mx = maxIntake(tree, collateral)
+    if (num(volume) + committedTo(tree.id) > mx * (1 + 1e-6) + 1e-9) return false
     if (CT.REP_A + CT.REP_B * num(tree.rep) < sp(tree).minRep) return false
     if (num(termSeasons) < T().A1.TERM_MIN || num(termSeasons) > maxTerm(tree)) return false
     if (exclusive && treeContracts(tree.id).length > 0) return false
@@ -2701,6 +2705,7 @@
 
   HY.economy1 = {
     setAwayBank: setAwayBank,
+    committedTo: committedTo,
     awayFed: awayFed,
     // BIBLE §6 M7's surface
     stepMarket: stepMarket,
