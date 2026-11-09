@@ -268,7 +268,11 @@
     AWAY_SEED: 0.25,          // × the sugar left behind: the most of the savings it may spend
                               // (sugar comes from digesting food, so with none of the bank it never starts)
     AWAY_FLOOR: 0.15,         // × cap: it keeps the floor from going bare, it does not stock it
-    AWAY_AFTER_BUYS: 25,      // it only keeps a market the player has learned by hand
+    // It only keeps a market the player has learned by hand. Measured in sugar spent, not in taps:
+    // a count of purchases shut out the commuter it was built for, who buys with MAX once a
+    // session (v2.5-1, Jay: 100% bare on every return for thirteen hours).
+    AWAY_AFTER_SPENT: 1000,   // sug spent at the litter market
+    AWAY_CAP_FRAC: 0.80,      // × sugar cap: above this, whatever would rot is food instead
     // THE PRICE-IMPACT CEILING, in units of `fair`, per second of market time.
     //
     // `08` §3.4 publishes the walk in four lines and there is no trade-impact term in it; the
@@ -727,7 +731,7 @@
     var auto = flag(s, 'standing_order') && !flag(s, 'standing_paused')
     // A paused order is the player's choice and is respected while away too.
     var keeper = !auto && p.offline && !flag(s, 'standing_order') &&
-      num(s.stats.purchases) >= MK.AWAY_AFTER_BUYS
+      num(s.stats.sugarSpentOnMarket) >= MK.AWAY_AFTER_SPENT
     for (i = 0; i < n; i++) {
       walkStep(c, p.stochastic)
       if (record) sample()
@@ -808,6 +812,10 @@
       // sug/s owed against 1,030 held, and the keeper never bought a gram).
       // A share of the sugar on hand, whenever it looks: food and the terms split what flows in.
       budget = MK.AWAY_SHARE * s.res.sugar
+      // Sugar at the cap rots. While away that is income thrown away, so the keeper spends what
+      // sits above most of the cap rather than let it go (v2.5-1, Jay: "capped and rotting").
+      var scap = HY.act1 && HY.act1.sugarCap ? num(HY.act1.sugarCap()) : Infinity
+      if (isFinite(scap) && scap > 0) budget = Math.max(budget, s.res.sugar - MK.AWAY_CAP_FRAC * scap)
       if (!(budget > 0)) return
     }
     for (i = 0; i < TYPES.length; i++) {
@@ -837,7 +845,7 @@
           s.res.sugar - got * unitPrice(k) * (MK.STANDING_PENALTY - 1))
         spent += got * unitPrice(k) * MK.STANDING_PENALTY
         budget -= got * unitPrice(k) * MK.STANDING_PENALTY
-        if (keeper) awaySpent += got * unitPrice(k) * MK.STANDING_PENALTY
+        if (keeper) { awaySpent += got * unitPrice(k) * MK.STANDING_PENALTY; awayGrams += got }
       }
     }
     if (keeper) return              // the keeper is not the order: it leaves the order's rate alone
@@ -854,7 +862,14 @@
   // measured against everything that came in, including what it already spent.
   var awayBank = null
   var awaySpent = 0
-  function setAwayBank (v) { awayBank = v === null || v === undefined ? null : num(v); awaySpent = 0 }
+  var awayGrams = 0
+  function setAwayBank (v) {
+    awayBank = v === null || v === undefined ? null : num(v)
+    awaySpent = 0
+    if (awayBank !== null) awayGrams = 0     // kept after the run, so the report can read it
+  }
+  // Grams the keeper (or the standing order's own run) put on the floor during the last absence.
+  function awayFed () { return awayGrams }
 
   // ───────────────────────────────────────────────────────────────────────────
   // THE ACT II MINERAL EXCHANGE (02 §10.4) — the same walk, demoted to one pair
@@ -2676,6 +2691,7 @@
 
   HY.economy1 = {
     setAwayBank: setAwayBank,
+    awayFed: awayFed,
     // BIBLE §6 M7's surface
     stepMarket: stepMarket,
     // The player's own verbs are filed under the verb (core flowed): the ledger's accounts.

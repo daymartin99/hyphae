@@ -132,7 +132,22 @@
 
     // 18 · Autosave counter, plus the module's own event hooks.
     if (!o.offline && HY.state.tick) HY.state.tick(s, dt, o)
+
+    // 19 · The pace the player left at: growth per second over about the last two minutes of
+    //     play, so the return report can say whether the absence kept up with it (11 §1). Not
+    //     saved: after a cold start there is no pace to compare against, and the report says less.
+    if (!o.offline && s.res) {
+      var cum = num(s.res.cumBiomass)
+      if (paceLast !== null && cum >= paceLast) {
+        var k = Math.min(1, dt / PACE_S)
+        pace = pace * (1 - k) + ((cum - paceLast) / dt) * k
+      }
+      paceLast = cum
+    }
   }
+  var PACE_S = 120
+  var pace = 0
+  var paceLast = null
 
   // ───────────────────────────────────────────────────────────────────────────
   // OFFLINE
@@ -177,7 +192,8 @@
       act: s.act,
       cumBiomass: num(s.res.cumBiomass), sugar: num(s.res.sugar),
       minerals: num(s.res.minerals), insight: num(s.res.insight),
-      cumCarbon: num(s.res.cumCarbon)
+      cumCarbon: num(s.res.cumCarbon),
+      pace: pace
     }
     if (s.act === 1 && s.a1) {
       snap.patches = num(s.a1.patches)
@@ -226,15 +242,23 @@
     'bond_deepened', 'bands_starving', 'strain_born', 'strain_band', 'band_open', 'phase_drift',
     'held_floor', 'held_fleet', 'held_fed', 'held_grew', 'held_deep']
 
-  function offlineNeeds (s, b, dryAtS, bareFrac) {
+  function offlineNeeds (s, b, dryAtS, bareFrac, eff) {
     var needs = []
     if (b.act === 1 && s.act === 1 && s.a1) {
       // How long the floor was actually bare, not the first moment it touched zero: litter falls
       // and refills it, and "ran dry after 1 m" over an absence that banked 80% read as a disaster
       // that had not happened. Said only when a real share of the absence went hungry.
-      var bare = isFinite(bareFrac) ? bareFrac : (dryAtS >= 0 ? 1 : 0)
-      if (bare >= T().OFFLINE.RETURN_BARE_FRAC) {
-        needs.push({ kind: 'substrate_dry', tokens: { t: dryAtS, pct: bare * 100 }, tone: 'warn' })
+      // Said by outcome, not by counting empty moments: litter falls and is eaten the instant it
+      // lands, so the floor reads bare while the colony eats well ("bare 98%, nothing grew" over an
+      // hour that banked 80% of the pace; v2.5-1, Jay). The line is for an absence that really fell
+      // behind the pace the player left at, and says by how much.
+      var effS = eff > 0 ? eff : 0
+      var grew = num(s.res.cumBiomass) - b.cumBiomass
+      if (b.pace > 0 && effS > 0) {
+        var kept = grew / effS / b.pace
+        if (kept < T().OFFLINE.RETURN_PACE_FRAC) {
+          needs.push({ kind: 'substrate_dry', tokens: { t: dryAtS, pct: Math.max(0, kept) * 100 }, tone: 'warn' })
+        }
       }
       // economy1's D32 note promises this line: offline shortfall accrues, never defaults, and
       // is "reported on return". The report states only what the absence added.
@@ -408,7 +432,7 @@
         act: s.act,
         efficiency: eff / elapsed,
         gains: gains,
-        needs: offlineNeeds(s, before, dryAt, bareSteps / STEPS)
+        needs: offlineNeeds(s, before, dryAt, bareSteps / STEPS, eff)
       })
     }
     return eff
