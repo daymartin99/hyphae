@@ -134,6 +134,13 @@
   // ───────────────────────────────────────────────────────────────────────────
 
   var STR = {
+    // The away card (11 §1). The kicker names what this is; the duration is the headline.
+    awayKicker: 'while you were away',
+    awayGone: 'gone {t}',
+    awayTake: 'take it',
+    awayDormant: 'for {p}% of that time you were dormant.',
+    awayBio: 'biomass', awaySug: 'sugar', awayMin: 'minerals', awayPsi: 'insight',
+    awayDecomp: 'decomposed', awayCar: 'harvested',
     floorCover: 'cover',
     floorWater: 'held water',
     floorMix: 'variety',
@@ -2888,6 +2895,8 @@
       on(w, 'orientationchange', layout)
     }
     appHeight()
+    // The return report is the away card's from here on, not the console's (11 §1).
+    if (LOG() && LOG().useReportCard) LOG().useReportCard(true)
     layout()
 
     // loop.js owns the single rAF in the build; when it is present we ride in it and start none of
@@ -2924,6 +2933,102 @@
   // The presence's heartbeat, felt as well as seen: lub-dub under the thumb while the colony is still
   // too small to see (David's brief). feel.js owns the buzz and its budget, Android's vibration and
   // iOS's switch path alike, so this only asks for the two beats.
+  // THE AWAY CARD (11 §1, v2.5). On return the report used to trickle into the console behind
+  // whatever the player opened the app to do. It is the first thing on screen now: how long, what
+  // grew, what went wrong and why, and one button that takes it. Taking it is the pickup: the
+  // ledger lights as the gains land on it, with a sound you can see. Nothing is lost by leaving it
+  // unread — a scrim tap or a swipe takes it too — but it is never silent.
+  function awayCard () {
+    if (!view || openSheet) return
+    var L = LOG()
+    if (!L || !L.takeReport) return
+    if (L.sequenceActive && L.sequenceActive()) return
+    var r = L.takeReport()
+    if (!r) return
+    var c = C(), g = r.gains || {}
+    var rows = []
+    function add (lab, v, text) { if (v > 0) rows.push([lab, '+' + text]) }
+    var mass = function (v) { return c.fmtMass ? c.fmtMass(v) : c.fmt(v) }
+    if (r.act === 1) {
+      add(STR.awayBio, g.biomass, mass(g.biomass))
+      add(STR.awaySug, g.sugar, c.fmt(g.sugar) + ' sug')
+      add(STR.awayMin, g.minerals, c.fmt(g.minerals) + ' \u2234')
+    } else if (r.act === 2) {
+      add(STR.awayDecomp, g.biomass, mass(g.biomass))
+      add(STR.awayPsi, g.insight, c.fmt(g.insight) + ' \u03a8')
+      add(STR.awayMin, g.minerals, c.fmt(g.minerals) + ' \u2234')
+    } else {
+      add(STR.awayCar, g.carbon, mass(g.carbon))
+      add(STR.awayPsi, g.insight, c.fmt(g.insight) + ' \u03a8')
+    }
+    var taken = false
+    var helloed = false
+    function hello () {
+      var f = FEEL()
+      if (helloed || !f || !f.feel) return
+      // Only counted as said when the audio could actually say it: locked audio defers it to the tap.
+      var audible = f.ready && f.mode !== 'off'
+      if (f.feel('away.hello') && audible) helloed = true
+    }
+    function take () {
+      if (taken) return
+      taken = true
+      hello()                           // a cold start's audio unlocks on this touch
+      setData(view.shell, 'taken', '1')
+      setTimeout(function () { if (view) delete view.shell.dataset.taken }, 1600)
+      presenceBeat()
+      var f = FEEL()
+      if (f && f.feel) f.feel('claim.complete')
+    }
+    var sh = sheet({
+      id: 'away',
+      title: STR.awayKicker,
+      buttons: [{ label: STR.awayTake, onPick: function (api) { take(); api.close() } }],
+      build: function (body) {
+        if (r.awayText) {
+          var gone = interp(STR.awayGone, { t: r.awayText })
+          if (r.act >= 2) gone = gone.charAt(0).toUpperCase() + gone.slice(1)
+          body.appendChild(el('p', 'away-when', gone))
+        }
+        if (rows.length) {
+          var grid = el('div', 'away-gains')
+          rows.forEach(function (row) {
+            var line = el('div', 'away-gain')
+            line.appendChild(el('span', 'away-lab', row[0]))
+            line.appendChild(el('span', 'away-val', row[1]))
+            grid.appendChild(line)
+          })
+          body.appendChild(grid)
+        }
+        if (r.dormant > 0) {
+          // Act I's register is lowercase (D68); from Act II the voice speaks in sentence case.
+          var dn = interp(STR.awayDormant, { p: r.dormant })
+          if (r.act >= 2) dn = dn.charAt(0).toUpperCase() + dn.slice(1)
+          body.appendChild(el('p', 'away-note', dn))
+        }
+        if (r.lines && r.lines.length > 1) {
+          var list = el('ul', 'away-lines')
+          // The first line is the opener ("you were gone …"), which the headline already says.
+          r.lines.slice(1).forEach(function (ln) {
+            var li = el('li', 'away-line', ln.text)
+            if (ln.tone) setData(li, 'tone', ln.tone)
+            list.appendChild(li)
+          })
+          body.appendChild(list)
+        }
+      }
+    })
+    sh.el.classList.add('sheet-away')
+    // Dressed for the act it opens on: soil and amber, then the network's light, then the void.
+    setData(sh.el, 'act', String(r.act || 1))
+    // A scrim tap or a swipe is also taking it: the gains are already yours either way.
+    var close0 = sh.close
+    sh.close = function () { take(); close0() }
+    sh.open()
+    // Past the audio gate that follows a return to the foreground, so the hello is not swallowed.
+    setTimeout(hello, 650)
+  }
+
   function presenceBeat () {
     if (!isD() || !CANVAS() || !CANVAS().kickPresence) return
     CANVAS().kickPresence()
@@ -4332,6 +4437,7 @@
     // rather than the previous frame's; a row must never arrive one frame late. It throttles
     // itself, so calling it every frame costs one subtraction.
     display(view, s, t)
+    awayCard()
 
     paintLedger(view, s, view.rev || COLD)
     syncCards(view)

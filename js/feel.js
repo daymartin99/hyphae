@@ -1701,6 +1701,14 @@
       stone(t, 11, { gain: o.g, cents: 34, decay: 0.700, lp: 1500, Q: 1.1, weight: 3 })
     } },
 
+    // The away card's hello (11 §1, David: "a soft tone on enter to say hello"). Two low plucks a
+    // little apart, rising, over the return breath: a greeting, not an event. Played once as the
+    // card opens; on a cold start the audio is still locked, so it waits for the first touch.
+    'away.hello': { g: 0.080, s: 0.50, w: 1, h: 0, ioi: 4000, play: function (t, p, o) {
+      pluck(t, 3, { gain: o.g, send: o.s, decay: 1.400, weight: 1 })
+      pluck(t + 0.320, 6, { gain: o.g * 0.7, send: o.s, decay: 1.600, weight: 1 })
+    } },
+
     'offline.return': { g: 0.095, s: 0.46, w: 1, h: 0, ioi: 0, play: function (t, p, o) {
       breath(t, 240, 900, { gain: o.g, send: o.s, Q: 1.3, attack: 0.400, release: 1.000, weight: 1 })
       if (G && mode() === 'full') {

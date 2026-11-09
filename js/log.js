@@ -535,6 +535,41 @@
     'Almost all of it is you. When the last of it is, something will want to leave.',
     { pred: function (s) { return forestNear(s, 0.85, 1) } })
 
+  // The trees talk to the voice, never to the player; the voice relays them in its own words and
+  // with its own opinion of them (David, v2.5 §5: "they can speak to the voice more and he speaks
+  // to us"). One each, laddered on stands held so they arrive across the act and never in a pile.
+  L(2, 'a2.relay_oak_stay', 'world', null, 'claimed >= 3',
+    'The oak asks how long you mean to stay. It was told: longer than it.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 3 } })
+
+  L(2, 'a2.relay_birch_liar', 'world', null, 'claimed >= 5',
+    'The birch wants more than it gives, and got a yes. You can afford a liar.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 5 } })
+
+  L(2, 'a2.relay_elm_quiet', 'world', null, 'claimed >= 8',
+    'The elm has stopped asking for anything. That is how you know.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 8 } })
+
+  L(2, 'a2.relay_beech_last', 'world', null, 'claimed >= 12',
+    'The beech says the last thing like you took everything. You keep it.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 12 } })
+
+  L(2, 'a2.relay_pines', 'world', null, 'claimed >= 17',
+    "The pines talk among themselves now. They don't lower their voices for you.",
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 17 } })
+
+  L(2, 'a2.relay_sapling', 'world', null, 'claimed >= 23',
+    'A sapling asked what you are. It was told the ground, and believed it.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 23 } })
+
+  L(2, 'a2.relay_oak_fire', 'world', null, 'claimed >= 30',
+    'The old oak remembers a fire. It wants to know if you are the next one.',
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 30 } })
+
+  L(2, 'a2.relay_staying', 'world', null, 'claimed >= 38',
+    "The forest asks whether you're staying. Nobody has ever said no.",
+    { pred: function (s) { return s.act === 2 && num(s.stats.claimedCount) >= 38 } })
+
   L(2, 'a2.first_claim', 'world', 'pos', 'claimed == 2',
     'Further out, something is willing to talk.',
     { pred: function (s) { return s.stats.claimedCount >= 2 } })
@@ -1004,7 +1039,7 @@
   // Priority order is 09 §6.6's: dry > rival > starvation > expired terms > completions > market.
   // Act I has no stands and no rivals, so its ladder is the same ladder against its own nouns.
   var NEEDS = [
-    { kind: 'substrate_dry', act: 1, rank: 90, text: 'the substrate ran dry after {t}.' },
+    { kind: 'substrate_dry', act: 1, rank: 90, text: 'the floor was bare for {pct}% of it. nothing grew while it was.' },
     { kind: 'term_short', act: 1, rank: 80, text: 'a term is short by {n} sugar. it has not ended.' },
     { kind: 'term_default', act: 1, rank: 75, text: 'a term went unpaid. {k} reputation is gone.' },
     { kind: 'season_autumn', act: 1, rank: 70,
@@ -2825,7 +2860,52 @@
       text: interpolate(text, tokens, s, null), tone: tone || null, channel: 'world' })
   }
 
+  // THE AWAY CARD (11 §1, v2.5). The report used to arrive only as console lines, which scroll
+  // past behind whatever the player opened the app to do; nobody read it (David: "make it pop —
+  // we respect your time, this is what happened"). With the card on, the same report is handed to
+  // ui.js as data and the console does not repeat it. Off (headless, the self-tests), nothing
+  // changes: the burst plays in the console as it always has.
+  var reportCard = false
+  var lastReport = null
+  var gainsAt = -1
+
+  function useReportCard (on) { reportCard = !!on }
+
+  function takeReport () {
+    var r = lastReport
+    lastReport = null
+    return r
+  }
+
   function returnBurst (summary) {
+    lastReport = null
+    var n = returnBurstLines(summary)
+    if (n > 0 && reportCard) {
+      var s = S()
+      var lines = []
+      for (var i = 0; i < pendingReturn.length; i++) {
+        var r = pendingReturn[i]
+        if (i === gainsAt) continue          // the card states the gains as numbers
+        var text = r.raw ? r.text : (r.entry ? interpolate(r.entry.text, r.tokens, s, null) : '')
+        if (!text) continue
+        if (/^\[/.test(text)) continue       // a console hint; the card is not the console
+        lines.push({ text: text, tone: r.raw ? r.tone : (r.entry && r.entry.tone) || null })
+      }
+      var away = Number(summary.away)
+      lastReport = {
+        away: away, act: summary.act || (s && s.act) || 1,
+        awayText: away >= 0 ? duration(away) : '',
+        gains: summary.gains || {},
+        dormant: isFinite(summary.efficiency) && summary.efficiency < 1
+          ? Math.round((1 - summary.efficiency) * 100) : 0,
+        lines: lines
+      }
+      pendingReturn.length = 0
+    }
+    return n
+  }
+
+  function returnBurstLines (summary) {
     var s = S()
     if (!s || !summary) return 0
     var away = Number(summary.away)
@@ -2833,6 +2913,7 @@
 
     pendingReturn.length = 0
     returnShown = 0
+    gainsAt = -1
 
     // Do not tell someone who switched apps that they were away.
     if (away >= 0 && away < CONS.RETURN_MIN_AWAY) return 0
@@ -2871,6 +2952,7 @@
       psi: g.insight || 0, car: g.carbon || 0, b: g.band || 0,
       pct: isFinite(eff) ? (1 - eff) * 100 : 0
     }, s)
+    gainsAt = pendingReturn.length - 1
     lines++
 
     // Below fifteen minutes the report is lines one and two and stops. It is never padded.
@@ -3378,7 +3460,7 @@
     // `a1.refusal_lifts` are the watcher keeping count of unpaid terms and when the lock ends, and
     // `a1.waiting` notices a player who has not touched anything (ab/deadspot-1); `a1.threads_reach` and
     // `a1.threads_close` hint at Anastomosis's hidden gate (ab/bounce-2). Each is counted, not excused.
-    ok(LINES.length === 174, 'corpus is ' + LINES.length + ' entries, expected 174')
+    ok(LINES.length === 182, 'corpus is ' + LINES.length + ' entries, expected 182')
     var ids = {}
     for (i = 0; i < LINES.length; i++) {
       ok(!ids[LINES[i].id], 'duplicate id ' + LINES[i].id)
@@ -3387,7 +3469,7 @@
     var counts = { a1: 0, a2: 0, a3: 0, succ: 0, x: 0, obs: 0 }
     for (i = 0; i < LINES.length; i++) counts[LINES[i].id.split('.')[0]]++
     ok(counts.a1 === 54, 'act I lines: ' + counts.a1)
-    ok(counts.a2 === 44, 'act II lines: ' + counts.a2)
+    ok(counts.a2 === 52, 'act II lines: ' + counts.a2)
     ok(counts.a3 === 28, 'act III lines: ' + counts.a3)
     ok(counts.succ === 14, 'Successor broadcasts: ' + counts.succ)
     ok(counts.x === 9, 'cross-act lines: ' + counts.x)
@@ -3709,7 +3791,10 @@
         ok(seen.length === 0, 'a line spoke while the log was frozen')
         thaw()
 
-        // The offline return: five lines, no more, in the console, never padded.
+        // The offline return: five lines, no more, in the console, never padded. These test the
+        // console burst, so the away card (which takes the report instead) is off for them.
+        var cardWas = reportCard
+        reportCard = false
         init(live)
         live.log.lastLineAt = -1e9
         seen.length = 0
@@ -3717,7 +3802,7 @@
           away: 24060, act: 1, efficiency: 0.62,
           gains: { biomass: 4.1e5, sugar: 2200, minerals: 130 },
           needs: [{ kind: 'market_move', tokens: { price: 0.42 } },
-            { kind: 'substrate_dry', tokens: { t: 14400 } },
+            { kind: 'substrate_dry', tokens: { t: 14400, pct: 60 } },
             { kind: 'term_done', tokens: { tree: 'hemlock', k: 4 } },
             { kind: 'claim_done', tokens: {} }]
         })
@@ -3726,7 +3811,7 @@
         ok(seen.length === 5, 'return burst rendered ' + seen.length + ' lines')
         ok(seen[0].text === 'you were gone 6 h 41 m.', 'return line 1: ' + seen[0].text)
         ok(seen[1].text.indexOf('38% dormant') > 0, 'return line 2: ' + seen[1].text)
-        ok(seen[2].text.indexOf('ran dry') > 0, 'return line 3 is not the highest-ranked need')
+        ok(seen[2].text.indexOf('was bare for 60%') > 0, 'return line 3 is not the highest-ranked need')
         var lowered = true
         for (i = 0; i < 5; i++) if (/[A-Z]/.test(seen[i].text)) lowered = false
         ok(lowered, 'the Act I return burst carries a capital letter')
@@ -3762,6 +3847,19 @@
         notifyInput()
         for (i = 0; i < 20; i++) { live.t += 1.3; drain(live) }
         ok(seen.length === 1, 'a tap did not dismiss the rest of the return burst')
+
+        reportCard = cardWas
+        // The away card takes the same report as data and leaves the console quiet.
+        reportCard = true
+        init(live)
+        ok(returnBurst({ away: 24060, act: 1, efficiency: 0.6, gains: { biomass: 5 },
+          needs: [{ kind: 'substrate_dry', tokens: { t: 120 }, tone: 'warn' }] }) > 0, 'card: no report')
+        var card = takeReport()
+        ok(card && card.lines.length >= 2 && card.dormant === 40, 'card: report shape')
+        ok(card && card.lines[card.lines.length - 1].tone === 'warn', 'card: a loss lost its tone')
+        ok(pendingReturn.length === 0, 'card: the console repeated the report')
+        ok(takeReport() === null, 'card: taken twice')
+        reportCard = cardWas
 
         // The sequence player: the words land, the skip rule holds, the queue is frozen.
         init(live)
@@ -3869,6 +3967,8 @@
     logLater: logLater,
     bought: bought,
     returnBurst: returnBurst,
+    useReportCard: useReportCard,
+    takeReport: takeReport,
     ringBuffer: ringBuffer,
     freeze: freeze,
     thaw: thaw,
